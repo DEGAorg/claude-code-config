@@ -1,0 +1,5 @@
+Alberto Cerrato: Claro, yo eh sumarizo de mi de mi lado, tengo que leer bastante, voy a a pasarme por los repos que me facilitaron y tengo la tarea específica del diagrama, de todo lo que conversamos, ¿verdad? que es el flujo completo, crear tarea, crear spec, review del spec, eh luego implementarlo en local por cada dep,
+Carlos Rene: M.
+Alberto Cerrato: luego cada dep eh revisa el el prompt que se utiliza para el code review y luego pasamos a grabar el video, subirlo al PR y en el PR también se activa eh los proms de revisión de de código y agregar un detalle, pues para especificar claramente cuáles son los puntos de interacción humano y quiénes es el responsable en ese momento de la etapa.
+Carlos Rene: Correcto. Y después vos tenés que hacer el equivalente diagrama, pero con el harness, ¿verdad? con el hardness,
+Alberto Cerrato: Correcto.

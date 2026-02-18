@@ -1,0 +1,3 @@
+Alberto Cerrato tiene que familiarizarse con lo de Trail of Bits y probar cómo funciona con el proyecto.
+Alberto Cerrato debe revisar el archivo MD en el branch de Carlos Rene, con las instrucciones de cómo aplicar la metodología de Open AI, y revisar la URL de referencia de Open AI. branch openai-harness-patterns, added docs/harness-engineering-improvements.md.
+Alberto Cerrato debe crear un diagrama de flujo para el pipeline de desarrollo discutido y el diagrama equivalente con el harness de Open AI, asumiendo el uso de Cloud Code.
