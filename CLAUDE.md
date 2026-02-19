@@ -1,124 +1,166 @@
-# claude-code-config
+# claude-code-config — AI Development Core
 
-Trail of Bits' Claude Code configuration repo — commands, hooks, settings templates, and MCP
-configuration. Alberto is onboarding here: explain as you go, don't just implement.
+The foundational layer for AI-driven development: skills, hooks, commands, agents, and
+harness patterns. Everything here is **generic and reusable** — project-specific layers
+(like Canon) build on top of this core.
 
 ---
 
 ## Repo Map
 
-| File / Dir | Purpose |
+| Path | Purpose |
 |---|---|
-| `README.md` | Full reference guide (~600 lines) — source of truth for all repo explanations |
-| `claude-md-template.md` | Global CLAUDE.md template to install at `~/.claude/CLAUDE.md` |
+| `README.md` | Full reference guide — source of truth for all config explanations |
+| `claude-md-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
-| `scripts/statusline.sh` | Two-line terminal status bar for zsh/fish |
-| `commands/fix-issue.md` | End-to-end issue resolution command (8 steps: plan → implement → test → PR → review → fix → comment) |
-| `commands/review-pr.md` | Multi-agent PR review + fix command (5 steps) |
-| `hooks/` | Example PreToolUse / PostToolUse hook scripts |
-| `diagram.md` | Team pipeline discussion transcript — source of truth for pipeline diagrams |
-| `starting.md` | Alberto's task list (3 tasks) |
+| `scripts/statusline.sh` | Two-line terminal status bar for zsh |
+| `commands/` | Global slash commands (`fix-issue`, `review-pr`) |
+| `hooks/` | PreToolUse / PostToolUse hook scripts |
+| `docs/dev-flow.md` | 9-stage AI-driven development pipeline |
+| `docs/ai-dev-pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
+| `docs/pipeline-diagrams.md` | Team pipeline + harness-enhanced diagrams |
+| `canon/` | **Canon layer** — prediction market development (see below) |
 
 ---
 
-## Active Tasks (Alberto)
+## Architecture: Core + Canon
 
-### Task 1 — Understand the repo
-Read `README.md` end-to-end. It covers commands, skills, hooks, settings, MCP servers, and
-the global CLAUDE.md template. Use it as the primary reference for any question about how
-this repo works.
+This repo has two layers. **Core** is the root — generic AI development infrastructure
+that any project can adopt. **Canon** is a subdirectory with its own context, skills,
+hooks, and commands specifically for prediction market development.
 
-### Task 2 — Review the `openai-harness-patterns` branch
-Branch adds `docs/harness-engineering-improvements.md` — 7 gaps mapped from OpenAI's
-agent-first methodology to Claude Code equivalents.
-
-Access the file without switching branches:
 ```
-git show origin/openai-harness-patterns:docs/harness-engineering-improvements.md
+claude-code-config/             ← Core (this repo root)
+├── CLAUDE.md                   ← You are here
+├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup)
+├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker)
+├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
+│   └── exec-plans/             ← Execution plans (active + completed)
+├── skills/                     ← Core skills (to be created)
+│
+└── canon/                      ← Canon layer (prediction markets)
+    ├── CLAUDE.md               ← Canon-specific context and conventions
+    ├── commands/               ← Canon-specific commands
+    ├── hooks/                  ← Canon-specific hooks
+    ├── skills/                 ← Canon-specific skills (market analysis, etc.)
+    ├── agents/                 ← Canon-specific agents
+    └── docs/                   ← Canon architecture, domain models, references
 ```
 
-Reference article: https://openai.com/index/harness-engineering/
-(Ryan Lopopolo, OpenAI, Feb 11 2026)
+### Separation principle
 
-The 7 gaps in that document:
-- **Gap 1** — Restructure CLAUDE.md as a map (~100 lines) + `~/.claude/rules/` for language rules
-- **Gap 2** — Execution plans as first-class artifacts (`docs/exec-plans/active/`)
-- **Gap 3** — Doc-gardening automation (`/doc-garden` command)
-- **Gap 4** — Custom linters with agent-friendly error messages (ast-grep rules)
-- **Gap 5** — Agent-to-agent review convergence loop (up to 3 rounds)
-- **Gap 6** — Entropy / garbage collection automation (`/cleanup` weekly cadence)
-- **Gap 7** — Application legibility to agents (per-worktree boot, structured logs)
+- **Core** skills/hooks/commands are generic: they apply to any AI-driven project.
+- **Canon** skills/hooks/commands are domain-specific: prediction market patterns,
+  market analysis agents, Oracle integrations, position management, etc.
+- Canon **imports from Core** but never the reverse. Core must remain reusable.
+- Improvements to Core cascade into Canon automatically.
+- Development on Canon feeds back improvements to Core when patterns generalize.
 
-we can change branch if needed or bering the file to current branch.
+### Installation model
 
-### Task 3 — Produce pipeline diagrams
-Write two Mermaid `flowchart LR` diagrams to `docs/pipeline-diagrams.md`:
-- **Diagram A** — The team development pipeline from `diagram.md`
-- **Diagram B** — Same pipeline with the 5 harness-pattern gaps applied (Gaps 1–6 excluding Gap 7)
+Two commands, no manual file copying:
 
-Source of truth for Diagram A: `diagram.md` (conversation transcript).
-Output file: `docs/pipeline-diagrams.md` (create `docs/` if it doesn't exist).
-
-We need a session to fix the final version of the diagrams.
+- `/apply-core` — installs all Core artifacts globally (`~/.claude/`)
+- `/apply-canon` — installs Canon artifacts on top of Core
 
 ---
 
-## Key Concepts
+## OpenAI Harness Engineering
 
-### Commands vs Skills vs Hooks
-- **Commands** (`/fix-issue`, `/review-pr`) — step-by-step procedures stored in
-  `~/.claude/commands/*.md`. Slash-invoked: `/fix-issue 42`.
-- **Skills** — knowledge/style injected into Claude's context (e.g., how to write ast-grep
-  rules). Live in a marketplace, installed via `/plugin install`.
-- **Hooks** — shell scripts that run on Claude Code events (`PreToolUse`, `PostToolUse`).
-  Used for guardrails: block `rm -rf`, enforce package manager, log tool calls.
+Reference: [Harness engineering](https://openai.com/index/harness-engineering/) (Ryan Lopopolo, OpenAI, Feb 11 2026)
 
-### Global vs Project CLAUDE.md
-- **Global** (`~/.claude/CLAUDE.md`) — applies to every project. Use for universal conventions.
-- **Project** (`.claude/CLAUDE.md` or `CLAUDE.md` in repo root) — project-specific context.
-  Project file is merged with global at session start.
+Full gap analysis: `git show origin/openai-harness-patterns:docs/harness-engineering-improvements.md`
 
-### Team pipeline (from `diagram.md`)
-Nine-stage flow with human checkpoints. See Diagram A in `docs/pipeline-diagrams.md` for the
-full annotated version. Stages: create task → create spec → review spec → implement locally →
-dev reviews AI code-review prompt → record video → submit PR → AI code review activates →
-specify human interaction points and owners.
+The harness is the infrastructure that makes AI-driven development reliable at scale.
+Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
----
+### Implementation status
 
-## Diagram Specifications
+| # | Gap | Status | Artifact |
+|---|-----|--------|----------|
+| 1 | CLAUDE.md as map + `~/.claude/rules/` for language rules | **To do** | Restructured template + rules/ |
+| 2 | Execution plans as first-class artifacts | **To do** | `/plan` command + `docs/exec-plans/` |
+| 3 | Doc-gardening automation | **To do** | `/doc-garden` command |
+| 4 | Custom linters with agent-friendly error messages | **To do** | ast-grep rules + skill |
+| 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **To do** | Enhanced `/fix-issue` + `/review-pr` |
+| 6 | Entropy / garbage collection automation | **To do** | `/cleanup` command + golden principles |
+| 7 | Application legibility to agents | **To do** | App-legibility skill |
 
-### Diagram A — Team pipeline (flowchart LR)
+### Implementation order
 
-| # | Stage | Responsible | Human? |
-|---|---|---|---|
-| 1 | Create Task | Team lead / PM | Yes |
-| 2 | Create Spec | Developer | Yes |
-| 3 | Review Spec | Reviewer / Lead | Yes |
-| 4 | Implement locally | Developer (per dev) | Yes |
-| 5 | Dev reviews AI code-review prompt | Developer | Yes |
-| 6 | Record walkthrough video | Developer | Yes |
-| 7 | Submit PR (code + video) | Developer | Yes |
-| 8 | AI code review activates on PR | Claude Code (automated) | No |
-| 9 | Specify human interaction points & owners | Lead | Yes |
-
-Human stages: 1, 2, 3, 4, 5, 6, 7, 9. Automated stage: 8.
-
-### Diagram B — With harness patterns (Gaps 1, 2, 3, 4, 5, 6)
-Same backbone plus:
-- **Gap 1** — "Context Load" node (lean CLAUDE.md map + `~/.claude/rules/`) before stage 4
-- **Gap 2** — Stage 2 spec file becomes versioned `docs/exec-plans/active/spec-N.md`
-- **Gap 5** — Convergence review loop at stage 8 (up to 3 rounds, back-edge)
-- **Gap 6** — `/cleanup` weekly cadence as dashed subgraph
-- **Gaps 3+4** — ast-grep custom lints + `/doc-garden` scan before PR merge
+1. **Phase 1** — Gap 1 (CLAUDE.md restructure) + Gap 5 (convergence loop). Foundational, no dependencies.
+2. **Phase 2** — Gap 2 (execution plans) + Gap 6 (garbage collection). Depends on Phase 1 structure.
+3. **Phase 3** — Gap 3 (doc-gardening) + Gap 4 (custom linters). Automation on top of Phase 1-2.
+4. **Phase 4** — Gap 7 (app legibility). Aspirational, depends on adoption of earlier phases.
 
 ---
 
-## Working with Alberto
+## AI-Driven Development Flow
 
-- Use `README.md` as source of truth for repo explanations — don't paraphrase from memory.
-- Read `diagram.md` for diagram content — match the pipeline exactly, don't invent stages.
-- Write diagrams to `docs/pipeline-diagrams.md`.
-- Prefer Exa MCP for web lookups.
-- Explain decisions as you go — Alberto is learning the system, not just executing tasks.
+Full description: `docs/dev-flow.md`
+Pipeline diagram: `docs/ai-dev-pipeline.md`
+
+Nine-stage pipeline with five quality layers:
+
+```
+TDD → Local AI Review → Video QA → Automated CI Review → Human Sign-off
+```
+
+| # | Stage | Actor | Type |
+|---|-------|-------|------|
+| 1 | Create Task | Lead / PM | Human |
+| 2 | Create Spec | Developer + AI | Agent-controlled |
+| 3 | Review Spec | Lead / Reviewer | Human |
+| 4 | Implement (TDD) | Developer + Claude Code | Agent-controlled |
+| 5 | Local AI Review | Developer + Claude Code | Agent-controlled |
+| 6 | Record Video | Developer | Human |
+| 7 | Submit PR | Developer + Claude Code | Agent-controlled |
+| 8 | AI Code Review | CI / Claude Code | Automated |
+| 9 | Sign-off | Lead / Reviewer | Human |
+
+With harness patterns applied (Phase 1-3), the pipeline gains:
+- **Context loading** before Stage 4 (lean CLAUDE.md map + rules/)
+- **Versioned specs** at Stage 2 (`docs/exec-plans/active/`)
+- **Convergence loop** at Stage 8 (up to 3 review rounds)
+- **Weekly `/cleanup`** cadence for drift detection
+- **ast-grep lints + `/doc-garden`** before PR merge
+
+---
+
+## Active Work
+
+### Current focus
+
+1. Establish this repo as the AI Development Core with clear boundaries.
+2. Scaffold `canon/` subdirectory structure for prediction market development.
+3. Implement harness patterns Phase 1: restructure CLAUDE.md template + convergence loop.
+4. Build `/apply-core` and `/apply-canon` installation commands.
+
+### Key concepts
+
+| Concept | Description |
+|---|---|
+| **Commands** | Step-by-step procedures (`/fix-issue`, `/review-pr`). Slash-invoked. |
+| **Skills** | Knowledge/style injected into context. Shape how Claude thinks. |
+| **Hooks** | Shell scripts on lifecycle events. Guardrails, not walls. |
+| **Agents** | Specialized subagents with focused personas and tool sets. |
+| **Harness** | Infrastructure making AI-driven development reliable at scale. |
+
+### Commands vs Skills vs Hooks vs Agents
+
+- **Commands** run procedures: plan → implement → test → PR.
+- **Skills** teach approaches: how to write ast-grep rules, how to analyze markets.
+- **Hooks** enforce guardrails: block rm -rf, enforce package manager, log mutations.
+- **Agents** are specialists: security auditor persona, market analysis persona.
+
+---
+
+## Working Conventions
+
+- Use `README.md` as source of truth for repo configuration explanations.
+- Use `docs/dev-flow.md` as source of truth for the development pipeline.
+- Use the harness gap analysis on `openai-harness-patterns` branch for implementation details.
+- Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
+- When a Canon pattern generalizes, promote it to Core.
+- Explain decisions as you go — this repo is a learning system, not just a config dump.
