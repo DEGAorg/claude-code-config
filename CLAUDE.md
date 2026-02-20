@@ -171,6 +171,15 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 
 ## Working Conventions
 
+### Commit and push — prohibited
+
+- **Never push directly to `main` or `master`** — use feature branches and PRs.
+- **Never force-push** — no `git push --force` or `git push -f`.
+- **Never run `git reset --hard`** — use `git reset --soft` or revert instead.
+- Hooks in `settings.json` block these patterns; do not attempt them.
+
+### General
+
 - Use `README.md` as source of truth for repo configuration explanations.
 - Use `docs/Dev_Flow.md` as source of truth for the development pipeline.
 - Use the harness gap analysis on `openai-harness-patterns` branch for implementation details.
