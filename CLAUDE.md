@@ -203,3 +203,9 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - When a Canon pattern generalizes, promote it to Core.
 - Explain decisions as you go — this repo is a learning system, not just a config dump.
 - **Ace scope**: Phase I, no Arena. See `docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
+
+### Ralph Loop
+
+Before declaring any session's work complete, run `bash scripts/ralph-check.sh`.
+If any criteria fail, address them and run the check again. All criteria must
+pass before the session is done.

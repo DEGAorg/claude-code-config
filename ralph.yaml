@@ -1,0 +1,61 @@
+# Ralph Loop config for claude-code-config repo
+version: 1
+max_iterations: 10
+check_command: bash scripts/ralph-check.sh
+
+success_criteria:
+  # Harness — rules
+  - id: rules-files
+    description: rules/ has all 5 language files
+    check: >
+      test -f rules/python.md &&
+      test -f rules/node-typescript.md &&
+      test -f rules/rust.md &&
+      test -f rules/bash.md &&
+      test -f rules/github-actions.md
+
+  # Harness — commands
+  - id: commands-files
+    description: commands/ has all core commands
+    check: >
+      test -f commands/fix-issue.md &&
+      test -f commands/review-pr.md &&
+      test -f commands/plan.md &&
+      test -f commands/cleanup.md &&
+      test -f commands/doc-garden.md
+
+  # Harness — skills and canon rules
+  - id: skills-and-canon-rules
+    description: custom-linter skill and canon domain-layering rule exist
+    check: >
+      test -f skills/custom-linter-authoring.md &&
+      test -f canon/rules/domain-layering.md
+
+  # Harness — exec-plans structure
+  - id: exec-plans-dirs
+    description: docs/exec-plans/active/ and completed/ exist
+    check: >
+      test -d docs/exec-plans/active &&
+      test -d docs/exec-plans/completed
+
+  # Harness — gaps marked done in CLAUDE.md
+  - id: harness-gaps-done
+    description: Gaps 1-6 marked Done in CLAUDE.md
+    check: >
+      grep -q '| 1 .*Done' CLAUDE.md &&
+      grep -q '| 2 .*Done' CLAUDE.md &&
+      grep -q '| 3 .*Done' CLAUDE.md &&
+      grep -q '| 4 .*Done' CLAUDE.md &&
+      grep -q '| 5 .*Done' CLAUDE.md &&
+      grep -q '| 6 .*Done' CLAUDE.md
+
+  # Ralph Loop — self-check
+  - id: ralph-files
+    description: ralph.yaml and ralph-check.sh exist
+    check: >
+      test -f ralph.yaml &&
+      test -x scripts/ralph-check.sh
+
+  - id: ralph-instruction
+    description: CLAUDE.md contains ralph check instruction
+    check: grep -q 'ralph-check.sh' CLAUDE.md
