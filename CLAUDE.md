@@ -22,7 +22,8 @@ Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
 | Path | Purpose |
 |---|---|
 | `README.md` | Full reference guide — source of truth for all config explanations |
-| `claude-md-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) |
+| `claude-md-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) — lean map, ~120 lines |
+| `rules/` | Language-specific standards loaded by file type (python, node-typescript, rust, bash, github-actions) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
@@ -45,6 +46,7 @@ hooks, and commands specifically for prediction market development.
 ```
 claude-code-config/             ← Core (this repo root)
 ├── CLAUDE.md                   ← You are here
+├── rules/                      ← Language rules (glob-matched, load only for matching file types)
 ├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup)
 ├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
@@ -91,11 +93,11 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
 | # | Gap | Status | Artifact |
 |---|-----|--------|----------|
-| 1 | CLAUDE.md as map + `~/.claude/rules/` for language rules | **To do** | Restructured template + rules/ |
+| 1 | CLAUDE.md as map + `~/.claude/rules/` for language rules | **Done** | `claude-md-template.md` + `rules/` |
 | 2 | Execution plans as first-class artifacts | **To do** | `/plan` command + `docs/exec-plans/` |
 | 3 | Doc-gardening automation | **To do** | `/doc-garden` command |
 | 4 | Custom linters with agent-friendly error messages | **To do** | ast-grep rules + skill |
-| 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **To do** | Enhanced `/fix-issue` + `/review-pr` |
+| 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
 | 6 | Entropy / garbage collection automation | **To do** | `/cleanup` command + golden principles |
 | 7 | Application legibility to agents | **To do** | App-legibility skill |
 
