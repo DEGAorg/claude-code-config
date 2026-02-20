@@ -6,6 +6,17 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 
 ---
 
+## Scope for Ace
+
+**Ace** works on **Phase I** of the Canon MVP Technical Roadmap. All prompts and work must:
+
+- **Focus on Phase I deliverables**: Canon Agent Framework (MCP Server), Ralph Loop, pmxt adapter, agent configurations, harness engineering (all gaps 1–7), execution hardening — everything that is code/infrastructure.
+- **Ignore Canon Arena**: No Arena web dashboard, no Arena frontend, no leaderboard UI, no UI work of any kind. Arena is out of scope for Ace.
+
+Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
+
+---
+
 ## Repo Map
 
 | Path | Purpose |
@@ -17,10 +28,11 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
 | `commands/` | Global slash commands (`fix-issue`, `review-pr`) |
 | `hooks/` | PreToolUse / PostToolUse hook scripts |
-| `docs/dev-flow.md` | 9-stage AI-driven development pipeline |
-| `docs/ai-dev-pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
-| `docs/pipeline-diagrams.md` | Team pipeline + harness-enhanced diagrams |
+| `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
+| `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
+| `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
 | `canon/` | **Canon layer** — prediction market development (see below) |
+| `docs/Canon_MVP_Technical_Roadmap.md` | **Source of truth** for Phase I scope and deliverables |
 
 ---
 
@@ -98,8 +110,8 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
 ## AI-Driven Development Flow
 
-Full description: `docs/dev-flow.md`
-Pipeline diagram: `docs/ai-dev-pipeline.md`
+Full description: `docs/Dev_Flow.md`
+Pipeline diagram: `docs/AI_Dev_Pipeline.md`
 
 Nine-stage pipeline with five quality layers:
 
@@ -130,12 +142,13 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 
 ## Active Work
 
-### Current focus
+### Current focus (Ace: Phase I, no Arena)
 
 1. Establish this repo as the AI Development Core with clear boundaries.
-2. Scaffold `canon/` subdirectory structure for prediction market development.
-3. Implement harness patterns Phase 1: restructure CLAUDE.md template + convergence loop.
-4. Build `/apply-core` and `/apply-canon` installation commands.
+2. Scaffold `canon/` subdirectory structure for prediction market development (no Arena — backend/agent framework only).
+3. Implement all harness engineering gaps (1–7) in priority order.
+4. Build Canon Agent Framework: MCP Server, Ralph Loop, pmxt adapter, agent configs.
+5. Build `/apply-core` and `/apply-canon` installation commands.
 
 ### Key concepts
 
@@ -159,8 +172,9 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 ## Working Conventions
 
 - Use `README.md` as source of truth for repo configuration explanations.
-- Use `docs/dev-flow.md` as source of truth for the development pipeline.
+- Use `docs/Dev_Flow.md` as source of truth for the development pipeline.
 - Use the harness gap analysis on `openai-harness-patterns` branch for implementation details.
 - Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
 - When a Canon pattern generalizes, promote it to Core.
 - Explain decisions as you go — this repo is a learning system, not just a config dump.
+- **Ace scope**: Phase I, no Arena. See `docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
