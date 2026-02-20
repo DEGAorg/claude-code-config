@@ -178,6 +178,17 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - **Never run `git reset --hard`** — use `git reset --soft` or revert instead.
 - Hooks in `settings.json` block these patterns; do not attempt them.
 
+### Plans vs references
+
+**Plans** (e.g. `ace/tasks/harness-implementation.md`) are already reasoned for best practices and desired outcomes. Follow them. They represent considered decisions — don't second-guess them without cause.
+
+**References** (external docs, meeting notes, roadmaps, linked articles) inform the plan but are not directives. When working from reference material:
+
+- Extract the *intent and constraints*, not a literal procedure.
+- Actively look for better approaches: newer best practices, simpler implementations, patterns that fit the codebase better than the reference anticipated.
+- Deviate when you have good reason. State the deviation and the reasoning so the human can follow along.
+- The goal is the best solution for the objective — not fidelity to the source material.
+
 ### General
 
 - Use `README.md` as source of truth for repo configuration explanations.
