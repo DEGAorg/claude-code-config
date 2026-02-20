@@ -27,7 +27,8 @@ Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
-| `commands/` | Global slash commands (`fix-issue`, `review-pr`) |
+| `commands/` | Global slash commands (`fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden`) |
+| `skills/` | Core skills (`custom-linter-authoring`) |
 | `hooks/` | PreToolUse / PostToolUse hook scripts |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
@@ -97,8 +98,8 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 |---|-----|--------|----------|
 | 1 | CLAUDE.md as map + `~/.claude/rules/` for language rules | **Done** | `claude-md-template.md` + `rules/` |
 | 2 | Execution plans as first-class artifacts | **Done** | `commands/plan.md` + `docs/exec-plans/` |
-| 3 | Doc-gardening automation | **To do** | `/doc-garden` command |
-| 4 | Custom linters with agent-friendly error messages | **To do** | ast-grep rules + skill |
+| 3 | Doc-gardening automation | **Done** | `commands/doc-garden.md` + PostToolUse hook |
+| 4 | Custom linters with agent-friendly error messages | **Done** | `skills/custom-linter-authoring.md` + `canon/rules/domain-layering.md` |
 | 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
 | 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/QUALITY.md` |
 | 7 | Application legibility to agents | **To do** | App-legibility skill |

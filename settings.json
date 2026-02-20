@@ -61,6 +61,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); REFS=$(rg -l \"$BASENAME\" docs/ CLAUDE.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

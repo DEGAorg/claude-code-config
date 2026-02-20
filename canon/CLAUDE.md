@@ -56,6 +56,20 @@ Canon targets prediction market development. Key areas to be covered:
 
 ---
 
+## Harness
+
+Canon inherits all Core harness infrastructure (lean CLAUDE.md map, `rules/`,
+commands, hooks, `docs/exec-plans/`, quality grades) automatically. No
+duplication needed here.
+
+Canon-specific addition: domain layering enforcement
+(`Types → Config → Repo → Service → Runtime → UI`) is defined in
+`canon/rules/domain-layering.md` and enforced via `ast-grep` rules with
+agent-friendly error messages. See the `custom-linter-authoring` skill
+for how to write and extend these rules.
+
+---
+
 ## Active Work
 
 This layer is being scaffolded. Next steps:
