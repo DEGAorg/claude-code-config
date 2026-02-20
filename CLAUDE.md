@@ -31,6 +31,8 @@ Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
 | `hooks/` | PreToolUse / PostToolUse hook scripts |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
+| `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
+| `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
 | `canon/` | **Canon layer** — prediction market development (see below) |
 | `docs/Canon_MVP_Technical_Roadmap.md` | **Source of truth** for Phase I scope and deliverables |
@@ -94,11 +96,11 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 | # | Gap | Status | Artifact |
 |---|-----|--------|----------|
 | 1 | CLAUDE.md as map + `~/.claude/rules/` for language rules | **Done** | `claude-md-template.md` + `rules/` |
-| 2 | Execution plans as first-class artifacts | **To do** | `/plan` command + `docs/exec-plans/` |
+| 2 | Execution plans as first-class artifacts | **Done** | `commands/plan.md` + `docs/exec-plans/` |
 | 3 | Doc-gardening automation | **To do** | `/doc-garden` command |
 | 4 | Custom linters with agent-friendly error messages | **To do** | ast-grep rules + skill |
 | 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
-| 6 | Entropy / garbage collection automation | **To do** | `/cleanup` command + golden principles |
+| 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/QUALITY.md` |
 | 7 | Application legibility to agents | **To do** | App-legibility skill |
 
 ### Implementation order

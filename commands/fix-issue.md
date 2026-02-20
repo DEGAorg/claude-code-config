@@ -14,14 +14,17 @@ confirmation at any step.
 
 ## 1. Plan
 
-Write a detailed implementation plan to `plan-issue-$ISSUE_NUMBER.md`
-in the repo root. The plan must:
+Write a detailed implementation plan to
+`docs/exec-plans/active/issue-$ISSUE_NUMBER-plan.md`. The plan must:
 
 - Summarize the issue requirements
 - List every file to create or modify
 - Describe the approach and key design decisions
 - Call out risks or open questions
 - Reference relevant code paths by file:line
+
+For simple single-file obvious fixes, an ephemeral plan in the root is
+acceptable — use judgment. Non-trivial work always goes in `exec-plans/`.
 
 ## 2. Implement
 
@@ -47,8 +50,9 @@ for the correct commands.
   bugs, `feat/` for features, `refactor/` for refactors, `docs/`
   for documentation. When ambiguous, use `fix/`.
 - Create a branch named `{prefix}issue-$ISSUE_NUMBER`
-- Delete the plan file (`plan-issue-$ISSUE_NUMBER.md`) -- it was a
-  working artifact and should not be committed
+- Move the plan file from `docs/exec-plans/active/` to
+  `docs/exec-plans/completed/` — do not delete it. Plans are permanent
+  artifacts and inform future work.
 - Commit all changes with a conventional commit message referencing
   the issue
 - Push the branch
