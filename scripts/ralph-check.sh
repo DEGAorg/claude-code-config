@@ -7,6 +7,7 @@ set -euo pipefail
 
 PASS=0
 FAIL=0
+LOG=".ralph-runs.log"
 
 check() {
   local id="$1"
@@ -84,9 +85,14 @@ check ralph-instruction \
 TOTAL=$((PASS + FAIL))
 echo ""
 if [ "$FAIL" -eq 0 ]; then
+  RESULT="PASS ${PASS}/${TOTAL}"
   echo "RESULT: ${PASS}/${TOTAL} criteria passing. All done."
-  exit 0
 else
+  RESULT="FAIL ${PASS}/${TOTAL}"
   echo "RESULT: ${PASS}/${TOTAL} criteria passing. Keep working."
-  exit 1
 fi
+
+# Append run record to log (visible proof the agent ran this)
+echo "$(date '+%Y-%m-%d %H:%M:%S') | ${RESULT}" >> "${LOG}"
+
+[ "$FAIL" -eq 0 ] && exit 0 || exit 1
