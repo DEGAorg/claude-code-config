@@ -20,8 +20,8 @@ FIRST_WORD="${GAM_ARGS%% *}"
 echo "${FIRST_WORD}" | grep -qiE "^${READ_PATTERN}$" && exit 0
 
 # Match write verb
-ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:space:]]|$)" \
-  | head -1 | tr -d ' ' || true)
+ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:space:]]|$)" |
+  head -1 | tr -d ' ' || true)
 [[ -z "${ACTION}" ]] && exit 0
 
 # Log the mutation
@@ -36,7 +36,7 @@ jq -nc \
   --arg command "${COMMAND}" \
   --arg status "${STATUS}" \
   '{timestamp: $ts, action: $action, command: $command, status: $status}' \
-  >> "${LOG_FILE}"
+  >>"${LOG_FILE}"
 
 # Remind the operator
 if [[ "${STATUS}" == "success" ]]; then

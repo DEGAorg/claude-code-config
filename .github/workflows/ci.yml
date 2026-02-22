@@ -20,6 +20,13 @@ jobs:
           persist-credentials: false
       - name: Run shellcheck on all scripts
         run: shellcheck hooks/*.sh scripts/*.sh tests/*.sh
+      - name: Install shfmt v3.12.0
+        run: |
+          curl -fsSL https://github.com/mvdan/sh/releases/download/v3.12.0/shfmt_v3.12.0_linux_amd64 \
+            -o /usr/local/bin/shfmt
+          chmod +x /usr/local/bin/shfmt
+      - name: Check shell script formatting
+        run: shfmt -i 2 -d hooks/*.sh scripts/*.sh tests/*.sh
 
   test-hooks:
     name: Test hooks

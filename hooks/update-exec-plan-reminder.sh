@@ -24,8 +24,8 @@ fi
 PLAN_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}/docs/exec-plans/active"
 [[ ! -d "${PLAN_DIR}" ]] && exit 0
 
-PLAN_COUNT=$(find "${PLAN_DIR}" -maxdepth 1 -name "*.md" ! -name ".gitkeep" 2>/dev/null \
-  | wc -l | tr -d ' ')
+PLAN_COUNT=$(find "${PLAN_DIR}" -maxdepth 1 -name "*.md" ! -name ".gitkeep" 2>/dev/null |
+  wc -l | tr -d ' ')
 [[ "${PLAN_COUNT}" -eq 0 ]] && exit 0
 
 printf '[exec-plan] Step complete? Mark it [x] in docs/exec-plans/active/ before continuing.\n'

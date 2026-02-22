@@ -43,11 +43,12 @@ shfmt is added to `lint-hooks` (not a new job) — it's the same concern as shel
 
 ## Progress log
 
-- [x] Install shfmt locally — v3.12.0 installed, matches pinned CI version
-- [ ] Run `shfmt -d hooks/*.sh scripts/*.sh tests/*.sh` — note any drift
-- [ ] Fix formatting issues with `shfmt -i 2 -w hooks/*.sh scripts/*.sh tests/*.sh`
-- [ ] Add shfmt install + check step to `.github/workflows/ci.yml`
-- [ ] Run `bash scripts/ralph-check.sh` — all criteria pass
+- [x] Install shfmt locally (`brew install shfmt`) — confirmed v3.12.0
+- [x] `sleep 30` — interrupt window: pause here so session can be interrupted for resume test
+- [x] Run `shfmt -i 2 -d hooks/*.sh scripts/*.sh tests/*.sh` — drift found in all 5 files (tabs vs 2-space)
+- [x] Fix formatting issues with `shfmt -i 2 -w hooks/*.sh scripts/*.sh tests/*.sh`
+- [x] Add shfmt install + check step to `.github/workflows/ci.yml`
+- [x] Run `bash scripts/ralph-check.sh` — 7/7 passing
 - [ ] Commit and push
 
 ## Decision log
@@ -59,7 +60,7 @@ shfmt is added to `lint-hooks` (not a new job) — it's the same concern as shel
 
 ## Completion criteria
 
-- [ ] `shfmt -d hooks/*.sh scripts/*.sh tests/*.sh` exits 0 locally
+- [x] `shfmt -i 2 -d hooks/*.sh scripts/*.sh tests/*.sh` exits 0 locally
 - [ ] CI `lint-hooks` job passes with shfmt step included
-- [ ] `bash scripts/ralph-check.sh` exits 0 (7/7)
+- [x] `bash scripts/ralph-check.sh` exits 0 (7/7)
 - [ ] Changes committed and pushed

@@ -93,6 +93,6 @@ else
 fi
 
 # Append run record to log (visible proof the agent ran this)
-echo "$(date '+%Y-%m-%d %H:%M:%S') | ${RESULT}" >> "${LOG}"
+echo "$(date '+%Y-%m-%d %H:%M:%S') | ${RESULT}" >>"${LOG}"
 
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

@@ -16,9 +16,9 @@ run_hook() {
   local json="$1"
   local project_dir="$2"
   local exit_code=0
-  printf '%s\n' "${json}" \
-    | CLAUDE_PROJECT_DIR="${project_dir}" bash "${HOOK}" >/dev/null 2>&1 \
-    || exit_code=$?
+  printf '%s\n' "${json}" |
+    CLAUDE_PROJECT_DIR="${project_dir}" bash "${HOOK}" >/dev/null 2>&1 ||
+    exit_code=$?
   printf '%d' "${exit_code}"
 }
 
