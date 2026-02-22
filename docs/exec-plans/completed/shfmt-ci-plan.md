@@ -1,6 +1,6 @@
 # Plan: Add shfmt Formatting Check to CI
 
-**Status:** In progress
+**Status:** Completed
 **Created:** 2026-02-20
 
 ## Requirements
@@ -61,6 +61,6 @@ shfmt is added to `lint-hooks` (not a new job) — it's the same concern as shel
 ## Completion criteria
 
 - [x] `shfmt -i 2 -d hooks/*.sh scripts/*.sh tests/*.sh` exits 0 locally
-- [ ] CI `lint-hooks` job passes with shfmt step included
+- [x] CI `lint-hooks` job passes with shfmt step included
 - [x] `bash scripts/ralph-check.sh` exits 0 (7/7)
-- [ ] Changes committed and pushed
+- [x] Changes committed and pushed
