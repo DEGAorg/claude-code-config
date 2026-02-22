@@ -204,6 +204,12 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - Explain decisions as you go — this repo is a learning system, not just a config dump.
 - **Ace scope**: Phase I, no Arena. See `docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
 
+### Session start
+
+Check `docs/exec-plans/active/` for in-progress plans before starting new work.
+If a plan exists, read it, orient to the current step, and continue from where
+the previous session left off.
+
 ### Ralph Loop
 
 Before declaring any session's work complete, run `bash scripts/ralph-check.sh`.

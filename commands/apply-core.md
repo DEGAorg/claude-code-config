@@ -28,6 +28,7 @@ Files available:
 - `rules/github-actions.md`
 - `hooks/enforce-package-manager.sh`
 - `hooks/log-gam.sh`
+- `hooks/update-exec-plan-reminder.sh`
 - `skills/custom-linter-authoring.md`
 
 ---

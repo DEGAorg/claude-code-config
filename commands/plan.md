@@ -75,9 +75,17 @@ If there are P1 open questions (blocking decisions), resolve them before
 implementing. Ask the user or investigate the codebase as needed. Record
 the decision in the Decision log.
 
-## 4. Hand off
+## 4. Implement
 
-Once the plan is complete and open questions resolved, the plan file is the
-source of truth for the implementation. Check off progress log items as you
-go. When implementation is complete, move the plan from `active/` to
-`completed/` — do not delete it.
+The plan file is the source of truth. Follow this discipline for every step:
+
+1. Complete the work for one step.
+2. **Immediately mark it `[x]` in the plan file** — before starting the next step.
+3. Repeat until done.
+
+This is what makes plans resumable. If the session ends mid-task, the next
+session reads the plan and picks up from the first unchecked box. Skipping
+the file update means the next session has no idea what was done.
+
+When all steps are complete, move the plan from `active/` to `completed/`.
+Do not delete it.
