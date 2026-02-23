@@ -10,9 +10,13 @@ commands, commit). Without this, the loop produces text but no actions.
 ## Core invocation
 
 ```bash
-claude -p --dangerously-skip-permissions "$(cat PROMPT.md)"
+env -u CLAUDECODE claude -p --dangerously-skip-permissions "$(cat PROMPT.md)"
 ```
 
+- `env -u CLAUDECODE` — unsets the `CLAUDECODE` env var so the spawned instance
+  is not treated as a nested session. Claude Code blocks nested spawning unless
+  this is unset. Required when running ralph-loop.sh from within a Claude Code session
+  or any environment where `CLAUDECODE` is set.
 - `-p` — non-interactive / print mode (stdin/prompt argument)
 - `--dangerously-skip-permissions` — disables all approval prompts; agent executes
   Bash, file edits, and destructive operations autonomously without pausing

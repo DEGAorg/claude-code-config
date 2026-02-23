@@ -44,13 +44,13 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
   # --- Worker phase ---
   echo "→ worker: starting..."
   WORKER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${WORKER_PROMPT}")
-  claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
+  env -u CLAUDECODE claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
   echo "→ worker: done"
 
   # --- Reviewer phase ---
   echo "→ reviewer: evaluating..."
   REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
-  claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+  env -u CLAUDECODE claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
   echo "→ reviewer: done"
 
   # --- Read reviewer decision ---
