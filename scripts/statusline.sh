@@ -13,7 +13,7 @@ stdin_data=$(cat)
 # Single jq call - extract all values at once
 # Prefer pre-calculated remaining_percentage (100 - remaining = used toward compact)
 # Fall back to manual calc from raw tokens if not available
-IFS=$'\t' read -r current_dir model_name cost lines_added lines_removed duration_ms ctx_used cache_pct < <(
+IFS=$'\t' read -r current_dir model_name cost lines_added lines_removed duration_ms ctx_used cache_pct ctx_tokens < <(
   echo "$stdin_data" | jq -r '[
         .workspace.current_dir // "unknown",
         .model.display_name // "Unknown",
@@ -37,6 +37,11 @@ IFS=$'\t' read -r current_dir model_name cost lines_added lines_removed duration
                 ((.cache_read_input_tokens // 0) * 100 /
                  ((.input_tokens // 0) + (.cache_read_input_tokens // 0))) | floor
             else 0 end
+        ) catch 0),
+        (try (
+            (.context_window.current_usage.input_tokens // 0) +
+            (.context_window.current_usage.cache_creation_input_tokens // 0) +
+            (.context_window.current_usage.cache_read_input_tokens // 0)
         ) catch 0)
     ] | @tsv'
 )
@@ -103,7 +108,17 @@ if [ -n "$ctx_used" ] && [ "$ctx_used" != "null" ]; then
   done
   progress_bar="${progress_bar}\033[0m"
 
-  ctx_pct="${ctx_used}%"
+  # Format token count: show as Xk or X.Xk
+  if [ -n "$ctx_tokens" ] && [ "$ctx_tokens" -gt 0 ] 2>/dev/null; then
+    if [ "$ctx_tokens" -ge 1000 ]; then
+      ctx_k=$(echo "$ctx_tokens" | awk '{printf "%.1fk", $1/1000}')
+    else
+      ctx_k="${ctx_tokens}"
+    fi
+    ctx_pct="${ctx_used}% (${ctx_k})"
+  else
+    ctx_pct="${ctx_used}%"
+  fi
 else
   ctx_pct=""
 fi
