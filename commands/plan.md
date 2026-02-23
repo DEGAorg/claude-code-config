@@ -19,8 +19,9 @@ Before writing anything:
 
 ## 2. Write the plan
 
-Create a plan file at `docs/exec-plans/active/$SLUG-plan.md` where `$SLUG`
-is a short kebab-case slug derived from $TASK (e.g. `add-auth-endpoint-plan.md`).
+Create a plan directory at `docs/exec-plans/active/$SLUG/` where `$SLUG`
+is a short kebab-case slug derived from $TASK (e.g. `add-auth-endpoint`).
+Write the plan to `docs/exec-plans/active/$SLUG/plan.md`.
 
 The plan must include every section below:
 
@@ -87,5 +88,5 @@ This is what makes plans resumable. If the session ends mid-task, the next
 session reads the plan and picks up from the first unchecked box. Skipping
 the file update means the next session has no idea what was done.
 
-When all steps are complete, move the plan from `active/` to `completed/`.
-Do not delete it.
+When all steps are complete, move the whole plan directory from `active/$SLUG/`
+to `completed/$SLUG/`. Do not delete it.

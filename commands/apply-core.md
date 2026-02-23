@@ -30,6 +30,11 @@ Files available:
 - `hooks/log-gam.sh`
 - `hooks/update-exec-plan-reminder.sh`
 - `skills/custom-linter-authoring.md`
+- `ralph.yaml`
+- `scripts/ralph-check.sh`
+- `scripts/ralph-loop.sh`
+- `scripts/ralph-worker-prompt.md`
+- `scripts/ralph-reviewer-prompt.md`
 
 ---
 

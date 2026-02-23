@@ -20,12 +20,11 @@ if printf '%s' "${COMMAND}" | grep -qE "${SKIP_PATTERN}"; then
   exit 0
 fi
 
-# Check for active plans in the project
+# Check for active plans in the project (directory-based: active/*/plan.md)
 PLAN_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}/docs/exec-plans/active"
 [[ ! -d "${PLAN_DIR}" ]] && exit 0
 
-PLAN_COUNT=$(find "${PLAN_DIR}" -maxdepth 1 -name "*.md" ! -name ".gitkeep" 2>/dev/null |
-  wc -l | tr -d ' ')
+PLAN_COUNT=$(find "${PLAN_DIR}" -maxdepth 2 -name "plan.md" 2>/dev/null | wc -l | tr -d ' ')
 [[ "${PLAN_COUNT}" -eq 0 ]] && exit 0
 
-printf '[exec-plan] Step complete? Mark it [x] in docs/exec-plans/active/ before continuing.\n'
+printf '[exec-plan] Step complete? Mark it [x] in docs/exec-plans/active/*/plan.md before continuing.\n'

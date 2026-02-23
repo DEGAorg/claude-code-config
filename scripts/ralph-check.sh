@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ralph Loop check script for claude-code-config repo
+# Ralph Loop health check for claude-code-config repo.
 # Run from repo root: bash scripts/ralph-check.sh
 # Exit 0 if all criteria pass, exit 1 if any fail.
 
@@ -13,8 +13,8 @@ check() {
   local id="$1"
   local description="$2"
   local fix="$3"
-  shift 3
-  if eval "$@" &>/dev/null; then
+  local cmd="$4"
+  if eval "$cmd" &>/dev/null; then
     echo "✓ ${id}: ${description}"
     PASS=$((PASS + 1))
   else
@@ -24,62 +24,35 @@ check() {
   fi
 }
 
-# Harness — rules
-check rules-files \
-  "rules/ has all 5 language files" \
-  "create missing files in rules/ (python.md, node-typescript.md, rust.md, bash.md, github-actions.md)" \
-  "test -f rules/python.md &&
-   test -f rules/node-typescript.md &&
-   test -f rules/rust.md &&
-   test -f rules/bash.md &&
-   test -f rules/github-actions.md"
+# Shell scripts pass shellcheck
+check shellcheck \
+  "no shellcheck errors in scripts/ and hooks/" \
+  "run: shellcheck scripts/*.sh hooks/*.sh — fix each reported issue" \
+  "shellcheck scripts/*.sh hooks/*.sh"
 
-# Harness — commands
-check commands-files \
-  "commands/ has all core commands" \
-  "create missing files in commands/ (fix-issue.md, review-pr.md, plan.md, cleanup.md, doc-garden.md)" \
-  "test -f commands/fix-issue.md &&
-   test -f commands/review-pr.md &&
-   test -f commands/plan.md &&
-   test -f commands/cleanup.md &&
-   test -f commands/doc-garden.md"
+# Shell scripts are shfmt-formatted
+check shfmt \
+  "shell scripts are formatted (shfmt -i 2)" \
+  "run: shfmt -i 2 -w scripts/*.sh hooks/*.sh" \
+  "shfmt -i 2 -d scripts/ hooks/"
 
-# Harness — skills and canon rules
-check skills-and-canon-rules \
-  "custom-linter skill and canon domain-layering rule exist" \
-  "create skills/custom-linter-authoring.md and canon/rules/domain-layering.md" \
-  "test -f skills/custom-linter-authoring.md &&
-   test -f canon/rules/domain-layering.md"
+# CI workflows are valid
+check actionlint \
+  "CI workflows pass actionlint" \
+  "run: actionlint — fix each reported issue" \
+  "actionlint"
 
-# Harness — exec-plans structure
-check exec-plans-dirs \
-  "docs/exec-plans/active/ and completed/ exist" \
-  "run: mkdir -p docs/exec-plans/active docs/exec-plans/completed" \
-  "test -d docs/exec-plans/active &&
-   test -d docs/exec-plans/completed"
+# No stray TODOs in core artifacts
+check no-todos \
+  "no TODO/FIXME in commands/, skills/, hooks/" \
+  "resolve or remove TODO/FIXME comments in commands/, skills/, hooks/" \
+  "! rg 'TODO|FIXME' commands/ skills/ hooks/"
 
-# Harness — gaps marked done in CLAUDE.md
-check harness-gaps-done \
-  "Gaps 1-6 marked Done in CLAUDE.md" \
-  "update CLAUDE.md implementation status table: mark gaps 1-6 as Done" \
-  "grep -q '| 1 .*Done' CLAUDE.md &&
-   grep -q '| 2 .*Done' CLAUDE.md &&
-   grep -q '| 3 .*Done' CLAUDE.md &&
-   grep -q '| 4 .*Done' CLAUDE.md &&
-   grep -q '| 5 .*Done' CLAUDE.md &&
-   grep -q '| 6 .*Done' CLAUDE.md"
-
-# Ralph Loop — self-check
-check ralph-files \
-  "ralph.yaml and ralph-check.sh exist" \
-  "create ralph.yaml and scripts/ralph-check.sh (chmod +x scripts/ralph-check.sh)" \
-  "test -f ralph.yaml &&
-   test -x scripts/ralph-check.sh"
-
-check ralph-instruction \
-  "CLAUDE.md contains ralph check instruction" \
-  "add Ralph Loop section to CLAUDE.md Working Conventions referencing ralph-check.sh" \
-  "grep -q 'ralph-check.sh' CLAUDE.md"
+# Active exec-plans are directories (no loose .md files)
+check exec-plan-dirs \
+  "all entries in docs/exec-plans/active/ are directories (no loose .md files)" \
+  "migrate flat .md files to directories: mkdir active/SLUG && mv active/SLUG.md active/SLUG/plan.md" \
+  "! find docs/exec-plans/active -maxdepth 1 -name '*.md' | grep -q ."
 
 # Summary
 TOTAL=$((PASS + FAIL))
@@ -92,7 +65,7 @@ else
   echo "RESULT: ${PASS}/${TOTAL} criteria passing. Keep working."
 fi
 
-# Append run record to log (visible proof the agent ran this)
+# Append run record to log
 echo "$(date '+%Y-%m-%d %H:%M:%S') | ${RESULT}" >>"${LOG}"
 
 [ "$FAIL" -eq 0 ] && exit 0 || exit 1

@@ -3,59 +3,32 @@ version: 1
 max_iterations: 10
 check_command: bash scripts/ralph-check.sh
 
+# Worker and reviewer prompt templates (used by scripts/ralph-loop.sh)
+worker_prompt: scripts/ralph-worker-prompt.md
+reviewer_prompt: scripts/ralph-reviewer-prompt.md
+
 success_criteria:
-  # Harness — rules
-  - id: rules-files
-    description: rules/ has all 5 language files
-    check: >
-      test -f rules/python.md &&
-      test -f rules/node-typescript.md &&
-      test -f rules/rust.md &&
-      test -f rules/bash.md &&
-      test -f rules/github-actions.md
+  # Repo health — shell scripts pass shellcheck
+  - id: shellcheck
+    description: no shellcheck errors in scripts/ and hooks/
+    check: shellcheck scripts/*.sh hooks/*.sh
 
-  # Harness — commands
-  - id: commands-files
-    description: commands/ has all core commands
-    check: >
-      test -f commands/fix-issue.md &&
-      test -f commands/review-pr.md &&
-      test -f commands/plan.md &&
-      test -f commands/cleanup.md &&
-      test -f commands/doc-garden.md
+  # Repo health — shell scripts are shfmt-formatted
+  - id: shfmt
+    description: shell scripts are formatted (shfmt)
+    check: shfmt -d scripts/ hooks/
 
-  # Harness — skills and canon rules
-  - id: skills-and-canon-rules
-    description: custom-linter skill and canon domain-layering rule exist
-    check: >
-      test -f skills/custom-linter-authoring.md &&
-      test -f canon/rules/domain-layering.md
+  # Repo health — CI workflows are valid
+  - id: actionlint
+    description: CI workflows pass actionlint
+    check: actionlint
 
-  # Harness — exec-plans structure
-  - id: exec-plans-dirs
-    description: docs/exec-plans/active/ and completed/ exist
-    check: >
-      test -d docs/exec-plans/active &&
-      test -d docs/exec-plans/completed
+  # Repo health — no stray TODOs in core artifacts
+  - id: no-todos
+    description: no TODO/FIXME in commands/, skills/, hooks/
+    check: "! rg 'TODO|FIXME' commands/ skills/ hooks/"
 
-  # Harness — gaps marked done in CLAUDE.md
-  - id: harness-gaps-done
-    description: Gaps 1-6 marked Done in CLAUDE.md
-    check: >
-      grep -q '| 1 .*Done' CLAUDE.md &&
-      grep -q '| 2 .*Done' CLAUDE.md &&
-      grep -q '| 3 .*Done' CLAUDE.md &&
-      grep -q '| 4 .*Done' CLAUDE.md &&
-      grep -q '| 5 .*Done' CLAUDE.md &&
-      grep -q '| 6 .*Done' CLAUDE.md
-
-  # Ralph Loop — self-check
-  - id: ralph-files
-    description: ralph.yaml and ralph-check.sh exist
-    check: >
-      test -f ralph.yaml &&
-      test -x scripts/ralph-check.sh
-
-  - id: ralph-instruction
-    description: CLAUDE.md contains ralph check instruction
-    check: grep -q 'ralph-check.sh' CLAUDE.md
+  # Exec-plan structure — active plans must be directories
+  - id: exec-plan-dirs
+    description: all entries in docs/exec-plans/active/ are directories (no loose .md files)
+    check: "! find docs/exec-plans/active -maxdepth 1 -name '*.md' | grep -q ."

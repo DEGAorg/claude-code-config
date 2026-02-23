@@ -81,6 +81,16 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/ralph-check.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
