@@ -30,6 +30,7 @@ Files available:
 - `hooks/log-gam.sh`
 - `hooks/update-exec-plan-reminder.sh`
 - `skills/custom-linter-authoring.md`
+- `skills/app-legibility.md`
 - `ralph.yaml`
 - `scripts/ralph-check.sh`
 - `scripts/ralph-loop.sh`
@@ -68,7 +69,7 @@ Components:
 - **Commands** — fix-issue, review-pr, plan, cleanup, doc-garden slash commands
 - **Rules** — language-specific standards auto-loaded by file type (python, node-typescript, rust, bash, github-actions)
 - **Hooks** — enforce-package-manager and log-gam shell scripts
-- **Skills** — custom-linter-authoring knowledge file
+- **Skills** — custom-linter-authoring and app-legibility knowledge files
 
 ---
 

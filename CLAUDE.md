@@ -102,7 +102,7 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 | 4 | Custom linters with agent-friendly error messages | **Done** | `skills/custom-linter-authoring.md` + `canon/rules/domain-layering.md` |
 | 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
 | 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/QUALITY.md` |
-| 7 | Application legibility to agents | **To do** | App-legibility skill |
+| 7 | Application legibility to agents | **Done** | `skills/app-legibility.md` |
 
 ### Implementation order
 
