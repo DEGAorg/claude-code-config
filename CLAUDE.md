@@ -8,9 +8,10 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 
 ## Scope for Ace
 
-**Ace** works on **Phase I** of the Canon MVP Technical Roadmap. All prompts and work must:
+**Ace** works on **Phase I** of the Canon MVP Technical Roadmap, across both Core and Canon layers.
 
-- **Focus on Phase I deliverables**: Canon Agent Framework (MCP Server), Ralph Loop, pmxt adapter, agent configurations, harness engineering (all gaps 1–7), execution hardening — everything that is code/infrastructure.
+- **Core harness** (all 7 gaps): complete. Core artifacts must remain project-agnostic.
+- **Canon layer** (`canon/`): now active. Skills, agents, hooks, commands, and the `/apply-canon` installation command.
 - **Ignore Canon Arena**: No Arena web dashboard, no Arena frontend, no leaderboard UI, no UI work of any kind. Arena is out of scope for Ace.
 
 Source of truth for Phase I scope: `../../canon-docs/Canon_MVP_Technical_Roadmap.md`
@@ -178,11 +179,11 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 
 ### Current focus (Ace: Phase I, no Arena)
 
-1. Establish this repo as the AI Development Core with clear boundaries.
-2. Scaffold `canon/` subdirectory structure for prediction market development (no Arena — backend/agent framework only).
-3. Implement all harness engineering gaps (1–7) in priority order.
-4. Build Canon Agent Framework: MCP Server, Ralph Loop, pmxt adapter, agent configs.
-5. Build `/apply-core` and `/apply-canon` installation commands.
+Core harness is complete (all 7 gaps). Active work is now on the Canon layer:
+
+1. Scaffold `canon/` with Canon-specific skills, agents, hooks, and commands.
+2. Build `/apply-canon` installation command (mirrors `/apply-core` for Canon artifacts).
+3. Wire `canon_ralph` integration — MCP tool shim connecting Ralph Loop to Canon success criteria.
 
 ### Key concepts
 
@@ -231,7 +232,7 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
 - When a Canon pattern generalizes, promote it to Core.
 - Explain decisions as you go — this repo is a learning system, not just a config dump.
-- **Ace scope**: Phase I, no Arena. See `../../canon-docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
+- **Ace scope**: Phase I, no Arena. Core complete. Canon layer now active. See `../../canon-docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
 
 ### Session start
 
