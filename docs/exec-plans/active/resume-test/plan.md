@@ -28,17 +28,17 @@ finds the first unchecked box, and continues from there.
 
 ## Progress log
 
-- [ ] Add `tests/scratch/` to `.gitignore` and create the directory
-- [ ] `sleep 20` — interrupt window A (interrupt here to test resume)
-- [ ] Create `tests/scratch/file-a.md`
-- [ ] `sleep 20` — interrupt window B (interrupt here to test resume)
-- [ ] Create `tests/scratch/file-b.md`
-- [ ] `sleep 20` — interrupt window C (interrupt here to test resume)
-- [ ] Create `tests/scratch/file-c.md`
-- [ ] Verify: `ls tests/scratch/` shows all three files
+- [x] Add `tests/scratch/` to `.gitignore` and create the directory
+- [x] `sleep 20` — interrupt window A (interrupt here to test resume)
+- [x] Create `tests/scratch/file-a.md`
+- [x] `sleep 20` — interrupt window B (interrupt here to test resume)
+- [x] Create `tests/scratch/file-b.md`
+- [x] `sleep 20` — interrupt window C (interrupt here to test resume)
+- [x] Create `tests/scratch/file-c.md`
+- [x] Verify: `ls tests/scratch/` shows all three files
 
 ## Completion criteria
 
-- [ ] `tests/scratch/file-a.md`, `file-b.md`, `file-c.md` all exist
-- [ ] `tests/scratch/` is in `.gitignore`
-- [ ] `bash scripts/ralph-check.sh` exits 0 (7/7)
+- [x] `tests/scratch/file-a.md`, `file-b.md`, `file-c.md` all exist
+- [x] `tests/scratch/` is in `.gitignore`
+- [x] `bash scripts/ralph-check.sh` exits 0 (5/5 passing)
