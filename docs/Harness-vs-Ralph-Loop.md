@@ -307,5 +307,5 @@ Build the track first. Then run the train.
 - [snarktank/ralph](https://github.com/snarktank/ralph) — original Ralph Loop implementation
 - [ralph-claude-code](https://github.com/frankbria/ralph-claude-code) — Claude Code specific implementation
 - [Chief: The Ralph Loop](https://minicodemonkey.github.io/chief/concepts/ralph-loop.html) — pattern documentation
-- `docs/Canon_MVP_Technical_Roadmap.md` — Canon Phase I scope and Ralph Loop three-layer architecture spec
+- `../../canon-docs/Canon_MVP_Technical_Roadmap.md` — Canon Phase I scope and Ralph Loop three-layer architecture spec
 - `docs/harness-engineering-improvements.md` (on `openai-harness-patterns` branch) — full gap analysis

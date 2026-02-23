@@ -13,7 +13,37 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 - **Focus on Phase I deliverables**: Canon Agent Framework (MCP Server), Ralph Loop, pmxt adapter, agent configurations, harness engineering (all gaps 1–7), execution hardening — everything that is code/infrastructure.
 - **Ignore Canon Arena**: No Arena web dashboard, no Arena frontend, no leaderboard UI, no UI work of any kind. Arena is out of scope for Ace.
 
-Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
+Source of truth for Phase I scope: `../../canon-docs/Canon_MVP_Technical_Roadmap.md`
+Full spec index: see **Canon Specs** section below.
+
+---
+
+## Canon Specs (Read-Only Reference)
+
+Canon specifications live in a sibling docs repo. Do not duplicate them in Core.
+
+| Repo | Purpose | Absolute path |
+|------|---------|---------------|
+| **Core** (this repo) | Harness, skills, commands, MCP server | `/Users/cerratoa/dega/aidd/claude-code-config` |
+| **Canon Docs** | Specs, roadmap, SAS — source of truth | `/Users/cerratoa/dega/canon-docs` |
+
+**Relative path from Core:** `../../canon-docs`
+
+**Read these specs before implementing Canon features:**
+
+| File | Use when |
+|------|----------|
+| `Canon_MVP_Technical_Roadmap.md` | Scaffold structure, canon_init, 10 templates, .canon/ tree |
+| `Canon_Installation_Architecture_Analysis.md` | Core vs Canon split, install scope, canon_init behavior |
+| `specs/SAS_Agent_Framework.md` | Agent personas, skills, workflows, .canon/ conventions |
+| `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/ralph.yaml, hooks |
+| `specs/SAS_Automation_Model.md` | Strategy scaffolds, automation patterns |
+| `Canon_Key_Components.md` | High-level components, canon init --profile |
+| `specs/SAS_Deployment.md` | Cloud execution, $HOME/.canon/, image registry |
+
+Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 578-620 and 891-917.
+
+**Rule:** All Canon implementation tasks must be grounded in a spec from canon-docs. If a task has no backing spec, write one there first.
 
 ---
 
@@ -36,7 +66,6 @@ Source of truth for Phase I scope: `docs/Canon_MVP_Technical_Roadmap.md`
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
 | `canon/` | **Canon layer** — prediction market development (see below) |
-| `docs/Canon_MVP_Technical_Roadmap.md` | **Source of truth** for Phase I scope and deliverables |
 
 ---
 
@@ -202,7 +231,7 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
 - When a Canon pattern generalizes, promote it to Core.
 - Explain decisions as you go — this repo is a learning system, not just a config dump.
-- **Ace scope**: Phase I, no Arena. See `docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
+- **Ace scope**: Phase I, no Arena. See `../../canon-docs/Canon_MVP_Technical_Roadmap.md` for deliverables.
 
 ### Session start
 
