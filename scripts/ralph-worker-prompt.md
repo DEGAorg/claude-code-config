@@ -51,15 +51,10 @@ BLOCKERS:
 Be specific. The reviewer reads this to evaluate whether the completion criteria
 are met. Vague summaries produce REVISE decisions.
 
-### 4. Commit your work
-
-Stage and commit all changes with a clear imperative commit message describing
-what was done this iteration. This is how state persists between iterations —
-git history is the memory.
-
 ## Rules
 
 - Do not declare the task done — the reviewer decides.
+- Do not commit — the orchestrator commits after SHIP.
 - Do not skip writing work-summary.txt — the loop breaks without it.
 - Do not skip marking checkboxes — the next iteration cannot resume without them.
 - If you are completely blocked, write that clearly in BLOCKERS and stop.

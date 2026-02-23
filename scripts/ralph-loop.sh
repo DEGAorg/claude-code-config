@@ -67,6 +67,17 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
     echo "→ reviewer: SHIP"
     echo "→ running repo health check..."
     if bash scripts/ralph-check.sh; then
+      echo "→ archiving exec-plan to completed/..."
+      mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
+      echo "→ committing..."
+      git add -A
+      git commit -m "$(
+        cat <<EOF
+complete ${TASK_SLUG} (ralph loop, iteration ${i})
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+EOF
+      )"
       echo ""
       echo "ralph-loop: DONE — shipped after ${i} iteration(s)."
       exit 0

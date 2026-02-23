@@ -17,7 +17,7 @@ Read these files in order:
 1. `{TASK_DIR}/plan.md` — the Completion criteria section is your acceptance test.
    The Requirements section is the definition of done.
 2. `{TASK_DIR}/work-summary.txt` — what the worker claims was done.
-3. `git diff HEAD~1` — what actually changed in the last commit.
+3. `git diff HEAD` — what the worker changed (uncommitted working tree vs last commit).
 
 ### 2. Evaluate
 
