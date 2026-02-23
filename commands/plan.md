@@ -76,17 +76,14 @@ If there are P1 open questions (blocking decisions), resolve them before
 implementing. Ask the user or investigate the codebase as needed. Record
 the decision in the Decision log.
 
-## 4. Implement
+## 4. Hand off
 
-The plan file is the source of truth. Follow this discipline for every step:
+Once the plan is written and open questions resolved, **stop**. Do not begin
+implementation.
 
-1. Complete the work for one step.
-2. **Immediately mark it `[x]` in the plan file** — before starting the next step.
-3. Repeat until done.
-
-This is what makes plans resumable. If the session ends mid-task, the next
-session reads the plan and picks up from the first unchecked box. Skipping
-the file update means the next session has no idea what was done.
+The plan file is now the source of truth for the next session. Implementation
+starts by reading `docs/exec-plans/active/$SLUG/plan.md`, finding the first
+unchecked `[ ]` in the Progress log, and continuing from there.
 
 When all steps are complete, move the whole plan directory from `active/$SLUG/`
 to `completed/$SLUG/`. Do not delete it.
