@@ -1,0 +1,17 @@
+DONE:
+- Created commands/apply-canon.md following apply-core.md style exactly (same section structure:
+  source, pre-check, inventory, ask user, fetch, install, self-install, post-install)
+- Pre-check: tests for ~/.claude/commands/fix-issue.md as Core marker; aborts with clear message if absent
+- Inventories ~/.claude/rules/domain-layering.md before asking
+- AskUserQuestion step covers Rules category (domain-layering); Skills/Hooks/Agents/Commands categories
+  noted as "coming soon" per plan Q4 — honest, no phantom features
+- Install step: creates ~/.claude/rules/ if absent, writes domain-layering.md (safe overwrite)
+- Self-install step: fetches commands/apply-canon.md → ~/.claude/commands/apply-canon.md
+- Post-install: tells user what was installed and directs them to run canon_init next
+- Updated canon/CLAUDE.md: item 4 "Build the /apply-canon command" struck through and marked Done
+
+REMAINING:
+- none (all progress log steps complete)
+
+BLOCKERS:
+- none

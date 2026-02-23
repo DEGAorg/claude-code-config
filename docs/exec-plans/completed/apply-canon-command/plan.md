@@ -67,8 +67,8 @@ expected.
 
 ## Progress log
 
-- [ ] Write `commands/apply-canon.md`
-- [ ] Update `canon/CLAUDE.md` — mark Active Work item 4 complete
+- [x] Write `commands/apply-canon.md`
+- [x] Update `canon/CLAUDE.md` — mark Active Work item 4 complete
 
 ## Decision log
 
