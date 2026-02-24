@@ -10,7 +10,7 @@ directory — no need to clone the repo.
 All files are fetched from:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/
 ```
 
 Files available:
@@ -161,7 +161,7 @@ After completing the user's selections, also install this command itself to
 `~/.claude/commands/apply-core.md` by fetching:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/commands/apply-core.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/commands/apply-core.md
 ```
 
 This makes `/apply-core` available from any directory in future without
