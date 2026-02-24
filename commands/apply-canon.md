@@ -18,13 +18,30 @@ Files available:
 **Rules**
 - `canon/rules/domain-layering.md`
 
-**Skills** — none yet (coming in next Canon phase)
+**Skills**
+- `canon/skills/prediction-markets.md`
+- `canon/skills/polymarket.md`
+- `canon/skills/risk-management.md`
+- `canon/skills/strategy-patterns.md`
+- `canon/skills/backtesting.md`
+- `canon/skills/arena-tracking.md`
+- `canon/skills/ralph-loop.md`
+- `canon/skills/canon-conventions.md`
 
-**Hooks** — none yet (coming in next Canon phase)
+**Agents**
+- `canon/agents/strategy-architect.md`
+- `canon/agents/risk-analyst.md`
+- `canon/agents/market-analyst.md`
+- `canon/agents/dev.md`
+- `canon/agents/qa.md`
+- `canon/agents/deployment-ops.md`
 
-**Agents** — none yet (coming in next Canon phase)
-
-**Commands** — none yet beyond apply-canon itself
+**Commands**
+- `canon/commands/discover.md`
+- `canon/commands/develop.md`
+- `canon/commands/register.md`
+- `canon/commands/ralph-cycle.md`
+- `canon/commands/quick-dev.md`
 
 ---
 
@@ -46,6 +63,25 @@ Do not proceed until Core is confirmed present.
 
 Read and note which of these already exist:
 - `~/.claude/rules/domain-layering.md`
+- `~/.claude/skills/prediction-markets.md`
+- `~/.claude/skills/polymarket.md`
+- `~/.claude/skills/risk-management.md`
+- `~/.claude/skills/strategy-patterns.md`
+- `~/.claude/skills/backtesting.md`
+- `~/.claude/skills/arena-tracking.md`
+- `~/.claude/skills/ralph-loop.md`
+- `~/.claude/skills/canon-conventions.md`
+- `~/.claude/agents/strategy-architect.md`
+- `~/.claude/agents/risk-analyst.md`
+- `~/.claude/agents/market-analyst.md`
+- `~/.claude/agents/dev.md`
+- `~/.claude/agents/qa.md`
+- `~/.claude/agents/deployment-ops.md`
+- `~/.claude/commands/discover.md`
+- `~/.claude/commands/develop.md`
+- `~/.claude/commands/register.md`
+- `~/.claude/commands/ralph-cycle.md`
+- `~/.claude/commands/quick-dev.md`
 
 ---
 
@@ -58,6 +94,11 @@ missing from `~/.claude/`.
 Components:
 - **Rules** — domain-layering: enforces Canon's `Types → Config → Repo → Service → Runtime → UI`
   dependency direction via ast-grep rules with agent-friendly error messages
+- **Skills** — 8 domain knowledge files: prediction markets, Polymarket platform,
+  risk management, strategy patterns, backtesting, Arena tracking, Ralph Loop, Canon conventions
+- **Agents** — 6 agent personas: strategy-architect, risk-analyst, market-analyst,
+  dev, qa, deployment-ops (install to `~/.claude/agents/`)
+- **Commands** — 5 workflow commands: discover, develop, register, ralph-cycle, quick-dev
 
 ---
 
@@ -76,6 +117,22 @@ Create `~/.claude/rules/` if it doesn't exist.
 
 Write each rule file to `~/.claude/rules/<name>.md`. Safe to overwrite — Canon
 rules have no user customization.
+
+#### Skills
+
+Create `~/.claude/skills/` if it doesn't exist.
+
+Write each skill file to `~/.claude/skills/<name>.md`. Safe to overwrite.
+
+#### Agents
+
+Create `~/.claude/agents/` if it doesn't exist.
+
+Write each agent file to `~/.claude/agents/<name>.md`. Safe to overwrite.
+
+#### Commands
+
+Write each command file to `~/.claude/commands/<name>.md`. Safe to overwrite.
 
 ---
 

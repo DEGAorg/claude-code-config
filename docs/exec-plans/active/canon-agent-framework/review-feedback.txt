@@ -1,0 +1,15 @@
+CRITERION: PR created on feature branch
+FINDING: All 21 files exist on disk but none are committed. The new files
+(canon/AGENTS.md, canon/skills/*, canon/agents/*, canon/commands/*) are
+untracked in git. commands/apply-canon.md is unstaged. No PR exists on the
+ace-work branch (gh pr list --head ace-work returns nothing).
+ACTION: Stage and commit all new/modified files on the ace-work branch, then
+open a PR from ace-work into main. Also mark the two remaining progress log
+items as done: "Verify all files lint-clean" and "Commit on feature branch".
+
+CRITERION: All 21 new/updated files written (checklist state)
+FINDING: The plan.md Progress log still shows two unchecked items:
+  - [ ] Verify all files lint-clean and consistent with spec
+  - [ ] Commit on feature branch
+The plan's own tracking is not complete; these must be checked before SHIP.
+ACTION: After committing, update plan.md to check both remaining items.
