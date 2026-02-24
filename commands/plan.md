@@ -67,8 +67,13 @@ The plan must include every section below:
 - [ ] All requirements met
 - [ ] Tests pass
 - [ ] Linting clean
-- [ ] PR created and reviewed
 ```
+
+**Rule:** Completion criteria must only contain steps the worker agent can complete
+autonomously. Do not add steps that require human action (browser OAuth, manual
+approvals, external credentials, PR creation via authenticated CLI, etc.) unless
+the user explicitly asks for them. Post-loop human steps (opening a PR, deploying,
+granting access) belong in a follow-up note, not in the completion criteria.
 
 ## 3. Resolve open questions
 

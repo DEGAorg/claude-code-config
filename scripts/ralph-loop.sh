@@ -85,6 +85,18 @@ EOF
       echo "→ health check failed — repo not clean, continuing"
       rm -f "${RESULT_FILE}"
     fi
+  elif [[ "${RESULT}" == "BLOCKED" ]]; then
+    echo "→ reviewer: BLOCKED — human action required"
+    FEEDBACK_FILE="${TASK_DIR}/review-feedback.txt"
+    if [[ -f "${FEEDBACK_FILE}" ]]; then
+      echo "--- blocked ---"
+      cat "${FEEDBACK_FILE}"
+      echo "---------------"
+    fi
+    echo ""
+    echo "ralph-loop: STOPPED — waiting for human. Fix the blocker, then re-run:"
+    echo "  bash scripts/ralph-loop.sh ${TASK_SLUG}"
+    exit 2
   else
     echo "→ reviewer: REVISE"
     FEEDBACK_FILE="${TASK_DIR}/review-feedback.txt"
