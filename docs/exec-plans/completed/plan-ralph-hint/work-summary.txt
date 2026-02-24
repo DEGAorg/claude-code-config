@@ -1,0 +1,13 @@
+DONE:
+- Appended ralph loop command hint to Step 4 Hand off section of commands/plan.md
+- Added instruction to output the fenced code block with `bash scripts/ralph-loop.sh <slug>`
+- Added note to replace `<slug>` with the kebab-case slug derived in Step 2
+- Verified shellcheck passes on scripts/*.sh and hooks/*.sh
+- Verified shfmt -i 2 -d scripts/ hooks/ passes with no formatting issues
+- Marked all progress log and completion criteria checkboxes as done
+
+REMAINING:
+- none
+
+BLOCKERS:
+- none

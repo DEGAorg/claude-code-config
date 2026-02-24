@@ -92,3 +92,13 @@ unchecked `[ ]` in the Progress log, and continuing from there.
 
 When all steps are complete, move the whole plan directory from `active/$SLUG/`
 to `completed/$SLUG/`. Do not delete it.
+
+Output the following to the user as part of the hand-off:
+
+```
+To run the ralph loop for this plan:
+
+    bash scripts/ralph-loop.sh <slug>
+```
+
+Replace `<slug>` with the kebab-case slug derived in Step 2.
