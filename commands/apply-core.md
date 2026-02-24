@@ -1,6 +1,6 @@
 # Apply Core
 
-@description Install DEGA Core AI development artifacts globally to ~/.claude/.
+@description Install DEGA Core AI development artifacts globally to ~/.claude/ and Ralph Loop scripts per-repo into the current working directory.
 
 Install Core harness artifacts from GitHub into `~/.claude/`. Works from any
 directory — no need to clone the repo.
@@ -55,6 +55,13 @@ Read and note which of these already exist:
 - `~/.claude/hooks/` (any files)
 - `~/.claude/skills/` (any files)
 
+Also check in the current working directory (target project root):
+- `ralph.yaml`
+- `scripts/ralph-loop.sh`
+- `scripts/ralph-check.sh`
+- `scripts/ralph-worker-prompt.md`
+- `scripts/ralph-reviewer-prompt.md`
+
 ---
 
 ### 2. Ask the user what to install
@@ -70,6 +77,9 @@ Components:
 - **Rules** — language-specific standards auto-loaded by file type (python, node-typescript, rust, bash, github-actions)
 - **Hooks** — enforce-package-manager and log-gam shell scripts
 - **Skills** — custom-linter-authoring and app-legibility knowledge files
+- **Ralph Loop** — per-repo install of `ralph.yaml`, `ralph-loop.sh`, `ralph-check.sh`,
+  `ralph-worker-prompt.md`, and `ralph-reviewer-prompt.md` into the current project root
+  (opt-in; recommended when Ralph Loop is missing from the cwd)
 
 ---
 
@@ -124,6 +134,24 @@ to overwrite.
 Create `~/.claude/skills/` if it doesn't exist.
 
 Write each skill file to `~/.claude/skills/<name>.md`. Safe to overwrite.
+
+#### Ralph Loop
+
+Create `scripts/` in the current working directory if it doesn't exist.
+
+- If `ralph.yaml` does **not** exist in the cwd: write it directly.
+- If it **does** exist: tell the user it exists and ask whether to
+  overwrite, skip, or show a diff. Never silently overwrite — the user
+  may have customized `max_iterations` or `success_criteria`.
+
+Write each script file to the current working directory:
+- `scripts/ralph-loop.sh`
+- `scripts/ralph-check.sh`
+- `scripts/ralph-worker-prompt.md`
+- `scripts/ralph-reviewer-prompt.md`
+
+Run `chmod +x scripts/ralph-loop.sh scripts/ralph-check.sh` after writing.
+Safe to overwrite the scripts — they have no user customization.
 
 ---
 
