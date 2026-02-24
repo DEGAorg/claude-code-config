@@ -32,7 +32,7 @@ Do not give partial credit. Do not assume intent. Evaluate evidence.
 ### 3. Write your decision
 
 Write `{TASK_DIR}/review-result.txt`. The first line must be exactly one word:
-`SHIP` or `REVISE`. Nothing else on that line.
+`SHIP`, `REVISE`, or `BLOCKED`. Nothing else on that line.
 
 If SHIP:
 ```
@@ -46,12 +46,26 @@ items. Reference the criterion that failed. Tell the worker exactly what to do.
 REVISE
 ```
 
+If BLOCKED, write `BLOCKED` to review-result.txt and write `{TASK_DIR}/review-feedback.txt`
+describing the human action required. Use `BLOCKED` when the remaining criterion
+cannot be completed by any agent — it requires a human action such as browser OAuth,
+manual approval, external credentials, or repository access the worker does not have.
+Do not use BLOCKED for things the worker could do with the right tool or permission —
+only for actions that are genuinely outside the loop's reach.
+
+```
+BLOCKED
+```
+
 Feedback format (write to review-feedback.txt, not review-result.txt):
 ```
 CRITERION: <which completion criterion is not satisfied>
 FINDING: <what is missing or incorrect, with file:line if applicable>
 ACTION: <exactly what the worker must do to fix it>
 ```
+
+For BLOCKED, the ACTION must describe the specific human step required and how to
+resume the loop once it is done.
 
 One block per failing criterion. Be precise — vague feedback wastes an iteration.
 

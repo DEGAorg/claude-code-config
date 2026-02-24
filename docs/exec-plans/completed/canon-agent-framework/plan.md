@@ -114,4 +114,5 @@ After the artifact files, update `apply-canon.md` to enumerate and install them.
 - [x] Agent files have valid YAML frontmatter
 - [x] `apply-canon.md` updated to install skills, agents, commands
 - [x] No linting issues (shellcheck N/A — all markdown)
-- [x] PR created on feature branch
+
+**Post-loop (human):** Open PR from `ace-work → main` once `gh` is authenticated.
