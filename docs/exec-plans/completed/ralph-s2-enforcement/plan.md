@@ -144,13 +144,13 @@ This replaces two inline rules with one maintainable script.
 
 ## Progress log
 
-- [ ] `scripts/task-complete.sh` — new script; shellcheck + shfmt clean
-- [ ] `hooks/enforce-loop-mode.sh` — new script; Level 1 + Level 2 + task-complete.sh evidence gate; shellcheck + shfmt clean
-- [ ] `scripts/ralph-check.sh` — add Stop enforcement block for unclaimed completed work
-- [ ] `settings.json` — wire `hooks/enforce-loop-mode.sh`; remove two inline PreToolUse/Bash entries
-- [ ] Verify `shellcheck scripts/task-complete.sh hooks/enforce-loop-mode.sh scripts/ralph-check.sh` exits 0
-- [ ] Verify `shfmt -d scripts/task-complete.sh hooks/enforce-loop-mode.sh scripts/ralph-check.sh` exits 0
-- [ ] Verify `bash scripts/ralph-check.sh` exits 0
+- [x] `scripts/task-complete.sh` — new script; shellcheck + shfmt clean
+- [x] `hooks/enforce-loop-mode.sh` — new script; Level 1 + Level 2 + task-complete.sh evidence gate; shellcheck + shfmt clean
+- [x] `scripts/ralph-check.sh` — add Stop enforcement block for unclaimed completed work
+- [x] `settings.json` — wire `hooks/enforce-loop-mode.sh`; remove two inline PreToolUse/Bash entries
+- [x] Verify `shellcheck scripts/task-complete.sh hooks/enforce-loop-mode.sh scripts/ralph-check.sh` exits 0
+- [x] Verify `shfmt -d scripts/task-complete.sh hooks/enforce-loop-mode.sh scripts/ralph-check.sh` exits 0
+- [x] Verify `bash scripts/ralph-check.sh` exits 0
 
 ## Decision log
 
@@ -164,8 +164,8 @@ This replaces two inline rules with one maintainable script.
 
 ## Completion criteria
 
-- [ ] All progress log items checked
-- [ ] `hooks/enforce-loop-mode.sh` exists and blocks `rm -rf` (Level 1) and `git push` in local-only mode (Level 2)
-- [ ] `scripts/ralph-check.sh` fails when files changed and `current_task.claimed_complete == false`
-- [ ] `settings.json` has `enforce-loop-mode.sh` in PreToolUse/Bash; inline blockers removed
-- [ ] `bash scripts/ralph-check.sh` exits 0 on clean state
+- [x] All progress log items checked
+- [x] `hooks/enforce-loop-mode.sh` exists and blocks `rm -rf` (Level 1) and `git push` in local-only mode (Level 2)
+- [x] `scripts/ralph-check.sh` fails when files changed and `current_task.claimed_complete == false`
+- [x] `settings.json` has `enforce-loop-mode.sh` in PreToolUse/Bash; inline blockers removed
+- [x] `bash scripts/ralph-check.sh` exits 0 on clean state

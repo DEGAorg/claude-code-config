@@ -54,6 +54,24 @@ check exec-plan-dirs \
   "migrate flat .md files to directories: mkdir active/SLUG && mv active/SLUG.md active/SLUG/plan.md" \
   "! find docs/exec-plans/active -maxdepth 1 -name '*.md' | grep -q ."
 
+# Active ralph loop: block Stop if files changed but task not claimed complete
+STATE_FILE=$(find docs/exec-plans/active -name '.ralph-state.json' 2>/dev/null | head -1)
+if [[ -n "${STATE_FILE}" ]]; then
+  CLAIMED=$(jq -r 'if .current_task.claimed_complete == false then "false" else "true" end' "${STATE_FILE}")
+  CHANGES=0
+  if git rev-parse HEAD >/dev/null 2>&1; then
+    CHANGES=$(git diff HEAD --name-only 2>/dev/null | wc -l | tr -d ' ')
+  fi
+  if [[ "${CHANGES}" -gt 0 && "${CLAIMED}" == "false" ]]; then
+    echo "✗ task-claimed: files changed but current task not marked complete"
+    echo "  → fix: run: bash scripts/task-complete.sh ${STATE_FILE}"
+    FAIL=$((FAIL + 1))
+  else
+    echo "✓ task-claimed: no uncommitted work without task signal"
+    PASS=$((PASS + 1))
+  fi
+fi
+
 # Summary
 TOTAL=$((PASS + FAIL))
 echo ""
