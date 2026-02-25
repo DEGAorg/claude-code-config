@@ -32,4 +32,4 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/$(date +%Y-%m-%d).jsonl"
 
 printf '{"ts":"%s","tool":"%s","exit_code":%s}\n' \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$TOOL" "$STATUS" >>"$LOG_FILE"
+	"$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$TOOL" "$STATUS" >>"$LOG_FILE"

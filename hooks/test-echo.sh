@@ -32,6 +32,6 @@ printf '%s\n' "$INPUT" >"$DUMP"
 
 # Print summary to stderr — visible in Claude Code verbose mode (Ctrl+O)
 jq -r '"[test-echo] tool=\(.tool_name // "?") event=\(.hook_event_name // "?") exit=\(.tool_response.exit_code // "n/a")"' \
-  <<<"$INPUT" >&2
+	<<<"$INPUT" >&2
 
 exit 0

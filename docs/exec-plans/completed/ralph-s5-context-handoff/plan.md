@@ -165,12 +165,12 @@ the list of files copied in the archive step manually, or note it as a prerequis
 
 ## Progress log
 
-- [ ] `scripts/ralph-loop.sh` — remove `--resume` and session ID logic; inject handoff contents into per-item worker prompt; reset `context-handoff.txt` at iteration start
-- [ ] `scripts/ralph-worker-prompt.md` — add handoff read step (orientation); add handoff write requirement (pre-stop checklist)
-- [ ] `scripts/ralph-check.sh` — add Stop enforcement for missing handoff entry
-- [ ] Verify `shellcheck scripts/ralph-loop.sh scripts/ralph-check.sh` exits 0
-- [ ] Verify `shfmt -d scripts/ralph-loop.sh scripts/ralph-check.sh` exits 0
-- [ ] Verify `bash scripts/ralph-check.sh` exits 0
+- [x] `scripts/ralph-loop.sh` — remove `--resume` and session ID logic; inject handoff contents into per-item worker prompt; reset `context-handoff.txt` at iteration start
+- [x] `scripts/ralph-worker-prompt.md` — add handoff read step (orientation); add handoff write requirement (pre-stop checklist)
+- [x] `scripts/ralph-check.sh` — add Stop enforcement for missing handoff entry
+- [x] Verify `shellcheck scripts/ralph-loop.sh scripts/ralph-check.sh` exits 0
+- [x] Verify `shfmt -d scripts/ralph-loop.sh scripts/ralph-check.sh` exits 0
+- [x] Verify `bash scripts/ralph-check.sh` exits 0
 
 ## Decision log
 
@@ -184,8 +184,8 @@ the list of files copied in the archive step manually, or note it as a prerequis
 
 ## Completion criteria
 
-- [ ] All progress log items checked
-- [ ] `ralph-loop.sh` spawns fresh sessions (no `--resume`); passes handoff contents to each item prompt
-- [ ] `ralph-worker-prompt.md` has both handoff read and write instructions
-- [ ] `ralph-check.sh` blocks Stop when handoff entry is missing for current task
-- [ ] `bash scripts/ralph-check.sh` exits 0 on clean state
+- [x] All progress log items checked
+- [x] `ralph-loop.sh` spawns fresh sessions (no `--resume`); passes handoff contents to each item prompt
+- [x] `ralph-worker-prompt.md` has both handoff read and write instructions
+- [x] `ralph-check.sh` blocks Stop when handoff entry is missing for current task
+- [x] `bash scripts/ralph-check.sh` exits 0 on clean state

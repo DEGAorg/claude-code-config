@@ -21,4 +21,4 @@ CONFIG="${HOME}/.claude/.session-log-config"
 
 mkdir -p "$(dirname "$CONFIG")"
 printf '{"backend":"local","configured_at":"%s"}\n' \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$CONFIG"
+	"$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$CONFIG"

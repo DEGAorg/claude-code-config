@@ -1,0 +1,19 @@
+{
+  "slug": "ralph-s5-context-handoff",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "`bash scripts/ralph-check.sh` exits 0 on clean state",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "e223c704d04ad79ffb6913e9035f8c930e0a58d01c8318bd2955586c3d2a24a8",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}
