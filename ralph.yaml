@@ -1,6 +1,9 @@
 # Ralph Loop config for claude-code-config repo
 version: 1
 max_iterations: 3
+
+budget:
+  warn_at_iteration: 2
 check_command: bash scripts/ralph-check.sh
 
 # Worker and reviewer prompt templates (used by scripts/ralph-loop.sh)

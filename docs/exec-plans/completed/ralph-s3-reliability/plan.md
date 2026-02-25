@@ -123,14 +123,14 @@ interrupt before the next iteration starts.
 
 ## Progress log
 
-- [ ] `ralph.yaml` — add `budget.warn_at_iteration: 2`
-- [ ] `scripts/ralph-loop.sh` — add iteration archive (copy to `iterations/<NNN>/` before each worker phase except iteration 1)
-- [ ] `scripts/ralph-loop.sh` — add stagnation detection (hash check, exit on count >= 2)
-- [ ] `scripts/ralph-loop.sh` — add budget warning (print once when `i >= warn_at_iteration`)
-- [ ] `scripts/ralph-loop.sh` — init `.ralph-state.json` with `stagnation_count`, `last_diff_hash`, `budget` fields
-- [ ] Verify `shellcheck scripts/ralph-loop.sh` exits 0
-- [ ] Verify `shfmt -d scripts/ralph-loop.sh` exits 0
-- [ ] Verify `bash scripts/ralph-check.sh` exits 0
+- [x] `ralph.yaml` — add `budget.warn_at_iteration: 2`
+- [x] `scripts/ralph-loop.sh` — add iteration archive (copy to `iterations/<NNN>/` before each worker phase except iteration 1)
+- [x] `scripts/ralph-loop.sh` — add stagnation detection (hash check, exit on count >= 2)
+- [x] `scripts/ralph-loop.sh` — add budget warning (print once when `i >= warn_at_iteration`)
+- [x] `scripts/ralph-loop.sh` — init `.ralph-state.json` with `stagnation_count`, `last_diff_hash`, `budget` fields
+- [x] Verify `shellcheck scripts/ralph-loop.sh` exits 0
+- [x] Verify `shfmt -d scripts/ralph-loop.sh` exits 0
+- [x] Verify `bash scripts/ralph-check.sh` exits 0
 
 ## Decision log
 
@@ -143,9 +143,9 @@ interrupt before the next iteration starts.
 
 ## Completion criteria
 
-- [ ] All progress log items checked
-- [ ] `ralph.yaml` has `budget.warn_at_iteration: 2`
-- [ ] `iterations/<NNN>/` directories created correctly after iteration 2+
-- [ ] Stagnation exits loop with code 2 after 2 identical diffs
-- [ ] Budget warning prints once when `i >= warn_at_iteration`
-- [ ] `bash scripts/ralph-check.sh` exits 0
+- [x] All progress log items checked
+- [x] `ralph.yaml` has `budget.warn_at_iteration: 2`
+- [x] `iterations/<NNN>/` directories created correctly after iteration 2+
+- [x] Stagnation exits loop with code 2 after 2 identical diffs
+- [x] Budget warning prints once when `i >= warn_at_iteration`
+- [x] `bash scripts/ralph-check.sh` exits 0

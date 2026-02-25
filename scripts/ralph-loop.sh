@@ -27,6 +27,7 @@ STATE_FILE="${TASK_DIR}/.ralph-state.json"
 # Read config from ralph.yaml
 MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml | awk '{print $2}' | tr -d ' ')
 MAX_ITERATIONS="${MAX_ITERATIONS:-10}"
+WARN_AT=$(grep 'warn_at_iteration:' ralph.yaml | awk '{print $2}' | tr -d ' ')
 WORKER_PROMPT="scripts/ralph-worker-prompt.md"
 REVIEWER_PROMPT="scripts/ralph-reviewer-prompt.md"
 
@@ -42,12 +43,61 @@ echo ""
 for i in $(seq 1 "${MAX_ITERATIONS}"); do
   echo "=== Iteration ${i}/${MAX_ITERATIONS} ==="
 
+  # --- Budget warning (fires once when approaching limit) ---
+  if [[ -n "${WARN_AT}" && ${i} -ge ${WARN_AT} ]]; then
+    WARNED=$(jq -r '.budget.warned // false' "${STATE_FILE}" 2>/dev/null || echo "false")
+    if [[ "${WARNED}" == "false" ]]; then
+      echo "⚠ ralph-loop: iteration ${i} of ${MAX_ITERATIONS} — approaching budget limit"
+      echo "  Press Ctrl-C to stop. State is saved in ${STATE_FILE}"
+      jq '.budget.warned = true' "${STATE_FILE}" >/tmp/ralph_w.tmp &&
+        mv /tmp/ralph_w.tmp "${STATE_FILE}"
+    fi
+  fi
+
+  # Read cross-iteration values before overwriting state
+  PREV_STAG=0
+  PREV_DIFF_HASH=""
+  PREV_WARNED=false
+  if [[ -f "${STATE_FILE}" ]]; then
+    PREV_STAG=$(jq -r '.stagnation_count // 0' "${STATE_FILE}")
+    PREV_DIFF_HASH=$(jq -r '.last_diff_hash // ""' "${STATE_FILE}")
+    PREV_WARNED=$(jq -r '.budget.warned // false' "${STATE_FILE}")
+  fi
+
   # --- State init for this iteration ---
   jq -n \
     --arg slug "${TASK_SLUG}" \
     --argjson iter "${i}" \
-    '{"slug":$slug,"iteration":$iter,"status":"in_progress","current_task":{"text":"","claimed_complete":false},"last_result":null,"iterations":[]}' \
-    >"${STATE_FILE}"
+    --argjson stag "${PREV_STAG}" \
+    --arg diff_hash "${PREV_DIFF_HASH}" \
+    --argjson warned "${PREV_WARNED}" \
+    --argjson max "${MAX_ITERATIONS}" \
+    --argjson warn_at "${WARN_AT:-2}" \
+    '{
+      "slug": $slug,
+      "iteration": $iter,
+      "status": "in_progress",
+      "current_task": {"text": "", "claimed_complete": false},
+      "last_result": null,
+      "iterations": [],
+      "stagnation_count": $stag,
+      "last_diff_hash": $diff_hash,
+      "budget": {
+        "iterations_used": $iter,
+        "iterations_max": $max,
+        "warn_at_iteration": $warn_at,
+        "warned": $warned
+      }
+    }' >"${STATE_FILE}"
+
+  # --- Iteration archive (copy previous output before worker starts) ---
+  if [[ $i -gt 1 ]]; then
+    ITER_DIR="${TASK_DIR}/iterations/$(printf '%03d' $((i - 1)))"
+    mkdir -p "${ITER_DIR}"
+    for f in work-summary.txt review-result.txt review-feedback.txt; do
+      [[ -f "${TASK_DIR}/$f" ]] && cp "${TASK_DIR}/$f" "${ITER_DIR}/$f"
+    done
+  fi
 
   # --- Worker phase (per-item loop) ---
   SESSION_ID=""
@@ -73,7 +123,27 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
         --resume "${SESSION_ID}" "${WORKER_CONTEXT}"
     fi
   done
+  # All items processed — mark last task claimed so health check passes
+  jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
+    mv /tmp/ralph_c.tmp "${STATE_FILE}"
   echo "→ worker: done"
+
+  # --- Stagnation detection ---
+  CURRENT_HASH=$(git diff HEAD | shasum -a 256 | cut -d' ' -f1)
+  PREV_HASH=$(jq -r '.last_diff_hash // ""' "${STATE_FILE}")
+  if [[ "${CURRENT_HASH}" == "${PREV_HASH}" && -n "${PREV_HASH}" ]]; then
+    STAG=$(($(jq -r '.stagnation_count // 0' "${STATE_FILE}") + 1))
+    jq ".stagnation_count = ${STAG} | .current_task.claimed_complete = true" \
+      "${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
+    if [[ ${STAG} -ge 2 ]]; then
+      echo "ralph-loop: STAGNATED — no file changes in 2 consecutive iterations"
+      echo "  Human review required. Re-run after diagnosing the blocker."
+      exit 2
+    fi
+  else
+    jq ".stagnation_count = 0 | .last_diff_hash = \"${CURRENT_HASH}\" | .current_task.claimed_complete = true" \
+      "${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
+  fi
 
   # --- Reviewer phase ---
   echo "→ reviewer: evaluating..."
