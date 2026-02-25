@@ -22,6 +22,7 @@ if [[ ! -f "${TASK_DIR}/plan.md" ]]; then
   echo "error: no plan found at ${TASK_DIR}/plan.md" >&2
   exit 1
 fi
+STATE_FILE="${TASK_DIR}/.ralph-state.json"
 
 # Read config from ralph.yaml
 MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml | awk '{print $2}' | tr -d ' ')
@@ -41,10 +42,37 @@ echo ""
 for i in $(seq 1 "${MAX_ITERATIONS}"); do
   echo "=== Iteration ${i}/${MAX_ITERATIONS} ==="
 
-  # --- Worker phase ---
-  echo "→ worker: starting..."
-  WORKER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${WORKER_PROMPT}")
-  env -u CLAUDECODE claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
+  # --- State init for this iteration ---
+  jq -n \
+    --arg slug "${TASK_SLUG}" \
+    --argjson iter "${i}" \
+    '{"slug":$slug,"iteration":$iter,"status":"in_progress","current_task":{"text":"","claimed_complete":false},"last_result":null,"iterations":[]}' \
+    >"${STATE_FILE}"
+
+  # --- Worker phase (per-item loop) ---
+  SESSION_ID=""
+  ITEM_NUM=0
+  echo "→ worker: starting per-item loop..."
+  while bash scripts/plan-advance.sh "${TASK_DIR}/plan.md" "${STATE_FILE}"; do
+    ITEM_NUM=$((ITEM_NUM + 1))
+    CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
+    echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
+    WORKER_CONTEXT=$(sed \
+      -e "s|{TASK_DIR}|${TASK_DIR}|g" \
+      -e "s|{STATE_FILE}|${STATE_FILE}|g" \
+      "${WORKER_PROMPT}")
+    if [[ -z "${SESSION_ID}" ]]; then
+      RAW=$(env -u CLAUDECODE claude -p --dangerously-skip-permissions \
+        --output-format json "${WORKER_CONTEXT}")
+      SESSION_ID=$(printf '%s' "${RAW}" | jq -r '.session_id // empty' 2>/dev/null || true)
+      if [[ -z "${SESSION_ID}" ]]; then
+        echo "  warning: session_id not captured — per-item context resume disabled"
+      fi
+    else
+      env -u CLAUDECODE claude -p --dangerously-skip-permissions \
+        --resume "${SESSION_ID}" "${WORKER_CONTEXT}"
+    fi
+  done
   echo "→ worker: done"
 
   # --- Reviewer phase ---
@@ -62,6 +90,11 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
   fi
 
   RESULT=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')
+
+  # Update state with reviewer result
+  jq --arg result "${RESULT}" '.last_result = $result' \
+    "${STATE_FILE}" >"${STATE_FILE}.tmp"
+  mv "${STATE_FILE}.tmp" "${STATE_FILE}"
 
   if [[ "${RESULT}" == "SHIP" ]]; then
     echo "→ reviewer: SHIP"

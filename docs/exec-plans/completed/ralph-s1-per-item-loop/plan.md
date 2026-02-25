@@ -124,13 +124,13 @@ fall back to stateless (no resume) with a warning — loop continues.
 
 ## Progress log
 
-- [ ] `ralph.yaml` — set `max_iterations: 3`
-- [ ] `scripts/plan-advance.sh` — new script; shellcheck + shfmt clean
-- [ ] `scripts/ralph-loop.sh` — state file init; per-item inner loop; session resume
-- [ ] `scripts/ralph-worker-prompt.md` — read `current_task` from state; one item per invocation
-- [ ] Verify `shellcheck scripts/plan-advance.sh scripts/ralph-loop.sh` exits 0
-- [ ] Verify `shfmt -d scripts/plan-advance.sh scripts/ralph-loop.sh` exits 0
-- [ ] Verify `bash scripts/ralph-check.sh` exits 0
+- [x] `ralph.yaml` — set `max_iterations: 3`
+- [x] `scripts/plan-advance.sh` — new script; shellcheck + shfmt clean
+- [x] `scripts/ralph-loop.sh` — state file init; per-item inner loop; session resume
+- [x] `scripts/ralph-worker-prompt.md` — read `current_task` from state; one item per invocation
+- [x] Verify `shellcheck scripts/plan-advance.sh scripts/ralph-loop.sh` exits 0
+- [x] Verify `shfmt -d scripts/plan-advance.sh scripts/ralph-loop.sh` exits 0
+- [x] Verify `bash scripts/ralph-check.sh` exits 0
 
 ## Decision log
 

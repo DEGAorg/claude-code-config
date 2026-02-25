@@ -1,0 +1,19 @@
+DONE:
+- ralph.yaml already had max_iterations: 3 — no change needed
+- scripts/plan-advance.sh — new script; reads plan.md for first unchecked [ ] item,
+  writes current_task.text into .ralph-state.json via jq; exits 1 when no items remain;
+  passes shellcheck and shfmt -i 2
+- scripts/ralph-loop.sh — added STATE_FILE variable; replaced single worker call with:
+  (a) jq state init at iteration start, (b) per-item while loop calling plan-advance.sh,
+  (c) first item uses --output-format json to capture session_id, subsequent items use
+  --resume $SESSION_ID; fallback warning printed if session_id capture fails;
+  added state update (last_result) after reviewer decision; passes shellcheck + shfmt
+- scripts/ralph-worker-prompt.md — rewritten: reads {STATE_FILE} to get current_task.text,
+  works on exactly one item, marks [x], writes work-summary.txt, stops; removed
+  checkbox-scanning orientation
+
+REMAINING:
+- none; all 7 progress log items checked
+
+BLOCKERS:
+- none
