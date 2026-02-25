@@ -1,0 +1,14 @@
+DONE:
+- Verified `bash scripts/ralph-check.sh` exits 0.
+- Fixed shfmt formatting: ralph-check.sh uses `-i 2` (2-space indent); hooks had been formatted
+  with tab indent by bare `shfmt -w`. Reformatted all three new hooks with `shfmt -i 2 -w`.
+- Resolved task-claimed check: called task-complete.sh for both the final progress-log item
+  and the completion-criteria items that plan-advance.sh had picked up as tasks.
+- All completion criteria marked [x] — all are genuinely satisfied.
+- Final result: 6/6 criteria passing, exit 0.
+
+REMAINING:
+- none
+
+BLOCKERS:
+- none

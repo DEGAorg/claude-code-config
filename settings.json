@@ -58,6 +58,16 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash hooks/session-start-logging.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -74,6 +84,15 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/update-exec-plan-reminder.sh"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash hooks/structured-log.sh"
           }
         ]
       }

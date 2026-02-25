@@ -61,8 +61,9 @@ CONFIG="${HOME}/.claude/.session-log-config"
 BACKEND=$(jq -r '.backend' "$CONFIG")
 [[ "$BACKEND" != "local" ]] && exit 0
 
-TOOL=$(jq -r '.tool_name // "unknown"' <<< "${CLAUDE_TOOL_USE_INPUT:-{\}}")
-STATUS=$(jq -r '.exit_code // 0' <<< "${CLAUDE_TOOL_USE_RESULT:-{\}}")
+INPUT=$(cat)
+TOOL=$(jq -r '.tool_name // "unknown"' <<< "$INPUT")
+STATUS=$(jq -r '.tool_response.exit_code // 0' <<< "$INPUT")
 
 LOG_DIR="${HOME}/.claude/logs/sessions"
 mkdir -p "$LOG_DIR"
@@ -102,9 +103,11 @@ Verify which lifecycle event is available in `settings.json` before wiring.
 
 ## Risks and open questions
 
-- **Open:** Claude Code hook env vars for tool name and exit code in PostToolUse —
-  verify actual names. Hook receives JSON on stdin (`jq -r '.tool_name'` from stdin,
-  not env var). Test before committing to the implementation.
+- **Resolved:** PostToolUse stdin JSON schema verified via official docs + `hooks/test-echo.sh`.
+  Key fields: `.tool_name` (tool name string), `.tool_input` (tool-specific args),
+  `.tool_response` (tool-specific result — **NOT `.tool_result`** as draft code assumed),
+  `.tool_use_id`. For Bash exit code: `jq -r '.tool_response.exit_code // 0'`.
+  Full schema in `hooks/test-echo.sh` header comment.
 - **Open:** Which `settings.json` lifecycle event fires at session start?
   `UserPromptSubmit` is documented; `PreSession` may not exist. Check available events.
 - **Resolved:** No interactive prompt for backend selection — hooks cannot read stdin.
@@ -112,13 +115,13 @@ Verify which lifecycle event is available in `settings.json` before wiring.
 
 ## Progress log
 
-- [ ] Verify PostToolUse hook input format (stdin JSON schema) with a test echo hook
-- [ ] `hooks/session-start-logging.sh` — new script; shellcheck + shfmt clean
-- [ ] `hooks/structured-log.sh` — new script; shellcheck + shfmt clean
-- [ ] `settings.json` — wire both hooks at correct lifecycle events
-- [ ] Verify `shellcheck hooks/session-start-logging.sh hooks/structured-log.sh` exits 0
-- [ ] Verify `shfmt -d hooks/session-start-logging.sh hooks/structured-log.sh` exits 0
-- [ ] Verify `bash scripts/ralph-check.sh` exits 0
+- [x] Verify PostToolUse hook input format (stdin JSON schema) with a test echo hook
+- [x] `hooks/session-start-logging.sh` — new script; shellcheck + shfmt clean
+- [x] `hooks/structured-log.sh` — new script; shellcheck + shfmt clean
+- [x] `settings.json` — wire both hooks at correct lifecycle events
+- [x] Verify `shellcheck hooks/session-start-logging.sh hooks/structured-log.sh` exits 0
+- [x] Verify `shfmt -d hooks/session-start-logging.sh hooks/structured-log.sh` exits 0
+- [x] Verify `bash scripts/ralph-check.sh` exits 0
 
 ## Decision log
 
@@ -131,8 +134,8 @@ Verify which lifecycle event is available in `settings.json` before wiring.
 
 ## Completion criteria
 
-- [ ] All progress log items checked
-- [ ] `hooks/session-start-logging.sh` writes `~/.claude/.session-log-config` on first session use
-- [ ] `hooks/structured-log.sh` appends JSONL to `~/.claude/logs/sessions/YYYY-MM-DD.jsonl`
-- [ ] Neither hook runs when `RALPH_MODE` is set
-- [ ] `bash scripts/ralph-check.sh` exits 0
+- [x] All progress log items checked
+- [x] `hooks/session-start-logging.sh` writes `~/.claude/.session-log-config` on first session use
+- [x] `hooks/structured-log.sh` appends JSONL to `~/.claude/logs/sessions/YYYY-MM-DD.jsonl`
+- [x] Neither hook runs when `RALPH_MODE` is set
+- [x] `bash scripts/ralph-check.sh` exits 0
