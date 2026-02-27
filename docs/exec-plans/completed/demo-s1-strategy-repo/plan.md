@@ -95,22 +95,22 @@ max_iterations: 5
 
 ## Progress log
 
-- [ ] `git init /Users/cerratoa/dega/sports-arb` and initial commit
-- [ ] Create `package.json` (Node 22 ESM, pnpm, TypeScript 5, vitest, oxlint)
-- [ ] Create `tsconfig.json` (strict settings per node-typescript.md standards)
-- [ ] Create `.oxlintrc.json`
-- [ ] Create `vitest.config.ts`
-- [ ] Copy `AGENTS.md` from `canon/AGENTS.md`
-- [ ] Create `.canon/config.yaml`
-- [ ] Write `.canon/ralph.yaml` with sports arb success criteria
-- [ ] Copy all 6 agent markdown files into `.canon/agents/`
-- [ ] Copy all 8 skill markdown files into `.canon/skills/`
-- [ ] Create `.env.example` with all credential placeholders documented
-- [ ] Create `.gitignore`
-- [ ] Create `src/types/.gitkeep`
-- [ ] Run `pnpm install` — confirm no errors
-- [ ] Run `pnpm exec tsc --noEmit` — confirm passes on empty scaffold
-- [ ] Run `pnpm exec oxlint src/` — confirm passes
+- [x] `git init /Users/cerratoa/dega/sports-arb` and initial commit
+- [x] Create `package.json` (Node 22 ESM, pnpm, TypeScript 5, vitest, oxlint)
+- [x] Create `tsconfig.json` (strict settings per node-typescript.md standards)
+- [x] Create `.oxlintrc.json`
+- [x] Create `vitest.config.ts`
+- [x] Copy `AGENTS.md` from `canon/AGENTS.md`
+- [x] Create `.canon/config.yaml`
+- [x] Write `.canon/ralph.yaml` with sports arb success criteria
+- [x] Copy all 6 agent markdown files into `.canon/agents/`
+- [x] Copy all 8 skill markdown files into `.canon/skills/`
+- [x] Create `.env.example` with all credential placeholders documented
+- [x] Create `.gitignore`
+- [x] Create `src/types/.gitkeep`
+- [x] Run `pnpm install` — confirm no errors
+- [x] Run `pnpm exec tsc --noEmit` — confirm passes on empty scaffold
+- [x] Run `pnpm exec oxlint src/` — confirm passes
 
 ## Decision log
 
@@ -123,10 +123,10 @@ max_iterations: 5
 
 ## Completion criteria
 
-- [ ] `pnpm install` exits 0
-- [ ] `pnpm exec tsc --noEmit` exits 0
-- [ ] `pnpm exec oxlint src/` exits 0
-- [ ] `.canon/agents/` contains 6 agent files
-- [ ] `.canon/skills/` contains 8 skill files
-- [ ] `.canon/ralph.yaml` exists with all 4 success criteria
-- [ ] `.env.example` exists with no real credentials
+- [x] `pnpm install` exits 0
+- [x] `pnpm exec tsc --noEmit` exits 0
+- [x] `pnpm exec oxlint src/` exits 0
+- [x] `.canon/agents/` contains 6 agent files
+- [x] `.canon/skills/` contains 8 skill files
+- [x] `.canon/ralph.yaml` exists with all 4 success criteria
+- [x] `.env.example` exists with no real credentials
