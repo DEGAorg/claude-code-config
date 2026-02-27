@@ -10,6 +10,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/log-client.sh
+source "${SCRIPT_DIR}/log-client.sh"
+
 TASK_SLUG="${1:-}"
 if [[ -z "${TASK_SLUG}" ]]; then
 	echo "error: usage: bash scripts/ralph-loop.sh <task-slug>" >&2
@@ -36,9 +40,41 @@ if [[ ! -f "${WORKER_PROMPT}" || ! -f "${REVIEWER_PROMPT}" ]]; then
 	exit 1
 fi
 
+# Start log server if not already running (supports AFK runs with no prior session hook).
+_LOG_SOCK="${HOME}/.claude/logs/log.sock"
+_LOG_SERVER_PID=""
+
+# shellcheck disable=SC2329  # invoked indirectly via trap EXIT
+_cleanup_log_server() {
+	if [[ -n "${_LOG_SERVER_PID}" ]]; then
+		kill "${_LOG_SERVER_PID}" 2>/dev/null || true
+	fi
+}
+trap _cleanup_log_server EXIT
+
+if [[ ! -S "${_LOG_SOCK}" ]]; then
+	mkdir -p "${HOME}/.claude/logs/ralph"
+	uv run --script "${SCRIPT_DIR}/log-server.py" \
+		>>"${HOME}/.claude/logs/log-server.log" 2>&1 &
+	_LOG_SERVER_PID=$!
+	disown
+	_waited=0
+	while [[ ! -S "${_LOG_SOCK}" && $_waited -lt 20 ]]; do
+		sleep 0.1
+		_waited=$((_waited + 1))
+	done
+	if [[ ! -S "${_LOG_SOCK}" ]]; then
+		echo "ralph-loop: warning: log server socket did not appear — logging disabled" >&2
+	fi
+fi
+
 echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations"
 echo "  plan: ${TASK_DIR}/plan.md"
 echo ""
+
+log_event "LOOP_START" \
+	"$(jq -n --arg slug "${TASK_SLUG}" --argjson max "${MAX_ITERATIONS}" \
+		'{"task_slug":$slug,"max_iterations":$max}')"
 
 for i in $(seq 1 "${MAX_ITERATIONS}"); do
 	echo "=== Iteration ${i}/${MAX_ITERATIONS} ==="
@@ -129,6 +165,8 @@ ${HANDOFF}"
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
 		mv /tmp/ralph_c.tmp "${STATE_FILE}"
 	echo "→ worker: done"
+	log_event "WORKER_DONE" \
+		"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"exit_code":0}')"
 
 	# --- Stagnation detection ---
 	CURRENT_HASH=$(git diff HEAD | shasum -a 256 | cut -d' ' -f1)
@@ -157,6 +195,8 @@ ${HANDOFF}"
 	RESULT_FILE="${TASK_DIR}/review-result.txt"
 	if [[ ! -f "${RESULT_FILE}" ]]; then
 		echo "✗ reviewer did not write review-result.txt — treating as REVISE"
+		log_event "REVIEWER_DECISION" \
+			"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE"}')"
 		echo ""
 		continue
 	fi
@@ -168,8 +208,13 @@ ${HANDOFF}"
 		"${STATE_FILE}" >"${STATE_FILE}.tmp"
 	mv "${STATE_FILE}.tmp" "${STATE_FILE}"
 
+	log_event "REVIEWER_DECISION" \
+		"$(jq -n --arg d "${RESULT}" --argjson iter "${i}" \
+			'{"iteration":$iter,"decision":$d}')"
+
 	if [[ "${RESULT}" == "SHIP" ]]; then
 		echo "→ reviewer: SHIP"
+		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		echo "→ running repo health check..."
 		if bash scripts/ralph-check.sh; then
 			echo "→ archiving exec-plan to completed/..."
@@ -192,6 +237,7 @@ EOF
 		fi
 	elif [[ "${RESULT}" == "BLOCKED" ]]; then
 		echo "→ reviewer: BLOCKED — human action required"
+		log_event "BLOCKED" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		FEEDBACK_FILE="${TASK_DIR}/review-feedback.txt"
 		if [[ -f "${FEEDBACK_FILE}" ]]; then
 			echo "--- blocked ---"
@@ -215,6 +261,8 @@ EOF
 	echo ""
 done
 
+log_event "EXHAUSTED" \
+	"$(jq -n --argjson used "${MAX_ITERATIONS}" '{"iterations_used":$used}')"
 echo ""
 echo "ralph-loop: max iterations (${MAX_ITERATIONS}) reached without SHIP."
 RESULT_FILE="${TASK_DIR}/review-result.txt"

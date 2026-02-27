@@ -116,15 +116,15 @@ Events emitted by ralph-loop.sh:
 
 ## Progress log
 
-- [ ] Create `scripts/log-server.py`
-- [ ] Create `scripts/log-client.sh`
-- [ ] Update `hooks/session-start-logging.sh` — server start/stop
-- [ ] Update `scripts/ralph-loop.sh` — source client, emit events
-- [ ] Run `shellcheck scripts/log-client.sh hooks/session-start-logging.sh scripts/ralph-loop.sh`
-- [ ] Run `shfmt -d scripts/log-client.sh hooks/session-start-logging.sh scripts/ralph-loop.sh`
-- [ ] Run `ruff check scripts/log-server.py && ruff format --check scripts/log-server.py`
-- [ ] Run `ty check scripts/log-server.py`
-- [ ] Smoke test: start server, send a test event, verify JSONL entry written
+- [x] Create `scripts/log-server.py`
+- [x] Create `scripts/log-client.sh`
+- [x] Update `hooks/session-start-logging.sh` — server start/stop
+- [x] Update `scripts/ralph-loop.sh` — source client, emit events
+- [x] Run `shellcheck scripts/log-client.sh hooks/session-start-logging.sh scripts/ralph-loop.sh`
+- [x] Run `shfmt -d scripts/log-client.sh hooks/session-start-logging.sh scripts/ralph-loop.sh`
+- [x] Run `ruff check scripts/log-server.py && ruff format --check scripts/log-server.py`
+- [x] Run `ty check scripts/log-server.py`
+- [x] Smoke test: start server, send a test event, verify JSONL entry written
 
 ## Decision log
 
@@ -140,9 +140,9 @@ Events emitted by ralph-loop.sh:
 
 ## Completion criteria
 
-- [ ] All requirements met (local + GCP paths work, ralph events emitted)
-- [ ] `shellcheck` reports zero errors on all touched shell scripts
-- [ ] `shfmt -d` reports no diffs on all touched shell scripts
-- [ ] `ruff check` and `ruff format --check` pass on `log-server.py`
-- [ ] `ty check` passes on `log-server.py`
-- [ ] Smoke test passes: `~/.claude/logs/ralph/YYYY-MM-DD.jsonl` contains the test event
+- [x] All requirements met (local + GCP paths work, ralph events emitted)
+- [x] `shellcheck` reports zero errors on all touched shell scripts
+- [x] `shfmt -d` reports no diffs on all touched shell scripts
+- [x] `ruff check` and `ruff format --check` pass on `log-server.py`
+- [x] `ty check` passes on `log-server.py`
+- [x] Smoke test passes: `~/.claude/logs/ralph/YYYY-MM-DD.jsonl` contains the test event
