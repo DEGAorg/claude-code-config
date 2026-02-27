@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/session-start-logging.sh"
+            "command": "bash ~/.claude/hooks/session-start-logging.sh"
           }
         ]
       }
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/structured-log.sh"
+            "command": "bash ~/.claude/hooks/structured-log.sh"
           }
         ]
       }

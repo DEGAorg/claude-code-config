@@ -54,7 +54,7 @@ trap _cleanup_log_server EXIT
 
 if [[ ! -S "${_LOG_SOCK}" ]]; then
 	mkdir -p "${HOME}/.claude/logs/ralph"
-	uv run --script "${SCRIPT_DIR}/log-server.py" \
+	uv run --script "${HOME}/.claude/scripts/log-server.py" \
 		>>"${HOME}/.claude/logs/log-server.log" 2>&1 &
 	_LOG_SERVER_PID=$!
 	disown

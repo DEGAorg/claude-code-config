@@ -6,38 +6,58 @@
 #   source scripts/log-client.sh
 #   log_event "LOOP_START" '{"task_slug":"my-task","max_iterations":10}'
 #   log_event "SHIP"
+#
+# Transport (tried in order):
+#   1. socat  — preferred (brew install socat)
+#   2. nc -U  — fallback (ships with macOS)
+#   3. none   — warns once at source time, then no-ops
 
 set -euo pipefail
 
 _LOG_SOCK="${HOME}/.claude/logs/log.sock"
 
-# LOG_AVAILABLE is set at source time.
-# 0 = socat not found; log_event is then a no-op.
-LOG_AVAILABLE=0
+# _LOG_TRANSPORT: "socat" | "nc" | "none"
+_LOG_TRANSPORT="none"
 if command -v socat >/dev/null 2>&1; then
-	LOG_AVAILABLE=1
+	_LOG_TRANSPORT="socat"
+elif command -v nc >/dev/null 2>&1; then
+	_LOG_TRANSPORT="nc"
+else
+	echo "log-client: warning: socat and nc not found — event logging disabled" >&2
 fi
 
 # log_event EVENT_NAME [PAYLOAD_JSON]
 #
 # Sends a structured JSON event envelope to the log server via Unix socket.
-# No-op when LOG_AVAILABLE=0 or the server is not running.
+# No-op when no transport is available or the server is not running.
 #
 # Args:
 #   EVENT_NAME   - event type string (e.g. LOOP_START, SHIP)
 #   PAYLOAD_JSON - optional JSON object payload (default: {})
 log_event() {
-	[[ "${LOG_AVAILABLE}" == "1" ]] || return 0
+	[[ "${_LOG_TRANSPORT}" != "none" ]] || return 0
 
 	local event="${1:-}"
-	local payload="${2:-{}}"
+	# "${2:-{}}" mis-parses in bash — {} in default appends a literal '}' suffix.
+	# Two-step assignment avoids the ambiguity entirely.
+	local payload="${2:-}"
+	[[ -n "${payload}" ]] || payload="{}"
+	# Compact payload to single line so it fits on one JSONL line.
+	# jq without -c emits pretty-printed JSON; tr -d strips the newlines safely.
+	payload=$(printf '%s' "${payload}" | tr -d '\n')
 	local ts
 	ts=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 	local caller
 	caller=$(basename "${BASH_SOURCE[1]:-unknown}")
 	local session="${SESSION_ID:-}"
 
-	printf '{"ts":"%s","session":"%s","script":"%s","event":"%s","payload":%s}\n' \
-		"${ts}" "${session}" "${caller}" "${event}" "${payload}" |
-		socat -u STDIN "UNIX-CONNECT:${_LOG_SOCK}" 2>/dev/null || true
+	local msg
+	msg=$(printf '{"ts":"%s","session":"%s","script":"%s","event":"%s","payload":%s}\n' \
+		"${ts}" "${session}" "${caller}" "${event}" "${payload}")
+
+	if [[ "${_LOG_TRANSPORT}" == "socat" ]]; then
+		printf '%s\n' "${msg}" | socat -u STDIN "UNIX-CONNECT:${_LOG_SOCK}" 2>/dev/null || true
+	else
+		printf '%s\n' "${msg}" | nc -U "${_LOG_SOCK}" 2>/dev/null || true
+	fi
 }

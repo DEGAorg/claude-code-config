@@ -24,8 +24,7 @@ set -euo pipefail
 SOCK="${HOME}/.claude/logs/log.sock"
 
 if [[ ! -S "$SOCK" ]]; then
-	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-	SERVER="${SCRIPT_DIR}/../scripts/log-server.py"
+	SERVER="${HOME}/.claude/scripts/log-server.py"
 
 	mkdir -p "${HOME}/.claude/logs/ralph"
 	uv run "$SERVER" >>"${HOME}/.claude/logs/log-server.log" 2>&1 &
