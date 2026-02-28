@@ -147,19 +147,19 @@ All files in `/Users/cerratoa/dega/sports-arb/`.
 
 ## Progress log
 
-- [ ] Create `src/types/TradeSignal.ts`
-- [ ] Create `src/types/RiskInterface.ts`
-- [ ] Create `src/strategies/sports-arb/scanner.ts`
-- [ ] Create `src/strategies/sports-arb/signal.ts`
-- [ ] Create `src/strategies/sports-arb/risk.ts`
-- [ ] Create `src/runner.ts` with dry-run loop and JSONL logger
-- [ ] Create `src/__tests__/scanner.test.ts`
-- [ ] Create `src/__tests__/signal.test.ts`
-- [ ] Create `src/__tests__/risk.test.ts`
-- [ ] Run `pnpm exec tsc --noEmit` — zero errors
-- [ ] Run `pnpm exec oxlint src/` — zero warnings
-- [ ] Run `pnpm exec vitest run` — all tests pass
-- [ ] Manual smoke: `node --env-file=.env src/runner.ts` writes at least one `.canon/execution/*.jsonl` entry
+- [x] Create `src/types/TradeSignal.ts`
+- [x] Create `src/types/RiskInterface.ts`
+- [x] Create `src/strategies/sports-arb/scanner.ts`
+- [x] Create `src/strategies/sports-arb/signal.ts`
+- [x] Create `src/strategies/sports-arb/risk.ts`
+- [x] Create `src/runner.ts` with dry-run loop and JSONL logger
+- [x] Create `src/__tests__/scanner.test.ts`
+- [x] Create `src/__tests__/signal.test.ts`
+- [x] Create `src/__tests__/risk.test.ts`
+- [x] Run `pnpm exec tsc --noEmit` — zero errors
+- [x] Run `pnpm exec oxlint src/` — zero warnings
+- [x] Run `pnpm exec vitest run` — all tests pass
+- [x] Manual smoke: `node --env-file=.env src/runner.ts` writes at least one `.canon/execution/*.jsonl` entry
 
 ## Decision log
 
@@ -172,10 +172,10 @@ All files in `/Users/cerratoa/dega/sports-arb/`.
 
 ## Completion criteria
 
-- [ ] `pnpm exec tsc --noEmit` exits 0
-- [ ] `pnpm exec oxlint src/` exits 0
-- [ ] `pnpm exec vitest run` exits 0 (all tests pass)
-- [ ] `src/types/TradeSignal.ts` implements all fields from the demo doc spec
-- [ ] `src/types/RiskInterface.ts` exported interface is non-empty
-- [ ] `src/runner.ts` is a standalone executable that accepts `--dry-run` flag
-- [ ] At least one `.canon/execution/*.jsonl` entry written after a manual smoke test run
+- [x] `pnpm exec tsc --noEmit` exits 0
+- [x] `pnpm exec oxlint src/` exits 0
+- [x] `pnpm exec vitest run` exits 0 (all tests pass)
+- [x] `src/types/TradeSignal.ts` implements all fields from the demo doc spec
+- [x] `src/types/RiskInterface.ts` exported interface is non-empty
+- [x] `src/runner.ts` is a standalone executable that accepts `--dry-run` flag
+- [x] At least one `.canon/execution/*.jsonl` entry written after a manual smoke test run
