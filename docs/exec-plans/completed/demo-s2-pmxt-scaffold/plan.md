@@ -93,33 +93,33 @@ All files in `/Users/cerratoa/dega/sports-arb/`.
 
 ## Progress log
 
-- [ ] Check if `pmxtjs` is on npm; document result in Decision log
-- [ ] Install pmxt (or `@polymarket/clob-client` fallback) + `tsx` dev dep
-- [ ] Create `src/types/market.ts` with MarketPrice, OrderBook, SportEvent types
-- [ ] Create `src/clients/polymarket.ts` wrapper
-- [ ] Create `src/clients/sportsbook.ts` wrapper (The Odds API)
-- [ ] Create `scripts/verify-connections.ts`
-- [ ] Create `scripts/verify.sh`
-- [ ] Update `.env.example` with all credential entries and format notes
-- [ ] Create `README.md` with setup + verify instructions
-- [ ] Run `pnpm exec tsc --noEmit` — passes
-- [ ] Run `pnpm exec oxlint src/` — passes
+- [x] Check if `pmxtjs` is on npm; document result in Decision log
+- [x] Install pmxt (or `@polymarket/clob-client` fallback) + `tsx` dev dep
+- [x] Create `src/types/market.ts` with MarketPrice, OrderBook, SportEvent types
+- [x] Create `src/clients/polymarket.ts` wrapper
+- [x] Create `src/clients/sportsbook.ts` wrapper (The Odds API)
+- [x] Create `scripts/verify-connections.ts`
+- [x] Create `scripts/verify.sh`
+- [x] Update `.env.example` with all credential entries and format notes
+- [x] Create `README.md` with setup + verify instructions
+- [x] Run `pnpm exec tsc --noEmit` — passes
+- [x] Run `pnpm exec oxlint src/` — passes
 
 ## Decision log
 
 | Decision | Alternatives considered | Rationale |
 |----------|------------------------|-----------|
-| TBD: pmxtjs vs @polymarket/clob-client | pmxtjs (canonical), clob-client (official) | Verify npm availability first; wrapper abstracts the choice |
+| **Use pmxtjs v2.18.0** | pmxtjs (canonical), @polymarket/clob-client (official fallback) | pmxtjs is published on npm (v2.18.0, 93 versions, active maintenance). Provides unified prediction market API ("CCXT for prediction markets") covering Polymarket + Kalshi. No need for fallback. |
 | The Odds API for sportsbook | Pinnacle API, DraftKings API, Sportradar | The Odds API aggregates multiple books in one call; free tier available; clean JSON REST API |
 | Named function exports not classes | Class-based client | Easier to mock in vitest; no `this` binding; strategy code stays functional |
 
 ## Completion criteria
 
-- [ ] `pnpm install` exits 0 (all dependencies installed)
-- [ ] `pnpm exec tsc --noEmit` exits 0
-- [ ] `pnpm exec oxlint src/` exits 0
-- [ ] `src/clients/polymarket.ts` exports `fetchMarketPrice` and `fetchOrderBook`
-- [ ] `src/clients/sportsbook.ts` exports `fetchOdds`
-- [ ] `scripts/verify.sh` exists and is executable
-- [ ] `.env.example` documents all required credential keys with format notes
-- [ ] README "Verify connections" section exists
+- [x] `pnpm install` exits 0 (all dependencies installed)
+- [x] `pnpm exec tsc --noEmit` exits 0
+- [x] `pnpm exec oxlint src/` exits 0
+- [x] `src/clients/polymarket.ts` exports `fetchMarketPrice` and `fetchOrderBook`
+- [x] `src/clients/sportsbook.ts` exports `fetchOdds`
+- [x] `scripts/verify.sh` exists and is executable
+- [x] `.env.example` documents all required credential keys with format notes
+- [x] README "Verify connections" section exists
