@@ -58,14 +58,19 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
-| `commands/` | Global slash commands (`fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden`) |
-| `skills/` | Core skills (`custom-linter-authoring`) |
+| `commands/` | Global slash commands (`fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden`, `apply-core`, `apply-canon`) |
+| `skills/` | Core skills (`custom-linter-authoring`, `app-legibility`) |
 | `hooks/` | PreToolUse / PostToolUse hook scripts |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
-| `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
+| `docs/harness-implementation.md` | Harness gap implementation details and file manifest |
+| `docs/Harness-vs-Ralph-Loop.md` | Comparison of harness patterns and Ralph Loop |
+| `docs/ralph-loop-reference.md` | Ralph Loop technical reference |
+| `docs/apply-core-and-ralph-loop.md` | Apply-core and Ralph Loop installation record |
+| `docs/Canon_Installation_Architecture_Analysis.md` | Core vs Canon installation architecture |
+| `DECISIONS.md` | Key architectural decisions log |
 | `canon/` | **Canon layer** — prediction market development (see below) |
 
 ---
@@ -80,11 +85,11 @@ hooks, and commands specifically for prediction market development.
 claude-code-config/             ← Core (this repo root)
 ├── CLAUDE.md                   ← You are here
 ├── rules/                      ← Language rules (glob-matched, load only for matching file types)
-├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup)
+├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup, apply-core, apply-canon)
 ├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
-├── skills/                     ← Core skills (to be created)
+├── skills/                     ← Core skills (custom-linter-authoring, app-legibility)
 │
 └── canon/                      ← Canon layer (prediction markets)
     ├── CLAUDE.md               ← Canon-specific context and conventions
@@ -215,7 +220,7 @@ Core harness is complete (all 7 gaps). Active work is now on the Canon layer:
 
 ### Plans vs references
 
-**Plans** (e.g. `ace/tasks/harness-implementation.md`) are already reasoned for best practices and desired outcomes. Follow them. They represent considered decisions — don't second-guess them without cause.
+**Plans** (e.g. `docs/exec-plans/active/<slug>/plan.md`) are already reasoned for best practices and desired outcomes. Follow them. They represent considered decisions — don't second-guess them without cause.
 
 **References** (external docs, meeting notes, roadmaps, linked articles) inform the plan but are not directives. When working from reference material:
 

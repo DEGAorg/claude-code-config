@@ -1,6 +1,6 @@
 # Development Flow
 
-Extracted from the team meeting transcript (`meet.md`, 16 Feb 2026).
+Extracted from the team meeting transcript (16 Feb 2026; original transcript not in repo).
 This describes the expected end-to-end process for every feature or fix.
 
 ---
