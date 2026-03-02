@@ -1,0 +1,112 @@
+--- item: Update `commands/canon-init.md` — switch URLs to `premar-demo`, add Canon commands + TS template ---
+Rewrote commands/canon-init.md with three major changes: (1) All 14 GitHub raw URLs
+switched from `main` to `premar-demo` branch. (2) Added step 5 to fetch 5 Canon command
+files (develop, ralph-cycle, discover, register, quick-dev) into `.claude/commands/`.
+(3) Added step 6 to scaffold a TypeScript project template (package.json with pinned deps
+typescript 5.9.3, vitest 4.0.18, oxlint 1.51.0, tsx 4.21.0; tsconfig.json with full strict
+settings; src/types/TradeSignal.ts and RiskInterface.ts stubs; .env.example; .gitignore).
+Also updated AGENTS.md template in step 10 to replace the "Available Tools (MCP)" section
+with "Available Commands" listing the 5 slash commands, since MCP tools don't exist yet.
+Updated post-init summary in step 11 to mention commands, TS template, and `pnpm install`
+as the first next step. File grew from 9 steps to 11 steps.
+---
+--- item: Fix `canon/commands/develop.md` — remove MCP dependencies ---
+Replaced all three MCP tool references in canon/commands/develop.md. Step 1: removed
+`canon_init --template` call, replaced with a file-existence check that directs users
+to run `/canon-init` if the scaffold is missing. Step 3: replaced `canon_test --timeframe 30d`
+with the three check commands from `.canon/ralph.yaml` (`pnpm exec tsc --noEmit`,
+`pnpm exec oxlint src/`, `pnpm exec vitest run`). Step 4: replaced `canon_ralph` with
+a local iterate loop (read failures, fix, re-run checks, repeat). Also updated the
+Completion criteria section from `npm`/`npx` commands to `pnpm exec` for consistency
+with the ralph.yaml checks and the canon-init template.
+---
+--- item: Fix `canon/commands/ralph-cycle.md` — remove MCP dependencies ---
+Two changes to canon/commands/ralph-cycle.md. (1) Removed the intro line referencing
+`canon_ralph` as a trigger — the workflow is simply invoked via `/ralph-cycle`, no MCP
+tool involved. (2) Replaced the hardcoded `npm test && npm run lint && npx tsc --noEmit`
+check suite and `canon_test` reference in step 2 with instructions to read and run every
+`check` command from `.canon/ralph.yaml` `success_criteria`, with `pnpm exec` examples
+matching the ralph.yaml template from canon-init. File went from 70 to 66 lines.
+---
+--- item: Fix `canon/commands/discover.md` — remove MCP dependencies ---
+Two changes to canon/commands/discover.md. (1) Step 1: replaced `canon_market` with
+instructions to research prediction markets using web search and the Polymarket API
+documentation URL. (2) Step 3: removed item 5 (`canon_init --template <template-name>`)
+since the template is now baked into `/canon-init` and doesn't need to be specified
+during strategy design. Also cleaned up the completion criteria to remove the now-irrelevant
+"template name" from the specification checklist. File went from 71 to 72 lines.
+---
+--- item: Copy `canon-init.md` to `~/.claude/commands/` ---
+Copied commands/canon-init.md to ~/.claude/commands/canon-init.md so `/canon-init` is
+available globally from any directory. Verified the copy is identical to the source (diff
+confirmed no differences). The global commands directory already had apply-core, cleanup,
+doc-garden, fix-issue, plan, and review-pr — canon-init now joins them. No file
+modifications were needed, just the copy operation.
+---
+--- item: End-to-end test in clean directory ---
+Ran full e2e test in a clean temp directory simulating the canon-init scaffold. Results:
+(1) All 19 GitHub raw URLs resolve with HTTP 200 (6 agents, 8 skills, 5 commands).
+(2) File structure is correct: .canon/agents/ (6), .canon/skills/ (8), .claude/commands/ (5),
+config.yaml, ralph.yaml, AGENTS.md, package.json, tsconfig.json, src/types/ stubs, .env.example,
+.gitignore. (3) Local command files are clean of MCP refs. (4) Global ~/.claude/commands/canon-init.md
+matches local source. BLOCKER FOUND: The 4 modified files (commands/canon-init.md, canon/commands/
+develop.md, ralph-cycle.md, discover.md) are uncommitted and unpushed. GitHub serves OLD versions —
+canon-init.md lacks the commands step and TS template, and the 3 command files still have MCP refs.
+Plus 2 commits (2757108, 4114a3a) not yet pushed. Need commit + push to premar-demo before demo.
+---
+--- item: All GitHub raw URLs in canon-init resolve (premar-demo branch) ---
+Verified all 19 GitHub raw URLs in canon-init.md. All return HTTP 200: 6 agents, 8 skills,
+5 commands. URLs all correctly point to premar-demo branch. However, 3 command files
+(develop.md, ralph-cycle.md, discover.md) serve STALE content on GitHub — they still
+contain canon_ MCP refs (4, 2, and 2 respectively). Local versions are clean (0 refs
+each). The 2 unpushed commits (2757108, 4114a3a) touch only CLAUDE.md, settings.json,
+and exec-plan files — none of the 19 URLs. BLOCKER: The 4 modified-but-uncommitted
+files must be committed and pushed to origin/premar-demo for GitHub to serve the
+corrected content. Without push, /canon-init will download old command files with MCP refs.
+---
+--- item: `/canon-init` from clean dir produces .canon/, .claude/commands/, and TS template ---
+Ran full simulation of canon-init steps in a clean temp directory. Created directory tree,
+fetched all 19 files from GitHub raw URLs, scaffolded TS template (package.json, tsconfig.json,
+TradeSignal.ts, RiskInterface.ts, .env.example, .gitignore), wrote config.yaml, ralph.yaml,
+execution/.gitkeep, and AGENTS.md. Results: all 28 files land correctly — 6 agents, 8 skills,
+5 commands, 3 config files, 6 TS template files, AGENTS.md. No empty files except .gitkeep.
+Known content issue persists: 3 command files (develop 4, ralph-cycle 2, discover 2 MCP refs)
+still serve stale content from GitHub because local fixes are uncommitted/unpushed. register.md
+has 3 canon_ refs but that's expected per plan ("Leave as-is"). Structure is fully verified.
+---
+--- item: `/develop` runs without referencing nonexistent MCP tools ---
+The develop.md command itself was already clean (fixed by earlier worker), but the skills
+and agents it loads still had canon_ MCP tool references. Fixed 5 files:
+(1) canon/skills/backtesting.md — removed tools: [canon_test], removed "canon_test" from
+context line. (2) canon/skills/ralph-loop.md — removed tools: [canon_ralph], replaced
+npm/npx stop_hook example with pnpm exec equivalents. (3) canon/skills/risk-management.md —
+removed tools: [canon_position], replaced "canon_position --action pnl" with generic
+"portfolio monitoring scripts". (4) canon/agents/dev.md — removed tools: [canon_init,
+canon_test, canon_ralph, canon_help], rewrote Responsibilities/Workflow/Handoff to use
+/canon-init and .canon/ralph.yaml checks instead of MCP tools. (5) canon/agents/qa.md —
+removed tools: [canon_test, canon_help], replaced "canon_test" in workflow step 3.
+Verified zero canon_ refs remain across all 7 files in the /develop dependency chain.
+---
+--- item: `/ralph-cycle` runs without referencing nonexistent MCP tools ---
+Verified the full /ralph-cycle dependency chain has zero canon_ MCP tool references.
+The command loads agent dev and skills ralph-loop, canon-conventions. Dev agent also
+loads backtesting and risk-management. All 6 files checked: ralph-cycle.md (command),
+dev.md (agent), ralph-loop.md, canon-conventions.md, backtesting.md, risk-management.md
+— all have tools: [] in frontmatter and no canon_ strings in content. No changes needed;
+the previous worker's fixes to dev.md, ralph-loop.md, backtesting.md, and risk-management.md
+during the /develop task already resolved all MCP references in this chain.
+---
+--- item: End-to-end: clean dir → `/canon-init` → Canon context fully loaded ---
+Ran full end-to-end simulation in a clean temp directory. Copied all 19 local files
+(the versions that will be served once pushed), scaffolded TS template, and verified:
+(1) All 14 config.yaml agent/skill mappings resolve to actual files. (2) All 5 command
+files reference agents and skills that exist. (3) TS template compiles clean — tsc
+--noEmit passes with TradeSignal.ts and RiskInterface.ts stubs. (4) Demo-critical
+dependency chains (/develop, /ralph-cycle, /quick-dev) have zero canon_ MCP refs across
+all commands, agents, and skills. (5) Non-demo chains (/discover, /register) have known
+canon_ refs in agents (market-analyst 2, strategy-architect 3, risk-analyst 2,
+deployment-ops 3) and skills (polymarket 3, strategy-patterns 8, prediction-markets 1,
+arena-tracking 5) — expected per plan scope. Final scaffold: 25 files total (excluding
+node_modules). All completion criteria now checked. Only blocker: uncommitted files must
+be pushed to origin/premar-demo for GitHub to serve corrected content.
+---

@@ -2,9 +2,10 @@
 
 @description Initialize Canon prediction-market framework in the current project directory.
 
-Scaffolds `.canon/` with agents, skills, config, ralph.yaml, and AGENTS.md into the
-**current working directory**. Does not touch `~/.claude/`. Run this from inside your
-strategy project, not from `claude-code-config`.
+Scaffolds `.canon/` with agents, skills, config, ralph.yaml, `.claude/commands/` with Canon
+slash commands, a TypeScript project template, and AGENTS.md into the **current working
+directory**. Does not touch `~/.claude/`. Run this from inside your strategy project, not
+from `claude-code-config`.
 
 ---
 
@@ -34,6 +35,10 @@ Create the following directories in the current working directory:
 ├── skills/
 ├── execution/
 └── workflows/
+.claude/
+└── commands/
+src/
+└── types/
 ```
 
 ---
@@ -44,12 +49,12 @@ Fetch each of the following files from GitHub and write them to `.canon/agents/`
 
 | File | URL |
 |------|-----|
-| `strategy-architect.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/strategy-architect.md` |
-| `risk-analyst.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/risk-analyst.md` |
-| `market-analyst.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/market-analyst.md` |
-| `dev.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/dev.md` |
-| `qa.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/qa.md` |
-| `deployment-ops.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/agents/deployment-ops.md` |
+| `strategy-architect.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/strategy-architect.md` |
+| `risk-analyst.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/risk-analyst.md` |
+| `market-analyst.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/market-analyst.md` |
+| `dev.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/dev.md` |
+| `qa.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/qa.md` |
+| `deployment-ops.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/agents/deployment-ops.md` |
 
 ---
 
@@ -59,18 +64,135 @@ Fetch each of the following files from GitHub and write them to `.canon/skills/`
 
 | File | URL |
 |------|-----|
-| `prediction-markets.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/prediction-markets.md` |
-| `polymarket.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/polymarket.md` |
-| `risk-management.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/risk-management.md` |
-| `strategy-patterns.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/strategy-patterns.md` |
-| `backtesting.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/backtesting.md` |
-| `arena-tracking.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/arena-tracking.md` |
-| `ralph-loop.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/ralph-loop.md` |
-| `canon-conventions.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/skills/canon-conventions.md` |
+| `prediction-markets.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/prediction-markets.md` |
+| `polymarket.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/polymarket.md` |
+| `risk-management.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/risk-management.md` |
+| `strategy-patterns.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/strategy-patterns.md` |
+| `backtesting.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/backtesting.md` |
+| `arena-tracking.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/arena-tracking.md` |
+| `ralph-loop.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/ralph-loop.md` |
+| `canon-conventions.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/skills/canon-conventions.md` |
 
 ---
 
-## 5. Write `.canon/config.yaml`
+## 5. Fetch Canon commands
+
+Fetch each of the following files from GitHub and write them to `.claude/commands/`:
+
+| File | URL |
+|------|-----|
+| `develop.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/develop.md` |
+| `ralph-cycle.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/ralph-cycle.md` |
+| `discover.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/discover.md` |
+| `register.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/register.md` |
+| `quick-dev.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/quick-dev.md` |
+
+---
+
+## 6. Scaffold TypeScript project template
+
+Create the following files **only if they don't already exist** in the project root.
+Skip any file that already exists to avoid overwriting user work.
+
+### `package.json`
+
+```json
+{
+  "name": "<directory-name>",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "lint": "oxlint src/",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "4.0.18",
+    "oxlint": "1.51.0",
+    "tsx": "4.21.0"
+  }
+}
+```
+
+Replace `<directory-name>` with the actual current directory name.
+
+### `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### `src/types/TradeSignal.ts`
+
+```typescript
+export interface TradeSignal {
+  marketId: string;
+  direction: "buy" | "sell";
+  confidence: number;
+  reasoning: string;
+  timestamp: Date;
+}
+```
+
+### `src/types/RiskInterface.ts`
+
+```typescript
+export interface RiskInterface {
+  maxPositionSize: number;
+  maxPortfolioExposure: number;
+  stopLossPercent: number;
+  validate(signal: unknown): { approved: boolean; reason: string };
+}
+```
+
+### `.env.example`
+
+```
+# API keys — copy to .env and fill in values
+POLYMARKET_API_KEY=
+ODDS_API_KEY=
+```
+
+### `.gitignore`
+
+```
+node_modules/
+dist/
+.env
+.canon/execution/
+*.tsbuildinfo
+```
+
+---
+
+## 7. Write `.canon/config.yaml`
 
 Derive the strategy name from the current directory name (e.g., if the directory is
 `sports-arb`, the strategy name is `sports-arb`). Write `.canon/config.yaml`:
@@ -159,7 +281,7 @@ Replace the strategy name comment with the actual directory name.
 
 ---
 
-## 6. Write `.canon/ralph.yaml`
+## 8. Write `.canon/ralph.yaml`
 
 Write `.canon/ralph.yaml` with placeholder success criteria. The user must edit this
 to match their specific strategy's check commands before running the Ralph Loop.
@@ -191,13 +313,13 @@ max_iterations: 5
 
 ---
 
-## 7. Create `.canon/execution/.gitkeep`
+## 9. Create `.canon/execution/.gitkeep`
 
 Write an empty `.gitkeep` file to `.canon/execution/` so the directory is tracked by git.
 
 ---
 
-## 8. Write `AGENTS.md`
+## 10. Write `AGENTS.md`
 
 Write `AGENTS.md` at the project root (not inside `.canon/`):
 
@@ -222,27 +344,27 @@ Write `AGENTS.md` at the project root (not inside `.canon/`):
 | risk-analyst | Evaluates risk and portfolio impact | Before registration |
 | deployment-ops | Registers on Arena, monitors tracked performance | Registering a strategy |
 
-## Available Tools (MCP)
-- `canon_init` — Scaffold strategy from template
-- `canon_register` — Register strategy on Arena for performance tracking
-- `canon_test` — Run against historical data
-- `canon_market` — Query market data (Polymarket, Kalshi)
-- `canon_position` — Check positions, P&L, portfolio
-- `canon_ralph` — Run Ralph Loop iteration
-- `canon_activity` — Query execution data (trades, decisions, signals)
-- `canon_help` — Get contextual guidance
+## Available Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/develop` | Scaffold, implement, test, iterate (full build cycle) |
+| `/ralph-cycle` | Execute success criteria checks and iterate until SHIP |
+| `/discover` | Market analysis, opportunity identification, strategy design |
+| `/register` | Risk review, pre-registration checks, Arena tracking |
+| `/quick-dev` | Small changes with lightweight validation |
 
 ## Key Workflows
-1. **Discover** (`/discover`): Market analysis → opportunity → strategy design
-2. **Develop** (`/develop`): Scaffold → implement → test → iterate (Ralph Loop)
-3. **Register** (`/register`): Risk review → pre-registration checks → Arena tracking
-4. **Ralph Cycle** (`/ralph-cycle`): Execute → check → iterate → SHIP or ESCALATE
+1. **Discover** (`/discover`): Market analysis -> opportunity -> strategy design
+2. **Develop** (`/develop`): Verify scaffold -> implement -> test -> iterate (Ralph Loop)
+3. **Register** (`/register`): Risk review -> pre-registration checks -> Arena tracking
+4. **Ralph Cycle** (`/ralph-cycle`): Execute -> check -> iterate -> SHIP or ESCALATE
 5. **Quick Dev** (`/quick-dev`): Small changes with lightweight validation
 
 ## Non-Negotiable Rules
 1. All strategies implement TradeSignal + RiskInterface
 2. Position size never >5% of portfolio
-3. Domain layering: Types → Config → Repo → Service → Runtime → UI
+3. Domain layering: Types -> Config -> Repo -> Service -> Runtime -> UI
 4. Error messages include what/why/how
 5. "If it's not in the repo, it doesn't exist"
 
@@ -267,7 +389,7 @@ platform-specific knowledge, see `.canon/skills/`:
 
 ---
 
-## 9. Post-init summary
+## 11. Post-init summary
 
 Print a summary of what was created:
 
@@ -275,16 +397,25 @@ Print a summary of what was created:
 Canon initialized in <current-directory>/
 
   .canon/
-    agents/   — 6 agent personas
-    skills/   — 8 domain knowledge modules
+    agents/    — 6 agent personas
+    skills/    — 8 domain knowledge modules
     execution/ — decision logs written here at runtime
     workflows/ — Phase I: use slash commands instead (/develop, /ralph-cycle)
     config.yaml
-    ralph.yaml  ← edit success_criteria to match your strategy's check commands
+    ralph.yaml  <- edit success_criteria to match your strategy's check commands
+
+  .claude/commands/
+    develop.md, ralph-cycle.md, discover.md, register.md, quick-dev.md
+
+  src/types/
+    TradeSignal.ts, RiskInterface.ts
+
+  package.json, tsconfig.json, .env.example, .gitignore
   AGENTS.md
 
 Next steps:
-  1. Edit .canon/ralph.yaml — set the check commands for your strategy
-  2. Run /develop to start building with Canon agents
-  3. Run /ralph-cycle to iterate until all checks pass
+  1. Run: pnpm install
+  2. Edit .canon/ralph.yaml — set the check commands for your strategy
+  3. Run /develop to start building with Canon agents
+  4. Run /ralph-cycle to iterate until all checks pass
 ```

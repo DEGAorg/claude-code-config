@@ -9,7 +9,8 @@ Run every step below in order. Do not stop between steps.
 
 ## 1. Scan markets
 
-As market-analyst, query available markets using canon_market.
+As market-analyst, research available prediction markets using web search
+and the Polymarket API documentation (https://docs.polymarket.com/).
 
 Scan for:
 - Notable price movements (>10% in 24h)
@@ -58,7 +59,6 @@ Steps:
    - Minimum profit factor (recommend >1.2)
    - Maximum drawdown (recommend <15%)
    - Minimum trade count (must be ≥30)
-5. Specify the canon_init template: `canon_init --template <template-name>`
 
 Output: Complete strategy design specification.
 
@@ -66,6 +66,6 @@ Output: Complete strategy design specification.
 
 - Market scan report with ≥3 opportunities produced
 - Single opportunity selected with documented rationale
-- Strategy design specification includes: archetype, template name, entry/exit logic,
+- Strategy design specification includes: archetype, entry/exit logic,
   risk parameters, backtest success criteria, target market IDs
 - Specification is ready to hand off to the develop workflow

@@ -5,7 +5,6 @@
 Load agent: dev.
 Load skills: ralph-loop, canon-conventions.
 
-This workflow is triggered by `canon_ralph` or when Ralph Loop is configured in `.canon/ralph.yaml`.
 Run every step below. The loop repeats steps 1-3 until the SHIP or ESCALATE condition is met.
 
 ## 1. Execute
@@ -23,14 +22,10 @@ Apply changes. Follow domain layering and error message conventions.
 
 ## 2. Check
 
-Run the automated check suite defined in `ralph.yaml`'s `stop_hook`:
+Run every check command listed in `.canon/ralph.yaml` under `success_criteria`.
 
-```
-npm test && npm run lint && npx tsc --noEmit
-```
-
-Also run any custom criteria defined in `ralph.yaml` (e.g., `canon_test` with
-backtest thresholds).
+For each entry, run the `check` command (e.g., `pnpm exec tsc --noEmit`,
+`pnpm exec oxlint src/`, `pnpm exec vitest run`).
 
 Record each criterion: pass ✓ or fail ✗ with the specific failure message.
 

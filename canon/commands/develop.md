@@ -8,21 +8,23 @@ Load skills: canon-conventions, backtesting, ralph-loop, risk-management.
 
 Run every step below in order. Do not stop or ask for confirmation between steps.
 
-## 1. Scaffold
+## 1. Verify scaffold
 
-As dev, scaffold the strategy project from the design specification.
+As dev, verify the project scaffold exists before implementing.
 
-```
-canon_init --template <template-name-from-spec> --name <strategy-name>
-```
-
-Verify the scaffolded project contains:
-- `src/strategy.ts`
+Check that these files are present:
+- `package.json`
+- `tsconfig.json`
 - `src/types/TradeSignal.ts`
 - `src/types/RiskInterface.ts`
 - `.canon/ralph.yaml`
+- `.canon/config.yaml`
 - `AGENTS.md`
-- `package.json`
+
+If any are missing, stop and tell the user:
+
+> Project scaffold is incomplete. Run `/canon-init` first to set up the Canon
+> framework, then re-run `/develop`.
 
 ## 2. Implement
 
@@ -41,34 +43,35 @@ Do not skip RiskInterface. "I'll add it later" is not acceptable.
 
 ## 3. Test
 
-Run the strategy against historical data:
+Run every check command from `.canon/ralph.yaml` `success_criteria`:
 
 ```
-canon_test --timeframe 30d
+pnpm exec tsc --noEmit
+pnpm exec oxlint src/
+pnpm exec vitest run
 ```
 
-Review results. Note: canon_test completing without runtime errors is the
-minimum bar — check backtest metrics against the design spec's success criteria.
+All three must pass. If `.canon/ralph.yaml` has additional strategy-specific
+checks beyond these defaults, run those too.
+
+Review test results against the design spec's success criteria — tests passing
+is the minimum bar, also check backtest metrics if applicable.
 
 ## 4. Iterate (Ralph Loop)
 
-If backtest criteria from the design spec are not met, run Ralph Loop:
+If any checks from step 3 fail, or backtest criteria from the design spec are
+not met, iterate:
 
-```
-canon_ralph
-```
+1. Read the failing check output to identify what broke.
+2. Fix the issue in code.
+3. Re-run all check commands from `.canon/ralph.yaml` `success_criteria`.
+4. Repeat until all checks pass.
 
-Configure `.canon/ralph.yaml` with:
-- `success_criteria` matching the design spec's backtest targets
-- `max_iterations: 20`
-- `budget.max_spend: "$5.00"`
-- `stop_hook: npm test && npm run lint && npx tsc --noEmit`
+Load ralph-loop skill for iteration guidance.
 
-Load ralph-loop skill for configuration guidance.
-
-Continue iterating until all criteria pass or budget is exhausted. If budget
-exhausted without meeting criteria, surface the specific failing criteria for
-human review before proceeding.
+The `max_iterations` in `.canon/ralph.yaml` limits how many cycles to attempt.
+If the limit is reached without meeting all criteria, surface the specific
+failing criteria for human review before proceeding.
 
 ## 5. QA review
 
@@ -90,9 +93,9 @@ Verdict:
 
 ## Completion criteria
 
-- Tests pass (`npm test`)
-- Lint clean (`npm run lint`)
-- Types valid (`npx tsc --noEmit`)
+- Tests pass (`pnpm exec vitest run`)
+- Lint clean (`pnpm exec oxlint src/`)
+- Types valid (`pnpm exec tsc --noEmit`)
 - Backtest criteria from design spec met
 - QA approved (≥30 trades, profit_factor ≥1.0, no blocking biases)
 - QA-approved strategy ready to hand off to register workflow

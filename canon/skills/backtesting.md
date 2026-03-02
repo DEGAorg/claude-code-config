@@ -4,13 +4,13 @@ description: How to test strategies against historical data and interpret result
 version: 1.0.0
 domain: prediction-markets
 requires: [prediction-markets, risk-management]
-tools: [canon_test]
+tools: []
 ---
 
 # Backtesting Methodology
 
 ## Context
-Load this skill when testing strategies with canon_test or interpreting backtest results.
+Load this skill when testing strategies or interpreting backtest results.
 
 ## Core Knowledge
 

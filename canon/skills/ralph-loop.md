@@ -4,7 +4,7 @@ description: How to configure and operate Canon's Ralph Loop autonomous iteratio
 version: 1.0.0
 domain: workflow
 requires: [canon-conventions]
-tools: [canon_ralph]
+tools: []
 ---
 
 # Ralph Loop Operation
@@ -47,7 +47,7 @@ ralph_loop:
   on_stuck: escalate_to_human
 
   stop_hook: |
-    npm test && npm run lint && npx tsc --noEmit
+    pnpm exec vitest run && pnpm exec oxlint src/ && pnpm exec tsc --noEmit
 ```
 
 ### When to Use Ralph Loop

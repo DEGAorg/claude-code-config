@@ -4,7 +4,7 @@ description: Position sizing, exposure limits, portfolio risk rules
 version: 1.0.0
 domain: risk
 requires: [prediction-markets]
-tools: [canon_position]
+tools: []
 ---
 
 # Risk Management Patterns
@@ -35,7 +35,7 @@ Every strategy must implement the RiskInterface. This skill defines the rules.
 - Rebalance when any position exceeds 5% threshold
 
 ### Risk Monitoring
-- Real-time P&L tracking via `canon_position --action pnl`
+- Real-time P&L tracking via portfolio monitoring scripts
 - Portfolio heat map: Which positions are driving variance
 - Correlation matrix: Which positions move together
 - Time-to-resolution: Capital efficiency optimization
