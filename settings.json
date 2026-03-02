@@ -104,14 +104,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/scripts/ralph-check.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash ~/.claude/hooks/play-sound.sh"
           }
         ]

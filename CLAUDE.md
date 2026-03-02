@@ -244,11 +244,6 @@ Each plan is a directory — read `active/<slug>/plan.md`, find the first unchec
 
 ### Ralph Loop
 
-**Interactive sessions:** The Stop hook in `settings.json` runs
-`bash ~/.claude/scripts/ralph-check.sh` automatically when Claude tries to stop.
-The script reads `success_criteria` from the project's `ralph.yaml` and runs each
-check. If any criteria fail, keep working.
-
 **Automated / AFK sessions:** Use the outer loop to drive worker and reviewer agents
 until the reviewer outputs SHIP and the health check passes:
 
