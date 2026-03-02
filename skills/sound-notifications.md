@@ -30,6 +30,7 @@ entirely — the hook exits immediately without launching a player.
 | `super-mario-bros` | Classic game sound |
 | `yeahoo` | Short celebration |
 | `warzone-level-up` | Level-up chime |
+| `tick` | 100ms 880Hz sine tone — used automatically during Ralph Loop |
 
 Sound files live in `~/.claude/dega/sounds/` in both MP3 and OGG formats.
 
@@ -48,6 +49,29 @@ Sound files live in `~/.claude/dega/sounds/` in both MP3 and OGG formats.
 On Linux, the script tries players in priority order: `mpv` > `ffplay` >
 `paplay` > WSL2 PowerShell. The first available player is used. If none is
 found, playback is silently skipped.
+
+---
+
+## Ralph Loop behavior
+
+When running inside a Ralph Loop (`scripts/ralph-loop.sh`), sound behavior
+changes automatically — no user configuration needed.
+
+| Event | Sound | Volume | Mechanism |
+|-------|-------|--------|-----------|
+| Per-item completion (worker/reviewer) | `tick` | 15% | `RALPH_LOOP=1` env var |
+| Loop SHIP (all items pass review) | User's configured sound | User's configured volume | `ralph-loop.sh` calls `play-sound.sh` directly |
+
+**How it works:** `ralph-loop.sh` exports `RALPH_LOOP=1` when spawning worker
+and reviewer agents. The Stop hook's `play-sound.sh` detects this variable and
+overrides the sound to `tick` at 15% volume. Since `RALPH_LOOP` is not in
+`settings.json`, it survives the env clobber that `claude -p` applies from
+settings. On SHIP, `ralph-loop.sh` reads the user's `CLAUDE_SOUND` and
+`CLAUDE_SOUND_VOLUME` from `settings.json` and calls `play-sound.sh` without
+`RALPH_LOOP`, so the full configured sound plays once.
+
+Setting `CLAUDE_SOUND=none` disables all sounds, including ticks during Ralph
+Loop runs. The `none` check runs before the `RALPH_LOOP` check.
 
 ---
 

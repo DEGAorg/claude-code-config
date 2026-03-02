@@ -7,6 +7,7 @@ set -euo pipefail
 # Environment variables:
 #   CLAUDE_SOUND         Sound name (default: unstoppable). Set to "none" to disable.
 #   CLAUDE_SOUND_VOLUME  Playback volume 0–100 (default: 50).
+#   RALPH_LOOP           Set to "1" by ralph-loop.sh — plays tick at 15% volume.
 
 sound_name="${CLAUDE_SOUND:-unstoppable}"
 
@@ -17,6 +18,12 @@ sounds_dir="$HOME/.claude/dega/sounds"
 
 # Volume: 0-100 scale, default 50
 vol="${CLAUDE_SOUND_VOLUME:-50}"
+
+# Ralph loop mode: play tick at low volume instead of configured sound
+if [[ "${RALPH_LOOP:-}" == "1" ]]; then
+	sound_name="tick"
+	vol=15
+fi
 
 # Normalize volume to each player's native range
 # afplay:      0.0–1.0 (float)  — vol/100

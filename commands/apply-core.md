@@ -52,6 +52,8 @@ Files available:
 - `sounds/super-mario-bros.ogg`
 - `sounds/yeahoo.ogg`
 - `sounds/warzone-level-up.ogg`
+- `sounds/tick.mp3`
+- `sounds/tick.ogg`
 - `hooks/play-sound.sh`
 
 ---
@@ -224,6 +226,8 @@ Write each sound file (MP3 and OGG) to `~/.claude/dega/sounds/`:
 - `sounds/super-mario-bros.ogg` → `~/.claude/dega/sounds/super-mario-bros.ogg`
 - `sounds/yeahoo.ogg` → `~/.claude/dega/sounds/yeahoo.ogg`
 - `sounds/warzone-level-up.ogg` → `~/.claude/dega/sounds/warzone-level-up.ogg`
+- `sounds/tick.mp3` → `~/.claude/dega/sounds/tick.mp3`
+- `sounds/tick.ogg` → `~/.claude/dega/sounds/tick.ogg`
 
 Safe to overwrite — these are static assets with no user customization.
 OGG files are needed for `paplay` on Linux (cannot decode MP3).

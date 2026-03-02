@@ -132,13 +132,13 @@ Move `docs/exec-plans/active/sound-hooks-linux/` to
 
 ## Progress log
 
-- [ ] Generate `tick.mp3` and `tick.ogg` using ffmpeg
-- [ ] Update `hooks/play-sound.sh` — add `RALPH_LOOP` detection
-- [ ] Update `scripts/ralph-loop.sh` — add `RALPH_LOOP=1` to spawns, add completion sound
-- [ ] Shellcheck and shfmt modified scripts
-- [ ] Update `skills/sound-notifications.md` — add Ralph Loop section
-- [ ] Update `commands/apply-core.md` — add tick sounds to source list
-- [ ] Move `sound-hooks-linux` plan to completed
+- [x] Generate `tick.mp3` and `tick.ogg` using ffmpeg
+- [x] Update `hooks/play-sound.sh` — add `RALPH_LOOP` detection
+- [x] Update `scripts/ralph-loop.sh` — add `RALPH_LOOP=1` to spawns, add completion sound
+- [x] Shellcheck and shfmt modified scripts
+- [x] Update `skills/sound-notifications.md` — add Ralph Loop section
+- [x] Update `commands/apply-core.md` — add tick sounds to source list
+- [x] Move `sound-hooks-linux` plan to completed
 
 ## Decision log
 
@@ -153,14 +153,14 @@ Move `docs/exec-plans/active/sound-hooks-linux/` to
 
 ## Completion criteria
 
-- [ ] `tick.mp3` and `tick.ogg` exist in `sounds/`
-- [ ] During ralph loop, per-item Stop hook plays tick at low volume
-- [ ] On SHIP, ralph-loop.sh plays the configured completion sound once
-- [ ] Interactive sessions (no RALPH_LOOP) are unaffected
-- [ ] `skills/sound-notifications.md` documents ralph loop behavior
-- [ ] `commands/apply-core.md` includes tick sound files
-- [ ] Modified scripts pass shellcheck and shfmt
-- [ ] `sound-hooks-linux` plan moved to completed
+- [x] `tick.mp3` and `tick.ogg` exist in `sounds/`
+- [x] During ralph loop, per-item Stop hook plays tick at low volume
+- [x] On SHIP, ralph-loop.sh plays the configured completion sound once
+- [x] Interactive sessions (no RALPH_LOOP) are unaffected
+- [x] `skills/sound-notifications.md` documents ralph loop behavior
+- [x] `commands/apply-core.md` includes tick sound files
+- [x] Modified scripts pass shellcheck and shfmt
+- [x] `sound-hooks-linux` plan moved to completed
 
 ## Follow-up (post-loop, human action)
 

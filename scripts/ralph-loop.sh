@@ -172,7 +172,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 
 ${HANDOFF}"
 		fi
-		env -u CLAUDECODE claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
+		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
 	done
 	# All items processed — mark last task claimed so health check passes
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
@@ -201,7 +201,7 @@ ${HANDOFF}"
 	# --- Reviewer phase ---
 	echo "→ reviewer: evaluating..."
 	REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
-	env -u CLAUDECODE claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+	env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
 	echo "→ reviewer: done"
 
 	# --- Read reviewer decision ---
@@ -241,6 +241,14 @@ complete ${TASK_SLUG} (ralph loop, iteration ${i})
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 EOF
 			)"
+			# Play completion sound (full configured sound, not tick)
+			_settings="${HOME}/.claude/settings.json"
+			if [[ -f "$_settings" ]]; then
+				_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
+				_volume=$(jq -r '.env.CLAUDE_SOUND_VOLUME // "50"' "$_settings")
+				CLAUDE_SOUND="${_sound}" CLAUDE_SOUND_VOLUME="${_volume}" \
+					bash "${HOME}/.claude/hooks/play-sound.sh" &
+			fi
 			echo ""
 			echo "ralph-loop: DONE — shipped after ${i} iteration(s)."
 			exit 0
