@@ -1,0 +1,8 @@
+DONE:
+- Verified completion criterion: running /canon-init in an empty directory creates .canon/ with 6 agents, 8 skills, config.yaml, ralph.yaml, execution/, and AGENTS.md at root
+
+REMAINING:
+- none — all progress log items and completion criteria are checked
+
+BLOCKERS:
+- none

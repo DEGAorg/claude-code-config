@@ -1,0 +1,19 @@
+{
+  "slug": "canon-init",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Running `/canon-init` in an empty directory creates `.canon/` with 6 agents, 8 skills,",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "d96832769ccd93cc2c884cb6e5c2d7de577bd9daa546775b3d2f1d06b53f84ad",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}
