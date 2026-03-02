@@ -1,3 +1,13 @@
+---
+name: app-legibility
+description: >
+  Reference: how to make running applications observable to agents. Load when
+  scaffolding a new service, adding observability, or diagnosing why an agent
+  cannot inspect a running application. Covers log file redirection,
+  per-worktree port and database isolation, health endpoints, and crash surfacing.
+user-invocable: false
+---
+
 # App Legibility for Agents
 
 How to make a running application observable to agents. Use this skill when

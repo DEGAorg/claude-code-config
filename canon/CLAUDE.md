@@ -23,8 +23,8 @@ canon/
 
 Canon **depends on** Core. Core **never depends on** Canon.
 
-- Core provides: dev pipeline, harness patterns, generic commands (`/fix-issue`, `/review-pr`,
-  `/plan`, `/cleanup`), generic hooks, generic skills.
+- Core provides: dev pipeline, harness patterns, generic commands (`/dega:fix-issue`, `/dega:review-pr`,
+  `/dega:plan`, `/dega:cleanup`), generic hooks, generic skills.
 - Canon provides: prediction market domain models, market analysis agents, oracle integration
   patterns, position management skills, domain-specific linters and hooks.
 
@@ -37,8 +37,8 @@ When a Canon pattern proves useful beyond prediction markets, promote it to Core
 Requires Core to be installed first:
 
 ```
-/apply-core            # Install generic AI development infrastructure
-/apply-canon           # Layer Canon on top
+/dega:apply-core       # Install generic AI development infrastructure
+/dega:canon-init       # Scaffold Canon in current project (run from strategy directory)
 ```
 
 ---
@@ -77,4 +77,4 @@ This layer is being scaffolded. Next steps:
 1. Define the Canon domain model in `docs/`.
 2. Create first Canon-specific skills for market analysis.
 3. Create first Canon-specific agents with domain personas.
-4. ~~Build the `/apply-canon` command.~~ **Done** — `commands/apply-canon.md` created.
+4. ~~Build the `/dega:canon-init` command.~~ **Done** — `commands/canon-init.md` created.

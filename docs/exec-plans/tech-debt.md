@@ -1,7 +1,7 @@
 # Technical Debt Tracker
 
 Known debt items that aren't worth fixing immediately but should be tracked.
-Add items here during `/fix-issue` or `/cleanup` runs when debt is discovered
+Add items here during `/dega:fix-issue` or `/dega:cleanup` runs when debt is discovered
 but out of scope for the current PR.
 
 ---

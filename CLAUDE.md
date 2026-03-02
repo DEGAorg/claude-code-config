@@ -11,7 +11,7 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 **Ace** works on **Phase I** of the Canon MVP Technical Roadmap, across both Core and Canon layers.
 
 - **Core harness** (all 7 gaps): complete. Core artifacts must remain project-agnostic.
-- **Canon layer** (`canon/`): now active. Skills, agents, hooks, commands, and the `/apply-canon` installation command.
+- **Canon layer** (`canon/`): now active. Skills, agents, hooks, commands, and the `/dega:canon-init` installation command.
 - **Ignore Canon Arena**: No Arena web dashboard, no Arena frontend, no leaderboard UI, no UI work of any kind. Arena is out of scope for Ace.
 
 Source of truth for Phase I scope: `../../canon-docs/Canon_MVP_Technical_Roadmap.md`
@@ -64,7 +64,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
-| `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
+| `docs/QUALITY.md` | Quality grades by codebase area — updated by `/dega:cleanup` |
 | `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
 | `canon/` | **Canon layer** — prediction market development (see below) |
 
@@ -108,8 +108,8 @@ claude-code-config/             ← Core (this repo root)
 
 Two commands, no manual file copying:
 
-- `/apply-core` — installs all Core artifacts globally (`~/.claude/`)
-- `/apply-canon` — installs Canon artifacts on top of Core
+- `/dega:apply-core` — installs Core artifacts globally (`~/.claude/`) or into a specific project (`<project>/.claude/`). The user chooses the target at install time.
+- `/dega:canon-init` — scaffolds Canon layer in the current project (run from strategy directory)
 
 ---
 
@@ -170,8 +170,8 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 - **Context loading** before Stage 4 (lean CLAUDE.md map + rules/)
 - **Versioned specs** at Stage 2 (`docs/exec-plans/active/`)
 - **Convergence loop** at Stage 8 (up to 3 review rounds)
-- **Weekly `/cleanup`** cadence for drift detection
-- **ast-grep lints + `/doc-garden`** before PR merge
+- **Weekly `/dega:cleanup`** cadence for drift detection
+- **ast-grep lints + `/dega:doc-garden`** before PR merge
 
 ---
 
@@ -182,14 +182,14 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 Core harness is complete (all 7 gaps). Active work is now on the Canon layer:
 
 1. Scaffold `canon/` with Canon-specific skills, agents, hooks, and commands.
-2. Build `/apply-canon` installation command (mirrors `/apply-core` for Canon artifacts).
+2. Build `/dega:canon-init` command (scaffolds Canon in project; mirrors `/dega:apply-core` pattern).
 3. Wire `canon_ralph` integration — MCP tool shim connecting Ralph Loop to Canon success criteria.
 
 ### Key concepts
 
 | Concept | Description |
 |---|---|
-| **Commands** | Step-by-step procedures (`/fix-issue`, `/review-pr`). Slash-invoked. |
+| **Commands** | Step-by-step procedures (`/dega:fix-issue`, `/dega:review-pr`). Slash-invoked. |
 | **Skills** | Knowledge/style injected into context. Shape how Claude thinks. |
 | **Hooks** | Shell scripts on lifecycle events. Guardrails, not walls. |
 | **Agents** | Specialized subagents with focused personas and tool sets. |

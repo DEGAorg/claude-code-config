@@ -20,7 +20,7 @@ This resolved the three open questions from `docs/Canon_Installation_Architectur
 - Fetches from GitHub (works from any directory, no repo clone needed)
 - Interactive multi-select (asks what to install, recommends missing components)
 - Merges settings.json keys, never silently overwrites
-- Self-installs to `~/.claude/commands/apply-core.md`
+- Self-installs to `~/.claude/commands/dega/apply-core.md`
 
 **Global install completed 2026-02-20** (from `ace-work` branch, local copy used
 since WebFetch summarizes content — GitHub fetch will work correctly post-merge to main).

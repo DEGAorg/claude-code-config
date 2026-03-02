@@ -61,7 +61,7 @@ Canon `CLAUDE.md` gets a single new section: a pointer to Core harness and the d
 
 #### Gap 5: Agent-to-Agent Review Convergence Loop
 
-**Problem:** `/fix-issue` and `/review-pr` do one round: implement → review → fix → done. No re-review after fixes. Regressions introduced by fixes go undetected.
+**Problem:** `/dega:fix-issue` and `/dega:review-pr` do one round: implement → review → fix → done. No re-review after fixes. Regressions introduced by fixes go undetected.
 
 **Fix:**
 
@@ -81,7 +81,7 @@ Round 1 uses the full multi-agent review. Rounds 2+ use lightweight self-review 
 
 #### Gap 2: Execution Plans as First-Class Artifacts
 
-**Problem:** `/fix-issue` writes a plan file to the repo root, then **deletes it** on commit. Plans are ephemeral. Agents in subsequent sessions have no record of what was tried, decided, or why.
+**Problem:** `/dega:fix-issue` writes a plan file to the repo root, then **deletes it** on commit. Plans are ephemeral. Agents in subsequent sessions have no record of what was tried, decided, or why.
 
 **Fix:**
 
@@ -232,8 +232,8 @@ and enforced via ast-grep rules with agent-friendly error messages.
 ## Verification
 
 1. **Gap 1**: `claude-md-template.md` is ≤ 100 lines, no language-specific toolchain content. `rules/` files exist with correct glob metadata at top.
-2. **Gap 5**: `/fix-issue` steps show convergence loop section with "up to 3 rounds" language. `/review-pr` matches.
-3. **Gap 2**: `docs/exec-plans/active/` and `completed/` exist. `/fix-issue` writes plans there. `/plan` command creates a plan file in `active/`.
+2. **Gap 5**: `/dega:fix-issue` steps show convergence loop section with "up to 3 rounds" language. `/dega:review-pr` matches.
+3. **Gap 2**: `docs/exec-plans/active/` and `completed/` exist. `/dega:fix-issue` writes plans there. `/dega:plan` command creates a plan file in `active/`.
 4. **Gap 6**: `commands/cleanup.md` exists. `docs/QUALITY.md` exists as template. Golden principles appear in `claude-md-template.md`.
 5. **Gap 3**: `commands/doc-garden.md` exists. `settings.json` has a PostToolUse hook entry.
 6. **Gap 4**: `skills/custom-linter-authoring.md` exists. `canon/rules/domain-layering.md` exists with example ast-grep rule and agent-friendly error message.

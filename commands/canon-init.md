@@ -13,7 +13,7 @@ strategy project, not from `claude-code-config`.
 **Guard:** If the current directory is `claude-code-config` (i.e., this repo itself),
 stop immediately and tell the user:
 
-> Run `/canon-init` from inside your strategy project directory, not from
+> Run `/dega:canon-init` from inside your strategy project directory, not from
 > `claude-code-config`. Navigate to your project first, then re-run.
 
 **Overwrite check:** If `.canon/` already exists in the current directory, ask the user:

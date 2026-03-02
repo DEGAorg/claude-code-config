@@ -1,6 +1,6 @@
 # Codebase Quality Grades
 
-Quality assessment by area. Updated during `/cleanup` runs and after
+Quality assessment by area. Updated during `/dega:cleanup` runs and after
 significant refactors. Agents read this to understand where to focus
 scrutiny during reviews and where to be cautious when making changes.
 
@@ -27,7 +27,7 @@ scrutiny during reviews and where to be cautious when making changes.
 
 **Grade:** [A–F]
 **Last reviewed:** YYYY-MM-DD
-**Reviewer:** [human or `/cleanup` run]
+**Reviewer:** [human or `/dega:cleanup` run]
 
 **Strengths:**
 - ...
@@ -46,4 +46,4 @@ scrutiny during reviews and where to be cautious when making changes.
 
 ### (No areas graded yet)
 
-Run `/cleanup` to perform the first scan, then populate grades here.
+Run `/dega:cleanup` to perform the first scan, then populate grades here.

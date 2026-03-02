@@ -46,7 +46,7 @@ that surrounding infrastructure so agents are reliable, consistent, and self-cor
 │  Entropy Reduction                                          │
 │  ├── Doc-gardening agents   (stale docs, broken links)      │
 │  ├── Code gardening agents  (principle drift detection)     │
-│  └── /cleanup command       (weekly GC cadence)             │
+│  └── /dega:cleanup command   (weekly GC cadence)             │
 │                                                             │
 │  Feedback Loops                                             │
 │  ├── Convergence review loop (up to 3 rounds)               │
@@ -84,7 +84,7 @@ From the gap analysis against OpenAI's methodology:
 | 3 | Doc-gardening automation | Automated stale-doc detection and repair |
 | 4 | Custom linters | ast-grep rules with *what/why/how* error messages |
 | 5 | Convergence review loop | Agent-to-agent review up to 3 rounds |
-| 6 | Entropy / garbage collection | `/cleanup` command + golden principles |
+| 6 | Entropy / garbage collection | `/dega:cleanup` command + golden principles |
 | 7 | Application legibility | App-per-worktree, console error streaming |
 
 ---

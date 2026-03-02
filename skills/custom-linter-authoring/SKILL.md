@@ -1,3 +1,13 @@
+---
+name: custom-linter-authoring
+description: >
+  Reference: how to write ast-grep lint rules with agent-friendly error messages.
+  Load when authoring a new lint rule, encoding a recurring code-review comment
+  as a structural check, or deciding whether a pattern belongs in CLAUDE.md vs
+  a lint rule. Trigger: same mistake corrected twice in review.
+user-invocable: false
+---
+
 # Custom Linter Authoring
 
 How to write `ast-grep` rules with agent-friendly error messages. Use this skill

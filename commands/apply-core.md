@@ -1,9 +1,13 @@
 # Apply Core
 
-@description Install DEGA Core AI development artifacts globally to ~/.claude/ and Ralph Loop scripts per-repo into the current working directory.
+@description Install DEGA Core AI development artifacts globally (~/.claude/) or into a specific project (.claude/), with Ralph Loop scripts per-repo.
 
-Install Core harness artifacts from GitHub into `~/.claude/`. Works from any
-directory — no need to clone the repo.
+Install Core harness artifacts from GitHub. Supports two install targets:
+
+- **Global** (`~/.claude/`) — applies to all projects on this machine
+- **Project** (`<project>/.claude/`) — applies to a specific project only
+
+Works from any directory — no need to clone the repo.
 
 ## Source
 
@@ -31,8 +35,8 @@ Files available:
 - `hooks/update-exec-plan-reminder.sh`
 - `hooks/session-start-logging.sh`
 - `hooks/structured-log.sh`
-- `skills/custom-linter-authoring.md`
-- `skills/app-legibility.md`
+- `skills/custom-linter-authoring/SKILL.md`
+- `skills/app-legibility/SKILL.md`
 - `scripts/log-server.py`
 - `ralph.yaml`
 - `scripts/ralph-check.sh`
@@ -47,22 +51,46 @@ Files available:
 
 ## Steps
 
-### 1. Inventory what exists
+### 1. Choose install target
 
-Read and note which of these already exist:
-- `~/.claude/settings.json`
-- `~/.claude/CLAUDE.md`
-- `~/.claude/commands/fix-issue.md`
-- `~/.claude/commands/review-pr.md`
-- `~/.claude/commands/plan.md`
-- `~/.claude/commands/cleanup.md`
-- `~/.claude/commands/doc-garden.md`
-- `~/.claude/rules/` (any files)
-- `~/.claude/hooks/` (any files)
-- `~/.claude/skills/` (any files)
-- `~/.claude/scripts/` (any files)
+Use AskUserQuestion to ask the user where to install:
 
-Also check in the current working directory (target project root):
+- **Global** (`~/.claude/`) — applies to all projects on this machine
+- **Project** — applies to a specific project only
+
+If the user selects **Project**:
+
+1. Ask for the **absolute path** to the project root.
+2. Verify the directory exists. If not, stop and tell the user.
+3. Attempt to create `<path>/.claude/` if it doesn't exist. If creation
+   fails (permission denied), tell the user to grant edit access for that
+   path and stop.
+
+Set two variables used throughout the remaining steps:
+
+| Variable | Global | Project |
+|----------|--------|---------|
+| `$BASE` | `~/.claude` | `<project-path>/.claude` |
+| `$PROJECT_ROOT` | *(not set — Ralph Loop uses cwd)* | `<project-path>` |
+
+---
+
+### 2. Inventory what exists
+
+Read and note which of these already exist under `$BASE`:
+- `$BASE/settings.json`
+- CLAUDE.md — `~/.claude/CLAUDE.md` (global) or `$PROJECT_ROOT/CLAUDE.md` (project)
+- `$BASE/commands/dega/fix-issue.md`
+- `$BASE/commands/dega/review-pr.md`
+- `$BASE/commands/dega/plan.md`
+- `$BASE/commands/dega/cleanup.md`
+- `$BASE/commands/dega/doc-garden.md`
+- `$BASE/rules/` (any files)
+- `$BASE/hooks/` (any files)
+- `$BASE/skills/dega/` (any skill directories)
+- `$BASE/scripts/` (any files)
+
+Also check the Ralph Loop target directory (`$PROJECT_ROOT` if set, otherwise cwd):
 - `ralph.yaml`
 - `scripts/ralph-loop.sh`
 - `scripts/ralph-check.sh`
@@ -74,11 +102,11 @@ Also check in the current working directory (target project root):
 
 ---
 
-### 2. Ask the user what to install
+### 3. Ask the user what to install
 
 Use AskUserQuestion with a single multi-select question. List each component
 with a short description. Pre-label as recommended any component that is
-missing from `~/.claude/`.
+missing from `$BASE`.
 
 Components:
 - **settings.json** — permissions, hooks (rm-rf blocker, push-to-main blocker, doc-reminder), telemetry off
@@ -87,98 +115,115 @@ Components:
 - **Rules** — language-specific standards auto-loaded by file type (python, node-typescript, rust, bash, github-actions)
 - **Hooks** — enforce-package-manager and log-gam shell scripts
 - **Skills** — custom-linter-authoring and app-legibility knowledge files
-- **Logging** — `log-server.py` global Python log server; writes structured JSONL to
-  `~/.claude/logs/ralph/`. One server per machine, shared by all projects.
-  Also installs `session-start-logging.sh` (starts log server on session open) and
-  `structured-log.sh` (records every tool call) as global hooks.
-  GCP Cloud Logging is zero-config: drop `~/.claude/gcp-sa.json` and it auto-enables.
-  (recommended when `~/.claude/scripts/log-server.py` is missing)
+- **Logging** — `log-server.py` Python log server; writes structured JSONL to
+  `~/.claude/logs/ralph/`. Also installs `session-start-logging.sh` (starts
+  log server on session open) and `structured-log.sh` (records every tool
+  call) as hooks. GCP Cloud Logging is zero-config: drop
+  `~/.claude/gcp-sa.json` and it auto-enables.
+  (recommended when `$BASE/scripts/log-server.py` is missing)
 - **Ralph Loop** — per-repo install of `ralph.yaml`, `ralph-loop.sh`, `ralph-check.sh`,
   `ralph-worker-prompt.md`, `ralph-reviewer-prompt.md`, `log-client.sh`,
-  `plan-advance.sh`, and `task-complete.sh` into the current project root
-  (opt-in; recommended when Ralph Loop is missing from the cwd)
+  `plan-advance.sh`, and `task-complete.sh` into the project root
+  (opt-in; recommended when Ralph Loop is missing from `$PROJECT_ROOT` or cwd)
 
 ---
 
-### 3. Fetch selected files
+### 4. Fetch selected files
 
 Use WebFetch to download only the files needed for the user's selections from
 the GitHub URLs above. Extract the raw file content from each response.
 
 ---
 
-### 4. Install each selected component
+### 5. Install each selected component
+
+All paths below use `$BASE` (set in Step 1). For global installs `$BASE` is
+`~/.claude`; for project installs `$BASE` is `<project-path>/.claude`.
 
 #### settings.json
 
-Create `~/.claude/` if it doesn't exist.
+Create `$BASE/` if it doesn't exist.
 
-- If `~/.claude/settings.json` does **not** exist: write it directly.
+- If `$BASE/settings.json` does **not** exist: write it directly.
 - If it **does** exist: read both files and merge the repo's keys into the
   existing file — preserve any user keys that don't conflict. Show the merged
   result and ask for confirmation before writing.
 
+**Project-level note:** When the install target is project, hook command paths
+inside `settings.json` must use project-relative references (e.g.,
+`.claude/hooks/enforce-package-manager.sh`) instead of `~/.claude/hooks/`.
+Rewrite any `~/.claude/` prefixed hook paths in the fetched template before
+writing.
+
 #### CLAUDE.md
 
-- If `~/.claude/CLAUDE.md` does **not** exist: write the fetched
-  `claude-md-template.md` content to `~/.claude/CLAUDE.md`.
-- If it **already exists**: tell the user it exists and ask whether to
-  overwrite, skip, or show a diff. Never silently overwrite — it likely has
-  personal customizations.
+- **Global:** If `~/.claude/CLAUDE.md` does **not** exist, write the fetched
+  `claude-md-template.md` content to `~/.claude/CLAUDE.md`. If it already
+  exists, ask whether to overwrite, skip, or show a diff.
+- **Project:** If `$PROJECT_ROOT/CLAUDE.md` does **not** exist, write the
+  fetched `claude-md-template.md` content to `$PROJECT_ROOT/CLAUDE.md`. If
+  it already exists, ask whether to overwrite, skip, or show a diff.
+
+Never silently overwrite — it likely has customizations.
 
 #### Commands
 
-Create `~/.claude/commands/` if it doesn't exist.
+Create `$BASE/commands/dega/` if it doesn't exist.
 
-Write each selected command file to `~/.claude/commands/<name>.md`. Safe to
+Write each selected command file to `$BASE/commands/dega/<name>.md`. Safe to
 overwrite — commands have no user customization.
 
 #### Rules
 
-Create `~/.claude/rules/` if it doesn't exist.
+Create `$BASE/rules/` if it doesn't exist.
 
-Write each rule file to `~/.claude/rules/<name>.md`. Safe to overwrite.
+Write each rule file to `$BASE/rules/<name>.md`. Safe to overwrite.
 
 #### Hooks
 
-Create `~/.claude/hooks/` if it doesn't exist.
+Create `$BASE/hooks/` if it doesn't exist.
 
-Write each hook file to `~/.claude/hooks/<name>.sh` and `chmod +x` it. Safe
+Write each hook file to `$BASE/hooks/<name>.sh` and `chmod +x` it. Safe
 to overwrite.
 
 #### Skills
 
-Create `~/.claude/skills/` if it doesn't exist.
+Skills use the directory format: each skill is a folder with a `SKILL.md` entrypoint.
 
-Write each skill file to `~/.claude/skills/<name>.md`. Safe to overwrite.
+For each selected skill:
+1. Create `$BASE/skills/dega/<name>/` if it doesn't exist.
+2. Write the fetched content to `$BASE/skills/dega/<name>/SKILL.md`. Safe to overwrite.
 
-#### Logging — Global scripts
+#### Logging — Scripts
 
-Create `~/.claude/scripts/` if it doesn't exist.
+Create `$BASE/scripts/` if it doesn't exist.
 
-Write `scripts/log-server.py` to `~/.claude/scripts/log-server.py`. Safe to overwrite.
+Write `scripts/log-server.py` to `$BASE/scripts/log-server.py`. Safe to overwrite.
 
-#### Logging — Global hooks
+#### Logging — Hooks
 
-Create `~/.claude/hooks/` if it doesn't exist.
+Create `$BASE/hooks/` if it doesn't exist.
 
 Write and `chmod +x` each file:
-- `hooks/session-start-logging.sh` → `~/.claude/hooks/session-start-logging.sh`
-- `hooks/structured-log.sh` → `~/.claude/hooks/structured-log.sh`
+- `hooks/session-start-logging.sh` → `$BASE/hooks/session-start-logging.sh`
+- `hooks/structured-log.sh` → `$BASE/hooks/structured-log.sh`
 
 Safe to overwrite. These hooks reference `${HOME}/.claude/scripts/log-server.py`
 so they work from any project directory.
 
 #### Ralph Loop
 
-Create `scripts/` in the current working directory if it doesn't exist.
+Use `$PROJECT_ROOT` if set (project-level install), otherwise the current
+working directory as the target.
 
-- If `ralph.yaml` does **not** exist in the cwd: write it directly.
+Create `scripts/` in the target directory if it doesn't exist.
+
+- If `ralph.yaml` does **not** exist in the target: write it directly.
 - If it **does** exist: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite — the user
   may have customized `max_iterations` or `success_criteria`.
 
-Write each script file to the current working directory:
+Write each script file to the target directory:
 - `scripts/ralph-loop.sh`
 - `scripts/ralph-check.sh`
 - `scripts/ralph-worker-prompt.md`
@@ -192,23 +237,35 @@ Safe to overwrite the scripts — they have no user customization.
 
 ---
 
-### 5. Self-install
+### 6. Self-install
 
-After completing the user's selections, also install this command itself to
-`~/.claude/commands/apply-core.md` by fetching:
+**Always targets `~/.claude/` regardless of install target** — the command
+itself must be available globally.
+
+After completing the user's selections, install this command to
+`~/.claude/commands/dega/apply-core.md` by fetching:
 
 ```
 https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/commands/apply-core.md
 ```
 
-This makes `/apply-core` available from any directory in future without
+This makes `/dega:apply-core` available from any directory in future without
 needing the repo cloned.
 
 ---
 
-### 6. GCP setup (optional)
+### 7. GCP setup (optional)
 
 This step only applies if the user selected **Logging**.
+
+**Project-level note:** The log server and GCP credentials always resolve to
+global paths (`~/.claude/gcp-sa.json`, `~/.claude/logs/`), even when Logging
+scripts are installed at project level. For project-level installs, ask the user:
+
+> The log server uses `~/.claude/gcp-sa.json` for GCP credentials regardless
+> of install target. Would you like to configure GCP Cloud Logging now?
+
+If the user declines, skip the rest of this step.
 
 Check whether `~/.claude/gcp-sa.json` exists:
 
@@ -236,32 +293,51 @@ Do not copy, read, or transmit the key contents. Only check for its presence.
 
 ---
 
-### 7. Post-install
+### 8. Post-install
 
-Summarize what was installed or updated. Use a checklist format, one line per
-component. Note any manual steps (e.g. CLAUDE.md diff review).
+Summarize what was installed or updated. Start with the install target, then
+use a checklist format — one line per component. Note any manual steps (e.g.
+CLAUDE.md diff review).
 
-For the **Logging** component, include one of these lines based on the
-`~/.claude/gcp-sa.json` check from Step 6:
+For the **Logging** component (global installs only), include one of these
+lines based on the `~/.claude/gcp-sa.json` check from Step 7:
 
 - If `gcp-sa.json` **found**: `✓ Logging — GCP active (gcp-sa.json detected)`
 - If `gcp-sa.json` **absent**: `✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)`
 
-Example summary:
+**Global install example:**
 
 ```
-Installed:
+Installed to: ~/.claude/ (global)
+
 ✓ settings.json
 ✓ CLAUDE.md (review diff before next session)
-✓ Commands — fix-issue, review-pr, plan, cleanup, doc-garden
+✓ Commands — /dega:fix-issue, /dega:review-pr, /dega:plan, /dega:cleanup, /dega:doc-garden
 ✓ Rules — python, node-typescript, rust, bash, github-actions
 ✓ Hooks — enforce-package-manager, log-gam
 ✓ Skills — custom-linter-authoring, app-legibility
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
 ✓ Ralph Loop — ralph.yaml, ralph-loop.sh, ralph-check.sh, log-client.sh, ...
 
-Canon is separate. Run /apply-canon from a Canon strategy project to add the
+Canon is separate. Run /dega:canon-init from a Canon strategy project to add the
 prediction-market layer on top of Core.
+```
+
+**Project-level install example:**
+
+```
+Installed to: /path/to/project/.claude/ (project-level)
+
+✓ settings.json (project-relative hook paths)
+✓ CLAUDE.md → /path/to/project/CLAUDE.md
+✓ Commands — /dega:fix-issue, /dega:review-pr, /dega:plan, /dega:cleanup, /dega:doc-garden
+✓ Rules — python, node-typescript, rust, bash, github-actions
+✓ Hooks — enforce-package-manager, log-gam
+✓ Skills — custom-linter-authoring, app-legibility
+✓ Logging — scripts and hooks installed to project .claude/
+✓ Ralph Loop — ralph.yaml, ralph-loop.sh, ralph-check.sh, log-client.sh, ...
+
+Self-install: /dega:apply-core also installed globally to ~/.claude/ for future use.
 ```
 
 Adapt to what the user actually selected — omit components that were skipped.

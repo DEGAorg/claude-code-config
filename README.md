@@ -496,7 +496,7 @@ Browser automation via the [Claude in Chrome](https://chromewebstore.google.com/
 
 `/fast` toggles fast mode. Same Opus 4.6 model, ~2.5x faster output, 6x the cost per token. Leave it off by default.
 
-The only time fast mode is worth it is **tight interactive loops** -- you're debugging live, iterating on output, and every second of latency costs you focus. If you're about to kick off an autonomous run (`/fix-issue`, a swarm, anything you walk away from), turn it off first. The agent doesn't benefit from lower latency; you're just burning money.
+The only time fast mode is worth it is **tight interactive loops** -- you're debugging live, iterating on output, and every second of latency costs you focus. If you're about to kick off an autonomous run (`/dega:fix-issue`, a swarm, anything you walk away from), turn it off first. The agent doesn't benefit from lower latency; you're just burning money.
 
 If you do use it, enable it at session start. Toggling it on mid-conversation reprices your entire context at fast-mode rates and invalidates prompt cache. See the [fast mode docs](https://code.claude.com/docs/en/fast-mode) for details.
 
@@ -505,20 +505,20 @@ If you do use it, enable it at session start. Toggling it on mid-conversation re
 Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The two in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
 
 ```bash
-mkdir -p ~/.claude/commands
-cp commands/review-pr.md ~/.claude/commands/
-cp commands/fix-issue.md ~/.claude/commands/
+mkdir -p ~/.claude/commands/dega
+cp commands/review-pr.md ~/.claude/commands/dega/
+cp commands/fix-issue.md ~/.claude/commands/dega/
 ```
 
 ### Review PR
 
-[`commands/review-pr.md`](commands/review-pr.md) -- Reviews a GitHub PR with parallel agents, fixes findings, and pushes. Invoke with `/review-pr 456` where `456` is the PR number.
+[`commands/review-pr.md`](commands/review-pr.md) -- Reviews a GitHub PR with parallel agents, fixes findings, and pushes. Invoke with `/dega:review-pr 456` where `456` is the PR number.
 
 ### Fix Issue
 
-[`commands/fix-issue.md`](commands/fix-issue.md) -- Takes a GitHub issue and fully autonomously completes it -- plans, implements, tests, creates a PR, self-reviews with parallel agents, fixes its own findings, and comments on the issue when done. Invoke with `/fix-issue 123` where `123` is the issue number.
+[`commands/fix-issue.md`](commands/fix-issue.md) -- Takes a GitHub issue and fully autonomously completes it -- plans, implements, tests, creates a PR, self-reviews with parallel agents, fixes its own findings, and comments on the issue when done. Invoke with `/dega:fix-issue 123` where `123` is the issue number.
 
-Once a workflow is a command, it's not just faster for you -- it's something an agent can run too. You can point `/fix-issue` at 50 issues in parallel across worktrees, run `/review-pr` on every open PR in a repo, or schedule either as part of CI. Commands turn manual workflows into scalable operations.
+Once a workflow is a command, it's not just faster for you -- it's something an agent can run too. You can point `/dega:fix-issue` at 50 issues in parallel across worktrees, run `/dega:review-pr` on every open PR in a repo, or schedule either as part of CI. Commands turn manual workflows into scalable operations.
 
 ## Writing Skills and Agents
 
