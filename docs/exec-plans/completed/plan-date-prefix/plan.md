@@ -37,10 +37,10 @@ string.
 
 ## Progress log
 
-- [ ] Update `commands/plan.md` slug generation to `YYYYMMDD-$SLUG`
-- [ ] Update `commands/fix-issue.md` to use `YYYYMMDD-issue-$N/plan.md` directory format
-- [ ] Update `CLAUDE.md` ralph-loop example with dated slug
-- [ ] Verify no other files hardcode slug format assumptions
+- [x] Update `commands/plan.md` slug generation to `YYYYMMDD-$SLUG`
+- [x] Update `commands/fix-issue.md` to use `YYYYMMDD-issue-$N/plan.md` directory format
+- [x] Update `CLAUDE.md` ralph-loop example with dated slug
+- [x] Verify no other files hardcode slug format assumptions
 
 ## Decision log
 
@@ -52,7 +52,7 @@ string.
 
 ## Completion criteria
 
-- [ ] `commands/plan.md` generates `YYYYMMDD-$SLUG` directory names
-- [ ] `commands/fix-issue.md` uses dated directory format
-- [ ] `CLAUDE.md` examples reflect new format
-- [ ] Linting clean (`shellcheck`, `shfmt -d` on any touched scripts)
+- [x] `commands/plan.md` generates `YYYYMMDD-$SLUG` directory names
+- [x] `commands/fix-issue.md` uses dated directory format
+- [x] `CLAUDE.md` examples reflect new format
+- [x] Linting clean (`shellcheck`, `shfmt -d` on any touched scripts)

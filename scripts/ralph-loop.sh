@@ -4,7 +4,7 @@
 # and the repo health check passes, or max_iterations is reached.
 #
 # Usage: bash ~/.claude/scripts/ralph-loop.sh <task-slug>
-# Example: bash ~/.claude/scripts/ralph-loop.sh canon-init
+# Example: bash ~/.claude/scripts/ralph-loop.sh 20260302-canon-init
 #
 # The task-slug must match a directory in docs/exec-plans/active/.
 

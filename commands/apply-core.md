@@ -104,7 +104,7 @@ Components:
   (`ralph-loop.sh`, `ralph-check.sh`, `ralph-worker-prompt.md`,
   `ralph-reviewer-prompt.md`, `log-client.sh`, `plan-advance.sh`,
   `task-complete.sh`); only `ralph.yaml` is per-project (written to cwd).
-  Invoke from any project: `~/.claude/scripts/ralph-loop.sh <slug>`
+  Invoke from any project: `~/.claude/scripts/ralph-loop.sh <dated-slug>`
   (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
 - **Sounds** — notification sounds that play when Claude finishes a task.
   Works on macOS, Linux, and WSL2. Linux needs one of: `mpv`, `ffplay`, or

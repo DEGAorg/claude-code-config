@@ -19,9 +19,10 @@ Before writing anything:
 
 ## 2. Write the plan
 
-Create a plan directory at `docs/exec-plans/active/$SLUG/` where `$SLUG`
-is a short kebab-case slug derived from $TASK (e.g. `add-auth-endpoint`).
-Write the plan to `docs/exec-plans/active/$SLUG/plan.md`.
+Create a plan directory at `docs/exec-plans/active/$DATED_SLUG/` where
+`$DATED_SLUG` is `YYYYMMDD-$SLUG` — today's date (8 digits) followed by a
+short kebab-case slug derived from $TASK (e.g. `20260302-add-auth-endpoint`).
+Write the plan to `docs/exec-plans/active/$DATED_SLUG/plan.md`.
 
 The plan must include every section below:
 
@@ -87,18 +88,19 @@ Once the plan is written and open questions resolved, **stop**. Do not begin
 implementation.
 
 The plan file is now the source of truth for the next session. Implementation
-starts by reading `docs/exec-plans/active/$SLUG/plan.md`, finding the first
+starts by reading `docs/exec-plans/active/$DATED_SLUG/plan.md`, finding the first
 unchecked `[ ]` in the Progress log, and continuing from there.
 
-When all steps are complete, move the whole plan directory from `active/$SLUG/`
-to `completed/$SLUG/`. Do not delete it.
+When all steps are complete, move the whole plan directory from
+`active/$DATED_SLUG/` to `completed/$DATED_SLUG/`. Do not delete it.
 
 Output the following to the user as part of the hand-off:
 
 ```
 To run the ralph loop for this plan:
 
-    bash scripts/ralph-loop.sh <slug>
+    bash scripts/ralph-loop.sh <dated-slug>
 ```
 
-Replace `<slug>` with the kebab-case slug derived in Step 2.
+Replace `<dated-slug>` with the `YYYYMMDD-slug` derived in Step 2
+(e.g. `20260302-add-auth-endpoint`).

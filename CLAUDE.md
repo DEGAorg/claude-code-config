@@ -253,10 +253,10 @@ check. If any criteria fail, keep working.
 until the reviewer outputs SHIP and the health check passes:
 
 ```bash
-bash ~/.claude/scripts/ralph-loop.sh <task-slug>
+bash ~/.claude/scripts/ralph-loop.sh 20260302-add-auth-endpoint
 ```
 
-The task-slug must match a directory in `docs/exec-plans/active/`. The loop spawns
+The task-slug must match a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`). The loop spawns
 fresh `claude -p` instances for each iteration — worker reads the plan and does work,
 reviewer reads the plan and work-summary, decides SHIP or REVISE.
 

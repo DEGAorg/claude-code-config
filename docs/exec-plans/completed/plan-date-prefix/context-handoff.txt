@@ -1,0 +1,63 @@
+--- item: Update `commands/plan.md` slug generation to `YYYYMMDD-$SLUG` ---
+Updated commands/plan.md to use YYYYMMDD-$SLUG date-prefixed directory names.
+Changed $SLUG to $DATED_SLUG in four places: the directory creation instruction
+(section 2), the implementation resume path (section 4), the completion move
+path (section 4), and the hand-off ralph-loop example. The example slug is
+`20260302-add-auth-endpoint`. The plan template inside the markdown fence
+(lines 29-71) was left unchanged since it shows the plan file content, not
+the directory naming.
+---
+
+--- item: Update `commands/fix-issue.md` to use `YYYYMMDD-issue-$N/plan.md` directory format ---
+Updated commands/fix-issue.md in two places. Section 1 (Plan): replaced the
+flat file path `issue-$ISSUE_NUMBER-plan.md` with a dated directory format
+`YYYYMMDD-issue-$ISSUE_NUMBER/plan.md`, including an example `20260302-issue-42/`.
+Section 4 (Branch, commit, push): updated the move instruction from flat file
+to directory format `YYYYMMDD-issue-$ISSUE_NUMBER/` for both active and completed
+paths. This aligns fix-issue with the directory convention already used by /plan.
+---
+
+--- item: Update `CLAUDE.md` ralph-loop example with dated slug ---
+Updated CLAUDE.md line 256: changed the ralph-loop.sh example from generic
+`<task-slug>` placeholder to a concrete dated slug `20260302-add-auth-endpoint`.
+Added `(format: YYYYMMDD-slug)` to the description on line 259 so the convention
+is explicit. Only file changed: `CLAUDE.md`. One remaining task: verify no other
+files hardcode slug format assumptions.
+---
+
+--- item: Verify no other files hardcode slug format assumptions ---
+Searched the entire repo for slug format references using four grep patterns:
+exec-plan paths, slug variables/placeholders, ralph-loop.sh references, and
+active plan paths. Found two files with stale non-dated slug examples:
+scripts/ralph-loop.sh line 7 (example `canon-init` → `20260302-canon-init`)
+and commands/apply-core.md line 107 (`<slug>` → `<dated-slug>`). All other
+references are either already updated, use opaque `<task-slug>` placeholders
+(fine — script treats slug as opaque string), or are completed exec-plans
+(historical artifacts, not renamed per plan decision).
+---
+
+--- item: `commands/plan.md` generates `YYYYMMDD-$SLUG` directory names ---
+Verified completion criterion. Read commands/plan.md and confirmed all four
+slug references use $DATED_SLUG with YYYYMMDD-$SLUG format: directory creation
+(line 22-25), implementation resume path (line 91), completion move path
+(line 95), and hand-off example (line 102-106). Marked criterion [x] in plan.md.
+No file changes needed — the implementation work was done in a prior progress
+log item.
+---
+
+--- item: `commands/fix-issue.md` uses dated directory format ---
+Verified completion criterion. Read commands/fix-issue.md and confirmed all
+three slug references use YYYYMMDD-issue-$ISSUE_NUMBER/ dated directory format:
+plan creation path (line 17-19, with example 20260302-issue-42/), move-from-active
+path (line 55), and move-to-completed path (line 56). Marked criterion [x] in
+plan.md. No file changes needed — the implementation work was done in a prior
+progress log item.
+---
+
+--- item: Linting clean (`shellcheck`, `shfmt -d` on any touched scripts) ---
+Ran shellcheck and shfmt -d on scripts/ralph-loop.sh, the only shell script
+with uncommitted changes in this plan. Both tools pass clean — zero warnings,
+zero formatting differences. Confirmed via git diff HEAD --name-only -- '*.sh'
+that no other scripts were modified. Marked the final completion criterion [x]
+in plan.md. All four completion criteria are now satisfied.
+---

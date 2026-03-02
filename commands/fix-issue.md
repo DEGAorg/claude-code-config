@@ -14,8 +14,10 @@ confirmation at any step.
 
 ## 1. Plan
 
-Write a detailed implementation plan to
-`docs/exec-plans/active/issue-$ISSUE_NUMBER-plan.md`. The plan must:
+Create a plan directory at `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/`
+where `YYYYMMDD` is today's date (8 digits), e.g. `20260302-issue-42/`.
+Write the plan to `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/plan.md`.
+The plan must:
 
 - Summarize the issue requirements
 - List every file to create or modify
@@ -50,9 +52,9 @@ for the correct commands.
   bugs, `feat/` for features, `refactor/` for refactors, `docs/`
   for documentation. When ambiguous, use `fix/`.
 - Create a branch named `{prefix}issue-$ISSUE_NUMBER`
-- Move the plan file from `docs/exec-plans/active/` to
-  `docs/exec-plans/completed/` — do not delete it. Plans are permanent
-  artifacts and inform future work.
+- Move the plan directory from `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/`
+  to `docs/exec-plans/completed/YYYYMMDD-issue-$ISSUE_NUMBER/` — do not delete it.
+  Plans are permanent artifacts and inform future work.
 - Commit all changes with a conventional commit message referencing
   the issue
 - Push the branch
