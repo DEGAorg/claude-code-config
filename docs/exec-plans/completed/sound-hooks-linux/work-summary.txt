@@ -1,0 +1,8 @@
+DONE:
+- macOS playback regression check — all 10 tests pass
+
+REMAINING:
+- none — all progress log items and completion criteria are checked
+
+BLOCKERS:
+- none

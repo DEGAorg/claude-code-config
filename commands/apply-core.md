@@ -34,6 +34,7 @@ Files available:
 - `hooks/structured-log.sh`
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
+- `skills/sound-notifications.md`
 - `scripts/log-server.py`
 - `ralph.yaml`
 - `scripts/ralph-check.sh`
@@ -47,6 +48,10 @@ Files available:
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
 - `sounds/warzone-level-up.mp3`
+- `sounds/unstoppable.ogg`
+- `sounds/super-mario-bros.ogg`
+- `sounds/yeahoo.ogg`
+- `sounds/warzone-level-up.ogg`
 - `hooks/play-sound.sh`
 
 ---
@@ -86,7 +91,7 @@ Components:
 - **Commands** — fix-issue, review-pr, plan, cleanup, doc-garden slash commands
 - **Rules** — language-specific standards auto-loaded by file type (python, node-typescript, rust, bash, github-actions)
 - **Hooks** — enforce-package-manager and log-gam shell scripts
-- **Skills** — custom-linter-authoring and app-legibility knowledge files
+- **Skills** — custom-linter-authoring, app-legibility, and sound-notifications knowledge files
 - **Logging** — `log-server.py` global Python log server; writes structured JSONL to
   `~/.claude/logs/ralph/`. One server per machine, shared by all projects.
   Also installs `session-start-logging.sh` (starts log server on session open) and
@@ -100,11 +105,13 @@ Components:
   Invoke from any project: `~/.claude/scripts/ralph-loop.sh <slug>`
   (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
 - **Sounds** — notification sounds that play when Claude finishes a task.
-  Installs 4 MP3 files to `~/.claude/dega/sounds/` and the `play-sound.sh`
-  hook to `~/.claude/hooks/`. Configured via `CLAUDE_SOUND` env var in
-  `settings.json` (default: `unstoppable`). Available sounds: `unstoppable`,
-  `super-mario-bros`, `yeahoo`, `warzone-level-up`. Set to empty string to
-  disable. macOS only (`afplay`).
+  Works on macOS, Linux, and WSL2. Linux needs one of: `mpv`, `ffplay`, or
+  `paplay` (PulseAudio/PipeWire). Installs MP3 and OGG files to
+  `~/.claude/dega/sounds/` and the `play-sound.sh` hook to `~/.claude/hooks/`.
+  Configured via `CLAUDE_SOUND` env var in `settings.json`
+  (default: `unstoppable`). Available values: `unstoppable`,
+  `super-mario-bros`, `yeahoo`, `warzone-level-up`, `none`. Set to `none`
+  to disable. Volume controlled via `CLAUDE_SOUND_VOLUME` (0–100, default 50).
   (recommended when `~/.claude/dega/sounds/` is missing)
 
 ---
@@ -208,13 +215,18 @@ No per-project scripts are needed. The global engine at
 
 Create `~/.claude/dega/sounds/` if it doesn't exist.
 
-Write each sound file to `~/.claude/dega/sounds/<name>.mp3`:
+Write each sound file (MP3 and OGG) to `~/.claude/dega/sounds/`:
 - `sounds/unstoppable.mp3` → `~/.claude/dega/sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3` → `~/.claude/dega/sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3` → `~/.claude/dega/sounds/yeahoo.mp3`
 - `sounds/warzone-level-up.mp3` → `~/.claude/dega/sounds/warzone-level-up.mp3`
+- `sounds/unstoppable.ogg` → `~/.claude/dega/sounds/unstoppable.ogg`
+- `sounds/super-mario-bros.ogg` → `~/.claude/dega/sounds/super-mario-bros.ogg`
+- `sounds/yeahoo.ogg` → `~/.claude/dega/sounds/yeahoo.ogg`
+- `sounds/warzone-level-up.ogg` → `~/.claude/dega/sounds/warzone-level-up.ogg`
 
 Safe to overwrite — these are static assets with no user customization.
+OGG files are needed for `paplay` on Linux (cannot decode MP3).
 
 Write `hooks/play-sound.sh` to `~/.claude/hooks/play-sound.sh` and `chmod +x`
 it. Safe to overwrite.
@@ -285,10 +297,10 @@ Installed:
 ✓ Commands — fix-issue, review-pr, plan, cleanup, doc-garden
 ✓ Rules — python, node-typescript, rust, bash, github-actions
 ✓ Hooks — enforce-package-manager, log-gam
-✓ Skills — custom-linter-authoring, app-legibility
+✓ Skills — custom-linter-authoring, app-legibility, sound-notifications
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
 ✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
-✓ Sounds — 4 MP3s → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
+✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 
 Canon is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.
