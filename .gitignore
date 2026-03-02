@@ -8,6 +8,9 @@
 /ace
 .ralph-runs.log
 
+# Claude Code worktrees (ephemeral, machine-local)
+/.claude/worktrees/
+
 # Test artifacts (exec-plan lifecycle smoke test)
 /hello-world.md
 /tests/scratch/
