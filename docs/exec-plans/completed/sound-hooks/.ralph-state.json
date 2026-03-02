@@ -1,0 +1,19 @@
+{
+  "slug": "sound-hooks",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "All requirements met",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "50372df68ff532dab41c77d03b957ef85aea709a271a09ec7611e0be0c024d7b",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

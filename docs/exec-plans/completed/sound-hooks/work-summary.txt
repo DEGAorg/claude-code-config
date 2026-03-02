@@ -1,0 +1,14 @@
+DONE:
+- Verified all completion criteria against actual files
+- hooks/play-sound.sh: exists, shellcheck-clean, background afplay with disown
+- settings.json: CLAUDE_SOUND env var present, Stop hook wired
+- commands/apply-core.md: Sounds component in source list, menu, install steps, post-install
+- CLAUDE.md: sounds/ in repo map table and ASCII tree
+- All 4 MP3 files present in sounds/ with clean names (~140KB total)
+- Marked all 5 completion criteria [x] in plan.md
+
+REMAINING:
+- none — all progress items and completion criteria checked
+
+BLOCKERS:
+- none

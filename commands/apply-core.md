@@ -43,6 +43,11 @@ Files available:
 - `scripts/log-client.sh`
 - `scripts/plan-advance.sh`
 - `scripts/task-complete.sh`
+- `sounds/unstoppable.mp3`
+- `sounds/super-mario-bros.mp3`
+- `sounds/yeahoo.mp3`
+- `sounds/warzone-level-up.mp3`
+- `hooks/play-sound.sh`
 
 ---
 
@@ -62,6 +67,7 @@ Read and note which of these already exist:
 - `~/.claude/hooks/` (any files)
 - `~/.claude/skills/` (any files)
 - `~/.claude/scripts/` (any files)
+- `~/.claude/dega/sounds/` (any files)
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
@@ -93,6 +99,13 @@ Components:
   `task-complete.sh`); only `ralph.yaml` is per-project (written to cwd).
   Invoke from any project: `~/.claude/scripts/ralph-loop.sh <slug>`
   (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
+- **Sounds** — notification sounds that play when Claude finishes a task.
+  Installs 4 MP3 files to `~/.claude/dega/sounds/` and the `play-sound.sh`
+  hook to `~/.claude/hooks/`. Configured via `CLAUDE_SOUND` env var in
+  `settings.json` (default: `unstoppable`). Available sounds: `unstoppable`,
+  `super-mario-bros`, `yeahoo`, `warzone-level-up`. Set to empty string to
+  disable. macOS only (`afplay`).
+  (recommended when `~/.claude/dega/sounds/` is missing)
 
 ---
 
@@ -191,6 +204,21 @@ Safe to overwrite — these are engine scripts with no user customization.
 No per-project scripts are needed. The global engine at
 `~/.claude/scripts/ralph-loop.sh` reads `ralph.yaml` from `$PWD`.
 
+#### Sounds
+
+Create `~/.claude/dega/sounds/` if it doesn't exist.
+
+Write each sound file to `~/.claude/dega/sounds/<name>.mp3`:
+- `sounds/unstoppable.mp3` → `~/.claude/dega/sounds/unstoppable.mp3`
+- `sounds/super-mario-bros.mp3` → `~/.claude/dega/sounds/super-mario-bros.mp3`
+- `sounds/yeahoo.mp3` → `~/.claude/dega/sounds/yeahoo.mp3`
+- `sounds/warzone-level-up.mp3` → `~/.claude/dega/sounds/warzone-level-up.mp3`
+
+Safe to overwrite — these are static assets with no user customization.
+
+Write `hooks/play-sound.sh` to `~/.claude/hooks/play-sound.sh` and `chmod +x`
+it. Safe to overwrite.
+
 ---
 
 ### 5. Self-install
@@ -260,6 +288,7 @@ Installed:
 ✓ Skills — custom-linter-authoring, app-legibility
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
 ✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
+✓ Sounds — 4 MP3s → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 
 Canon is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.

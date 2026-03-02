@@ -60,7 +60,8 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
 | `commands/` | Global slash commands (`fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden`) |
 | `skills/` | Core skills (`custom-linter-authoring`) |
-| `hooks/` | PreToolUse / PostToolUse hook scripts |
+| `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
+| `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
@@ -81,7 +82,8 @@ claude-code-config/             ← Core (this repo root)
 ├── CLAUDE.md                   ← You are here
 ├── rules/                      ← Language rules (glob-matched, load only for matching file types)
 ├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup)
-├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker)
+├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker, sound player)
+├── sounds/                     ← MP3 sound files for task-completion audio cues
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
 ├── skills/                     ← Core skills (to be created)
