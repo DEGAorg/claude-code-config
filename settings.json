@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/ralph-check.sh"
+            "command": "bash ~/.claude/scripts/ralph-check.sh"
           }
         ]
       }

@@ -242,19 +242,26 @@ Each plan is a directory — read `active/<slug>/plan.md`, find the first unchec
 
 ### Ralph Loop
 
-**Interactive sessions:** The Stop hook in `settings.json` runs `bash scripts/ralph-check.sh`
-automatically when Claude tries to stop. If any criteria fail, keep working.
+**Interactive sessions:** The Stop hook in `settings.json` runs
+`bash ~/.claude/scripts/ralph-check.sh` automatically when Claude tries to stop.
+The script reads `success_criteria` from the project's `ralph.yaml` and runs each
+check. If any criteria fail, keep working.
 
 **Automated / AFK sessions:** Use the outer loop to drive worker and reviewer agents
 until the reviewer outputs SHIP and the health check passes:
 
 ```bash
-bash scripts/ralph-loop.sh <task-slug>
+bash ~/.claude/scripts/ralph-loop.sh <task-slug>
 ```
 
 The task-slug must match a directory in `docs/exec-plans/active/`. The loop spawns
 fresh `claude -p` instances for each iteration — worker reads the plan and does work,
-reviewer reads the plan and work-summary, decides SHIP or REVISE. Max 10 iterations.
+reviewer reads the plan and work-summary, decides SHIP or REVISE.
+
+**Per-project config:** Each project provides a `ralph.yaml` at its root with
+`max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project
+scripts are needed — `/apply-core` installs all engine scripts globally to
+`~/.claude/scripts/`.
 
 **Exec-plan state files** (written by agents, read by the loop):
 

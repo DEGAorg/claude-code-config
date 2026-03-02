@@ -1,9 +1,10 @@
 # Apply Core
 
-@description Install DEGA Core AI development artifacts globally to ~/.claude/ and Ralph Loop scripts per-repo into the current working directory.
+@description Install DEGA Core AI development artifacts globally to ~/.claude/. Ralph Loop engine scripts install globally; only ralph.yaml is per-project.
 
 Install Core harness artifacts from GitHub into `~/.claude/`. Works from any
-directory — no need to clone the repo.
+directory — no need to clone the repo. Ralph Loop engine scripts install
+globally to `~/.claude/scripts/`; only `ralph.yaml` is per-project.
 
 ## Source
 
@@ -64,13 +65,6 @@ Read and note which of these already exist:
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
-- `scripts/ralph-loop.sh`
-- `scripts/ralph-check.sh`
-- `scripts/ralph-worker-prompt.md`
-- `scripts/ralph-reviewer-prompt.md`
-- `scripts/log-client.sh`
-- `scripts/plan-advance.sh`
-- `scripts/task-complete.sh`
 
 ---
 
@@ -93,10 +87,12 @@ Components:
   `structured-log.sh` (records every tool call) as global hooks.
   GCP Cloud Logging is zero-config: drop `~/.claude/gcp-sa.json` and it auto-enables.
   (recommended when `~/.claude/scripts/log-server.py` is missing)
-- **Ralph Loop** — per-repo install of `ralph.yaml`, `ralph-loop.sh`, `ralph-check.sh`,
-  `ralph-worker-prompt.md`, `ralph-reviewer-prompt.md`, `log-client.sh`,
-  `plan-advance.sh`, and `task-complete.sh` into the current project root
-  (opt-in; recommended when Ralph Loop is missing from the cwd)
+- **Ralph Loop** — engine scripts install globally to `~/.claude/scripts/`
+  (`ralph-loop.sh`, `ralph-check.sh`, `ralph-worker-prompt.md`,
+  `ralph-reviewer-prompt.md`, `log-client.sh`, `plan-advance.sh`,
+  `task-complete.sh`); only `ralph.yaml` is per-project (written to cwd).
+  Invoke from any project: `~/.claude/scripts/ralph-loop.sh <slug>`
+  (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
 
 ---
 
@@ -169,26 +165,31 @@ Write and `chmod +x` each file:
 Safe to overwrite. These hooks reference `${HOME}/.claude/scripts/log-server.py`
 so they work from any project directory.
 
-#### Ralph Loop
+#### Ralph Loop — Global scripts
 
-Create `scripts/` in the current working directory if it doesn't exist.
+Create `~/.claude/scripts/` if it doesn't exist.
+
+Write each engine script to `~/.claude/scripts/`:
+- `scripts/ralph-loop.sh` → `~/.claude/scripts/ralph-loop.sh`
+- `scripts/ralph-check.sh` → `~/.claude/scripts/ralph-check.sh`
+- `scripts/ralph-worker-prompt.md` → `~/.claude/scripts/ralph-worker-prompt.md`
+- `scripts/ralph-reviewer-prompt.md` → `~/.claude/scripts/ralph-reviewer-prompt.md`
+- `scripts/log-client.sh` → `~/.claude/scripts/log-client.sh`
+- `scripts/plan-advance.sh` → `~/.claude/scripts/plan-advance.sh`
+- `scripts/task-complete.sh` → `~/.claude/scripts/task-complete.sh`
+
+Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh` after writing.
+Safe to overwrite — these are engine scripts with no user customization.
+
+#### Ralph Loop — Per-project config
 
 - If `ralph.yaml` does **not** exist in the cwd: write it directly.
 - If it **does** exist: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite — the user
   may have customized `max_iterations` or `success_criteria`.
 
-Write each script file to the current working directory:
-- `scripts/ralph-loop.sh`
-- `scripts/ralph-check.sh`
-- `scripts/ralph-worker-prompt.md`
-- `scripts/ralph-reviewer-prompt.md`
-- `scripts/log-client.sh`
-- `scripts/plan-advance.sh`
-- `scripts/task-complete.sh`
-
-Run `chmod +x scripts/ralph-loop.sh scripts/ralph-check.sh scripts/log-client.sh` after writing.
-Safe to overwrite the scripts — they have no user customization.
+No per-project scripts are needed. The global engine at
+`~/.claude/scripts/ralph-loop.sh` reads `ralph.yaml` from `$PWD`.
 
 ---
 
@@ -258,7 +259,7 @@ Installed:
 ✓ Hooks — enforce-package-manager, log-gam
 ✓ Skills — custom-linter-authoring, app-legibility
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
-✓ Ralph Loop — ralph.yaml, ralph-loop.sh, ralph-check.sh, log-client.sh, ...
+✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
 
 Canon is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.

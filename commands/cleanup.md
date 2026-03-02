@@ -41,7 +41,7 @@ Search for hand-rolled helpers that duplicate shared utilities:
 
 - Unused imports, unexported functions never called, commented-out blocks
 - Feature flags or A/B switches where one branch is always taken
-- `TODO`/`FIXME`/`HACK` comments older than 30 days (check git blame)
+- Unresolved work-in-progress comments (`todo`, `fixme`, `hack`) older than 30 days (check git blame)
 
 ### 2d. Oversized files
 

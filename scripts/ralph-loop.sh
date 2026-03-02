@@ -3,20 +3,20 @@
 # Spawns worker and reviewer agents in sequence until the reviewer outputs SHIP
 # and the repo health check passes, or max_iterations is reached.
 #
-# Usage: bash scripts/ralph-loop.sh <task-slug>
-# Example: bash scripts/ralph-loop.sh ralph-loop
+# Usage: bash ~/.claude/scripts/ralph-loop.sh <task-slug>
+# Example: bash ~/.claude/scripts/ralph-loop.sh canon-init
 #
 # The task-slug must match a directory in docs/exec-plans/active/.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=scripts/log-client.sh
+# shellcheck disable=SC1091 source=scripts/log-client.sh
 source "${SCRIPT_DIR}/log-client.sh"
 
 TASK_SLUG="${1:-}"
 if [[ -z "${TASK_SLUG}" ]]; then
-	echo "error: usage: bash scripts/ralph-loop.sh <task-slug>" >&2
+	echo "error: usage: bash ~/.claude/scripts/ralph-loop.sh <task-slug>" >&2
 	echo "  task-slug must match a directory in docs/exec-plans/active/" >&2
 	exit 1
 fi
@@ -32,11 +32,24 @@ STATE_FILE="${TASK_DIR}/.ralph-state.json"
 MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml | awk '{print $2}' | tr -d ' ')
 MAX_ITERATIONS="${MAX_ITERATIONS:-10}"
 WARN_AT=$(grep 'warn_at_iteration:' ralph.yaml | awk '{print $2}' | tr -d ' ')
-WORKER_PROMPT="scripts/ralph-worker-prompt.md"
-REVIEWER_PROMPT="scripts/ralph-reviewer-prompt.md"
+# Prompt fallback: project-local scripts/ first, then global SCRIPT_DIR
+if [[ -f "scripts/ralph-worker-prompt.md" ]]; then
+	WORKER_PROMPT="scripts/ralph-worker-prompt.md"
+else
+	WORKER_PROMPT="${SCRIPT_DIR}/ralph-worker-prompt.md"
+fi
+if [[ -f "scripts/ralph-reviewer-prompt.md" ]]; then
+	REVIEWER_PROMPT="scripts/ralph-reviewer-prompt.md"
+else
+	REVIEWER_PROMPT="${SCRIPT_DIR}/ralph-reviewer-prompt.md"
+fi
 
-if [[ ! -f "${WORKER_PROMPT}" || ! -f "${REVIEWER_PROMPT}" ]]; then
-	echo "error: prompt templates not found — run from repo root" >&2
+if [[ ! -f "${WORKER_PROMPT}" ]]; then
+	echo "error: worker prompt not found at ${WORKER_PROMPT}" >&2
+	exit 1
+fi
+if [[ ! -f "${REVIEWER_PROMPT}" ]]; then
+	echo "error: reviewer prompt not found at ${REVIEWER_PROMPT}" >&2
 	exit 1
 fi
 
@@ -54,7 +67,7 @@ trap _cleanup_log_server EXIT
 
 if [[ ! -S "${_LOG_SOCK}" ]]; then
 	mkdir -p "${HOME}/.claude/logs/ralph"
-	uv run --script "${HOME}/.claude/scripts/log-server.py" \
+	uv run --script "${SCRIPT_DIR}/log-server.py" \
 		>>"${HOME}/.claude/logs/log-server.log" 2>&1 &
 	_LOG_SERVER_PID=$!
 	disown
@@ -141,7 +154,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 	# --- Worker phase (per-item loop) ---
 	ITEM_NUM=0
 	echo "→ worker: starting per-item loop..."
-	while bash scripts/plan-advance.sh "${TASK_DIR}/plan.md" "${STATE_FILE}"; do
+	while bash "${SCRIPT_DIR}/plan-advance.sh" "${TASK_DIR}/plan.md" "${STATE_FILE}"; do
 		ITEM_NUM=$((ITEM_NUM + 1))
 		CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
@@ -216,7 +229,7 @@ ${HANDOFF}"
 		echo "→ reviewer: SHIP"
 		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		echo "→ running repo health check..."
-		if bash scripts/ralph-check.sh; then
+		if bash "${SCRIPT_DIR}/ralph-check.sh"; then
 			echo "→ archiving exec-plan to completed/..."
 			mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
 			echo "→ committing..."
@@ -246,7 +259,7 @@ EOF
 		fi
 		echo ""
 		echo "ralph-loop: STOPPED — waiting for human. Fix the blocker, then re-run:"
-		echo "  bash scripts/ralph-loop.sh ${TASK_SLUG}"
+		echo "  bash ~/.claude/scripts/ralph-loop.sh ${TASK_SLUG}"
 		exit 2
 	else
 		echo "→ reviewer: REVISE"

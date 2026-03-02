@@ -51,7 +51,7 @@ Links between doc files that point to non-existent sections or files:
 
 ### 2e. Phantom features
 
-Docs describing features flagged with "coming soon", "TODO", or
+Docs describing features flagged with "coming soon", work-in-progress markers, or
 describing behavior that doesn't exist in code. Use the Golden Principle:
 no phantom features. Flag for human judgment — do not auto-delete.
 
