@@ -116,13 +116,13 @@ copied to `.claude/commands/canon-start.md` in target projects.
 
 ## Progress log
 
-- [ ] Update `commands/apply-core.md` — add Terminal UI component to file list and install steps
-- [ ] Update `scripts/ralph-loop.sh` — add guarded terminal-ui state writes
-- [ ] Update `canon/commands/develop.md` — add state write instructions
-- [ ] Update `canon/commands/ralph-cycle.md` — add state write instructions
-- [ ] Verify `canon/commands/canon-start.md` path references
-- [ ] Update `commands/canon-init.md` — add `canon-start.md` to fetched commands
-- [ ] End-to-end test: run `/canon-start` in a test project, verify tmux + dashboard + state updates
+- [x] Update `commands/apply-core.md` — add Terminal UI component to file list and install steps
+- [x] Update `scripts/ralph-loop.sh` — add guarded terminal-ui state writes
+- [x] Update `canon/commands/develop.md` — add state write instructions
+- [x] Update `canon/commands/ralph-cycle.md` — add state write instructions
+- [x] Verify `canon/commands/canon-start.md` path references
+- [x] Update `commands/canon-init.md` — add `canon-start.md` to fetched commands
+- [x] End-to-end test: run `/canon-start` in a test project, verify tmux + dashboard + state updates
 
 ## Decision log
 
@@ -135,8 +135,8 @@ copied to `.claude/commands/canon-start.md` in target projects.
 
 ## Completion criteria
 
-- [ ] `/apply-core` installs terminal-ui, terminal-session.sh, terminal-ui-write.sh when selected
-- [ ] Ralph Loop writes terminal-ui state at lifecycle events (or skips silently if not installed)
-- [ ] `/develop` and `/ralph-cycle` include state write instructions
-- [ ] `/canon-start` references correct global paths
-- [ ] `/canon-init` installs `canon-start.md` to target project
+- [x] `/apply-core` installs terminal-ui, terminal-session.sh, terminal-ui-write.sh when selected
+- [x] Ralph Loop writes terminal-ui state at lifecycle events (or skips silently if not installed)
+- [x] `/develop` and `/ralph-cycle` include state write instructions
+- [x] `/canon-start` references correct global paths
+- [x] `/canon-init` installs `canon-start.md` to target project

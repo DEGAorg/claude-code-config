@@ -7,7 +7,18 @@ Load skills: ralph-loop, canon-conventions.
 
 Run every step below. The loop repeats steps 1-3 until the SHIP or ESCALATE condition is met.
 
+**State write convention:** Every `terminal-ui-write.sh` call below is guarded — check
+if the script exists and skip silently if not. Do not warn about missing dashboard.
+
 ## 1. Execute
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=execute status=running log.info="Iteration ${ITERATION:-1}: executing..."
+```
 
 Implement or modify code toward the success criteria defined in `.canon/ralph.yaml`.
 
@@ -21,6 +32,14 @@ Input:
 Apply changes. Follow domain layering and error message conventions.
 
 ## 2. Check
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=check status=running log.info="Running success criteria checks..."
+```
 
 Run every check command listed in `.canon/ralph.yaml` under `success_criteria`.
 
@@ -45,7 +64,13 @@ rather than burning more budget.
 Evaluate the current state:
 
 **SHIP if:**
-- All success criteria pass → Write a summary of what was accomplished, exit loop
+- All success criteria pass → Write state update and summary, exit loop:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    status=idle log.info="SHIP — all criteria met"
+```
 
 **LOOP if:**
 - Any criterion failed AND iteration count < `max_iterations` AND budget remaining
@@ -55,6 +80,13 @@ Evaluate the current state:
 - Iteration count ≥ `max_iterations`, OR
 - Budget exhausted (`max_tokens` or `max_spend` reached), OR
 - Stuck (same failure ≥3 iterations without progress)
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    status=error error="Escalated — human intervention required"
+```
+
 → Document: which criteria are failing, what was tried, why it's stuck
 → Surface to human for intervention
 

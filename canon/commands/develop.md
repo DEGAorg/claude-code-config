@@ -8,9 +8,20 @@ Load skills: canon-conventions, backtesting, ralph-loop, risk-management.
 
 Run every step below in order. Do not stop or ask for confirmation between steps.
 
+**State write convention:** Every `terminal-ui-write.sh` call below is guarded — check
+if the script exists and skip silently if not. Do not warn about missing dashboard.
+
 ## 1. Verify scaffold
 
 As dev, verify the project scaffold exists before implementing.
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=scaffold status=running log.info="Verifying scaffold..."
+```
 
 Check that these files are present:
 - `package.json`
@@ -28,6 +39,14 @@ If any are missing, stop and tell the user:
 
 ## 2. Implement
 
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=develop status=running log.info="Implementing strategy..."
+```
+
 Implement strategy logic from the design specification.
 
 Load skills: canon-conventions, risk-management.
@@ -42,6 +61,14 @@ Required:
 Do not skip RiskInterface. "I'll add it later" is not acceptable.
 
 ## 3. Test
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=test status=running log.info="Running checks..."
+```
 
 Run every check command from `.canon/ralph.yaml` `success_criteria`:
 
@@ -74,6 +101,14 @@ If the limit is reached without meeting all criteria, surface the specific
 failing criteria for human review before proceeding.
 
 ## 5. QA review
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=qa status=running log.info="QA review..."
+```
 
 As qa, validate strategy quality.
 

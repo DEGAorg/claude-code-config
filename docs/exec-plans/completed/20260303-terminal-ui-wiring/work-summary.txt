@@ -1,0 +1,19 @@
+DONE:
+- Updated commands/apply-core.md with Terminal UI component: file list (12 files), inventory check, install menu entry, install instructions (file copy + chmod + pnpm build with npm fallback), and post-install summary line
+- Added guarded terminal-ui state writes to scripts/ralph-loop.sh at all 8 lifecycle events
+- Added guarded terminal-ui-write.sh state writes to canon/commands/develop.md at four phase transitions (scaffold, develop, test, qa)
+- Added guarded terminal-ui-write.sh state writes to canon/commands/ralph-cycle.md at four lifecycle events (execute, check, SHIP, ESCALATE)
+- Verified canon/commands/canon-start.md path references — all paths correct (terminal-session.sh, terminal-ui-write.sh, terminal-ui/dist/cli.js, .canon/state.json), no changes needed
+- Updated commands/canon-init.md — added canon-start.md to Step 5 fetch table, Step 10 AGENTS.md Available Commands, and Step 11 post-init summary
+- End-to-end test: verified terminal-ui build (tsc clean), terminal-ui-write.sh (7 tests: create, update, metrics, logs, error set/clear, input validation), tmux session creation (2-pane layout), Ink dashboard rendering (live state display), full canon-start lifecycle (detecting → scaffold → strategy → develop → iterate → ship), all 8 ralph-loop state write patterns, and graceful degradation when scripts are missing
+- Verified completion criterion: /apply-core installs terminal-ui when selected
+- Verified completion criterion: Ralph Loop writes terminal-ui state at lifecycle events
+- Verified completion criterion: /develop and /ralph-cycle include state write instructions
+- Verified completion criterion: /canon-start references correct global paths
+- Verified completion criterion: /canon-init installs canon-start.md to target project
+
+REMAINING:
+- None — all progress log items and all completion criteria are checked
+
+BLOCKERS:
+- None

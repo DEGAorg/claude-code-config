@@ -86,6 +86,7 @@ Fetch each of the following files from GitHub and write them to `.claude/command
 | `discover.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/discover.md` |
 | `register.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/register.md` |
 | `quick-dev.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/quick-dev.md` |
+| `canon-start.md` | `https://raw.githubusercontent.com/DEGAorg/claude-code-config/premar-demo/canon/commands/canon-start.md` |
 
 ---
 
@@ -353,6 +354,7 @@ Write `AGENTS.md` at the project root (not inside `.canon/`):
 | `/discover` | Market analysis, opportunity identification, strategy design |
 | `/register` | Risk review, pre-registration checks, Arena tracking |
 | `/quick-dev` | Small changes with lightweight validation |
+| `/canon-start` | Launch tmux session with terminal-ui dashboard for automation |
 
 ## Key Workflows
 1. **Discover** (`/discover`): Market analysis -> opportunity -> strategy design
@@ -405,7 +407,7 @@ Canon initialized in <current-directory>/
     ralph.yaml  <- edit success_criteria to match your strategy's check commands
 
   .claude/commands/
-    develop.md, ralph-cycle.md, discover.md, register.md, quick-dev.md
+    develop.md, ralph-cycle.md, discover.md, register.md, quick-dev.md, canon-start.md
 
   src/types/
     TradeSignal.ts, RiskInterface.ts

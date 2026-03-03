@@ -44,6 +44,18 @@ Files available:
 - `scripts/log-client.sh`
 - `scripts/plan-advance.sh`
 - `scripts/task-complete.sh`
+- `scripts/terminal-session.sh`
+- `scripts/terminal-ui-write.sh`
+- `scripts/terminal-ui/package.json`
+- `scripts/terminal-ui/tsconfig.json`
+- `scripts/terminal-ui/src/types.ts`
+- `scripts/terminal-ui/src/write.ts`
+- `scripts/terminal-ui/src/verify-shell-compat.ts`
+- `scripts/terminal-ui/src/cli.tsx`
+- `scripts/terminal-ui/src/app.tsx`
+- `scripts/terminal-ui/src/status-bar.tsx`
+- `scripts/terminal-ui/src/log-panel.tsx`
+- `scripts/terminal-ui/src/metrics-panel.tsx`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -75,6 +87,9 @@ Read and note which of these already exist:
 - `~/.claude/skills/` (any files)
 - `~/.claude/scripts/` (any files)
 - `~/.claude/dega/sounds/` (any files)
+- `~/.claude/scripts/terminal-session.sh`
+- `~/.claude/scripts/terminal-ui-write.sh`
+- `~/.claude/scripts/terminal-ui/` (any files)
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
@@ -115,6 +130,12 @@ Components:
   `super-mario-bros`, `yeahoo`, `warzone-level-up`, `none`. Set to `none`
   to disable. Volume controlled via `CLAUDE_SOUND_VOLUME` (0–100, default 50).
   (recommended when `~/.claude/dega/sounds/` is missing)
+- **Terminal UI** — visual status dashboard for automation sessions. Includes
+  tmux session launcher (`terminal-session.sh`), state file writer
+  (`terminal-ui-write.sh`), and Ink status dashboard (`terminal-ui/`).
+  Requires Node.js. Installs scripts to `~/.claude/scripts/` and builds
+  the Ink app with `pnpm install && pnpm run build`.
+  (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
 
 ---
 
@@ -235,6 +256,35 @@ OGG files are needed for `paplay` on Linux (cannot decode MP3).
 Write `hooks/play-sound.sh` to `~/.claude/hooks/play-sound.sh` and `chmod +x`
 it. Safe to overwrite.
 
+#### Terminal UI
+
+Create `~/.claude/scripts/terminal-ui/src/` if it doesn't exist.
+
+Write each file to its corresponding path under `~/.claude/scripts/`:
+- `scripts/terminal-session.sh` → `~/.claude/scripts/terminal-session.sh`
+- `scripts/terminal-ui-write.sh` → `~/.claude/scripts/terminal-ui-write.sh`
+- `scripts/terminal-ui/package.json` → `~/.claude/scripts/terminal-ui/package.json`
+- `scripts/terminal-ui/tsconfig.json` → `~/.claude/scripts/terminal-ui/tsconfig.json`
+- `scripts/terminal-ui/src/types.ts` → `~/.claude/scripts/terminal-ui/src/types.ts`
+- `scripts/terminal-ui/src/write.ts` → `~/.claude/scripts/terminal-ui/src/write.ts`
+- `scripts/terminal-ui/src/verify-shell-compat.ts` → `~/.claude/scripts/terminal-ui/src/verify-shell-compat.ts`
+- `scripts/terminal-ui/src/cli.tsx` → `~/.claude/scripts/terminal-ui/src/cli.tsx`
+- `scripts/terminal-ui/src/app.tsx` → `~/.claude/scripts/terminal-ui/src/app.tsx`
+- `scripts/terminal-ui/src/status-bar.tsx` → `~/.claude/scripts/terminal-ui/src/status-bar.tsx`
+- `scripts/terminal-ui/src/log-panel.tsx` → `~/.claude/scripts/terminal-ui/src/log-panel.tsx`
+- `scripts/terminal-ui/src/metrics-panel.tsx` → `~/.claude/scripts/terminal-ui/src/metrics-panel.tsx`
+
+Run `chmod +x ~/.claude/scripts/terminal-session.sh ~/.claude/scripts/terminal-ui-write.sh` after writing.
+
+Then build the Ink dashboard:
+```bash
+cd ~/.claude/scripts/terminal-ui && pnpm install && pnpm run build
+```
+
+If `pnpm` is not available, fall back to `npm install && npm run build`.
+
+Safe to overwrite — these are engine scripts and app source with no user customization.
+
 ---
 
 ### 5. Self-install
@@ -305,6 +355,7 @@ Installed:
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
 ✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
+✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
 
 Canon is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.

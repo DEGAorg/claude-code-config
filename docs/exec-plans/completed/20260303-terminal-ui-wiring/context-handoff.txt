@@ -1,0 +1,115 @@
+--- item: Update `commands/apply-core.md` — add Terminal UI component to file list and install steps ---
+Added Terminal UI as a new opt-in component in /apply-core. Changes to commands/apply-core.md:
+(1) Added 12 files to the Source file list (terminal-session.sh, terminal-ui-write.sh, and 10 terminal-ui/ app files).
+(2) Added terminal-ui paths to Step 1 inventory checks.
+(3) Added Terminal UI component description to Step 2 install menu (opt-in, recommended when missing).
+(4) Added full Terminal UI install section in Step 4 with file mappings, chmod, and pnpm install+build with npm fallback.
+(5) Added Terminal UI line to Step 7 post-install summary example.
+Note: the repo has package-lock.json but no pnpm-lock.yaml — the install step uses pnpm with npm fallback.
+---
+
+--- item: Update `scripts/ralph-loop.sh` — add guarded terminal-ui state writes ---
+Added guarded terminal-ui state writes to ralph-loop.sh. Changes:
+(1) Added TUI_WRITE resolution near the top — checks PATH first, then ~/.claude/scripts/terminal-ui-write.sh. Sets empty string if neither found.
+(2) Added tui_write() wrapper function that calls terminal-ui-write.sh with the state file path, or silently no-ops if not installed (|| true).
+(3) State file is ${TASK_DIR}/.terminal-ui-state.json — colocated with exec-plan, separate from .ralph-state.json.
+(4) Added 8 tui_write calls at lifecycle events: loop start (phase=run, status=running, metrics), worker item start (log), worker done (log + metric), stagnation (status=error), reviewer decision (log + metric), SHIP (status=idle), BLOCKED (status=error), EXHAUSTED (status=error).
+shellcheck passes clean.
+---
+
+--- item: Update `canon/commands/develop.md` — add state write instructions ---
+Added guarded terminal-ui-write.sh calls at four phase transitions in develop.md:
+(1) Step 1 (verify scaffold): phase=scaffold status=running.
+(2) Step 2 (implement): phase=develop status=running.
+(3) Step 3 (test): phase=test status=running.
+(4) Step 5 (QA review): phase=qa status=running.
+Also added a "State write convention" note at the top explaining the guard pattern.
+All calls use the same `[[ -f ... ]] &&` guard as canon-start.md, writing to .canon/state.json.
+---
+
+--- item: Update `canon/commands/ralph-cycle.md` — add state write instructions ---
+Added guarded terminal-ui-write.sh calls at four lifecycle events in ralph-cycle.md:
+(1) Step 1 (execute): phase=execute status=running with iteration number.
+(2) Step 2 (check): phase=check status=running.
+(3) Step 4 SHIP: status=idle log.info="SHIP — all criteria met".
+(4) Step 4 ESCALATE: status=error with escalation message.
+Also added the "State write convention" note at the top (same pattern as develop.md).
+All calls use the same `[[ -f ... ]] &&` guard, writing to .canon/state.json.
+---
+
+--- item: Verify `canon/commands/canon-start.md` path references ---
+Verified all path references in canon-start.md against the actual scripts and global install paths. Results:
+(1) terminal-session.sh: referenced at ~/.claude/scripts/terminal-session.sh for prerequisite check — correct.
+(2) terminal-ui-write.sh: all calls use ${HOME}/.claude/scripts/terminal-ui-write.sh with [[ -f ... ]] && guard — correct.
+(3) terminal-ui/dist/cli.js: referenced at ${HOME}/.claude/scripts/terminal-ui/dist/cli.js — correct.
+(4) State file .canon/state.json used consistently throughout — correct.
+(5) Design note: canon-start.md creates tmux sessions inline (not via terminal-session.sh) because terminal-session.sh attaches to the session, which would block the agent. This is intentional.
+No path mismatches found. No changes needed.
+---
+
+--- item: Update `commands/canon-init.md` — add `canon-start.md` to fetched commands ---
+Added canon-start.md to three places in commands/canon-init.md:
+(1) Step 5 (Fetch Canon commands): added table row for canon-start.md with raw GitHub URL from premar-demo branch.
+(2) Step 10 (AGENTS.md template): added /canon-start to the Available Commands table with description "Launch tmux session with terminal-ui dashboard for automation".
+(3) Step 11 (Post-init summary): added canon-start.md to the .claude/commands/ file listing.
+No other files changed.
+---
+
+--- item: End-to-end test: run `/canon-start` in a test project, verify tmux + dashboard + state updates ---
+Ran comprehensive E2E verification of the full terminal-ui pipeline. Tests performed:
+(1) terminal-ui app: tsc --noEmit clean, tsc build succeeds, dist/cli.js present with all modules.
+(2) terminal-ui-write.sh: 7 tests — state file creation, updates (phase/status), metrics, log appending, error set/clear, invalid field rejection, invalid log level rejection. All pass.
+(3) terminal-session.sh: tmux session creation with 2-pane layout (60/40 split), dashboard in right pane reads state file live, state updates propagate to dashboard within seconds.
+(4) Ink dashboard: renders correctly in tmux pane — shows phase, status indicator, timestamped logs, and metrics panel. Tested by capturing pane output after state updates.
+(5) Full canon-start lifecycle: simulated in a temp directory — detecting → scaffold → strategy → develop → iterate (3 rounds) → SHIP. State file accumulated 11 log entries and correct metrics (iteration=3, decision=SHIP).
+(6) Ralph-loop patterns: all 8 state write patterns (loop start, worker start, worker done, stagnation, reviewer decision, SHIP, BLOCKED, EXHAUSTED) match terminal-ui-write.sh's interface correctly.
+(7) Graceful degradation: guard patterns correctly no-op when terminal-ui-write.sh is missing — both the [[ -f ... ]] && pattern (canon commands) and the empty-var tui_write() wrapper (ralph-loop.sh).
+No code changes needed — all components work as designed.
+---
+
+--- item: `/apply-core` installs terminal-ui, terminal-session.sh, terminal-ui-write.sh when selected ---
+Verified completion criterion by cross-checking apply-core.md against actual repo files.
+Source file list has all 12 terminal-ui files. Step 1 inventory checks for terminal-session.sh,
+terminal-ui-write.sh, and terminal-ui/. Step 2 presents Terminal UI as opt-in component (recommended
+when missing, requires Node.js). Step 4 has complete install section: 12 file mappings to
+~/.claude/scripts/, chmod +x on shell scripts, pnpm install+build with npm fallback. Step 7
+includes Terminal UI in post-install summary. All source files verified on disk, dist/ build
+output present from E2E test. No changes needed — marked completion criterion checkbox.
+---
+
+--- item: Ralph Loop writes terminal-ui state at lifecycle events (or skips silently if not installed) ---
+Verified completion criterion against scripts/ralph-loop.sh. Guard pattern (lines 58-66) resolves
+TUI_WRITE from PATH then ~/.claude/scripts/, sets empty string if not found. tui_write() wrapper
+silently no-ops via || true. All 8 lifecycle events confirmed: loop start (line 103), worker start
+(175), worker done (196), stagnation (210), reviewer decision (235), SHIP (248), BLOCKED (280),
+EXHAUSTED (307). Each matches the plan's state update specification. No changes needed.
+---
+
+--- item: `/develop` and `/ralph-cycle` include state write instructions ---
+Verified completion criterion against canon/commands/develop.md and canon/commands/ralph-cycle.md.
+develop.md has 4 guarded state writes at phase transitions (scaffold, develop, test, qa) plus the
+state write convention note. ralph-cycle.md has 4 guarded state writes (execute, check, SHIP, ESCALATE)
+plus the convention note. All use [[ -f ... ]] && guard pattern writing to .canon/state.json. Matches
+plan section 3 specification exactly. No changes needed — marked completion criterion checkbox.
+---
+
+--- item: `/canon-start` references correct global paths ---
+Verified completion criterion by cross-checking all path references in canon/commands/canon-start.md
+against source files in the repo and install targets in apply-core.md. Three global paths confirmed:
+(1) ~/.claude/scripts/terminal-session.sh — prerequisite check on line 14, source file exists.
+(2) ${HOME}/.claude/scripts/terminal-ui-write.sh — used in all guarded state write calls throughout,
+source file exists, install target matches in apply-core.md.
+(3) ${HOME}/.claude/scripts/terminal-ui/dist/cli.js — dashboard renderer on line 59, source file
+exists (built from E2E test), install target matches in apply-core.md.
+State file .canon/state.json used consistently. No path mismatches found. Marked completion criterion checkbox.
+---
+
+--- item: `/canon-init` installs `canon-start.md` to target project ---
+Verified completion criterion against commands/canon-init.md. Three insertion points confirmed:
+(1) Step 5 (line 89): canon-start.md in fetch table with raw GitHub URL from premar-demo branch.
+(2) Step 10 (line 357): /canon-start in AGENTS.md Available Commands table with description
+"Launch tmux session with terminal-ui dashboard for automation".
+(3) Step 11 (line 410): canon-start.md listed in .claude/commands/ post-init summary.
+All three match the plan's section 5 specification. No changes needed — marked completion criterion checkbox.
+This was the last completion criterion. All 5 criteria are now checked.
+---

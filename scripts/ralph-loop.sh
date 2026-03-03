@@ -53,6 +53,18 @@ if [[ ! -f "${REVIEWER_PROMPT}" ]]; then
 	exit 1
 fi
 
+# Terminal UI state (colocated with exec-plan, separate from .ralph-state.json)
+TUI_STATE="${TASK_DIR}/.terminal-ui-state.json"
+TUI_WRITE=""
+if command -v terminal-ui-write.sh >/dev/null 2>&1; then
+	TUI_WRITE="terminal-ui-write.sh"
+elif [[ -x "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
+	TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
+fi
+tui_write() {
+	[[ -n "${TUI_WRITE}" ]] && bash "${TUI_WRITE}" "${TUI_STATE}" "$@" || true
+}
+
 # Start log server if not already running (supports AFK runs with no prior session hook).
 _LOG_SOCK="${HOME}/.claude/logs/log.sock"
 _LOG_SERVER_PID=""
@@ -88,6 +100,8 @@ echo ""
 log_event "LOOP_START" \
 	"$(jq -n --arg slug "${TASK_SLUG}" --argjson max "${MAX_ITERATIONS}" \
 		'{"task_slug":$slug,"max_iterations":$max}')"
+tui_write phase=run status=running \
+	metric.iteration=1 metric.maxIterations="${MAX_ITERATIONS}"
 
 for i in $(seq 1 "${MAX_ITERATIONS}"); do
 	echo "=== Iteration ${i}/${MAX_ITERATIONS} ==="
@@ -158,6 +172,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		ITEM_NUM=$((ITEM_NUM + 1))
 		CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
+		tui_write log.info="Worker iteration ${i}: ${CURRENT_TASK}"
 		WORKER_CONTEXT=$(sed \
 			-e "s|{TASK_DIR}|${TASK_DIR}|g" \
 			-e "s|{STATE_FILE}|${STATE_FILE}|g" \
@@ -178,6 +193,7 @@ ${HANDOFF}"
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
 		mv /tmp/ralph_c.tmp "${STATE_FILE}"
 	echo "→ worker: done"
+	tui_write log.info="Worker done" metric.iteration="${i}"
 	log_event "WORKER_DONE" \
 		"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"exit_code":0}')"
 
@@ -191,6 +207,7 @@ ${HANDOFF}"
 		if [[ ${STAG} -ge 2 ]]; then
 			echo "ralph-loop: STAGNATED — no file changes in 2 consecutive iterations"
 			echo "  Human review required. Re-run after diagnosing the blocker."
+			tui_write status=error error="Stagnated — no changes in 2 iterations"
 			exit 2
 		fi
 	else
@@ -215,6 +232,7 @@ ${HANDOFF}"
 	fi
 
 	RESULT=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')
+	tui_write log.info="Reviewer: ${RESULT}" metric.decision="${RESULT}"
 
 	# Update state with reviewer result
 	jq --arg result "${RESULT}" '.last_result = $result' \
@@ -227,6 +245,7 @@ ${HANDOFF}"
 
 	if [[ "${RESULT}" == "SHIP" ]]; then
 		echo "→ reviewer: SHIP"
+		tui_write status=idle log.info="SHIP — all criteria met"
 		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		echo "→ running repo health check..."
 		if bash "${SCRIPT_DIR}/ralph-check.sh"; then
@@ -258,6 +277,7 @@ EOF
 		fi
 	elif [[ "${RESULT}" == "BLOCKED" ]]; then
 		echo "→ reviewer: BLOCKED — human action required"
+		tui_write status=error error="Blocked — human action required"
 		log_event "BLOCKED" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		FEEDBACK_FILE="${TASK_DIR}/review-feedback.txt"
 		if [[ -f "${FEEDBACK_FILE}" ]]; then
@@ -284,6 +304,7 @@ done
 
 log_event "EXHAUSTED" \
 	"$(jq -n --argjson used "${MAX_ITERATIONS}" '{"iterations_used":$used}')"
+tui_write status=error error="Max iterations reached without SHIP"
 echo ""
 echo "ralph-loop: max iterations (${MAX_ITERATIONS}) reached without SHIP."
 RESULT_FILE="${TASK_DIR}/review-result.txt"
