@@ -1,0 +1,94 @@
+--- item: Write `hooks/enforce-exec-plan-naming.sh` (handles both Bash and Write tool inputs) ---
+Created hooks/enforce-exec-plan-naming.sh as a PreToolUse hook. It reads JSON from
+stdin, checks tool_name (Bash or Write), extracts the directory name after
+exec-plans/active/, and validates it starts with YYYYMMDD-. Blocks with exit 2 and
+an actionable error message pointing to scripts/create-exec-plan.sh. Passes shellcheck
+clean and shfmt formatted. All 6 manual tests pass (block bad, allow good, pass-through unrelated).
+---
+
+--- item: Write `scripts/create-exec-plan.sh` (date-prefixed directory creator) ---
+Created scripts/create-exec-plan.sh. Takes a slug argument, prepends today's date
+(via `date +%Y%m%d`), creates the directory under docs/exec-plans/active/ with an
+empty plan.md. If the slug already has a YYYYMMDD- prefix it uses it as-is. If the
+directory already exists, it prints the path without error (idempotent). Passes
+shellcheck and shfmt clean. The hook's error message already points to this script.
+---
+
+--- item: Add hook to `settings.json` PreToolUse array ---
+Added a new entry to the PreToolUse array in settings.json with matcher "Bash|Write"
+pointing to "bash hooks/enforce-exec-plan-naming.sh". Used the pipe-separated matcher
+pattern already established by the PostToolUse "Edit|Write" entry. The existing Bash
+matcher for enforce-loop-mode.sh is unchanged. JSON validates cleanly with jq.
+---
+
+--- item: Test: `mkdir` without date prefix → blocked ---
+Tested hooks/enforce-exec-plan-naming.sh with Bash tool JSON input containing
+`mkdir -p docs/exec-plans/active/bad-slug`. Hook exits 2 and prints the expected
+BLOCKED message to stderr pointing to scripts/create-exec-plan.sh. Also verified
+the positive case: `mkdir` with `20260303-good-slug` exits 0 with no output.
+No files changed — this was a verification-only task.
+---
+
+--- item: Test: `Write` to path without date prefix → blocked ---
+Tested the Write tool branch of enforce-exec-plan-naming.sh. Piped JSON with
+tool_name "Write" and file_path "docs/exec-plans/active/bad-slug/plan.md" — hook
+exits 2 with the BLOCKED message. Also verified the positive case: file_path with
+"20260303-good-slug" exits 0 with no output. No files changed — verification only.
+---
+
+--- item: Test: `scripts/create-exec-plan.sh some-slug` → correct directory created ---
+Ran create-exec-plan.sh with "some-slug" — created docs/exec-plans/active/20260303-some-slug/
+with empty plan.md. Verified edge cases: slug with existing YYYYMMDD- prefix used as-is
+(no double-prefix), re-run on existing directory is idempotent (no error), missing
+argument exits 1 with clear usage message. Cleaned up test directories afterward.
+No code changes — verification only.
+---
+
+--- item: shellcheck and shfmt pass on both scripts ---
+Ran shellcheck and shfmt -d on both hooks/enforce-exec-plan-naming.sh and
+scripts/create-exec-plan.sh. All four checks passed clean — no warnings, no
+formatting diffs. No files changed. This was the final progress log item;
+all items are now checked.
+---
+
+--- item: Hook blocks `mkdir docs/exec-plans/active/bad-slug/` (no date prefix) ---
+Verified completion criterion independently. Piped Bash tool JSON with
+`mkdir -p docs/exec-plans/active/bad-slug/` into the hook — exits 2 with the
+expected BLOCKED message pointing to scripts/create-exec-plan.sh. This is the
+first of 6 completion criteria; remaining criteria still unchecked.
+---
+
+--- item: Hook blocks `Write` to `docs/exec-plans/active/bad-slug/plan.md` ---
+Verified completion criterion. Piped Write tool JSON with file_path
+"docs/exec-plans/active/bad-slug/plan.md" into the hook — exits 2 with the
+expected BLOCKED message. Second of 6 completion criteria now checked.
+No files changed beyond plan.md checkbox and state files.
+---
+
+--- item: Hook allows `mkdir docs/exec-plans/active/20260303-good-slug/` ---
+Verified completion criterion #3. Piped Bash tool JSON with
+`mkdir -p docs/exec-plans/active/20260303-good-slug/` into the hook — exits 0
+with no stdout or stderr output. This confirms the hook correctly allows
+validly-named directories through. No files changed beyond plan.md checkbox.
+---
+
+--- item: Hook allows `Write` to `docs/exec-plans/active/20260303-good-slug/plan.md` ---
+Verified completion criterion #4. Piped Write tool JSON with file_path
+"docs/exec-plans/active/20260303-good-slug/plan.md" into the hook — exits 0
+with no stdout or stderr output. Confirms the hook allows Write tool calls
+to validly-named exec-plan directories. No files changed beyond plan.md checkbox.
+---
+
+--- item: `scripts/create-exec-plan.sh my-task` creates `20260303-my-task/` ---
+Verified completion criterion #5. Ran `bash scripts/create-exec-plan.sh my-task`
+— output was `docs/exec-plans/active/20260303-my-task`. Directory contained an
+empty plan.md. Cleaned up test directory afterward. No code changes — verification
+only. One completion criterion remains: shellcheck and shfmt clean on both scripts.
+---
+
+--- item: shellcheck and shfmt clean on both scripts ---
+Ran shellcheck and shfmt -d on both hooks/enforce-exec-plan-naming.sh and
+scripts/create-exec-plan.sh. All four checks passed clean — zero warnings,
+zero formatting diffs. This was the final completion criterion; all 6 are
+now checked. The plan is fully complete.
+---

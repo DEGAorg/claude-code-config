@@ -58,6 +58,15 @@
             "command": "bash hooks/enforce-loop-mode.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash hooks/enforce-exec-plan-naming.sh"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
