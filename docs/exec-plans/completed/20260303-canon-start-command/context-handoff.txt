@@ -1,0 +1,125 @@
+--- item: Write `canon/commands/canon-start.md` with phase detection logic ---
+Created canon/commands/canon-start.md with the full guided workflow command. The file
+follows the existing command pattern (@description, numbered steps, completion criteria).
+Phase detection logic evaluates conditions top-to-bottom: no .canon/ -> init, missing
+scaffold files -> scaffold, no strategy spec -> strategy, no src or failing tests -> develop,
+all passing -> run. Each phase section includes inline delegation instructions mirroring
+the relevant sub-command (canon-init, discover, develop). The command structure has 7 steps:
+tmux launch, phase detection, then one step per phase (init, scaffold, strategy, develop, run).
+State file writes and graceful degradation sections are placeholders — next items will flesh
+those out with the correct terminal-ui-write.sh calls and degradation handling.
+---
+--- item: Include tmux session launch instructions at entry ---
+Rewrote Step 1 of canon/commands/canon-start.md with complete tmux session launch
+instructions. Changes: (1) checks both tmux binary AND terminal-session.sh availability,
+(2) checks for existing "canon" session before creating a new one, (3) ensures
+.canon/state.json exists before launch so the dashboard has data to render, (4) creates
+the session in detached mode (no exec tmux attach) since the agent runs non-interactively,
+(5) picks the best dashboard renderer using the same priority as terminal-session.sh
+(terminal-ui > node cli.js > watch > bash loop), (6) tells the user how to attach in a
+separate terminal. Removed "(optional)" from the heading since the plan treats this as
+the primary entry behavior. The graceful degradation item still needs work — it's next.
+---
+--- item: Include state file write instructions at each phase transition ---
+Verified all 12 state write points in canon/commands/canon-start.md against the
+terminal-ui-write.sh API (scripts/terminal-ui-write.sh). Every phase transition already
+had writes from the initial file creation, but the initial state in step 1 was a bare
+echo producing {"phase":"detecting","status":"starting"} — missing startedAt, updatedAt,
+logs, error, metrics fields, and using "starting" which isn't a valid status enum. Fixed
+step 1 to use terminal-ui-write.sh when available (gives proper structure with all fields)
+or fall back to a complete JSON with all required fields and status="running". No other
+state writes needed changes — they all use valid fields from the script API.
+---
+--- item: Include inline delegation to canon-init, discover, develop ---
+Replaced the vague cross-references in step 3 (init phase) that said "Use the same URLs
+and file contents as /canon-init" with the actual inline content from canon-init.md.
+Step 3 now has sub-sections 3a-3i covering: directory tree creation, agent file URLs
+(6 agents), skill file URLs (8 skills), command file URLs (5 commands), TypeScript
+scaffold templates (package.json with pinned versions, tsconfig.json, TradeSignal.ts,
+RiskInterface.ts, .env.example, .gitignore), config.yaml full template with context
+routing and standards, ralph.yaml with success criteria, AGENTS.md template, and post-init
+summary. Step 4 (scaffold) now references "templates from step 3 (sections 3b-3h)"
+instead of "/canon-init". Steps 5-6 already had good inline delegation from the first
+worker; added the RiskInterface enforcement warning ("Do not skip RiskInterface") to
+step 6a matching develop.md. File grew from ~400 to ~700 lines but is now fully
+self-contained — an agent reading only canon-start.md can execute all phases.
+---
+--- item: Include graceful degradation for missing terminal-ui components ---
+Added `[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] &&` guards to all
+9 bare terminal-ui-write.sh calls across steps 3-7. Step 1 already had an if/else
+guard; step 2 had a prose note but now has the code guard too. Added a "State write
+convention" note between steps 1 and 2 establishing the pattern for agents reading
+the command. Updated the Graceful degradation reference section at the bottom to
+reflect that all guards are already inline rather than instructing agents to add
+them manually. Total: 12 guarded calls, 0 unguarded.
+---
+--- item: Verify the command references correct file paths and tool names ---
+Systematically verified all references in canon-start.md: (1) All 6 agent GitHub
+URLs match canon-init.md and files exist in source. (2) All 8 skill GitHub URLs
+match canon-init.md and files exist in source. (3) All 5 command GitHub URLs match
+canon-init.md and files exist in source. (4) Script paths all use correct
+${HOME}/.claude/scripts/ prefix (terminal-ui-write.sh, terminal-session.sh,
+terminal-ui/dist/cli.js). (5) terminal-ui-write.sh API calls all use valid fields
+(phase, status with correct enum values running/idle, log.info, metric.iteration).
+(6) Tool names (pnpm exec vitest run, pnpm exec tsc --noEmit, pnpm exec oxlint
+src/) are correct. Found one discrepancy: the AGENTS.md template in step 3h was
+missing "Key Workflows" and "Domain Knowledge (Skills)" sections that canon-init.md
+step 10 includes. Fixed by adding both sections to match canon-init.md.
+---
+--- item: `canon/commands/canon-start.md` exists with all phase logic ---
+Verified the completion criterion. canon/commands/canon-start.md exists at 732 lines
+with all 5 pipeline phases (init, scaffold, strategy, develop, run), phase detection
+logic in step 2, tmux session launch in step 1, guarded terminal-ui-write.sh calls
+at all 12 state write points, inline delegation from canon-init/discover/develop,
+and graceful degradation for missing terminal-ui components. No changes needed to
+the file — previous workers completed all implementation items. Marked the first
+completion criterion checkbox in plan.md.
+---
+--- item: Command detects fresh project (no `.canon/`) and handles init ---
+Verified the completion criterion by reading canon-start.md. Step 2 (phase detection,
+line 95) evaluates conditions top-to-bottom; the first condition is "No `.canon/`
+directory → phase: init → Go to step 3". Step 3 (lines 133-494) contains the complete
+init procedure inline: directory tree creation (3a), agent fetching (3b), skill
+fetching (3c), command fetching (3d), TypeScript scaffold (3e), config.yaml (3f),
+ralph.yaml (3g), AGENTS.md + .gitkeep (3h), and post-init summary (3i). Also includes
+a guard against running in the config repo itself. No changes needed — criterion met.
+---
+--- item: Command detects existing project and skips to correct phase ---
+Verified the completion criterion by reading canon-start.md step 2 (lines 88-129).
+When .canon/ exists, the detection skips past init and evaluates four remaining
+conditions top-to-bottom: missing scaffold files → scaffold (step 4), no strategy
+spec → strategy (step 5), strategy exists but no src/ or failing tests → develop
+(step 6), all checks pass → run (step 7). Required scaffold files are enumerated
+on lines 103-110 (8 files). Strategy spec detection checks three patterns (lines
+112-115). Each phase step proceeds to the next on completion (step 4→5, 5→6, 6→7).
+No changes needed — the command correctly handles all existing-project scenarios.
+---
+--- item: State file writes are included at each phase transition ---
+Verified the completion criterion by auditing all 12 terminal-ui-write.sh calls in
+canon-start.md. Every phase transition has writes on both sides: step 1 (initial
+detecting/running), step 2 (detected phase), steps 3-7 each have entry and exit
+writes. All 12 calls are guarded with [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] &&.
+Step 6b includes metric.iteration for dev loop tracking. Step 7 uses status=idle
+(correct for final state). No changes needed to canon-start.md — marked the
+completion criterion checkbox in plan.md.
+---
+--- item: tmux session launch is included at entry ---
+Verified the completion criterion by reading canon-start.md step 1 (lines 9-80).
+The tmux launch covers all required aspects: prerequisite checks (tmux binary +
+terminal-session.sh), graceful degradation with a single user-facing note, existing
+session detection via tmux has-session, state file initialization before launch,
+detached session creation (tmux new-session -d) with dashboard in the right pane,
+renderer priority chain (bash loop → node cli.js → terminal-ui binary), and user
+instructions to attach from a separate terminal. No changes needed to canon-start.md
+— marked the completion criterion checkbox in plan.md.
+---
+--- item: Graceful degradation documented for missing components ---
+Verified the final completion criterion. canon-start.md documents graceful degradation
+in three places: (1) step 1 (lines 13-19) prints one note when tmux or terminal-session.sh
+is missing and skips to step 2, (2) "State write convention" note (lines 82-84) establishes
+the guard pattern for all subsequent calls, (3) dedicated "Graceful degradation" section
+(lines 705-720) with a table covering all three components (terminal-session.sh,
+terminal-ui-write.sh, tmux binary) and their fallback behaviors. All 12 terminal-ui-write.sh
+calls are guarded. All three plan requirements met. Marked the last completion criterion
+checkbox — all 6 criteria are now checked. Plan is complete.
+---

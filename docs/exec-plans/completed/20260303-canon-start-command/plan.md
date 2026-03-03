@@ -127,12 +127,12 @@ At each phase, the agent:
 
 ## Progress log
 
-- [ ] Write `canon/commands/canon-start.md` with phase detection logic
-- [ ] Include tmux session launch instructions at entry
-- [ ] Include state file write instructions at each phase transition
-- [ ] Include inline delegation to canon-init, discover, develop
-- [ ] Include graceful degradation for missing terminal-ui components
-- [ ] Verify the command references correct file paths and tool names
+- [x] Write `canon/commands/canon-start.md` with phase detection logic
+- [x] Include tmux session launch instructions at entry
+- [x] Include state file write instructions at each phase transition
+- [x] Include inline delegation to canon-init, discover, develop
+- [x] Include graceful degradation for missing terminal-ui components
+- [x] Verify the command references correct file paths and tool names
 
 ## Decision log
 
@@ -146,9 +146,9 @@ At each phase, the agent:
 
 ## Completion criteria
 
-- [ ] `canon/commands/canon-start.md` exists with all phase logic
-- [ ] Command detects fresh project (no `.canon/`) and handles init
-- [ ] Command detects existing project and skips to correct phase
-- [ ] State file writes are included at each phase transition
-- [ ] tmux session launch is included at entry
-- [ ] Graceful degradation documented for missing components
+- [x] `canon/commands/canon-start.md` exists with all phase logic
+- [x] Command detects fresh project (no `.canon/`) and handles init
+- [x] Command detects existing project and skips to correct phase
+- [x] State file writes are included at each phase transition
+- [x] tmux session launch is included at entry
+- [x] Graceful degradation documented for missing components
