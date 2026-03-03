@@ -7,6 +7,6 @@ vol="${1:-50}"
 sound="${2:-unstoppable}"
 
 CLAUDE_SOUND="$sound" CLAUDE_SOUND_VOLUME="$vol" \
-  bash ~/.claude/hooks/play-sound.sh
+	bash ~/.claude/hooks/play-sound.sh
 
 echo "Played '${sound}' at ${vol}%"

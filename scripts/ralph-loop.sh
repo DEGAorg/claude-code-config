@@ -253,7 +253,7 @@ EOF
 			echo "ralph-loop: DONE — shipped after ${i} iteration(s)."
 			exit 0
 		else
-			echo "→ health check failed — repo not clean, continuing"
+			echo "→ health check failed — criteria not met, continuing"
 			rm -f "${RESULT_FILE}"
 		fi
 	elif [[ "${RESULT}" == "BLOCKED" ]]; then
