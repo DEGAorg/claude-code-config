@@ -1,0 +1,14 @@
+DONE:
+- Installed tmux 3.6a (was missing, blocked all interactive verification)
+- Fixed bug: `watch` not available on macOS — added 4th fallback tier (shell loop)
+- Verified: session creates with 2 panes (left: shell, right: fallback)
+- Verified: idempotent re-attach (1 session, 2 panes after second run)
+- Verified: status bar configured (session name left, time right)
+- Verified: shellcheck and shfmt clean, 50 lines (at limit)
+- All 4 completion criteria checked off
+
+REMAINING:
+- none — all progress log items and completion criteria are done
+
+BLOCKERS:
+- none

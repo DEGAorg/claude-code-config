@@ -90,11 +90,11 @@ in the right pane handles detailed status display.
 
 ## Progress log
 
-- [ ] Write `scripts/terminal-session.sh` with arg parsing, session creation, pane split
-- [ ] Add terminal-ui fallback detection (PATH check, dist/cli.js check, watch fallback)
-- [ ] Add tmux status bar configuration
-- [ ] shellcheck and shfmt pass
-- [ ] Manual test: `bash scripts/terminal-session.sh --name test --state /tmp/test-state.json`
+- [x] Write `scripts/terminal-session.sh` with arg parsing, session creation, pane split
+- [x] Add terminal-ui fallback detection (PATH check, dist/cli.js check, watch fallback)
+- [x] Add tmux status bar configuration
+- [x] shellcheck and shfmt pass
+- [x] Manual test: `bash scripts/terminal-session.sh --name test --state /tmp/test-state.json`
 
 ## Decision log
 
@@ -108,7 +108,7 @@ in the right pane handles detailed status display.
 
 ## Completion criteria
 
-- [ ] `bash scripts/terminal-session.sh --name test --state /tmp/s.json` opens a tmux session
-- [ ] Session has two panes: left (shell) and right (dashboard or watch fallback)
-- [ ] Running the same command again attaches to existing session
-- [ ] shellcheck and shfmt clean
+- [x] `bash scripts/terminal-session.sh --name test --state /tmp/s.json` opens a tmux session
+- [x] Session has two panes: left (shell) and right (dashboard or watch fallback)
+- [x] Running the same command again attaches to existing session
+- [x] shellcheck and shfmt clean

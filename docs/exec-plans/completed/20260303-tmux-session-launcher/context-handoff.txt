@@ -1,0 +1,47 @@
+--- item: Write `scripts/terminal-session.sh` with arg parsing, session creation, pane split ---
+Created scripts/terminal-session.sh (48 lines, under the 50-line limit). The script
+parses --name and --state flags, attaches to an existing session if one exists
+(idempotent), otherwise creates a new tmux session with a 60/40 horizontal split.
+I included the fallback detection and status bar config since the script needs them
+to function — items 2 and 3 can verify/refine those sections. Passes shellcheck and shfmt.
+---
+
+--- item: Add terminal-ui fallback detection (PATH check, dist/cli.js check, watch fallback) ---
+Verified the three-tier fallback detection in scripts/terminal-session.sh (lines 31-37).
+Fixed one bug: changed `-x` to `-f` for the dist/cli.js check since the file is run
+via `node` and doesn't need execute permission — a .js file without +x would have
+failed the old check. PATH check via `command -v` and `watch -n1 cat` fallback were
+already correct. shellcheck and shfmt still pass clean.
+---
+
+--- item: Add tmux status bar configuration ---
+Verified status bar config at scripts/terminal-session.sh lines 44-46. The first
+worker already implemented it correctly: `status-left " #S "` (session name) and
+`status-right " %H:%M "` (time). Matches the plan spec exactly. No changes needed —
+the configuration is minimal by design since the Ink dashboard handles detailed display.
+---
+
+--- item: shellcheck and shfmt pass ---
+Ran shellcheck and shfmt -d against scripts/terminal-session.sh. Both passed clean
+with zero warnings and zero formatting diffs. No changes were needed — the script
+was already compliant from the initial implementation. Next worker handles the
+manual test item.
+---
+
+--- item: Manual test: `bash scripts/terminal-session.sh --name test --state /tmp/test-state.json` ---
+Tested arg validation: missing both flags, missing --state only, and unknown flag
+all produce correct error messages and exit 1. shellcheck and shfmt confirmed clean.
+Full interactive tmux test could not run because tmux is not installed on this
+machine (not in PATH, not in Homebrew). The script logic is correct — session
+creation, pane split, fallback detection, and status bar commands follow tmux API
+correctly. BLOCKER for full interactive verification: `brew install tmux` needed.
+---
+
+--- item: `bash scripts/terminal-session.sh --name test --state /tmp/s.json` opens a tmux session ---
+Installed tmux 3.6a via Homebrew. Found bug: `watch` command is not available on
+macOS by default, so the fallback pane command failed immediately and the pane closed
+(1 pane instead of 2). Fixed by adding a 4th fallback tier: `bash -c 'while true;
+do clear && cat <state>; sleep 1; done'`. The fallback chain is now: terminal-ui >
+dist/cli.js > watch > shell loop. All 4 completion criteria verified: session creates
+with 2 panes, idempotent re-attach works, status bar configured, linters clean at 50 lines.
+---
