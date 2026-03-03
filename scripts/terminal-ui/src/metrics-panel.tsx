@@ -12,7 +12,7 @@ function formatValue(value: unknown): string {
 }
 
 export function MetricsPanel({ metrics }: MetricsPanelProps) {
-  const entries = Object.entries(metrics);
+  const entries = Object.entries(metrics ?? {});
 
   if (entries.length === 0) {
     return (

@@ -103,8 +103,11 @@ src/
 
 ## Risks and open questions
 
-- **P1:** Ink 6 requires React 18. React 19 causes runtime errors. → Pin `react@18.3.1`
-  exactly. No `^` prefix. Verified via Ink GitHub issue #688.
+- **P1:** ~~Ink 6 requires React 18. React 19 causes runtime errors.~~ **WRONG.**
+  Ink 6.8.0 ships `react-reconciler@0.33.0` which requires React 19
+  (`ReactSharedInternals.S` is a React 19 internal). React 18 causes
+  `TypeError: Cannot read properties of undefined (reading 'S')`.
+  Fixed post-completion: pinned `react@19.1.0`, `@types/react@19.1.8`.
 - **P2:** Should `LogPanel` auto-scroll or show most recent entries? → Show most recent
   entries (bottom of ring buffer). No scroll interaction needed — this is read-only.
   The state file already caps at 50 entries via the writer.
@@ -130,7 +133,7 @@ src/
 | Decision | Alternatives considered | Rationale |
 |----------|------------------------|-----------|
 | chokidar for file watching | `fs.watch`, `fs.watchFile` | `fs.watch` has platform quirks (double events on macOS). chokidar handles debouncing and cross-platform edge cases. Standard choice. |
-| React 18.3.1 pinned | React 19 | Ink 6 breaks on React 19 (GitHub #688). Pin exactly until Ink supports 19. |
+| ~~React 18.3.1 pinned~~ React 19.1.0 pinned | React 18 | Ink 6.8.0 uses react-reconciler@0.33.0 which requires React 19 internals. React 18 crashes at startup. Corrected post-completion. |
 | No `@inkjs/ui` | Include for spinners/badges | Last published 2 years ago. The components we need (colored text, boxes) are built into `ink` core. No extra dependency needed. |
 | Single file watcher in App | Watcher in CLI, pass state as prop | Keeps the watcher lifecycle tied to React (useEffect cleanup). CLI stays thin. |
 | Show most recent logs (no scroll) | Scrollable viewport | Read-only dashboard. Scroll adds interaction complexity. 50-entry ring buffer + terminal height is sufficient. |
@@ -142,3 +145,18 @@ src/
 - [x] Dashboard updates live when state file changes on disk
 - [x] Missing state file shows placeholder, recovers when file appears
 - [x] Malformed JSON does not crash the app
+
+## Post-completion fixes
+
+**2026-03-03 — smoke test failures**
+
+Two bugs found during first manual smoke test after all plans completed:
+
+1. **React version mismatch.** Ink 6.8.0 ships `react-reconciler@0.33.0` which
+   accesses `ReactSharedInternals.S` — a React 19 internal. React 18.3.1 caused
+   `TypeError: Cannot read properties of undefined (reading 'S')` at startup.
+   Fix: pinned `react@19.1.0` and `@types/react@19.1.8`.
+
+2. **MetricsPanel null crash.** `Object.entries(metrics)` threw when `metrics`
+   was undefined (state file with missing or null metrics field).
+   Fix: `Object.entries(metrics ?? {})`.
