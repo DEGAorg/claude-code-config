@@ -1,0 +1,85 @@
+--- item: Create `scripts/terminal-ui/` package scaffold (package.json, tsconfig.json) ---
+Created `scripts/terminal-ui/` with package.json (ESM, private, typescript 5.7.3 devDep),
+tsconfig.json (strict mode with all required flags from node-typescript rules: noUncheckedIndexedAccess,
+exactOptionalPropertyTypes, verbatimModuleSyntax, etc.), and .gitignore (node_modules/, dist/).
+npm install succeeded. tsc --noEmit fails with TS18003 (no inputs) because src/ is empty —
+this is expected and will resolve once types.ts is created in the next task.
+---
+
+--- item: Define TypeScript state interface in `src/types.ts` ---
+Created `scripts/terminal-ui/src/types.ts` with exported types: `Status` (4-value union),
+`LogLevel` (4-value union), `LogEntry` interface (ts/level/msg), `TerminalUIState` interface
+(phase, status, startedAt, updatedAt, logs, error, metrics), `TerminalUIStateUpdate` partial
+type for the atomic writer (omits logs/updatedAt, adds appendLogs for ring buffer appends),
+and `LOG_BUFFER_MAX` constant (50). All fields are readonly. `metrics` is
+`Readonly<Record<string, unknown>>` per plan — Canon and Ralph extend without modifying Core.
+`tsc --noEmit` passes cleanly.
+---
+
+--- item: Write atomic state writer in `src/write.ts` with log ring buffer ---
+Created `scripts/terminal-ui/src/write.ts` with two exports: `readState(filePath)` returns
+`TerminalUIState | null` (null on ENOENT), and `writeState(filePath, update)` does atomic
+read-merge-rename. Added `@types/node@22.19.13` devDep for Node.js type definitions.
+Key behaviors: log ring buffer appends `update.appendLogs` and slices to `LOG_BUFFER_MAX` (50);
+metrics are shallow-merged (callers add keys without replacing all); `error` field uses
+`"error" in update` check to distinguish absent from explicitly-null (clearing error);
+atomic write uses `randomBytes` temp file in same directory + `rename`. `tsc --noEmit` passes.
+---
+
+--- item: Write shell helper `scripts/terminal-ui-write.sh` for bash callers ---
+Created `scripts/terminal-ui-write.sh` — a bash equivalent of the TS `writeState()` function.
+Uses jq for all JSON manipulation. Supports key=value CLI args: phase, status, error,
+startedAt, metric.<key>=<val> (auto-detects JSON vs string), log.<level>=<msg>. Implements
+same behaviors as TS writer: atomic temp+rename, log ring buffer capped at 50, shallow
+metric merge, error= clears to null. Passes shellcheck and shfmt clean. Tested: fresh
+create, update existing state, error clearing, ring buffer overflow (55 entries → 50 retained),
+invalid log level rejection, missing args rejection.
+---
+
+--- item: Verify shell writer produces valid JSON that TS interface accepts ---
+Created `scripts/terminal-ui/src/verify-shell-compat.ts` — a 9-suite verification script
+(310 checks) that runs the bash shell writer, reads output with TS `readState`, and validates
+every field against the TerminalUIState interface. Tests: fresh creation, phase/status update,
+log entries (level+msg), metrics (JSON auto-detection + string), metrics shallow merge,
+error set and clear to null, ring buffer cap at 50, field preservation across partial updates,
+and a full shell→TS→shell round-trip. Added tsx@4.19.4 as devDep, `npm run verify` script.
+All checks pass — the two writers produce interchangeable JSON.
+---
+
+--- item: `scripts/terminal-ui/src/types.ts` exists with exported interfaces ---
+Verified completion criterion. File exists at scripts/terminal-ui/src/types.ts with 6 exports:
+Status (4-value union), LogLevel (4-value union), LogEntry interface (ts/level/msg),
+TerminalUIState interface (phase/status/startedAt/updatedAt/logs/error/metrics),
+TerminalUIStateUpdate partial type, and LOG_BUFFER_MAX constant (50). All fields readonly.
+tsc --noEmit passes. Marked checkbox in plan.md completion criteria.
+---
+
+--- item: `scripts/terminal-ui/src/write.ts` compiles and exports `writeState()` function ---
+Verified completion criterion. File exists at scripts/terminal-ui/src/write.ts with two
+exports: readState(filePath) returning TerminalUIState | null, and writeState(filePath, update)
+doing atomic read-merge-rename. Ran tsc --noEmit — passes cleanly with no errors.
+Marked checkbox in plan.md completion criteria.
+---
+
+--- item: `scripts/terminal-ui-write.sh` passes shellcheck ---
+Verified completion criterion. Ran shellcheck on scripts/terminal-ui-write.sh — zero
+warnings, zero errors. The script was already clean from the initial authoring (item 4
+in progress log). Marked checkbox in plan.md completion criteria.
+---
+
+--- item: Shell writer output is valid JSON matching the TS interface ---
+Verified completion criterion. Ran `npm run verify` in scripts/terminal-ui/ which executes
+verify-shell-compat.ts — all 310 checks passed, 0 failed. The 9 test suites cover fresh
+creation, phase/status updates, log entries, metrics (JSON auto-detection + string), metrics
+shallow merge, error set and clear, ring buffer cap at 50, field preservation across partial
+updates, and a full shell→TS→shell round-trip. No code changes needed — just confirmed the
+existing verification passes.
+---
+
+--- item: `tsc --noEmit` passes on the terminal-ui package ---
+Verified final completion criterion. Ran `tsc --noEmit` in scripts/terminal-ui/ — passes
+cleanly with zero errors and zero output. All 5 progress log items and all 5 completion
+criteria are now checked. The plan is fully complete: types.ts defines the state interface,
+write.ts provides atomic TS writer, terminal-ui-write.sh provides the shell equivalent,
+and verify-shell-compat.ts confirms interoperability (310 checks passing).
+---
