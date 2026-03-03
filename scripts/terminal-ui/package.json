@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "terminal-ui": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -14,8 +17,14 @@
     "check": "tsc --noEmit",
     "verify": "tsx src/verify-shell-compat.ts"
   },
+  "dependencies": {
+    "chokidar": "4.0.3",
+    "ink": "6.8.0",
+    "react": "19.2.4"
+  },
   "devDependencies": {
     "@types/node": "22.19.13",
+    "@types/react": "19.2.14",
     "tsx": "4.19.4",
     "typescript": "5.7.3"
   }

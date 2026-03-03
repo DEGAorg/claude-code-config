@@ -1,0 +1,139 @@
+--- item: Add Ink, React, chokidar dependencies to package.json and install ---
+Added ink@6.8.0, react@19.2.4, chokidar@4.0.3 as runtime deps and @types/react@19.2.14
+as a dev dep. The plan specified React 18.3.1 but Ink 6.x requires React >=19.0.0 (the
+plan's note about "Ink 6 requires React 18" was backwards). Used React 19.2.4 + Ink 6.8.0
+which is the supported combination. Also added the `"bin": { "terminal-ui": "./dist/cli.js" }`
+entry to package.json. All versions exact-pinned, 0 vulnerabilities, 45 packages installed.
+---
+
+--- item: Update tsconfig.json with jsx setting ---
+Added `"jsx": "react-jsx"` to compilerOptions in `scripts/terminal-ui/tsconfig.json`.
+This enables the automatic JSX transform so `.tsx` files compile without needing
+`import React from 'react'` in every file. Only one file changed. No other tsconfig
+options were modified — the existing strict settings are already correct per project
+standards.
+---
+
+--- item: Create `src/cli.tsx` — entry point with `--state` arg parsing ---
+Created `scripts/terminal-ui/src/cli.tsx` (15 lines). Thin entry point: parses
+`--state <path>` from process.argv, prints usage and exits 1 if missing, then calls
+`render(<App statePath={statePath} />)`. Has shebang `#!/usr/bin/env node`. Imports
+`App` from `./app.js` (doesn't exist yet — next task). Uses ESM `.js` extension
+per Node16 module resolution. No React import needed thanks to react-jsx transform.
+---
+
+--- item: Create `src/app.tsx` — file watcher, state management, layout composition ---
+Created `scripts/terminal-ui/src/app.tsx` (~80 lines). Main App component that:
+(1) watches statePath with chokidar (change/add/unlink events),
+(2) reads and parses JSON into TerminalUIState on each change,
+(3) handles ENOENT gracefully (shows "Waiting for state file…" placeholder),
+(4) keeps last valid state on parse errors via useRef, shows yellow warning line,
+(5) composes StatusBar, LogPanel, MetricsPanel in a vertical Box layout.
+Imports sub-components from ./status-bar.js, ./log-panel.js, ./metrics-panel.js
+(don't exist yet — next 3 tasks). Watcher cleanup runs on unmount via useEffect return.
+---
+
+--- item: Create `src/status-bar.tsx` — phase and status badge ---
+Created `scripts/terminal-ui/src/status-bar.tsx` (~30 lines). Exports a StatusBar
+component that takes `phase: string` and `status: Status` props. Renders a single
+row with Box (borderStyle="single", borderBottom=false) — phase label left-aligned
+("Phase: <phase>"), color-coded status badge right-aligned ("● RUNNING"). Status
+colors mapped via a STATUS_COLORS record: running=green, paused=yellow, idle=gray,
+error=red. Uses flexGrow=1 on the phase box to push the badge to the right.
+---
+
+--- item: Create `src/log-panel.tsx` — recent log entries display ---
+Created `scripts/terminal-ui/src/log-panel.tsx` (~60 lines). Exports a LogPanel
+component that takes `logs: readonly LogEntry[]`. Uses Ink's `useStdout()` hook
+to detect terminal height and shows the most recent N entries that fit (subtracts
+8 rows for chrome: StatusBar border + MetricsPanel + padding). Each row shows
+time (HH:MM:SS via toLocaleTimeString), level (color-coded: info=blue, warn=yellow,
+error=red, debug=gray, padded to 5 chars), and message. Empty state shows
+"No log entries yet" in dim text. Box has flexGrow=1, borderStyle="single" with
+borderTop=false to connect visually to StatusBar's border above.
+---
+
+--- item: Create `src/metrics-panel.tsx` — key-value metrics grid ---
+Created `scripts/terminal-ui/src/metrics-panel.tsx` (~60 lines). Exports a MetricsPanel
+component that takes `metrics: Readonly<Record<string, unknown>>`. Renders a two-column
+key-value grid inside a Box with borderStyle="single", borderTop=false (connects visually
+to LogPanel above). Pairs entries side-by-side (two per row). Uses a formatValue helper
+that renders null/undefined as "—" and everything else as String(value). Empty state shows
+"No metrics" in dim text. Keys are bold, values are plain text. Each column has minWidth=30
+for alignment.
+---
+
+--- item: `tsc --noEmit` passes ---
+Ran `tsc --noEmit` in scripts/terminal-ui/ — passed clean with zero errors. All 7 source
+files (types.ts, write.ts, cli.tsx, app.tsx, status-bar.tsx, log-panel.tsx, metrics-panel.tsx)
+type-check successfully. No code changes were needed; the previous workers' implementations
+were already type-correct. React 19 + Ink 6 + @types/react@19.2.14 all resolve without issues.
+---
+
+--- item: Manual test: create a state.json, run `terminal-ui --state state.json`, verify render ---
+Built the project with `npm run build` (tsc compiled clean). Created a test-state.json matching
+the TerminalUIState schema with phase="scaffold", status="running", 5 log entries (info, warn,
+error, debug), and 4 metrics. Ran `node dist/cli.js --state test-state.json` — dashboard rendered
+correctly: StatusBar shows phase + color-coded RUNNING badge, LogPanel shows all 5 entries with
+timestamps and level-colored labels, MetricsPanel shows 4 key-value pairs in two-column layout.
+Also verified missing-file fallback (shows "Waiting for state file…") and no-arg validation
+(prints usage, exits 1). Cleaned up test-state.json via trash. No code changes needed.
+---
+
+--- item: Manual test: update state.json while running, verify live refresh ---
+Ran a comprehensive live-refresh test with 7 scenarios: (1) initial load, (2) phase change
+(init→scaffold) with new logs and metrics, (3) status change to error with error field set,
+(4) malformed JSON — process survived without crashing, (5) recovery with valid JSON after
+malformed input, (6) file deletion — process stayed alive, (7) file recreation — process
+recovered and picked up new state. All 7 scenarios passed — chokidar watcher correctly
+triggers re-reads on change/add/unlink events, and the error handling in app.tsx properly
+handles parse failures and missing files. No code changes needed.
+---
+
+--- item: `tsc --noEmit` passes on the full package ---
+Ran `tsc --noEmit` in scripts/terminal-ui/ — passed clean with zero errors. This is
+the completion criteria verification (distinct from the progress log item). Checked off
+the first completion criteria checkbox in plan.md. No code changes needed; all source
+files already type-check correctly.
+---
+
+--- item: `terminal-ui --state <path>` renders status bar, logs, and metrics ---
+Verified completion criteria #2. Built the project, created a test-state.json matching
+the TerminalUIState schema (using `ts`/`msg` field names, not `timestamp`/`message`),
+and ran `node dist/cli.js --state /tmp/test-state.json`. Dashboard rendered correctly:
+StatusBar shows "Phase: scaffold" + green "● RUNNING" badge, LogPanel shows 5 entries
+with timestamps and color-coded level labels, MetricsPanel shows 4 key-value pairs in
+two-column grid. Checked off the completion criteria checkbox in plan.md. No code changes.
+---
+
+--- item: Dashboard updates live when state file changes on disk ---
+Verified completion criteria #3. Built the project, created an initial state file
+(phase=init, status=running, 1 log, iteration=1), launched the dashboard, then
+performed an atomic file replacement (write to temp + mv) with updated state
+(phase=scaffold, status=paused, 2 logs, iteration=2 + elapsed). The dashboard
+re-rendered within seconds showing all updated values — phase, status badge color,
+new log entries, and new metrics. Note: non-atomic writes (cat >) cause a transient
+parse error from the truncation, but the app handles it correctly (keeps last valid
+state, shows warning). No code changes needed.
+---
+
+--- item: Missing state file shows placeholder, recovers when file appears ---
+Verified completion criteria #4. Tested 3 scenarios: (1) launched with non-existent
+file path — rendered "Waiting for state file…" placeholder with the path displayed,
+(2) created the file via atomic write (temp + mv) while dashboard was running — chokidar
+"add" event fired, dashboard recovered to full render showing StatusBar, LogPanel,
+MetricsPanel, (3) full cycle: started with existing file → deleted it → dashboard
+reverted to placeholder → recreated file → dashboard recovered again. All transitions
+worked correctly. No code changes needed — app.tsx already handled all cases via ENOENT
+detection (lines 28-36), unlink handler (lines 57-60), and add handler (line 56).
+---
+
+--- item: Malformed JSON does not crash the app ---
+Verified completion criteria #5. Ran a 5-step automated test: (1) started dashboard
+with valid state, (2) overwrote with garbled text — process survived, kept last valid
+state, showed yellow parse error warning, (3) wrote empty file — survived, (4) wrote
+truncated JSON — survived, (5) wrote valid JSON — dashboard recovered and rendered
+new state. All scenarios passed. No code changes needed — app.tsx's try/catch in
+loadState (lines 21-45) correctly handles all malformed input by falling through
+to the non-ENOENT error path which preserves lastValidRef and displays the warning.
+---

@@ -114,16 +114,16 @@ src/
 
 ## Progress log
 
-- [ ] Add Ink, React, chokidar dependencies to package.json and install
-- [ ] Update tsconfig.json with jsx setting
-- [ ] Create `src/cli.tsx` — entry point with `--state` arg parsing
-- [ ] Create `src/app.tsx` — file watcher, state management, layout composition
-- [ ] Create `src/status-bar.tsx` — phase and status badge
-- [ ] Create `src/log-panel.tsx` — recent log entries display
-- [ ] Create `src/metrics-panel.tsx` — key-value metrics grid
-- [ ] `tsc --noEmit` passes
-- [ ] Manual test: create a state.json, run `terminal-ui --state state.json`, verify render
-- [ ] Manual test: update state.json while running, verify live refresh
+- [x] Add Ink, React, chokidar dependencies to package.json and install
+- [x] Update tsconfig.json with jsx setting
+- [x] Create `src/cli.tsx` — entry point with `--state` arg parsing
+- [x] Create `src/app.tsx` — file watcher, state management, layout composition
+- [x] Create `src/status-bar.tsx` — phase and status badge
+- [x] Create `src/log-panel.tsx` — recent log entries display
+- [x] Create `src/metrics-panel.tsx` — key-value metrics grid
+- [x] `tsc --noEmit` passes
+- [x] Manual test: create a state.json, run `terminal-ui --state state.json`, verify render
+- [x] Manual test: update state.json while running, verify live refresh
 
 ## Decision log
 
@@ -137,8 +137,8 @@ src/
 
 ## Completion criteria
 
-- [ ] `tsc --noEmit` passes on the full package
-- [ ] `terminal-ui --state <path>` renders status bar, logs, and metrics
-- [ ] Dashboard updates live when state file changes on disk
-- [ ] Missing state file shows placeholder, recovers when file appears
-- [ ] Malformed JSON does not crash the app
+- [x] `tsc --noEmit` passes on the full package
+- [x] `terminal-ui --state <path>` renders status bar, logs, and metrics
+- [x] Dashboard updates live when state file changes on disk
+- [x] Missing state file shows placeholder, recovers when file appears
+- [x] Malformed JSON does not crash the app
