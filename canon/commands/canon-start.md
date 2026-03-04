@@ -400,21 +400,44 @@ logs via a pipe wrapper, and the user regains control of Claude immediately.
 
 ```bash
 RUNNER_LOG=".canon/execution/runner.log"
+TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
+STATE=".canon/state.json"
 mkdir -p .canon/execution
 
-# Background: run strategy and pipe output to dashboard + log file
+# Counters for dashboard metrics
+_CYCLES=0
+_SIGNALS=0
+_ERRORS=0
+
+# Background: run strategy, parse tagged stdout, update dashboard metrics
 (
   pnpm exec tsx src/runner.ts --dry-run 2>&1 | while IFS= read -r line; do
     echo "${line}" >> "${RUNNER_LOG}"
-    if [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
-      bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-        log.info="${line}"
+
+    # Parse tag from first word (START, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
+    tag="${line%% *}"
+    msg="${line#* }"
+    level="info"
+
+    case "${tag}" in
+      NO_EDGE)    _CYCLES=$((_CYCLES + 1)) ;;
+      SIGNAL)     _CYCLES=$((_CYCLES + 1)); _SIGNALS=$((_SIGNALS + 1)) ;;
+      SCAN_ERROR) _CYCLES=$((_CYCLES + 1)); _ERRORS=$((_ERRORS + 1)); level="error" ;;
+      STOP)       level="warn" ;;
+    esac
+
+    if [[ -f "${TUI_WRITE}" ]]; then
+      bash "${TUI_WRITE}" "${STATE}" \
+        "log.${level}=${msg}" \
+        "metric.cycles=${_CYCLES}" \
+        "metric.signals=${_SIGNALS}" \
+        "metric.errors=${_ERRORS}"
     fi
   done
 
   # When the runner exits, update dashboard status
-  if [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
-    bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+  if [[ -f "${TUI_WRITE}" ]]; then
+    bash "${TUI_WRITE}" "${STATE}" \
       status=idle log.warn="Runner process exited"
   fi
 ) &

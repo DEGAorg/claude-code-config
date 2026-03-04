@@ -5,12 +5,18 @@
  * evaluates entry/exit signals, and logs every decision to JSONL.
  * Never places orders.
  *
- * Usage: node --env-file=.env dist/runner.js --dry-run
+ * Stdout protocol — each line is tagged for dashboard parsing:
+ *   START <message>       Runner started
+ *   NO_EDGE <message>     Scan cycle, no opportunities
+ *   SIGNAL <message>      Trade signal detected (dry-run skip)
+ *   SCAN_ERROR <message>  Scan cycle failed
+ *   STOP <message>        Runner shutting down
+ *
+ * Usage: pnpm exec tsx src/runner.ts --dry-run
  */
 
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { TradeSignal } from "./types/TradeSignal.js";
 import type { Portfolio } from "./types/game.js";
 import { NbaMomentumStrategy } from "./strategy.js";
 
@@ -18,6 +24,7 @@ import { NbaMomentumStrategy } from "./strategy.js";
 interface DecisionLogEntry {
   ts: string;
   automation_id: string;
+  cycle: number;
   signal: {
     marketId: string;
     direction: string;
@@ -34,7 +41,9 @@ interface DecisionLogEntry {
 interface HeartbeatLogEntry {
   ts: string;
   automation_id: string;
+  cycle: number;
   action: "NO_EDGE";
+  games_checked: number;
   reasoning: string;
 }
 
@@ -42,6 +51,7 @@ interface HeartbeatLogEntry {
 interface ScanErrorLogEntry {
   ts: string;
   automation_id: string;
+  cycle: number;
   action: "SCAN_ERROR";
   reasoning: string;
 }
@@ -51,6 +61,10 @@ type LogEntry = DecisionLogEntry | HeartbeatLogEntry | ScanErrorLogEntry;
 const AUTOMATION_ID = "nba-momentum-v1";
 const EXECUTION_DIR = join(process.cwd(), ".canon", "execution");
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
+
+let cycleCount = 0;
+let signalCount = 0;
+let errorCount = 0;
 
 function ensureExecutionDir(): void {
   if (!existsSync(EXECUTION_DIR)) {
@@ -66,6 +80,11 @@ function logFilePath(): string {
 function appendLog(entry: LogEntry): void {
   ensureExecutionDir();
   appendFileSync(logFilePath(), JSON.stringify(entry) + "\n");
+}
+
+/** Tagged stdout line — parsed by the dashboard pipe wrapper. */
+function out(tag: string, msg: string): void {
+  process.stdout.write(`${tag} ${msg}\n`);
 }
 
 function dryRunPortfolio(): Portfolio {
@@ -99,21 +118,30 @@ function isDryRun(): boolean {
  * For now this is a stub that logs a heartbeat.
  */
 async function runCycle(strategy: NbaMomentumStrategy): Promise<void> {
+  cycleCount++;
+
   // TODO: Replace with real scan logic:
   // 1. fetchOdds("basketball_nba") from sportsbook client
   // 2. searchMarkets("NBA") from polymarket client
   // 3. Match games, check injury reports
   // 4. Call strategy.evaluate(game, injury) for each match
-  // 5. Log signals
+  // 5. For each signal: signalCount++, appendLog(decision), out("SIGNAL", ...)
+
+  const gamesChecked = 0; // TODO: real count from API
 
   const entry: HeartbeatLogEntry = {
     ts: new Date().toISOString(),
     automation_id: AUTOMATION_ID,
+    cycle: cycleCount,
     action: "NO_EDGE",
-    reasoning: "Scan cycle complete — no edges detected (stub)",
+    games_checked: gamesChecked,
+    reasoning: `Cycle ${cycleCount} — ${gamesChecked} games, no edges`,
   };
   appendLog(entry);
-  process.stdout.write(`[${entry.ts}] ${entry.reasoning}\n`);
+  out(
+    "NO_EDGE",
+    `Cycle ${cycleCount} — ${gamesChecked} games checked, no edges`,
+  );
 }
 
 function sleep(ms: number): Promise<void> {
@@ -136,16 +164,18 @@ async function main(): Promise<void> {
   const portfolio = dryRunPortfolio();
   const strategy = new NbaMomentumStrategy(portfolio);
 
-  process.stdout.write(
-    `NBA momentum runner (dry-run) starting\n` +
-      `  pollInterval: ${pollInterval}ms\n` +
-      `  logDir: ${EXECUTION_DIR}\n\n`,
+  out(
+    "START",
+    `NBA momentum runner (dry-run) poll=${pollInterval}ms`,
   );
 
   let running = true;
 
   process.on("SIGINT", () => {
-    process.stdout.write("\nSIGINT received, shutting down...\n");
+    out(
+      "STOP",
+      `Shutting down — ${cycleCount} cycles, ${signalCount} signals, ${errorCount} errors`,
+    );
     running = false;
   });
 
@@ -153,16 +183,18 @@ async function main(): Promise<void> {
     try {
       await runCycle(strategy);
     } catch (err: unknown) {
+      errorCount++;
       const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`Scan cycle error: ${message}\n`);
 
       const errorEntry: ScanErrorLogEntry = {
         ts: new Date().toISOString(),
         automation_id: AUTOMATION_ID,
+        cycle: cycleCount,
         action: "SCAN_ERROR",
-        reasoning: `Scan cycle error: ${message}`,
+        reasoning: message,
       };
       appendLog(errorEntry);
+      out("SCAN_ERROR", `Cycle ${cycleCount} — ${message}`);
     }
 
     if (running) {
@@ -170,7 +202,10 @@ async function main(): Promise<void> {
     }
   }
 
-  process.stdout.write("Runner stopped.\n");
+  out(
+    "STOP",
+    `Runner stopped — ${cycleCount} cycles, ${signalCount} signals, ${errorCount} errors`,
+  );
 }
 
 main();
