@@ -395,40 +395,60 @@ Reset the dashboard for execution — clear build metrics and set execution phas
     log.info="Strategy built — launching runner (dry-run)..."
 ```
 
-Now run the strategy in dry-run mode and pipe each output line to the dashboard:
+Launch the runner as a background daemon. The runner writes to the dashboard
+logs via a pipe wrapper, and the user regains control of Claude immediately.
 
 ```bash
-pnpm exec tsx src/runner.ts --dry-run 2>&1 | while IFS= read -r line; do
-  echo "${line}"
+RUNNER_LOG=".canon/execution/runner.log"
+mkdir -p .canon/execution
+
+# Background: run strategy and pipe output to dashboard + log file
+(
+  pnpm exec tsx src/runner.ts --dry-run 2>&1 | while IFS= read -r line; do
+    echo "${line}" >> "${RUNNER_LOG}"
+    if [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
+      bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+        log.info="${line}"
+    fi
+  done
+
+  # When the runner exits, update dashboard status
   if [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
     bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-      log.info="${line}"
+      status=idle log.warn="Runner process exited"
   fi
-done
+) &
+RUNNER_PID=$!
+disown
 ```
 
-The runner polls live APIs (Polymarket, The Odds API) on a fixed interval,
-evaluates signals against the strategy logic, and logs every decision to
-`.canon/execution/<date>.jsonl`. In dry-run mode it never places orders.
+Wait briefly to confirm the runner starts without immediate crash:
 
-If the runner exits with an error (missing API key, network issue, type error),
-report the error and stop. The user needs to fix it before re-running.
+```bash
+sleep 2
+if kill -0 "${RUNNER_PID}" 2>/dev/null; then
+  echo "Runner started (PID ${RUNNER_PID})"
+else
+  echo "Runner failed to start — check ${RUNNER_LOG}"
+fi
+```
 
-If the runner runs successfully (at least one poll cycle completes with output),
-stop it with Ctrl-C and print:
+If the runner started successfully, print:
 
-> **Strategy running.**
+> **Strategy running in background (PID <pid>).**
 >
-> All checks pass. Strategy built and verified. Runner tested in dry-run mode.
+> The runner polls live APIs, evaluates signals, and logs decisions to
+> `.canon/execution/`. Dashboard shows live output in the log panel.
 >
-> Decision log: `.canon/execution/<date>.jsonl`
+> - View logs: `tail -f .canon/execution/runner.log`
+> - Stop runner: `kill <pid>`
+> - Decision log: `.canon/execution/<date>.jsonl`
 >
-> To run again: `pnpm exec tsx src/runner.ts --dry-run`
->
-> To re-run any phase, use the individual commands:
-> - `/discover` — market analysis and strategy design
-> - `/develop` — implement, test, iterate
-> - `/ralph-cycle` — iterate until all success criteria pass
+> You can continue working — ask questions, modify code, or run other
+> commands. The runner continues in the background.
+
+If the runner failed to start, read the log and report the error. The user
+needs to fix it (missing API key, type error, etc.) before re-running.
 
 ---
 
