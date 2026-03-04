@@ -55,7 +55,7 @@ top-to-bottom — the first match determines the current phase.
 
 **Required scaffold files** (for scaffold-complete check):
 - `.canon/config.yaml`
-- `.canon/ralph.yaml`
+- `ralph.yaml` (project root)
 - `.canon/agents/` directory with at least one `.md` file
 - `.canon/skills/` directory with at least one `.md` file
 - `package.json`

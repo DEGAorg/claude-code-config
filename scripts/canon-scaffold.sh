@@ -276,9 +276,9 @@ standards:
     - "If it is not in the repo, it does not exist"
 EOF
 
-# ── 7. Write .canon/ralph.yaml ───────────────────────────────────────────────
-echo "→ writing .canon/ralph.yaml..."
-cat > ".canon/ralph.yaml" <<EOF
+# ── 7. Write ralph.yaml (project root — where ralph-loop.sh expects it) ──────
+echo "→ writing ralph.yaml..."
+cat > "ralph.yaml" <<EOF
 version: 1
 strategy: ${PROJECT_NAME}
 
@@ -356,7 +356,7 @@ for f in \
   .canon/skills/prediction-markets.md \
   .canon/skills/canon-conventions.md \
   .canon/config.yaml \
-  .canon/ralph.yaml \
+  ralph.yaml \
   .canon/templates/sports-strategy-plan.md \
   .claude/commands/canon-start.md \
   .claude/commands/develop.md \
@@ -391,7 +391,8 @@ echo "    agents/    — 6 agent personas"
 echo "    skills/    — 8 domain knowledge modules"
 echo "    execution/ — decision logs written here at runtime"
 echo "    config.yaml"
-echo "    ralph.yaml  <- edit success_criteria to match your strategy"
+echo ""
+echo "  ralph.yaml  <- edit success_criteria to match your strategy"
 echo ""
 echo "  .claude/commands/"
 echo "    canon-start, develop, ralph-cycle, discover, register, quick-dev"
