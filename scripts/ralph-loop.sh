@@ -94,15 +94,24 @@ if [[ ! -S "${_LOG_SOCK}" ]]; then
 	fi
 fi
 
-echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations"
+# Count total plan items (unchecked checkboxes in Progress log)
+TOTAL_ITEMS=$(grep -c '^\- \[ \]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+TOTAL_ITEMS="${TOTAL_ITEMS:-0}"
+COMPLETED_ITEMS=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+COMPLETED_ITEMS="${COMPLETED_ITEMS:-0}"
+
+echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations, ${TOTAL_ITEMS} items"
 echo "  plan: ${TASK_DIR}/plan.md"
 echo ""
 
 log_event "LOOP_START" \
 	"$(jq -n --arg slug "${TASK_SLUG}" --argjson max "${MAX_ITERATIONS}" \
 		'{"task_slug":$slug,"max_iterations":$max}')"
-tui_write phase=run status=running \
-	metric.iteration=1 metric.maxIterations="${MAX_ITERATIONS}"
+tui_write phase=develop status=running \
+	metric.iteration="1/${MAX_ITERATIONS}" \
+	metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
+	metric.step="build" \
+	log.info="Ralph Loop starting — ${TOTAL_ITEMS} items, max ${MAX_ITERATIONS} iterations"
 
 for i in $(seq 1 "${MAX_ITERATIONS}"); do
 	echo "=== Iteration ${i}/${MAX_ITERATIONS} ==="
@@ -168,12 +177,19 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 
 	# --- Worker phase (per-item loop) ---
 	ITEM_NUM=0
+	# Recount completed items at start of each iteration
+	COMPLETED_ITEMS=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
 	echo "→ worker: starting per-item loop..."
+	tui_write metric.step="worker" metric.iteration="${i}/${MAX_ITERATIONS}" \
+		log.info="Iteration ${i}/${MAX_ITERATIONS} — worker starting"
 	while bash "${SCRIPT_DIR}/plan-advance.sh" "${TASK_DIR}/plan.md" "${STATE_FILE}"; do
 		ITEM_NUM=$((ITEM_NUM + 1))
+		COMPLETED_ITEMS=$((COMPLETED_ITEMS + 1))
 		CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
-		tui_write log.info="Worker iteration ${i}: ${CURRENT_TASK}"
+		tui_write metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
+			metric.currentTask="${CURRENT_TASK}" \
+			log.info="Worker ${i}/${MAX_ITERATIONS} — item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${CURRENT_TASK}"
 		WORKER_CONTEXT=$(sed \
 			-e "s|{TASK_DIR}|${TASK_DIR}|g" \
 			-e "s|{STATE_FILE}|${STATE_FILE}|g" \
@@ -193,8 +209,9 @@ ${HANDOFF}"
 	# All items processed — mark last task claimed so health check passes
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
 		mv /tmp/ralph_c.tmp "${STATE_FILE}"
-	echo "→ worker: done"
-	tui_write log.info="Worker done" metric.iteration="${i}"
+	echo "→ worker: done (${ITEM_NUM} items this iteration)"
+	tui_write metric.step="review" metric.currentTask="" \
+		log.info="Worker done — ${ITEM_NUM} items built, starting review"
 	log_event "WORKER_DONE" \
 		"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"exit_code":0}')"
 
@@ -208,7 +225,8 @@ ${HANDOFF}"
 		if [[ ${STAG} -ge 2 ]]; then
 			echo "ralph-loop: STAGNATED — no file changes in 2 consecutive iterations"
 			echo "  Human review required. Re-run after diagnosing the blocker."
-			tui_write status=error error="Stagnated — no changes in 2 iterations"
+			tui_write status=error metric.step="stagnated" \
+				error="Stagnated — no changes in 2 iterations"
 			exit 2
 		fi
 	else
@@ -233,7 +251,8 @@ ${HANDOFF}"
 	fi
 
 	RESULT=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')
-	tui_write log.info="Reviewer: ${RESULT}" metric.decision="${RESULT}"
+	tui_write metric.decision="${RESULT}" \
+		log.info="Reviewer verdict: ${RESULT} (iteration ${i}/${MAX_ITERATIONS})"
 
 	# Update state with reviewer result
 	jq --arg result "${RESULT}" '.last_result = $result' \
@@ -246,7 +265,8 @@ ${HANDOFF}"
 
 	if [[ "${RESULT}" == "SHIP" ]]; then
 		echo "→ reviewer: SHIP"
-		tui_write status=idle log.info="SHIP — all criteria met"
+		tui_write status=idle metric.step="complete" metric.decision="SHIP" \
+			log.info="SHIP — all criteria met after ${i} iteration(s)"
 		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		echo "→ running repo health check..."
 		if bash "${SCRIPT_DIR}/ralph-check.sh"; then
@@ -278,7 +298,8 @@ EOF
 		fi
 	elif [[ "${RESULT}" == "BLOCKED" ]]; then
 		echo "→ reviewer: BLOCKED — human action required"
-		tui_write status=error error="Blocked — human action required"
+		tui_write status=error metric.step="blocked" \
+			error="Blocked — human action required"
 		log_event "BLOCKED" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		FEEDBACK_FILE="${TASK_DIR}/review-feedback.txt"
 		if [[ -f "${FEEDBACK_FILE}" ]]; then
@@ -305,7 +326,8 @@ done
 
 log_event "EXHAUSTED" \
 	"$(jq -n --argjson used "${MAX_ITERATIONS}" '{"iterations_used":$used}')"
-tui_write status=error error="Max iterations reached without SHIP"
+tui_write status=error metric.step="exhausted" \
+	error="Max iterations (${MAX_ITERATIONS}) reached without SHIP"
 echo ""
 echo "ralph-loop: max iterations (${MAX_ITERATIONS}) reached without SHIP."
 RESULT_FILE="${TASK_DIR}/review-result.txt"
