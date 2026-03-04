@@ -385,24 +385,26 @@ Write state update after Ralph Loop completes:
 
 All checks pass and QA is approved. The strategy is ready for execution.
 
-Write state update:
+Reset the dashboard for execution — clear build metrics and set execution phase:
 
 ```bash
 [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
   bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=run status=complete log.info="Strategy ready for execution"
+    phase=run status=executing metrics=reset \
+    metric.mode="dry-run" metric.cycles="0" metric.signals="0" metric.errors="0" \
+    log.info="Strategy built — launching runner (dry-run)..."
 ```
 
-Now run the strategy in dry-run mode:
+Now run the strategy in dry-run mode and pipe each output line to the dashboard:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=run status=executing log.info="Launching strategy runner (dry-run)..."
-```
-
-```bash
-pnpm exec tsx src/runner.ts --dry-run
+pnpm exec tsx src/runner.ts --dry-run 2>&1 | while IFS= read -r line; do
+  echo "${line}"
+  if [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
+    bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+      log.info="${line}"
+  fi
+done
 ```
 
 The runner polls live APIs (Polymarket, The Odds API) on a fixed interval,

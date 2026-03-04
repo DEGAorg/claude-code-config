@@ -14,6 +14,7 @@
 #   error=<string>       Error message (use error= to clear)
 #   startedAt=<iso8601>  Session start time
 #   metric.<key>=<val>   Add/update a metrics key (shallow merge)
+#   metrics=reset        Clear all metrics before applying new metric.* keys
 #   log.<level>=<msg>    Append a log entry (level: info|warn|error|debug)
 #
 # Examples:
@@ -62,6 +63,7 @@ fi
 JQ_FILTERS=".updatedAt = \"${NOW}\""
 NEW_LOGS="[]"
 METRIC_UPDATES=""
+METRICS_RESET=false
 
 for arg in "$@"; do
 	key="${arg%%=*}"
@@ -76,6 +78,14 @@ for arg in "$@"; do
 			JQ_FILTERS="${JQ_FILTERS} | .error = null"
 		else
 			JQ_FILTERS="${JQ_FILTERS} | .error = \"${val}\""
+		fi
+		;;
+	metrics)
+		if [[ "${val}" == "reset" ]]; then
+			METRICS_RESET=true
+		else
+			echo "error: metrics only supports 'reset' (got '${val}')" >&2
+			exit 1
 		fi
 		;;
 	metric.*)
@@ -114,7 +124,10 @@ if [[ "${NEW_LOGS}" != "[]" ]]; then
 	JQ_FILTERS="${JQ_FILTERS} | .logs = (.logs + ${NEW_LOGS} | .[-${LOG_BUFFER_MAX}:])"
 fi
 
-# Apply metric updates
+# Reset metrics if requested, then apply individual updates
+if [[ "${METRICS_RESET}" == "true" ]]; then
+	JQ_FILTERS="${JQ_FILTERS} | .metrics = {}"
+fi
 if [[ -n "${METRIC_UPDATES}" ]]; then
 	JQ_FILTERS="${JQ_FILTERS}${METRIC_UPDATES}"
 fi

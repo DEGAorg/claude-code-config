@@ -1,4 +1,4 @@
-import { Box, Text, useStdout } from "ink";
+import { Box, Text } from "ink";
 import type { Status } from "./types.js";
 
 interface StatusBarProps {
@@ -27,30 +27,21 @@ const PHASE_COLORS: Record<string, string> = {
 export function StatusBar({ phase, status }: StatusBarProps) {
   const statusColor = STATUS_COLORS[status];
   const phaseColor = PHASE_COLORS[phase] ?? "white";
-  const { stdout } = useStdout();
-  const cols = stdout?.columns ?? 80;
-
-  const phaseLabel = ` ${phase.toUpperCase()} `;
-  const statusLabel = ` ${status.toUpperCase()} `;
-  const gap = Math.max(
-    0,
-    cols - phaseLabel.length - statusLabel.length - 12,
-  );
 
   return (
     <Box
-      borderStyle="double"
+      borderStyle="single"
       borderBottom={false}
       paddingX={1}
       height={3}
       alignItems="center"
     >
-      <Text backgroundColor={phaseColor} color="black" bold>
-        {phaseLabel}
+      <Text color={phaseColor} bold>
+        {phase.toUpperCase()}
       </Text>
       <Box flexGrow={1} />
       <Text backgroundColor={statusColor} color="black" bold>
-        {statusLabel}
+        {` ${status.toUpperCase()} `}
       </Text>
     </Box>
   );
