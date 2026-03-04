@@ -385,74 +385,24 @@ Write state update after Ralph Loop completes:
 
 All checks pass and QA is approved. The strategy is ready for execution.
 
-Reset the dashboard for execution — clear build metrics and set execution phase:
+Launch the runner using `canon-runner.sh`. This script handles all dashboard
+state management — metrics reset, live metric updates, and proper cleanup on
+stop/crash via signal traps. Run it in the background so Claude returns control.
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=run status=executing metrics=reset \
-    metric.mode="dry-run" metric.cycles="0" metric.signals="0" metric.errors="0" \
-    log.info="Strategy built — launching runner (dry-run)..."
-```
-
-Launch the runner as a background daemon. The runner writes to the dashboard
-logs via a pipe wrapper, and the user regains control of Claude immediately.
-
-```bash
-RUNNER_LOG=".canon/execution/runner.log"
-TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
-STATE=".canon/state.json"
-mkdir -p .canon/execution
-
-# Counters for dashboard metrics
-_CYCLES=0
-_SIGNALS=0
-_ERRORS=0
-
-# Background: run strategy, parse tagged stdout, update dashboard metrics
-(
-  pnpm exec tsx src/runner.ts --dry-run 2>&1 | while IFS= read -r line; do
-    echo "${line}" >> "${RUNNER_LOG}"
-
-    # Parse tag from first word (START, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
-    tag="${line%% *}"
-    msg="${line#* }"
-    level="info"
-
-    case "${tag}" in
-      NO_EDGE)    _CYCLES=$((_CYCLES + 1)) ;;
-      SIGNAL)     _CYCLES=$((_CYCLES + 1)); _SIGNALS=$((_SIGNALS + 1)) ;;
-      SCAN_ERROR) _CYCLES=$((_CYCLES + 1)); _ERRORS=$((_ERRORS + 1)); level="error" ;;
-      STOP)       level="warn" ;;
-    esac
-
-    if [[ -f "${TUI_WRITE}" ]]; then
-      bash "${TUI_WRITE}" "${STATE}" \
-        "log.${level}=${msg}" \
-        "metric.cycles=${_CYCLES}" \
-        "metric.signals=${_SIGNALS}" \
-        "metric.errors=${_ERRORS}"
-    fi
-  done
-
-  # When the runner exits, update dashboard status
-  if [[ -f "${TUI_WRITE}" ]]; then
-    bash "${TUI_WRITE}" "${STATE}" \
-      status=idle log.warn="Runner process exited"
-  fi
-) &
+bash "${HOME}/.claude/scripts/canon-runner.sh" --dry-run &
 RUNNER_PID=$!
 disown
 ```
 
-Wait briefly to confirm the runner starts without immediate crash:
+Wait briefly to confirm it started:
 
 ```bash
 sleep 2
 if kill -0 "${RUNNER_PID}" 2>/dev/null; then
   echo "Runner started (PID ${RUNNER_PID})"
 else
-  echo "Runner failed to start — check ${RUNNER_LOG}"
+  echo "Runner failed to start — check .canon/execution/runner.log"
 fi
 ```
 
@@ -460,18 +410,21 @@ If the runner started successfully, print:
 
 > **Strategy running in background (PID <pid>).**
 >
-> The runner polls live APIs, evaluates signals, and logs decisions to
-> `.canon/execution/`. Dashboard shows live output in the log panel.
+> The dashboard shows live metrics (cycles, signals, errors) and log output.
+> The runner manages its own dashboard state — it updates on every cycle and
+> cleans up properly when stopped.
 >
 > - View logs: `tail -f .canon/execution/runner.log`
 > - Stop runner: `kill <pid>`
 > - Decision log: `.canon/execution/<date>.jsonl`
+> - PID file: `.canon/execution/runner.pid`
 >
 > You can continue working — ask questions, modify code, or run other
 > commands. The runner continues in the background.
 
-If the runner failed to start, read the log and report the error. The user
-needs to fix it (missing API key, type error, etc.) before re-running.
+If the runner failed to start, read `.canon/execution/runner.log` and report
+the error. The user needs to fix it (missing API key, type error, etc.)
+before re-running.
 
 ---
 

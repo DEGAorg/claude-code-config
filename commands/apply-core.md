@@ -44,6 +44,7 @@ Files available:
 - `scripts/log-client.sh`
 - `scripts/plan-advance.sh`
 - `scripts/task-complete.sh`
+- `scripts/canon-runner.sh`
 - `scripts/terminal-session.sh`
 - `scripts/terminal-ui-write.sh`
 - `scripts/terminal-ui/package.json`
@@ -229,8 +230,9 @@ Write each engine script to `~/.claude/scripts/`:
 - `scripts/log-client.sh` → `~/.claude/scripts/log-client.sh`
 - `scripts/plan-advance.sh` → `~/.claude/scripts/plan-advance.sh`
 - `scripts/task-complete.sh` → `~/.claude/scripts/task-complete.sh`
+- `scripts/canon-runner.sh` → `~/.claude/scripts/canon-runner.sh`
 
-Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh` after writing.
+Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh ~/.claude/scripts/canon-runner.sh` after writing.
 Safe to overwrite — these are engine scripts with no user customization.
 
 #### Ralph Loop — Per-project config
