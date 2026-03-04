@@ -29,9 +29,9 @@ fi
 STATE_FILE="${TASK_DIR}/.ralph-state.json"
 
 # Read config from ralph.yaml
-MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml | awk '{print $2}' | tr -d ' ')
+MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ' || true)
 MAX_ITERATIONS="${MAX_ITERATIONS:-10}"
-WARN_AT=$(grep 'warn_at_iteration:' ralph.yaml | awk '{print $2}' | tr -d ' ')
+WARN_AT=$(grep 'warn_at_iteration:' ralph.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ' || true)
 # Prompt fallback: project-local scripts/ first, then global SCRIPT_DIR
 if [[ -f "scripts/ralph-worker-prompt.md" ]]; then
 	WORKER_PROMPT="scripts/ralph-worker-prompt.md"

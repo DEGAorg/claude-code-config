@@ -306,6 +306,7 @@ success_criteria:
     required: true
 
 max_iterations: 5
+warn_at_iteration: 4
 EOF
 
 # ── 8. Create .canon/execution/.gitkeep ───────────────────────────────────────
