@@ -1,0 +1,93 @@
+--- item: Task 1: Rewrite `/canon-init` to minimal bootstrap ---
+Rewrote `commands/canon-init.md` from a full scaffold command (calling canon-init.sh)
+to a minimal bootstrap. The new command has 5 steps: (1) guard against running from
+claude-code-config, (2) check all prerequisites (tmux, node, pnpm, canon-scaffold.sh,
+terminal-ui-write.sh) and report all missing at once, (3) mkdir .canon, (4) write the
+canon.sh launcher script inline to the project root and chmod +x, (5) print "exit and
+run ./canon.sh". No agent fetching, no template generation, no pnpm install. The
+canon.sh template embedded in the command matches the plan's Task 2 spec exactly.
+---
+
+--- item: Task 2: Write `canon.sh` local launcher (also at `scripts/canon.sh`) ---
+Created `scripts/canon.sh` as the reference copy of the local launcher script. Content
+matches the template embedded in `commands/canon-init.md` (from Task 1) exactly. The
+script initializes `.canon/state.json` via `terminal-ui-write.sh` (with fallback to
+raw JSON printf), picks the best dashboard renderer (terminal-ui binary > node CLI >
+cat loop), creates a tmux session with claude on the left and dashboard on the right,
+pre-types `/canon-start` without pressing Enter, and sets the tmux status bar. Formatted
+with shfmt (tab indent, matching existing scripts) and verified clean with shellcheck.
+---
+
+--- item: Task 3: Rename `canon-init.sh` → `canon-scaffold.sh`, update refs ---
+Renamed `scripts/canon-init.sh` to `scripts/canon-scaffold.sh` via mv. Updated the
+script's internal header comment (name and usage line). Updated both references in
+`canon/commands/canon-start.md` — line 156 (init phase call) and line 195 (scaffold
+phase --force call) now point to `canon-scaffold.sh`. Verified no stale `canon-init.sh`
+references remain in code files; only plan docs reference the old name descriptively.
+`commands/canon-init.md` was already clean (Task 1 rewrote it to reference
+`canon-scaffold.sh` in the prereq check).
+---
+
+--- item: Task 4: Update `/canon-start` — expect tmux, call `canon-scaffold.sh` ---
+Rewrote step 1 of `canon/commands/canon-start.md` from "Launch terminal UI session"
+(which created tmux sessions itself) to "Verify tmux environment" (which expects
+`canon.sh` to have already launched tmux). The new step checks `$TMUX`: if set, checks
+session name and continues (with a note if not "canon"); if not set, prints "run
+./canon.sh first" and stops. Removed all tmux creation logic, dashboard renderer
+selection, and `terminal-session.sh` references from step 1. Updated the graceful
+degradation section to reflect tmux is now required (not optional). Updated completion
+criteria to match the new model. Steps 3 and 4 already called `canon-scaffold.sh`
+correctly (Task 3 handled those references).
+---
+
+--- item: Task 5: Add `canon-scaffold.sh` + `canon.sh` to `/apply-core` manifest ---
+Updated `commands/apply-core.md` in five places: (1) added both scripts to the source
+file list (lines 59-60), (2) added both to step 1 inventory checks, (3) added a new
+"Canon Bootstrap" opt-in component in step 2 with description matching the plan's naming
+conventions, (4) added a "Canon Bootstrap" install section in step 4 with mkdir, file
+copy, and chmod +x instructions, (5) added a Canon Bootstrap line to the post-install
+example summary. Verified no stale `canon-init.sh` references exist in the manifest.
+---
+
+--- item: Task 6: Run `/apply-core` to install all global scripts ---
+Installed scripts directly from local repo to ~/.claude/scripts/ (branch not pushed
+yet so GitHub fetch would fail). Copied canon-scaffold.sh, canon.sh, terminal-session.sh,
+and terminal-ui-write.sh with chmod +x. Copied terminal-ui/ source tree (package.json,
+tsconfig.json, all src/*.ts and src/*.tsx) and ran pnpm install + pnpm run build — tsc
+compiled successfully, dist/cli.js generated. All five verification targets confirmed:
+canon-scaffold.sh (executable), canon.sh (executable), terminal-session.sh (executable),
+terminal-ui-write.sh (executable), terminal-ui/dist/cli.js (built). One peer dep warning
+(react-reconciler wants react@^19.2.0, got 19.1.0) — non-blocking, same as prior builds.
+---
+
+--- item: Task 7: Push `ace-work` to GitHub, verify fetches ---
+Committed all demo-prep changes (5 files) in a single commit (115e59f) and pushed
+ace-work to origin. Verified raw GitHub fetches return correct content for: canon/agents/dev.md,
+scripts/canon-scaffold.sh, scripts/canon.sh, canon/commands/canon-start.md, and
+canon/skills/prediction-markets.md. The ace-work branch is now fully up to date on
+GitHub, so canon-scaffold.sh can fetch agents/skills/commands during the demo.
+---
+
+--- item: Task 8: Pre-write demo fallback strategy spec ---
+Created `docs/demo-strategy-spec.md` — a contrarian-fade strategy spec for the Fed
+rate decision market on Polymarket. Spec covers: target market (March 2026 FOMC hold),
+edge analysis (overreaction to macro data releases reverts 60-80% within 24h), rule-based
+entry/exit logic with pseudocode, risk parameters (5% position size, 15% max drawdown,
+circuit breaker on 3 consecutive losses), backtest success criteria (>55% win rate,
+>1.2 profit factor, ≥30 trades), and data requirements. Format matches what `/discover`
+outputs so the user can paste it during the demo strategy phase if /discover is slow.
+File is local-only (in untracked docs/ path), not committed.
+---
+
+--- item: Task 9: End-to-end dry run ---
+Ran a comprehensive dry run verifying the full demo pipeline. All 5 global scripts
+exist at ~/.claude/scripts/ (canon-scaffold.sh, canon.sh, terminal-session.sh,
+terminal-ui-write.sh, terminal-ui/dist/cli.js), all executable, shellcheck clean.
+Created a fresh temp directory and ran canon-scaffold.sh end-to-end: it fetched all
+6 agents, 8 skills, 6 commands from GitHub, generated all templates, wrote config
+files, and passed self-verification — 32 files total. Dashboard state writes work
+(terminal-ui-write.sh produces valid JSON). pnpm install and tsc --noEmit both pass
+on the scaffolded project. tmux 3.6a installed. Ink CLI dashboard available. The
+canon.sh template in canon-init.md matches scripts/canon.sh (whitespace-only diffs
+from shfmt). No stale canon-init.sh references in code files. Demo is ready.
+---

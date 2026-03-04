@@ -1,0 +1,8 @@
+DONE:
+- Task 9: End-to-end dry run — verified all 5 global scripts installed and executable, shellcheck clean, canon-scaffold.sh runs successfully in a fresh temp directory producing all 32 expected files (6 agents, 8 skills, 6 commands, templates, configs, state.json), terminal-ui-write.sh initializes dashboard state correctly, Ink CLI dashboard available, tmux 3.6a installed, pnpm install succeeds, tsc --noEmit passes on scaffolded types, demo fallback spec exists (150 lines), canon.sh template in canon-init.md is semantically identical to scripts/canon.sh, no stale canon-init.sh references in code, apply-core.md manifest complete
+
+REMAINING:
+- none — all 9 tasks complete
+
+BLOCKERS:
+- none
