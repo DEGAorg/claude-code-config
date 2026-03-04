@@ -47,11 +47,22 @@ Do not continue if any check fails.
 
 ---
 
-## 3. Create `.canon/` directory
+## 3. Create directories and install `/canon-start` command
 
 ```bash
-mkdir -p .canon
+mkdir -p .canon .claude/commands
 ```
+
+Fetch the `/canon-start` command so it's available when Claude starts inside tmux:
+
+```bash
+curl -sfL "https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/canon/commands/canon-start.md" \
+  -o .claude/commands/canon-start.md
+```
+
+If the fetch fails, stop and tell the user:
+
+> Failed to fetch `/canon-start` command. Check your internet connection and try again.
 
 ---
 
