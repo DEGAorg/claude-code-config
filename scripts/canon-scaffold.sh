@@ -53,6 +53,13 @@ fetch() {
   fi
 }
 
+# ── 0. Ensure git repo exists (ralph-loop.sh needs it for stagnation detection)
+if [[ ! -d ".git" ]]; then
+  echo "→ initializing git repo..."
+  git init -q
+  state log.info="Git repo initialized"
+fi
+
 # ── 1. Create directory tree ──────────────────────────────────────────────────
 echo "→ creating directories..."
 mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows .canon/templates
@@ -404,6 +411,13 @@ echo "  src/clients/"
 echo "    polymarket.ts, sportsbook.ts"
 echo ""
 echo "  package.json, tsconfig.json, .env.example, .gitignore, AGENTS.md"
+echo ""
+# ── 12. Initial git commit (ralph-loop.sh needs at least one commit) ─────────
+echo "→ creating initial commit..."
+git add -A
+git commit -q -m "scaffold: Canon framework initialized"
+state log.info="Initial commit created"
+
 echo ""
 echo "Next steps:"
 echo "  1. pnpm install"
