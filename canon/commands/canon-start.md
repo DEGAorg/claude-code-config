@@ -177,17 +177,18 @@ Write state update:
     phase=strategy status=running log.info="Looking for strategy specification..."
 ```
 
-First, check for available starter templates:
+First, check for available starter template bundles:
 
 ```bash
-ls .canon/templates/*.strategy.md 2>/dev/null
+ls .canon/templates/*/strategy.md 2>/dev/null
 ```
 
 **You MUST use the `AskUserQuestion` tool** to present the strategy choice.
 Build the options list dynamically based on discovered templates:
 
-- For each `.strategy.md` template found, add an option with label
-  `Use template: <name>` and description from the first line of the file.
+- For each template bundle found (directory with `strategy.md`), add an option
+  with label `Use template: <name>` and description from the first line of
+  the strategy.md file. Mention it includes bootstrapped code.
 - Always add option: label `Run /discover`, description `Scan prediction markets,
   identify opportunities, and generate a strategy spec automatically`.
 - Always add option: label `Provide a spec`, description `Point to an existing
@@ -198,13 +199,29 @@ Do NOT print the options as markdown text — always use `AskUserQuestion`.
 
 **If the user chooses a starter template:**
 
-Copy the template to `docs/`:
+Template bundles include bootstrapped code (runner, types, test harness) and a
+pre-filled exec plan. Copy the full bundle into the project:
 
 ```bash
-cp .canon/templates/<name>.strategy.md docs/strategy-<name>.md
+# Copy strategy spec
+cp .canon/templates/<name>/strategy.md docs/strategy-<name>.md
+
+# Copy bootstrapped source files (don't overwrite existing)
+cp -n .canon/templates/<name>/src/types/game.ts src/types/game.ts 2>/dev/null || true
+cp -n .canon/templates/<name>/src/runner.ts src/runner.ts 2>/dev/null || true
+mkdir -p src/__tests__
+cp -n .canon/templates/<name>/src/__tests__/strategy.test.ts src/__tests__/strategy.test.ts 2>/dev/null || true
 ```
 
 Read the copied spec and print a brief summary (market, archetype, edge thesis).
+
+Write state update:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    log.info="Template bundle installed — bootstrapped files in place"
+```
 
 **If the user chooses /discover:**
 
@@ -261,33 +278,30 @@ Write state update:
     phase=develop status=running log.info="Starting development..."
 ```
 
-### 6a. Generate exec plan from template
+### 6a. Set up exec plan
 
-Read the strategy spec (found in step 5). Read the plan template at
-`.canon/templates/sports-strategy-plan.md`.
-
-Generate an exec plan by filling in the template placeholders:
-
-| Placeholder | Source |
-|-------------|--------|
-| `{{STRATEGY_NAME}}` | Name from strategy spec title |
-| `{{DATE}}` | Today's date (YYYY-MM-DD) |
-| `{{STRATEGY_SLUG}}` | Kebab-case strategy name (e.g. `nba-momentum`) |
-| `{{STRATEGY_DESCRIPTION}}` | 2-3 sentence summary from strategy spec |
-| `{{ENTRY_LOGIC}}` | Entry conditions from strategy spec (bullet list) |
-| `{{EXIT_LOGIC}}` | Exit conditions from strategy spec (bullet list) |
-| `{{RISK_PARAMS}}` | Risk parameters from strategy spec (bullet list) |
-| `{{SPORT_KEY}}` | The Odds API sport key (e.g. `basketball_nba`) |
-| `{{MARKET_QUERY}}` | Polymarket search query (e.g. `NBA`) |
-
-Write the generated plan to:
+Determine the strategy slug from the spec filename (e.g. `strategy-nba-momentum.md` → `nba-momentum`).
 
 ```bash
-SLUG="$(date +%Y%m%d)-{{STRATEGY_SLUG}}"
+SLUG="$(date +%Y%m%d)-<strategy-slug>"
 mkdir -p "docs/exec-plans/active/${SLUG}"
 ```
 
-Write the plan as `docs/exec-plans/active/${SLUG}/plan.md`.
+**If a template bundle was used (step 5):** The bundle includes a pre-filled plan.
+Copy it directly — replace `{{DATE}}` with today's date:
+
+```bash
+sed "s/{{DATE}}/$(date +%Y-%m-%d)/" ".canon/templates/<name>/plan.md" \
+  > "docs/exec-plans/active/${SLUG}/plan.md"
+```
+
+The pre-filled plan has bootstrapped items already checked off. Only the
+decision-logic items (config, signals, risk, strategy, test assertions)
+remain unchecked — those are what the Ralph Loop will build.
+
+**If /discover or user-provided spec:** Read the plan template at
+`.canon/templates/sports-strategy-plan.md` and fill in the placeholders
+based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
 
 Also ensure `ralph.yaml` exists at the project root (it should from scaffold).
 If not, create it with the standard success criteria:

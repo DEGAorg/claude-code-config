@@ -91,12 +91,19 @@ for cmd in develop ralph-cycle discover register quick-dev canon-start; do
 done
 state log.info="Commands fetched"
 
-# ── 4b. Fetch strategy templates ──────────────────────────────────────────────
-echo "→ fetching strategy templates..."
-state log.info="Fetching strategy templates..."
-for tmpl in nba-momentum; do
-  fetch "canon/templates/${tmpl}.strategy.md" ".canon/templates/${tmpl}.strategy.md"
-done
+# ── 4b. Fetch strategy template bundles ──────────────────────────────────────
+echo "→ fetching strategy template bundles..."
+state log.info="Fetching strategy template bundles..."
+
+# NBA Momentum bundle — spec + bootstrapped code + pre-filled plan
+NBA_BUNDLE=".canon/templates/nba-momentum"
+mkdir -p "${NBA_BUNDLE}/src/types" "${NBA_BUNDLE}/src/__tests__"
+fetch "canon/templates/nba-momentum/strategy.md" "${NBA_BUNDLE}/strategy.md"
+fetch "canon/templates/nba-momentum/plan.md" "${NBA_BUNDLE}/plan.md"
+fetch "canon/templates/nba-momentum/src/types/game.ts" "${NBA_BUNDLE}/src/types/game.ts"
+fetch "canon/templates/nba-momentum/src/runner.ts" "${NBA_BUNDLE}/src/runner.ts"
+fetch "canon/templates/nba-momentum/src/__tests__/strategy.test.ts" "${NBA_BUNDLE}/src/__tests__/strategy.test.ts"
+
 state log.info="Templates fetched"
 
 # ── 4c. Fetch API client scaffolds ────────────────────────────────────────────
@@ -365,7 +372,8 @@ for f in \
   .canon/skills/canon-conventions.md \
   .canon/config.yaml \
   ralph.yaml \
-  .canon/templates/sports-strategy-plan.md \
+  .canon/templates/nba-momentum/strategy.md \
+  .canon/templates/nba-momentum/plan.md \
   .claude/commands/canon-start.md \
   .claude/commands/develop.md \
   src/types/TradeSignal.ts \
