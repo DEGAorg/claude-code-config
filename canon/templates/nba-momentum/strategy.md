@@ -1,8 +1,8 @@
-# Strategy Design Specification: NBA Game Momentum Trader
+# Strategy Design Specification: NBA Championship Futures Scanner
 
-**Archetype:** Momentum / Event-Driven
-**Platform:** Polymarket
-**Category:** Sports — NBA
+**Archetype:** Cross-venue arbitrage
+**Platforms:** The Odds API (sportsbooks) + Polymarket
+**Category:** Sports — NBA Championship
 
 ---
 
@@ -10,156 +10,96 @@
 
 | Field | Value |
 |-------|-------|
-| Platform | Polymarket |
-| Market type | NBA game winner (individual games) |
-| Resolution | End of game (final score) |
-| Liquidity | Moderate to high ($100K+ volume on marquee matchups) |
-| Season | 2025-2026 NBA regular season and playoffs |
+| Sportsbook market | `basketball_nba_championship_winner` (outrights) |
+| Polymarket market | "Will [Team] win the 2026 NBA Finals?" |
+| Resolution | End of NBA Finals |
+| Teams | All 30 NBA teams |
+| Season | 2025-2026 |
 
-NBA game markets on Polymarket resolve at final whistle. Prices reflect
-real-time win probability and move significantly on:
-- Injury reports (pre-game and in-game)
-- Lineup announcements (confirmed starters)
-- Sharp line moves from sportsbooks (Vegas consensus shifts)
-- Pre-game momentum (team streaks, rest days, travel schedule)
+Both sportsbooks and Polymarket offer futures on which team wins the NBA
+Championship. Sportsbooks publish decimal odds per team; Polymarket lists
+individual binary markets per team with a YES/NO price.
 
 ---
 
 ## Edge Analysis
 
-**Thesis:** Pre-game injury news and lineup changes create temporary
-mispricings in Polymarket NBA markets. When a key player (top-3 in
-minutes for the team) is ruled out within 2 hours of tipoff, the market
-adjusts slowly — sportsbooks move first, Polymarket lags by 10-30 minutes.
-
-**Estimated edge:** 4-7% per trade on injury-driven moves.
+**Thesis:** Sportsbook championship odds and Polymarket futures prices
+occasionally diverge because they serve different user bases and update at
+different speeds. When the implied probability from sportsbook consensus
+differs from the Polymarket YES price by more than a threshold, a
+mispricing exists.
 
 **Why this market:**
-- High frequency (82 games per team, 1230 regular season games total)
-- Clear resolution (final score, no ambiguity)
-- Predictable catalyst timing (injury reports released on schedule)
-- Sportsbook lines provide reference pricing for fair value
+- Same underlying event on both platforms (who wins the NBA title)
+- Sportsbooks aggregate sharp money from professional bettors
+- Polymarket prices reflect retail prediction market participants
+- 30 teams = 30 comparison points per scan cycle
+- Prices change on trades, injuries, playoff seeding shifts
 
 ---
 
-## Entry Logic
+## Signal Logic
 
-**Trigger:** Key player injury/rest announcement within 2 hours of tipoff
-where the sportsbook line moves ≥3 points but Polymarket price hasn't
-fully adjusted.
+**For each team:**
+1. Compute average implied probability from sportsbook outrights:
+   `impliedProb = average(1 / decimalOdds)` across all bookmakers
+2. Match team to Polymarket market by name (fuzzy match with aliases)
+3. Compare: `delta = impliedProb - polymarketYesPrice`
+4. If `|delta| >= mispricingThreshold`: flag as signal
 
-**Entry conditions (all must be true):**
-1. Player ruled out is top-3 in minutes played for their team
-2. Sportsbook line moved ≥3 points post-announcement
-3. Polymarket price delta vs implied sportsbook probability ≥5%
-4. Game tips off in 30 minutes to 2 hours (enough time for execution)
-5. Market has ≥$50K total volume (sufficient liquidity)
-
-**Direction:** Trade toward the sportsbook-implied probability.
-- If injured player's team was favored and line moved against them:
-  buy the opponent
-- If injured player's team was underdog and line moved further against:
-  buy the opponent (momentum alignment)
-
-**Entry size:** 3% of portfolio per trade ($300 on $10K portfolio).
+**Direction:**
+- `delta > 0` → sportsbooks price the team higher → Polymarket YES is cheap
+- `delta < 0` → Polymarket prices the team higher → sportsbook odds are longer
 
 ```
-function shouldEnter(game, injuryReport):
-  player = injuryReport.player
-  if player.minutesRank > 3: return NO_TRADE
+function checkSignal(team, sportsbookProb, polymarketPrice, config):
+  delta = sportsbookProb - polymarketPrice
+  if abs(delta) < config.mispricingThreshold: return NO_SIGNAL
 
-  sportsbookMove = abs(pregameLine - currentLine)
-  if sportsbookMove < 3: return NO_TRADE
-
-  impliedProb = sportsbookToProb(currentLine)
-  polymarketPrice = game.currentPrice
-  mispricing = abs(impliedProb - polymarketPrice)
-  if mispricing < 0.05: return NO_TRADE
-
-  timeToTipoff = game.tipoff - now()
-  if timeToTipoff < 30min or timeToTipoff > 2h: return NO_TRADE
-  if game.totalVolume < 50000: return NO_TRADE
-
-  if polymarketPrice < impliedProb:
-    return BUY_YES at polymarketPrice
-  else:
-    return BUY_NO at (1 - polymarketPrice)
+  direction = "sportsbook higher" if delta > 0 else "Polymarket higher"
+  return SIGNAL(team, delta, direction)
 ```
 
 ---
 
-## Exit Logic
+## Configuration
 
-**Resolution exit:** Hold until game resolves (final score).
-NBA game markets resolve at final whistle — no early exit needed
-for winning trades.
-
-**Pre-game stop loss:** If Polymarket price moves 8% against position
-before tipoff (new information invalidates thesis), exit immediately.
-
-**Hedge trigger:** If a second injury report affects the other team
-before tipoff, re-evaluate edge. If mispricing shrinks below 2%, exit.
-
-```
-function shouldExit(position):
-  if game.isResolved: return RESOLUTION
-  if unrealizedLossPct >= 0.08 and not game.isLive: return STOP_LOSS
-  if currentMispricing < 0.02: return EDGE_GONE
-
-  return HOLD_TO_RESOLUTION
-```
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `mispricingThreshold` | 0.005 (0.5%) | Min delta to flag signal |
+| `sportKey` | `basketball_nba_championship_winner` | The Odds API sport key |
+| `searchQuery` | `NBA Finals` | Polymarket search query |
+| `pollIntervalMs` | 30000 | Scan cycle interval |
 
 ---
 
 ## Risk Parameters
 
+This is a scanner, not a trader. It runs in dry-run mode only — no
+orders are placed. Risk parameters apply to the signal detection logic:
+
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Max position size | $300 (3% of portfolio) | Single-game risk limit |
-| Stop loss | 8% pre-game move against | Limits loss to ~$24 per trade |
-| Max concurrent positions | 3 | Diversify across games |
-| Max daily trades | 5 | Avoid overtrading on busy slates |
-| Circuit breaker | 4 consecutive losses | Pause 24h, review edge thesis |
-| Max drawdown | 15% of portfolio ($1,500) | Hard stop — halt all trading |
-| Min time to tipoff | 30 minutes | Ensure execution time |
-
----
-
-## Backtest Success Criteria
-
-| Metric | Minimum | Target |
-|--------|---------|--------|
-| Win rate | >55% | 60% |
-| Profit factor | >1.2 | 1.4 |
-| Max drawdown | <15% | <10% |
-| Trade count | ≥30 | 50+ |
-| Avg profit per trade | >$8 | $15 |
-| Edge decay | <2%/month | Stable across season |
-
-**Backtest period:** 2024-2025 NBA season (Oct 2024 — Jun 2025).
-**Data sources:** Polymarket API (price history), NBA API (injury reports,
-box scores), odds-api.com (sportsbook lines).
+| Min bookmaker sources | 2 | Require consensus, not single-source noise |
+| Max delta percent | 0.50 (50%) | Cap to filter erroneous data |
+| Signal logging | Every signal to JSONL | Full audit trail |
 
 ---
 
 ## Data Requirements
 
-| Data Point | Source | Update Frequency |
-|------------|--------|------------------|
-| Game schedule | NBA API | Daily |
-| Injury reports | NBA official injury report | 2h and 30min pre-game |
-| Sportsbook lines | The Odds API | Real-time |
-| Polymarket prices | Polymarket CLOB API | Real-time |
-| Player minutes/stats | NBA API / Basketball Reference | Daily |
-| Historical game results | NBA API | Post-game |
+| Data Point | Source | Endpoint |
+|------------|--------|----------|
+| Championship outright odds | The Odds API | `/v4/sports/basketball_nba_championship_winner/odds` |
+| NBA futures markets | Polymarket (pmxtjs) | `searchMarkets("NBA Finals")` |
 
 ---
 
 ## Implementation Notes
 
-- Strategy archetype: `momentum-trader` (from strategy-patterns skill)
-- Primary signal: sportsbook-to-Polymarket price divergence after injury news
-- No ML required — rule-based with clear entry/exit thresholds
-- Key dependency: The Odds API for real-time sportsbook lines
-- Dashboard metrics: active positions, upcoming games with alerts,
-  injury report feed, sportsbook vs Polymarket price comparison
+- Runner is bootstrapped: polling loop, stdout protocol, JSONL logger, SIGINT handler
+- Runner imports config from `src/config/strategy.ts` for thresholds
+- Team matching uses fuzzy normalization + NBA alias table
+- Polymarket outcomes use team-name labels, not "Yes"/"No"
+- Sportsbook outrights use the `outrights` market key, not `h2h`

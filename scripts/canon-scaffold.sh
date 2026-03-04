@@ -64,7 +64,7 @@ fi
 echo "→ creating directories..."
 mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows .canon/templates
 mkdir -p .claude/commands
-mkdir -p src/types src/clients
+mkdir -p src/types src/clients src/config src/service src/__tests__
 
 # ── 2. Fetch agents ──────────────────────────────────────────────────────────
 echo "→ fetching agents..."

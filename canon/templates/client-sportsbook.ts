@@ -113,7 +113,7 @@ function mapEvent(raw: ApiEvent): SportEvent {
 /**
  * Fetch upcoming event odds from The Odds API.
  *
- * @param sport - Sport key (e.g. "basketball_nba", "americanfootball_nfl").
+ * @param sport - Sport key (e.g. "basketball_nba", "basketball_nba_championship_winner").
  * @param eventId - Optional event ID to fetch odds for a single event.
  * @returns Array of sporting events with bookmaker odds.
  */
@@ -128,9 +128,12 @@ export async function fetchOdds(
     : `${BASE_URL}/${sport}/odds`;
 
   const url = new URL(path);
+  // Championship/winner markets use "outrights"; game markets use "h2h"
+  const marketType = sport.includes("_winner") ? "outrights" : "h2h";
+
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("regions", "us");
-  url.searchParams.set("markets", "h2h");
+  url.searchParams.set("markets", marketType);
 
   const response = await fetch(url);
 

@@ -47,7 +47,7 @@ function getClient(): Polymarket {
     client = new Polymarket({
       ...(privateKey ? { privateKey } : {}),
       ...(proxyAddress ? { proxyAddress } : {}),
-      autoStartServer: false,
+      autoStartServer: true,
     });
   }
   return client;
@@ -62,20 +62,32 @@ export async function fetchMarketPrice(
   conditionId: string,
 ): Promise<MarketPrice> {
   const poly = getClient();
-  const market = await poly.fetchMarket(conditionId);
+  const markets = await poly.getMarketsBySlug(conditionId);
+  const market = markets[0];
 
-  const yesPrice = market.yes?.price;
-  const noPrice = market.no?.price;
+  if (!market) {
+    throw new Error(`Market ${conditionId} not found`);
+  }
+
+  if (market.outcomes.length !== 2) {
+    throw new Error(
+      `Market ${conditionId} is not a binary market ` +
+        `(${String(market.outcomes.length)} outcomes)`,
+    );
+  }
+
+  const yesPrice = market.outcomes[0]?.price;
+  const noPrice = market.outcomes[1]?.price;
 
   if (yesPrice === undefined || noPrice === undefined) {
     throw new Error(
-      `Market ${conditionId} is not a binary YES/NO market ` +
+      `Market ${conditionId} missing outcome prices ` +
         `(yes=${String(yesPrice)}, no=${String(noPrice)})`,
     );
   }
 
   return {
-    conditionId: market.marketId,
+    conditionId: market.id,
     yes: yesPrice,
     no: noPrice,
     timestamp: new Date(),
@@ -94,20 +106,25 @@ export async function searchMarkets(
   query: string,
 ): Promise<PolymarketMatch[]> {
   const poly = getClient();
-  const markets = await poly.fetchMarkets({ query });
+  const markets = await poly.searchMarkets(query);
   const results: PolymarketMatch[] = [];
 
   for (const m of markets) {
-    const yesPrice = m.yes?.price;
-    const noPrice = m.no?.price;
+    // Polymarket outcomes use descriptive labels (e.g. "Indiana Pacers" /
+    // "Not Indiana Pacers"), not "Yes"/"No". Any 2-outcome market is
+    // binary: first outcome = affirmative, second = negative.
+    if (m.outcomes.length !== 2) continue;
+    const yesPrice = m.outcomes[0]?.price;
+    const noPrice = m.outcomes[1]?.price;
     if (yesPrice === undefined || noPrice === undefined) continue;
 
+    const resDate = m.resolutionDate?.toISOString();
     results.push({
-      conditionId: m.marketId,
+      conditionId: m.id,
       question: m.title,
       yesPrice,
       noPrice,
-      resolutionDate: m.resolutionDate,
+      ...(resDate !== undefined ? { resolutionDate: resDate } : {}),
     });
   }
 

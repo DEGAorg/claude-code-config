@@ -21,6 +21,7 @@ set -euo pipefail
 STATE=".canon/state.json"
 RUNNER_LOG=".canon/execution/runner.log"
 PID_FILE=".canon/execution/runner.pid"
+TAIL_FIFO=".canon/execution/.tail-fifo"
 TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
 
 # ── Guard: must be in a Canon project ────────────────────────────────────────
@@ -62,6 +63,16 @@ _ERRORS=0
 _GAMES=0
 _MARKETS=0
 
+# ── Load .env if present ─────────────────────────────────────────────────────
+# Node.js does not auto-load .env files. Export vars so the runner child
+# process inherits them.
+if [[ -f ".env" ]]; then
+	set -a
+	# shellcheck disable=SC1091
+	source .env
+	set +a
+fi
+
 # ── Reset dashboard for execution phase ──────────────────────────────────────
 tui phase=run status=executing metrics=reset \
 	"metric.mode=${MODE}" \
@@ -71,9 +82,20 @@ tui phase=run status=executing metrics=reset \
 
 # ── Cleanup trap — always fires on exit/signal ───────────────────────────────
 RUNNER_PID=""
+TAIL_PID=""
+WATCHER_PID=""
 
 cleanup() {
 	local exit_code=$?
+
+	# Kill monitoring processes
+	if [[ -n "${TAIL_PID}" ]] && kill -0 "${TAIL_PID}" 2>/dev/null; then
+		kill "${TAIL_PID}" 2>/dev/null || true
+	fi
+	if [[ -n "${WATCHER_PID}" ]] && kill -0 "${WATCHER_PID}" 2>/dev/null; then
+		kill "${WATCHER_PID}" 2>/dev/null || true
+	fi
+	rm -f "${TAIL_FIFO}"
 
 	# Kill runner if still alive
 	if [[ -n "${RUNNER_PID}" ]] && kill -0 "${RUNNER_PID}" 2>/dev/null; then
@@ -83,7 +105,8 @@ cleanup() {
 
 	rm -f "${PID_FILE}"
 
-	if [[ ${exit_code} -eq 0 ]]; then
+	# Signal exits (INT=130, TERM=143) are clean stops, not crashes
+	if [[ ${exit_code} -eq 0 || ${exit_code} -eq 130 || ${exit_code} -eq 143 ]]; then
 		tui status=idle \
 			log.warn="Runner stopped — ${_CYCLES} cycles, ${_SIGNALS} signals, ${_ERRORS} errors"
 	else
@@ -119,14 +142,24 @@ echo "  pid: ${PID_FILE}"
 tui log.info="Runner started (PID ${RUNNER_PID})"
 
 # ── Tail the log and parse tagged output ─────────────────────────────────────
-# Use tail -F to follow the log file the runner writes to.
-# This survives log rotation and works even if the runner buffers.
-tail -n 0 -F "${RUNNER_LOG}" 2>/dev/null | while IFS= read -r line; do
-	# Stop tailing if runner is dead
-	if ! kill -0 "${RUNNER_PID}" 2>/dev/null; then
-		break
-	fi
+# A pipe (tail | while) runs the loop in a subshell — counter variables
+# don't propagate back, and `read` blocks forever when the runner dies
+# (no new lines = no chance to check liveness). Fix: use a FIFO so the
+# while loop runs in the main shell, and a background watcher that kills
+# tail when the runner exits, giving the FIFO an EOF.
 
+rm -f "${TAIL_FIFO}"
+mkfifo "${TAIL_FIFO}"
+
+tail -n 0 -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
+TAIL_PID=$!
+
+# Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
+(while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
+ kill "${TAIL_PID}" 2>/dev/null || true) &
+WATCHER_PID=$!
+
+while IFS= read -r line; do
 	# Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
 	tag="${line%% *}"
 	msg="${line#* }"
@@ -163,7 +196,14 @@ tail -n 0 -F "${RUNNER_LOG}" 2>/dev/null | while IFS= read -r line; do
 		"metric.errors=${_ERRORS}" \
 		"metric.games=${_GAMES}" \
 		"metric.markets=${_MARKETS}"
-done
+done <"${TAIL_FIFO}"
+
+# Clean up monitoring processes
+kill "${TAIL_PID}" 2>/dev/null || true
+kill "${WATCHER_PID}" 2>/dev/null || true
+wait "${TAIL_PID}" 2>/dev/null || true
+wait "${WATCHER_PID}" 2>/dev/null || true
+rm -f "${TAIL_FIFO}"
 
 # Wait for runner to fully exit
 wait "${RUNNER_PID}" 2>/dev/null || true

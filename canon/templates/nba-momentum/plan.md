@@ -1,11 +1,11 @@
-# Plan: NBA Momentum Strategy Build
+# Plan: NBA Championship Futures Scanner
 
 **Status:** In progress
 **Created:** {{DATE}}
 
 ## Requirements
 
-Implement the NBA Game Momentum Trader strategy from `docs/strategy-nba-momentum.md`.
+Implement the NBA Championship Futures Scanner from `docs/strategy-nba-momentum.md`.
 Bootstrapped files (runner, types, test harness, clients) are already in place.
 Build the decision logic, config, and risk management.
 
@@ -34,17 +34,17 @@ src/runner.ts                  ← Layer 5: Runtime (bootstrapped)
 
 ## Progress log
 
-- [x] Bootstrap types: `src/types/game.ts` (Game, InjuryReport, Portfolio, Position, ExitReason)
+- [x] Bootstrap types: `src/types/game.ts` (TeamComparison)
 - [x] Bootstrap types: `src/types/TradeSignal.ts`, `src/types/RiskInterface.ts`
 - [x] Bootstrap clients: `src/clients/polymarket.ts`, `src/clients/sportsbook.ts`
-- [x] Bootstrap runner: `src/runner.ts` (polling loop, JSONL logger, SIGINT handler)
+- [x] Bootstrap runner: `src/runner.ts` (polling loop, championship futures scan, team matching, JSONL logger, SIGINT handler)
 - [x] Bootstrap test harness: `src/__tests__/strategy.test.ts` (factories, test shells)
-- [ ] Create `src/config/strategy.ts` — entry thresholds from spec (minLineMovePoints: 3, minMispricingThreshold: 0.05, etc.)
-- [ ] Create `src/config/risk.ts` — risk limits from spec (maxPositionSizePct: 0.03, stopLossPct: 0.08, etc.)
-- [ ] Create `src/service/signals.ts` — shouldEnter() and shouldExit() decision logic per spec pseudocode
-- [ ] Create `src/service/risk.ts` — NbaRiskManager implementing RiskInterface with circuit breaker, drawdown, daily loss, position size checks
-- [ ] Create `src/strategy.ts` — NbaMomentumStrategy wiring class (evaluate + checkExit)
-- [ ] Fill in test assertions in `src/__tests__/strategy.test.ts` to verify signal logic
+- [ ] Create `src/config/strategy.ts` — export `StrategyConfig` interface (`mispricingThreshold: number`, `sportKey: string`, `searchQuery: string`, `pollIntervalMs: number`) and `DEFAULT_CONFIG` with values from strategy spec (0.005, `basketball_nba_championship_winner`, `NBA Finals`, 30000)
+- [ ] Create `src/config/risk.ts` — export `RiskConfig` interface (`minBookmakerSources: number`, `maxDeltaPercent: number`) and `DEFAULT_RISK_CONFIG` with values from strategy spec (2, 0.50)
+- [ ] Create `src/service/signals.ts` — export `SignalCheck` interface (`delta: number`, `absDelta: number`, `direction: "sportsbook higher" | "Polymarket higher"`) and `shouldFlag(sportsbookProb: number, polymarketPrice: number, config: StrategyConfig): SignalCheck | null` — returns signal info if `|delta| >= threshold`, null otherwise. Runner imports this.
+- [ ] Create `src/service/risk.ts` — export `checkRiskLimits(params: { sources: number }, config: RiskConfig): boolean` — returns true if sources >= minBookmakerSources. Runner imports this.
+- [ ] Create `src/strategy.ts` — export `FuturesScanner` class: constructor takes `StrategyConfig` + `RiskConfig`, method `evaluate(comparisons: TeamComparison[]): SignalResult[]` — loops comparisons, calls `checkRiskLimits` then `shouldFlag`, returns signal results. Tested but not used by runner.
+- [ ] Fill in remaining TODO test assertions in `src/__tests__/strategy.test.ts` — verify shouldFlag thresholds, checkRiskLimits min-sources, FuturesScanner wiring
 - [ ] Run `pnpm exec tsc --noEmit` — zero errors
 - [ ] Run `pnpm exec oxlint src/` — zero warnings
 - [ ] Run `pnpm exec vitest run` — all tests pass
