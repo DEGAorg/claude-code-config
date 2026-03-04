@@ -186,10 +186,12 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		ITEM_NUM=$((ITEM_NUM + 1))
 		COMPLETED_ITEMS=$((COMPLETED_ITEMS + 1))
 		CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
+		# Short version for dashboard (strip markdown, truncate to 60 chars)
+		SHORT_TASK=$(echo "${CURRENT_TASK}" | sed 's/`//g' | cut -c1-60)
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
 		tui_write metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
-			metric.currentTask="${CURRENT_TASK}" \
-			log.info="Item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${CURRENT_TASK}"
+			metric.currentTask="${SHORT_TASK}" \
+			log.info="Item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${SHORT_TASK}"
 		WORKER_CONTEXT=$(sed \
 			-e "s|{TASK_DIR}|${TASK_DIR}|g" \
 			-e "s|{STATE_FILE}|${STATE_FILE}|g" \
