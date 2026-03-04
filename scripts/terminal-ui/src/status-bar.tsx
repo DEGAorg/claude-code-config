@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { Box, Text, useStdout } from "ink";
 import type { Status } from "./types.js";
 
 interface StatusBarProps {
@@ -16,18 +16,41 @@ const STATUS_COLORS: Record<Status, string> = {
   error: "red",
 };
 
+const PHASE_COLORS: Record<string, string> = {
+  init: "gray",
+  scaffold: "blue",
+  strategy: "yellow",
+  develop: "cyan",
+  run: "green",
+};
+
 export function StatusBar({ phase, status }: StatusBarProps) {
-  const color = STATUS_COLORS[status];
+  const statusColor = STATUS_COLORS[status];
+  const phaseColor = PHASE_COLORS[phase] ?? "white";
+  const { stdout } = useStdout();
+  const cols = stdout?.columns ?? 80;
+
+  const phaseLabel = ` ${phase.toUpperCase()} `;
+  const statusLabel = ` ${status.toUpperCase()} `;
+  const gap = Math.max(
+    0,
+    cols - phaseLabel.length - statusLabel.length - 12,
+  );
 
   return (
-    <Box borderStyle="single" borderBottom={false} paddingX={1}>
-      <Box flexGrow={1}>
-        <Text bold>Phase: </Text>
-        <Text>{phase}</Text>
-      </Box>
-      <Text color={color} bold>
-        {"● "}
-        {status.toUpperCase()}
+    <Box
+      borderStyle="double"
+      borderBottom={false}
+      paddingX={1}
+      height={3}
+      alignItems="center"
+    >
+      <Text backgroundColor={phaseColor} color="black" bold>
+        {phaseLabel}
+      </Text>
+      <Box flexGrow={1} />
+      <Text backgroundColor={statusColor} color="black" bold>
+        {statusLabel}
       </Text>
     </Box>
   );

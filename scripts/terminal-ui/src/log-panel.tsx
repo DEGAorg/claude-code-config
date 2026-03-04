@@ -12,8 +12,11 @@ const LEVEL_COLORS: Record<LogLevel, string> = {
   debug: "gray",
 };
 
-/** Rows consumed by StatusBar (3) + MetricsPanel (~4) + padding. */
-const CHROME_ROWS = 8;
+/** Rows consumed by StatusBar (4) + MetricsPanel (~4) + padding. */
+const CHROME_ROWS = 9;
+
+/** Prefix width: "HH:MM:SS info  " */
+const PREFIX_WIDTH = 16;
 
 function formatTime(ts: string): string {
   const date = new Date(ts);
@@ -28,11 +31,21 @@ function formatTime(ts: string): string {
   });
 }
 
+/** Truncate message to fit in one terminal line. */
+function truncateMsg(msg: string, maxWidth: number): string {
+  // Take only the first line
+  const firstLine = msg.split("\n")[0] ?? msg;
+  if (firstLine.length <= maxWidth) return firstLine;
+  return firstLine.slice(0, maxWidth - 1) + "…";
+}
+
 export function LogPanel({ logs }: LogPanelProps) {
   const { stdout } = useStdout();
   const termRows = stdout?.rows ?? 24;
+  const termCols = stdout?.columns ?? 80;
   const visibleCount = Math.max(1, termRows - CHROME_ROWS);
   const visible = logs.slice(-visibleCount);
+  const msgWidth = Math.max(10, termCols - PREFIX_WIDTH - 6);
 
   return (
     <Box
@@ -51,7 +64,9 @@ export function LogPanel({ logs }: LogPanelProps) {
             <Text color={LEVEL_COLORS[entry.level]}>
               {entry.level.padEnd(5)}
             </Text>
-            <Text>{entry.msg}</Text>
+            <Text wrap="truncate">
+              {truncateMsg(entry.msg, msgWidth)}
+            </Text>
           </Box>
         ))
       )}
