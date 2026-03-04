@@ -385,7 +385,24 @@ Write state update after Ralph Loop completes:
 
 All checks pass and QA is approved. The strategy is ready for execution.
 
-Launch the runner using `canon-runner.sh`. This script handles all dashboard
+Before launching the runner, check that the required API key is configured:
+
+```bash
+grep -q 'THE_ODDS_API_KEY=.' .env 2>/dev/null
+```
+
+If the `.env` file is missing or `THE_ODDS_API_KEY` is empty, **stop and tell the user**:
+
+> The runner needs `THE_ODDS_API_KEY` to fetch sportsbook odds.
+>
+> 1. Get a free key at https://the-odds-api.com/ (500 requests/month)
+> 2. Copy `.env.example` to `.env`: `cp .env.example .env`
+> 3. Add your key to `.env`: `THE_ODDS_API_KEY=your_key_here`
+> 4. Then re-run `/canon-start` to launch the runner.
+
+Do not proceed to launch the runner. Stop here and wait for the user.
+
+Once the API key is confirmed present, launch the runner using `canon-runner.sh`. This script handles all dashboard
 state management — metrics reset, live metric updates, and proper cleanup on
 stop/crash via signal traps. Run it in the background so Claude returns control.
 

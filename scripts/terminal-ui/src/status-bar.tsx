@@ -36,6 +36,7 @@ export function StatusBar({ phase, status }: StatusBarProps) {
       height={3}
       alignItems="center"
     >
+      <Text dimColor>Phase: </Text>
       <Text color={phaseColor} bold>
         {phase.toUpperCase()}
       </Text>
