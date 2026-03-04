@@ -53,8 +53,9 @@ if [[ ! -f "${REVIEWER_PROMPT}" ]]; then
 	exit 1
 fi
 
-# Terminal UI state (colocated with exec-plan, separate from .ralph-state.json)
-TUI_STATE="${TASK_DIR}/.terminal-ui-state.json"
+# Terminal UI state — defaults to exec-plan dir, but RALPH_TUI_STATE env var
+# overrides (e.g. Canon sets it to .canon/state.json for dashboard integration).
+TUI_STATE="${RALPH_TUI_STATE:-${TASK_DIR}/.terminal-ui-state.json}"
 TUI_WRITE=""
 if command -v terminal-ui-write.sh >/dev/null 2>&1; then
 	TUI_WRITE="terminal-ui-write.sh"

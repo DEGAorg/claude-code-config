@@ -254,7 +254,8 @@ Proceed to step 6.
 
 ## 6. Phase: develop
 
-A strategy spec exists. Implement, test, and iterate.
+A strategy spec exists. Build the strategy using the Ralph Loop — an automated
+worker + reviewer iteration loop that drives implementation from an exec plan.
 
 Write state update:
 
@@ -264,70 +265,108 @@ Write state update:
     phase=develop status=running log.info="Starting development..."
 ```
 
-Execute the `/develop` procedure inline:
+### 6a. Generate exec plan from template
 
-Load agent: dev.
-Load skills: canon-conventions, backtesting, ralph-loop, risk-management.
+Read the strategy spec (found in step 5). Read the plan template at
+`.canon/templates/sports-strategy-plan.md`.
 
-### 6a. Implement
+Generate an exec plan by filling in the template placeholders:
 
-Implement strategy logic from the design specification:
+| Placeholder | Source |
+|-------------|--------|
+| `{{STRATEGY_NAME}}` | Name from strategy spec title |
+| `{{DATE}}` | Today's date (YYYY-MM-DD) |
+| `{{STRATEGY_SLUG}}` | Kebab-case strategy name (e.g. `nba-momentum`) |
+| `{{STRATEGY_DESCRIPTION}}` | 2-3 sentence summary from strategy spec |
+| `{{ENTRY_LOGIC}}` | Entry conditions from strategy spec (bullet list) |
+| `{{EXIT_LOGIC}}` | Exit conditions from strategy spec (bullet list) |
+| `{{RISK_PARAMS}}` | Risk parameters from strategy spec (bullet list) |
+| `{{SPORT_KEY}}` | The Odds API sport key (e.g. `basketball_nba`) |
+| `{{MARKET_QUERY}}` | Polymarket search query (e.g. `NBA`) |
 
-- Implement `TradeSignal` interface in `src/strategy.ts`
-- Implement `RiskInterface` in `src/types/RiskInterface.ts` with hard limits from the spec.
-  Do not skip RiskInterface — "I'll add it later" is not acceptable.
-- Follow domain layering: Types -> Config -> Repo -> Service -> Runtime -> UI
-- Use agent-oriented error messages (what/why/how format)
-
-### 6b. Test and iterate
-
-Run every check command from `.canon/ralph.yaml` `success_criteria`:
-
-```
-pnpm exec tsc --noEmit
-pnpm exec oxlint src/
-pnpm exec vitest run
-```
-
-All must pass. If any fail, iterate:
-
-1. Read failing output to identify what broke
-2. Fix the issue in code
-3. Re-run all checks
-4. Repeat until all pass or `max_iterations` from `.canon/ralph.yaml` is reached
-
-Write state update on each iteration:
+Write the generated plan to:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=develop status=running metric.iteration=<N> log.info="Iteration <N>: <pass/fail summary>"
+SLUG="$(date +%Y%m%d)-{{STRATEGY_SLUG}}"
+mkdir -p "docs/exec-plans/active/${SLUG}"
 ```
 
-If max iterations reached without passing, surface failing criteria for human review.
+Write the plan as `docs/exec-plans/active/${SLUG}/plan.md`.
 
-### 6c. QA review
+Also ensure `ralph.yaml` exists at the project root (it should from scaffold).
+If not, create it with the standard success criteria:
 
-As qa, validate strategy quality:
+```yaml
+version: 1
+max_iterations: 5
 
-Load skills: canon-conventions, backtesting, risk-management.
-
-1. Code conventions: domain layering respected, error messages follow what/why/how
-2. Backtest results across multiple timeframes (7d, 30d, 90d if data available)
-3. No overfitting signals
-4. RiskInterface correctly enforces hard limits
-5. Edge cases: zero liquidity, API timeout, zero balance
-
-Verdict:
-- **Approved**: All criteria met -> proceed to step 7
-- **Return to dev**: Specific blocking issues -> list issues -> loop back to step 6a
+success_criteria:
+  - id: types_compile
+    check: "pnpm exec tsc --noEmit"
+    required: true
+  - id: lint_clean
+    check: "pnpm exec oxlint src/"
+    required: true
+  - id: tests_pass
+    check: "pnpm exec vitest run"
+    required: true
+```
 
 Write state update:
 
 ```bash
 [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
   bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=develop status=running log.info="QA: <Approved|Returned with N issues>"
+    phase=develop status=running log.info="Exec plan generated: ${SLUG}"
+```
+
+Print:
+
+> **Exec plan generated** at `docs/exec-plans/active/<slug>/plan.md`
+>
+> Launching Ralph Loop to build the strategy...
+
+### 6b. Run Ralph Loop
+
+Execute the Ralph Loop with the dashboard state pointed at `.canon/state.json`:
+
+```bash
+RALPH_TUI_STATE="$(pwd)/.canon/state.json" \
+  bash "${HOME}/.claude/scripts/ralph-loop.sh" "${SLUG}"
+```
+
+The Ralph Loop will:
+
+1. Read the exec plan and find unchecked items
+2. Spawn a worker agent to implement each item
+3. Spawn a reviewer agent to evaluate the work
+4. Iterate until the reviewer outputs SHIP and all health checks pass
+5. Write dashboard state updates throughout (to `.canon/state.json` via `RALPH_TUI_STATE`)
+
+**If the Ralph Loop exits 0 (SHIP):** The strategy was built, tested, and approved.
+The exec plan has been moved to `docs/exec-plans/completed/`. Proceed to step 7.
+
+**If the Ralph Loop exits 1 (max iterations):** Print:
+
+> Ralph Loop reached max iterations without SHIP. Review the latest
+> feedback at `docs/exec-plans/active/<slug>/review-feedback.txt`
+> and run `/ralph-cycle` to continue iterating.
+
+Do not proceed to step 7. Stop here.
+
+**If the Ralph Loop exits 2 (stagnated or blocked):** Print:
+
+> Ralph Loop is blocked. Check `docs/exec-plans/active/<slug>/review-feedback.txt`
+> for details. Fix the blocker and re-run `/canon-start` to continue.
+
+Do not proceed to step 7. Stop here.
+
+Write state update after Ralph Loop completes:
+
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=develop status=running log.info="Ralph Loop complete — strategy built"
 ```
 
 ---

@@ -57,7 +57,7 @@ fetch() {
 echo "→ creating directories..."
 mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows .canon/templates
 mkdir -p .claude/commands
-mkdir -p src/types
+mkdir -p src/types src/clients
 
 # ── 2. Fetch agents ──────────────────────────────────────────────────────────
 echo "→ fetching agents..."
@@ -92,6 +92,20 @@ for tmpl in nba-momentum; do
 done
 state log.info="Templates fetched"
 
+# ── 4c. Fetch API client scaffolds ────────────────────────────────────────────
+echo "→ fetching API client scaffolds..."
+state log.info="Fetching API client scaffolds..."
+for client_file in client-polymarket client-sportsbook; do
+  fetch "canon/templates/${client_file}.ts" "src/clients/${client_file#client-}.ts"
+done
+state log.info="API clients scaffolded"
+
+# ── 4d. Fetch plan template ──────────────────────────────────────────────────
+echo "→ fetching plan template..."
+state log.info="Fetching exec plan template..."
+fetch "canon/templates/sports-strategy-plan.md" ".canon/templates/sports-strategy-plan.md"
+state log.info="Plan template fetched"
+
 # ── 5. Generate template files (skip if they exist) ──────────────────────────
 echo "→ generating template files..."
 state log.info="Generating template files..."
@@ -118,6 +132,9 @@ write_if_missing "package.json" <<EOF
     "lint": "oxlint src/",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "dependencies": {
+    "pmxtjs": "1.1.2"
   },
   "devDependencies": {
     "typescript": "5.9.3",
@@ -176,8 +193,11 @@ EOF
 
 write_if_missing ".env.example" <<'EOF'
 # API keys — copy to .env and fill in values
-POLYMARKET_API_KEY=
-ODDS_API_KEY=
+# Polymarket (optional — public data works without auth)
+POLYMARKET_PRIVATE_KEY=
+POLYMARKET_PROXY_ADDRESS=
+# The Odds API — get a free key at https://the-odds-api.com/
+THE_ODDS_API_KEY=
 EOF
 
 write_if_missing ".gitignore" <<'EOF'
@@ -337,10 +357,13 @@ for f in \
   .canon/skills/canon-conventions.md \
   .canon/config.yaml \
   .canon/ralph.yaml \
+  .canon/templates/sports-strategy-plan.md \
   .claude/commands/canon-start.md \
   .claude/commands/develop.md \
   src/types/TradeSignal.ts \
   src/types/RiskInterface.ts \
+  src/clients/polymarket.ts \
+  src/clients/sportsbook.ts \
   package.json \
   tsconfig.json \
   AGENTS.md; do
@@ -375,6 +398,9 @@ echo "    canon-start, develop, ralph-cycle, discover, register, quick-dev"
 echo ""
 echo "  src/types/"
 echo "    TradeSignal.ts, RiskInterface.ts"
+echo ""
+echo "  src/clients/"
+echo "    polymarket.ts, sportsbook.ts"
 echo ""
 echo "  package.json, tsconfig.json, .env.example, .gitignore, AGENTS.md"
 echo ""
