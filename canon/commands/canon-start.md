@@ -183,22 +183,18 @@ First, check for available starter templates:
 ls .canon/templates/*.strategy.md 2>/dev/null
 ```
 
-Build the list of options based on what's available:
+**You MUST use the `AskUserQuestion` tool** to present the strategy choice.
+Build the options list dynamically based on discovered templates:
 
-> No strategy specification found. Choose one:
+- For each `.strategy.md` template found, add an option with label
+  `Use template: <name>` and description from the first line of the file.
+- Always add option: label `Run /discover`, description `Scan prediction markets,
+  identify opportunities, and generate a strategy spec automatically`.
+- Always add option: label `Provide a spec`, description `Point to an existing
+  strategy document or describe your strategy`.
 
-If templates were found, list each one:
-
-> 1. **Use starter template: <name>** — <read the first line of the template for description>
-
-Always include these two options at the end:
-
-> - **Run /discover** — I'll scan prediction markets, identify opportunities,
->   and generate a strategy design spec automatically.
-> - **Provide a spec** — Point me to an existing strategy document or describe
->   your strategy and I'll write the spec.
-
-Wait for the user's response.
+Use header `Strategy` and question `Which strategy approach do you want to use?`.
+Do NOT print the options as markdown text — always use `AskUserQuestion`.
 
 **If the user chooses a starter template:**
 
