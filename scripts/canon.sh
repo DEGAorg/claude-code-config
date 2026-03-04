@@ -22,7 +22,12 @@ command -v terminal-ui >/dev/null 2>&1 &&
 	RIGHT_CMD="terminal-ui --state ${STATE}"
 
 # ── Create tmux: left=claude, right=dashboard ────────────────────────
-tmux new-session -d -s canon "claude --dangerously-skip-permissions"
+# When Claude exits, update dashboard status to idle and keep the pane alive
+CLAUDE_CMD="claude --dangerously-skip-permissions; "
+CLAUDE_CMD+="[[ -f '${TUI_WRITE}' ]] && bash '${TUI_WRITE}' '${STATE}' status=idle log.info='Claude session ended'; "
+CLAUDE_CMD+="echo 'Claude exited. Run ./canon.sh to restart, or Ctrl-D to close.'; "
+CLAUDE_CMD+="exec bash"
+tmux new-session -d -s canon "${CLAUDE_CMD}"
 tmux split-window -h -t canon -p 40 "${RIGHT_CMD}"
 tmux select-pane -t canon:.0
 

@@ -107,7 +107,7 @@ echo ""
 log_event "LOOP_START" \
 	"$(jq -n --arg slug "${TASK_SLUG}" --argjson max "${MAX_ITERATIONS}" \
 		'{"task_slug":$slug,"max_iterations":$max}')"
-tui_write phase=develop status=running \
+tui_write phase=develop status=automating \
 	metric.iteration="1/${MAX_ITERATIONS}" \
 	metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
 	metric.step="build" \

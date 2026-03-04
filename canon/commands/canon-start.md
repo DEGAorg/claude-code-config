@@ -362,7 +362,7 @@ Write state update after Ralph Loop completes:
 ```bash
 [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
   bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=develop status=running log.info="Ralph Loop complete — strategy built"
+    phase=develop status=complete log.info="Ralph Loop complete — strategy built"
 ```
 
 ---
@@ -376,7 +376,7 @@ Write state update:
 ```bash
 [[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
   bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=run status=idle log.info="Strategy ready for execution"
+    phase=run status=complete log.info="Strategy ready for execution"
 ```
 
 Print:

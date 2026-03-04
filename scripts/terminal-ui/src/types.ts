@@ -5,7 +5,14 @@
  * Writers (shell, TS, Python) produce this shape; the dashboard consumes it.
  */
 
-export type Status = "running" | "paused" | "idle" | "error";
+export type Status =
+  | "running"
+  | "automating"
+  | "executing"
+  | "paused"
+  | "idle"
+  | "complete"
+  | "error";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 

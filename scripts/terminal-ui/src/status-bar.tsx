@@ -8,8 +8,11 @@ interface StatusBarProps {
 
 const STATUS_COLORS: Record<Status, string> = {
   running: "green",
+  automating: "cyan",
+  executing: "magenta",
   paused: "yellow",
   idle: "gray",
+  complete: "greenBright",
   error: "red",
 };
 
