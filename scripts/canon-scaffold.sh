@@ -114,12 +114,6 @@ for client_file in client-polymarket client-sportsbook; do
 done
 state log.info="API clients scaffolded"
 
-# ── 4d. Fetch plan template ──────────────────────────────────────────────────
-echo "→ fetching plan template..."
-state log.info="Fetching exec plan template..."
-fetch "canon/templates/sports-strategy-plan.md" ".canon/templates/sports-strategy-plan.md"
-state log.info="Plan template fetched"
-
 # ── 5. Generate template files (skip if they exist) ──────────────────────────
 echo "→ generating template files..."
 state log.info="Generating template files..."
