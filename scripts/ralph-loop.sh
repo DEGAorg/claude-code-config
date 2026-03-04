@@ -181,7 +181,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 	COMPLETED_ITEMS=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
 	echo "→ worker: starting per-item loop..."
 	tui_write metric.step="worker" metric.iteration="${i}/${MAX_ITERATIONS}" \
-		log.info="Iteration ${i}/${MAX_ITERATIONS} — worker starting"
+		log.info="Iteration ${i}/${MAX_ITERATIONS} starting"
 	while bash "${SCRIPT_DIR}/plan-advance.sh" "${TASK_DIR}/plan.md" "${STATE_FILE}"; do
 		ITEM_NUM=$((ITEM_NUM + 1))
 		COMPLETED_ITEMS=$((COMPLETED_ITEMS + 1))
@@ -189,7 +189,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
 		tui_write metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
 			metric.currentTask="${CURRENT_TASK}" \
-			log.info="Worker ${i}/${MAX_ITERATIONS} — item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${CURRENT_TASK}"
+			log.info="Item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${CURRENT_TASK}"
 		WORKER_CONTEXT=$(sed \
 			-e "s|{TASK_DIR}|${TASK_DIR}|g" \
 			-e "s|{STATE_FILE}|${STATE_FILE}|g" \
@@ -211,7 +211,7 @@ ${HANDOFF}"
 		mv /tmp/ralph_c.tmp "${STATE_FILE}"
 	echo "→ worker: done (${ITEM_NUM} items this iteration)"
 	tui_write metric.step="review" metric.currentTask="" \
-		log.info="Worker done — ${ITEM_NUM} items built, starting review"
+		log.info="All items done — reviewing (iteration ${i}/${MAX_ITERATIONS})"
 	log_event "WORKER_DONE" \
 		"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"exit_code":0}')"
 
