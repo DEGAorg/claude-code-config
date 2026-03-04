@@ -393,22 +393,40 @@ Write state update:
     phase=run status=complete log.info="Strategy ready for execution"
 ```
 
-Print:
+Now run the strategy in dry-run mode:
 
-> **Strategy development complete.**
+```bash
+[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
+  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+    phase=run status=executing log.info="Launching strategy runner (dry-run)..."
+```
+
+```bash
+pnpm exec tsx src/runner.ts --dry-run
+```
+
+The runner polls live APIs (Polymarket, The Odds API) on a fixed interval,
+evaluates signals against the strategy logic, and logs every decision to
+`.canon/execution/<date>.jsonl`. In dry-run mode it never places orders.
+
+If the runner exits with an error (missing API key, network issue, type error),
+report the error and stop. The user needs to fix it before re-running.
+
+If the runner runs successfully (at least one poll cycle completes with output),
+stop it with Ctrl-C and print:
+
+> **Strategy running.**
 >
-> All checks pass. QA approved. Your strategy is ready.
+> All checks pass. Strategy built and verified. Runner tested in dry-run mode.
 >
-> Next steps:
-> - Run `/register` to submit to Canon Arena for tracked performance
-> - Automation runner is not yet implemented — run your strategy manually
->   or monitor markets and execute signals by hand
+> Decision log: `.canon/execution/<date>.jsonl`
+>
+> To run again: `pnpm exec tsx src/runner.ts --dry-run`
 >
 > To re-run any phase, use the individual commands:
 > - `/discover` — market analysis and strategy design
 > - `/develop` — implement, test, iterate
 > - `/ralph-cycle` — iterate until all success criteria pass
-> - `/register` — risk review and Arena registration
 
 ---
 

@@ -73,11 +73,17 @@ export function App({ statePath }: AppProps) {
     );
   }
 
+  // MetricsPanel rows: border-bottom (1) + border-sides + content rows
+  // Each row of metrics holds 2 key-value pairs.
+  const metricsEntries = Object.keys(state.metrics ?? {}).length;
+  const metricsContentRows = Math.max(1, Math.ceil(metricsEntries / 2));
+  const metricsRows = metricsContentRows + 1; // +1 for bottom border
+
   return (
     <Box flexDirection="column">
       <StatusBar phase={state.phase} status={state.status} />
       {warning ? <Text color="yellow">⚠ {warning}</Text> : null}
-      <LogPanel logs={state.logs} />
+      <LogPanel logs={state.logs} metricsRows={metricsRows} />
       <MetricsPanel metrics={state.metrics} />
     </Box>
   );
