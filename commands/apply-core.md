@@ -56,6 +56,8 @@ Files available:
 - `scripts/terminal-ui/src/status-bar.tsx`
 - `scripts/terminal-ui/src/log-panel.tsx`
 - `scripts/terminal-ui/src/metrics-panel.tsx`
+- `scripts/canon-scaffold.sh`
+- `scripts/canon.sh`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -90,6 +92,8 @@ Read and note which of these already exist:
 - `~/.claude/scripts/terminal-session.sh`
 - `~/.claude/scripts/terminal-ui-write.sh`
 - `~/.claude/scripts/terminal-ui/` (any files)
+- `~/.claude/scripts/canon-scaffold.sh`
+- `~/.claude/scripts/canon.sh`
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
@@ -136,6 +140,11 @@ Components:
   Requires Node.js. Installs scripts to `~/.claude/scripts/` and builds
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
+- **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
+  market projects. Installs `canon-scaffold.sh` (deterministic project
+  scaffolder called by `/canon-start`) and `canon.sh` (reference copy of
+  the local tmux launcher written by `/canon-init`).
+  (opt-in; recommended when `~/.claude/scripts/canon-scaffold.sh` is missing)
 
 ---
 
@@ -285,6 +294,18 @@ If `pnpm` is not available, fall back to `npm install && npm run build`.
 
 Safe to overwrite — these are engine scripts and app source with no user customization.
 
+#### Canon Bootstrap
+
+Create `~/.claude/scripts/` if it doesn't exist.
+
+Write each file to its corresponding path under `~/.claude/scripts/`:
+- `scripts/canon-scaffold.sh` → `~/.claude/scripts/canon-scaffold.sh`
+- `scripts/canon.sh` → `~/.claude/scripts/canon.sh`
+
+Run `chmod +x ~/.claude/scripts/canon-scaffold.sh ~/.claude/scripts/canon.sh` after writing.
+
+Safe to overwrite — these are engine scripts with no user customization.
+
 ---
 
 ### 5. Self-install
@@ -356,8 +377,9 @@ Installed:
 ✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 ✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
+✓ Canon Bootstrap — canon-scaffold.sh + canon.sh → ~/.claude/scripts/
 
-Canon is separate. Run /apply-canon from a Canon strategy project to add the
+Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.
 ```
 
