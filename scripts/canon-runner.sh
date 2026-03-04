@@ -59,11 +59,14 @@ fi
 _CYCLES=0
 _SIGNALS=0
 _ERRORS=0
+_GAMES=0
+_MARKETS=0
 
 # ── Reset dashboard for execution phase ──────────────────────────────────────
 tui phase=run status=executing metrics=reset \
 	"metric.mode=${MODE}" \
 	metric.cycles=0 metric.signals=0 metric.errors=0 \
+	metric.games=0 metric.markets=0 \
 	log.info="Launching strategy runner (${MODE})..."
 
 # ── Cleanup trap — always fires on exit/signal ───────────────────────────────
@@ -124,16 +127,27 @@ tail -n 0 -F "${RUNNER_LOG}" 2>/dev/null | while IFS= read -r line; do
 		break
 	fi
 
-	# Parse tag from first word (START, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
+	# Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
 	tag="${line%% *}"
 	msg="${line#* }"
 	level="info"
 
 	case "${tag}" in
-	NO_EDGE) _CYCLES=$((_CYCLES + 1)) ;;
-	SIGNAL)
+	SCAN) ;; # cycle started, just log it
+	NO_EDGE)
 		_CYCLES=$((_CYCLES + 1))
+		# Extract games/markets counts from message if present
+		# Format: "Cycle N — X games, Y markets, Z matched, no edges"
+		if [[ "${msg}" =~ ([0-9]+)\ games ]]; then
+			_GAMES="${BASH_REMATCH[1]}"
+		fi
+		if [[ "${msg}" =~ ([0-9]+)\ markets ]]; then
+			_MARKETS="${BASH_REMATCH[1]}"
+		fi
+		;;
+	SIGNAL)
 		_SIGNALS=$((_SIGNALS + 1))
+		level="warn"
 		;;
 	SCAN_ERROR)
 		_CYCLES=$((_CYCLES + 1))
@@ -146,7 +160,9 @@ tail -n 0 -F "${RUNNER_LOG}" 2>/dev/null | while IFS= read -r line; do
 	tui "log.${level}=${msg}" \
 		"metric.cycles=${_CYCLES}" \
 		"metric.signals=${_SIGNALS}" \
-		"metric.errors=${_ERRORS}"
+		"metric.errors=${_ERRORS}" \
+		"metric.games=${_GAMES}" \
+		"metric.markets=${_MARKETS}"
 done
 
 # Wait for runner to fully exit
