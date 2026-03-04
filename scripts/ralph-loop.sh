@@ -94,11 +94,11 @@ if [[ ! -S "${_LOG_SOCK}" ]]; then
 	fi
 fi
 
-# Count total plan items (unchecked checkboxes in Progress log)
-TOTAL_ITEMS=$(grep -c '^\- \[ \]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
-TOTAL_ITEMS="${TOTAL_ITEMS:-0}"
-COMPLETED_ITEMS=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
-COMPLETED_ITEMS="${COMPLETED_ITEMS:-0}"
+# Count total plan items (all checkboxes: checked + unchecked)
+_UNCHECKED=$(grep -c '^\- \[ \]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+_CHECKED=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+TOTAL_ITEMS=$((_UNCHECKED + _CHECKED))
+COMPLETED_ITEMS="${_CHECKED:-0}"
 
 echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations, ${TOTAL_ITEMS} items"
 echo "  plan: ${TASK_DIR}/plan.md"
@@ -177,8 +177,10 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 
 	# --- Worker phase (per-item loop) ---
 	ITEM_NUM=0
-	# Recount completed items at start of each iteration
+	# Recount from plan file (source of truth)
 	COMPLETED_ITEMS=$(grep -c '^\- \[x\]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+	_UC=$(grep -c '^\- \[ \]' "${TASK_DIR}/plan.md" 2>/dev/null || true)
+	TOTAL_ITEMS=$((COMPLETED_ITEMS + _UC))
 	echo "→ worker: starting per-item loop..."
 	tui_write metric.step="worker" metric.iteration="${i}/${MAX_ITERATIONS}" \
 		log.info="Iteration ${i}/${MAX_ITERATIONS} starting"
@@ -186,8 +188,8 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		ITEM_NUM=$((ITEM_NUM + 1))
 		COMPLETED_ITEMS=$((COMPLETED_ITEMS + 1))
 		CURRENT_TASK=$(jq -r '.current_task.text' "${STATE_FILE}")
-		# Short version for dashboard (strip markdown, truncate to 60 chars)
-		SHORT_TASK=$(echo "${CURRENT_TASK}" | sed 's/`//g' | cut -c1-60)
+		# Short version for dashboard: strip backticks, cut at em-dash, limit 40 chars
+		SHORT_TASK=$(echo "${CURRENT_TASK}" | sed 's/`//g; s/ —.*//; s/ ---.*//' | cut -c1-40)
 		echo "→ worker item ${ITEM_NUM}: ${CURRENT_TASK}"
 		tui_write metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
 			metric.currentTask="${SHORT_TASK}" \
