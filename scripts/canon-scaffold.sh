@@ -55,7 +55,7 @@ fetch() {
 
 # ── 1. Create directory tree ──────────────────────────────────────────────────
 echo "→ creating directories..."
-mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows
+mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows .canon/templates
 mkdir -p .claude/commands
 mkdir -p src/types
 
@@ -83,6 +83,14 @@ for cmd in develop ralph-cycle discover register quick-dev canon-start; do
   fetch "canon/commands/${cmd}.md" ".claude/commands/${cmd}.md"
 done
 state log.info="Commands fetched"
+
+# ── 4b. Fetch strategy templates ──────────────────────────────────────────────
+echo "→ fetching strategy templates..."
+state log.info="Fetching strategy templates..."
+for tmpl in nba-momentum; do
+  fetch "canon/templates/${tmpl}.strategy.md" ".canon/templates/${tmpl}.strategy.md"
+done
+state log.info="Templates fetched"
 
 # ── 5. Generate template files (skip if they exist) ──────────────────────────
 echo "→ generating template files..."

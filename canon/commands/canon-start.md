@@ -177,16 +177,38 @@ Write state update:
     phase=strategy status=running log.info="Looking for strategy specification..."
 ```
 
-Ask the user:
+First, check for available starter templates:
+
+```bash
+ls .canon/templates/*.strategy.md 2>/dev/null
+```
+
+Build the list of options based on what's available:
 
 > No strategy specification found. Choose one:
->
-> 1. **Run /discover** — I'll scan prediction markets, identify opportunities,
->    and generate a strategy design spec automatically.
-> 2. **Provide a spec** — Point me to an existing strategy document or describe
->    your strategy and I'll write the spec.
+
+If templates were found, list each one:
+
+> 1. **Use starter template: <name>** — <read the first line of the template for description>
+
+Always include these two options at the end:
+
+> - **Run /discover** — I'll scan prediction markets, identify opportunities,
+>   and generate a strategy design spec automatically.
+> - **Provide a spec** — Point me to an existing strategy document or describe
+>   your strategy and I'll write the spec.
 
 Wait for the user's response.
+
+**If the user chooses a starter template:**
+
+Copy the template to `docs/`:
+
+```bash
+cp .canon/templates/<name>.strategy.md docs/strategy-<name>.md
+```
+
+Read the copied spec and print a brief summary (market, archetype, edge thesis).
 
 **If the user chooses /discover:**
 
