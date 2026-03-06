@@ -25,7 +25,7 @@ ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:spac
 [[ -z "${ACTION}" ]] && exit 0
 
 # Log the mutation
-EXIT_CODE=$(echo "${INPUT}" | jq -r '.tool_result.exit_code // 0')
+EXIT_CODE=$(echo "${INPUT}" | jq -r '.tool_response.exit_code // 0')
 [[ "${EXIT_CODE}" == "0" ]] && STATUS="success" || STATUS="failed"
 LOG_FILE="${CLAUDE_PROJECT_DIR}/google/.changelog-raw.jsonl"
 mkdir -p "$(dirname "${LOG_FILE}")"

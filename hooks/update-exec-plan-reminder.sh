@@ -5,7 +5,7 @@
 set -euo pipefail
 
 INPUT=$(cat)
-EXIT_CODE=$(printf '%s' "${INPUT}" | jq -r '.tool_result.exit_code // 0')
+EXIT_CODE=$(printf '%s' "${INPUT}" | jq -r '.tool_response.exit_code // 0')
 COMMAND=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty')
 
 # Only remind on success

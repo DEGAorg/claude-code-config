@@ -300,7 +300,7 @@ decision-logic items (config, signals, risk, strategy, test assertions)
 remain unchecked — those are what the Ralph Loop will build.
 
 **If /discover or user-provided spec:** Read the plan template at
-`.canon/templates/sports-strategy-plan.md` and fill in the placeholders
+the strategy plan template (to be created in `.canon/templates/`) and fill in the placeholders
 based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
 
 Also ensure `ralph.yaml` exists at the project root (it should from scaffold).
