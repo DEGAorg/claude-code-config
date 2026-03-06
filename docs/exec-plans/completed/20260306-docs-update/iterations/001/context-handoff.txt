@@ -1,0 +1,101 @@
+--- item: Update CLAUDE.md Repo Map — expand `scripts/`, `commands/`, add missing dirs ---
+Expanded the Repo Map table in CLAUDE.md from 16 rows to 33 rows. Added every
+script in scripts/ with one-line descriptions (ralph-loop, plan-advance, terminal-ui,
+log-server, canon scripts, etc). Added ralph.yaml, tests/, ace/ as top-level entries.
+Updated commands/ row to list apply-core and canon-init. Updated skills/ row to list
+all three shipped skills. Also updated the Architecture tree diagram below the table
+to match (added scripts/, tests/, updated commands and skills descriptions).
+---
+
+--- item: Update CLAUDE.md "Active Work" section — post-demo state, current focus ---
+Rewrote the "Active Work" section (lines 200-210) in CLAUDE.md. Removed the three
+stale canon scaffolding items (scaffold canon/, build /apply-canon, wire canon_ralph)
+which are all shipped. Replaced with current focus: reviewer fix, cleanup-on-PR hook,
+parallel worktrees, docs pass, and /core-init command. These match the active exec
+plans in docs/exec-plans/active/. Only CLAUDE.md was changed.
+---
+
+--- item: Add file structure section to README.md ---
+Added a "File Structure" section to README.md between Contents and Getting Started.
+Lists all 10 top-level directories and 4 key config files (claude-md-template.md,
+settings.json, mcp-template.json, ralph.yaml) with one-line descriptions in a table.
+Added a link to CLAUDE.md for the full file-level map, per the plan's decision to
+keep README oriented and not duplicate CLAUDE.md's detail. Also added a "File
+Structure" entry to the Contents table of contents. Only README.md was changed.
+---
+
+--- item: Update canon/CLAUDE.md — remove "being scaffolded", reflect shipped artifacts ---
+Updated three sections in canon/CLAUDE.md. Structure tree: expanded from 6 entries
+to 10, listing AGENTS.md, rules/, templates/ and enumerating actual contents of
+commands/ (6 commands), skills/ (8 skills), agents/ (6 personas), and templates/
+(3 templates). Domain section: replaced "to be expanded" placeholder with the 6
+shipped skills with file paths. Active Work section: replaced "being scaffolded"
+language with shipped status and current focus areas. Only canon/CLAUDE.md changed.
+---
+
+--- item: Update docs/Dev_Flow.md — add terminal-ui/runner subsection to Stage 4-5 ---
+Added a new section "Stages 4-5 Enhancement — Ralph Loop and Terminal Dashboard"
+to docs/Dev_Flow.md, inserted between Stage 5 and Stage 6. Three subsections:
+(1) Ralph Loop lifecycle with ASCII flow diagram showing worker→stagnation→reviewer
+decision loop, (2) Terminal dashboard explaining the Ink-based UI, state file
+structure, and atomic writes via terminal-ui-write.sh, (3) When to use — interactive
+vs AFK/batch sessions. Only docs/Dev_Flow.md was changed.
+---
+
+--- item: Verify canon/AGENTS.md still matches reality (audit says yes, quick confirm) ---
+Verified all claims in canon/AGENTS.md against actual files on disk. All 6 agents
+(strategy-architect, market-analyst, dev, qa, risk-analyst, deployment-ops) exist in
+canon/agents/. All 8 skills match canon/skills/. All 5 workflows map to commands in
+canon/commands/. canon-start (6th command) is correctly omitted from workflows — it's
+an umbrella orchestrator. No file changes needed; AGENTS.md is accurate as-is.
+---
+
+--- item: Read through all changes for consistency ---
+Verified all four changed files (CLAUDE.md, README.md, canon/CLAUDE.md, docs/Dev_Flow.md)
+against disk. All 33 Repo Map rows in CLAUDE.md reference real paths. All canon/CLAUDE.md
+claims (6 commands, 8 skills, 6 agents, 3 templates, rules/) confirmed on disk. Dev_Flow.md
+references to scripts/terminal-ui/, terminal-ui-write.sh, ralph-loop.sh all valid. Cross-doc
+consistency confirmed: stage counts match, installation model consistent, no stale "being
+scaffolded" language. Two minor non-blocking observations: README lists 5/7 commands (omits
+apply-core and canon-init), and canon/docs/ + canon/hooks/ are empty scaffolding dirs. No
+files changed — this was a read-only verification pass.
+---
+
+--- item: CLAUDE.md Repo Map lists all top-level dirs and key files ---
+Verified all top-level items on disk against the Repo Map table. Found one missing
+file: DECISIONS.md (architecture decisions). Added it to the Repo Map between
+README.md and claude-md-template.md. hello-world.md and scripts/dev-test/ were
+also unlisted but are throwaway/test artifacts not worth documenting. All 18
+scripts in scripts/ confirmed present. Marked the completion criterion [x].
+---
+
+--- item: README.md has a file structure section ---
+Work was already completed by a previous worker — the File Structure table exists
+at README.md lines 45-64 with 10 directories and 4 config files listed. The progress
+log item was already [x]. Marked the completion criterion checkbox as [x] in plan.md.
+No file changes beyond plan.md.
+---
+
+--- item: canon/CLAUDE.md contains no "being scaffolded" or stale TODO language ---
+Verification-only task. Grepped canon/CLAUDE.md for "scaffol", "TODO", "to be expanded",
+"placeholder", "coming soon", "not yet" — zero matches. The previous worker's rewrite
+(handoff item 4) already removed all stale language. Marked the completion criterion
+checkbox [x] in plan.md. No file changes beyond plan.md.
+---
+
+--- item: docs/Dev_Flow.md references terminal-ui and runner ---
+Verification-only task. Grepped Dev_Flow.md and confirmed terminal-ui is referenced
+at lines 116, 118, 128 and Ralph Loop/ralph-loop.sh at lines 89, 91, 95, 98, 135.
+The "Stages 4-5 Enhancement" section added by a previous worker covers the full
+runner lifecycle and dashboard. Marked completion criterion [x] in plan.md. No file
+changes beyond plan.md.
+---
+
+--- item: No doc references files or paths that don't exist ---
+Verification-only task. Checked 80+ file/path references across all four changed docs
+(CLAUDE.md, README.md, canon/CLAUDE.md, docs/Dev_Flow.md) against disk. Covered repo
+map entries, all 18 scripts, canon-docs sibling repo specs (7 files), canon layer
+artifacts (6 commands, 8 skills, 6 agents, 3 templates, rules/), hooks, exec-plan
+subdirs. Zero broken references found. Marked final completion criterion [x] in
+plan.md. No file changes beyond plan.md and state files.
+---
