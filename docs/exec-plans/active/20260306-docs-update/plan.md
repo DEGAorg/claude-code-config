@@ -34,13 +34,13 @@ and Dev_Flow.md. Don't rewrite — patch what's stale.
 
 ## Progress log
 
-- [ ] Update CLAUDE.md Repo Map — expand `scripts/`, `commands/`, add missing dirs
-- [ ] Update CLAUDE.md "Active Work" section — post-demo state, current focus
-- [ ] Add file structure section to README.md
-- [ ] Update canon/CLAUDE.md — remove "being scaffolded", reflect shipped artifacts
-- [ ] Update docs/Dev_Flow.md — add terminal-ui/runner subsection to Stage 4-5
-- [ ] Verify canon/AGENTS.md still matches reality (audit says yes, quick confirm)
-- [ ] Read through all changes for consistency
+- [x] Update CLAUDE.md Repo Map — expand `scripts/`, `commands/`, add missing dirs
+- [x] Update CLAUDE.md "Active Work" section — post-demo state, current focus
+- [x] Add file structure section to README.md
+- [x] Update canon/CLAUDE.md — remove "being scaffolded", reflect shipped artifacts
+- [x] Update docs/Dev_Flow.md — add terminal-ui/runner subsection to Stage 4-5
+- [x] Verify canon/AGENTS.md still matches reality (audit says yes, quick confirm)
+- [x] Read through all changes for consistency
 
 ## Decision log
 
@@ -51,8 +51,8 @@ and Dev_Flow.md. Don't rewrite — patch what's stale.
 
 ## Completion criteria
 
-- [ ] CLAUDE.md Repo Map lists all top-level dirs and key files
-- [ ] README.md has a file structure section
-- [ ] canon/CLAUDE.md contains no "being scaffolded" or stale TODO language
-- [ ] docs/Dev_Flow.md references terminal-ui and runner
-- [ ] No doc references files or paths that don't exist
+- [x] CLAUDE.md Repo Map lists all top-level dirs and key files
+- [x] README.md has a file structure section
+- [x] canon/CLAUDE.md contains no "being scaffolded" or stale TODO language
+- [x] docs/Dev_Flow.md references terminal-ui and runner
+- [x] No doc references files or paths that don't exist

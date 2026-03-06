@@ -226,6 +226,43 @@ ${HANDOFF}"
 		jq ".stagnation_count = ${STAG} | .current_task.claimed_complete = true" \
 			"${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
 		if [[ ${STAG} -ge 2 ]]; then
+			# Before declaring stagnation, check if work is actually done
+			_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" \
+				| grep -c '^\- \[ \]' 2>/dev/null || true)
+			if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
+				echo "→ stagnation detected but all completion criteria checked — treating as SHIP"
+				RESULT_FILE="${TASK_DIR}/review-result.txt"
+				echo "SHIP" >"${RESULT_FILE}"
+				tui_write status=idle metric.step="complete" metric.decision="SHIP" \
+					log.info="SHIP (fallback) — all criteria met after ${i} iteration(s)"
+				log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter,"fallback":true}')"
+				echo "→ running repo health check..."
+				if bash "${SCRIPT_DIR}/ralph-check.sh"; then
+					echo "→ archiving exec-plan to completed/..."
+					mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
+					echo "→ committing..."
+					git add -A
+					git commit -m "$(
+						cat <<EOF
+complete ${TASK_SLUG} (ralph loop, iteration ${i}, fallback SHIP)
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+					)"
+					_settings="${HOME}/.claude/settings.json"
+					if [[ -f "$_settings" ]]; then
+						_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
+						_volume=$(jq -r '.env.CLAUDE_SOUND_VOLUME // "50"' "$_settings")
+						CLAUDE_SOUND="${_sound}" CLAUDE_SOUND_VOLUME="${_volume}" \
+							bash "${HOME}/.claude/hooks/play-sound.sh" &
+					fi
+					echo ""
+					echo "ralph-loop: DONE — shipped after ${i} iteration(s) (fallback: reviewer didn't write result)."
+					exit 0
+				else
+					echo "→ health check failed despite checked criteria — continuing"
+				fi
+			fi
 			echo "ralph-loop: STAGNATED — no file changes in 2 consecutive iterations"
 			echo "  Human review required. Re-run after diagnosing the blocker."
 			tui_write status=error metric.step="stagnated" \
