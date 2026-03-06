@@ -19,98 +19,126 @@ worker back with nothing to do, triggering stagnation detection.
   no `review-result.txt` or `review-feedback.txt`
 - `iterations/002/`: contains only `work-summary.txt` — reviewer still not writing
 
+**Eliminated causes:**
+- Permissions: not the issue — ralph uses `--dangerously-skip-permissions`
+- Empty git diff: not the issue — changes exist and the loop has flagged them
+
+**Actual cause:** The write instruction is buried in step 3 of the reviewer
+prompt. The agent loses it in the noise of reading the plan, work-summary,
+and diff. The prompt alone is not a reliable enforcement mechanism.
+
 ## Requirements
 
 - Reviewer agent reliably writes `review-result.txt` on every invocation
-- Root cause identified: is this a prompt issue, a tool permission issue, or
-  a claude -p execution issue?
-- Ralph loop has a fallback if the reviewer fails to write the file
+- Enforcement via Claude hook, not just prompt instructions
+- Ralph loop has a fallback if the reviewer still fails to write the file
 - Regression test: run the loop on a plan where all criteria are already met
   and confirm it SHIPs in iteration 1
 
 ## Approach
 
-Three-pronged investigation, then fixes:
+### Fix 1: Stop hook — enforce review-result.txt before reviewer exit
 
-### Investigation
+Add a Stop hook that fires when the reviewer agent tries to exit. The hook
+checks if `review-result.txt` exists in the task directory. If not, it blocks
+the exit and tells the agent to write the file.
 
-1. **Prompt analysis** — The reviewer prompt at `scripts/ralph-reviewer-prompt.md`
-   tells the agent to write `{TASK_DIR}/review-result.txt`. The `{TASK_DIR}`
-   placeholder is substituted by ralph-loop.sh line 241:
-   ```bash
-   REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
-   ```
-   This produces a relative path like `docs/exec-plans/active/20260306-post-demo-cleanup/review-result.txt`.
-   The reviewer runs via `claude -p` which should have Write tool access. But:
-   - Does `--dangerously-skip-permissions` apply to `-p` mode?
-   - Is the reviewer's context window too large for it to follow instructions?
-   - Does the reviewer see `git diff HEAD` as empty (worker already committed)?
+The hook activates only during ralph loop reviewer sessions. Detection: the
+reviewer prompt sets an env var (e.g. `RALPH_ROLE=reviewer`) and the hook
+checks for it.
 
-2. **Git diff timing** — The reviewer prompt says to read `git diff HEAD`.
-   But ralph-loop.sh doesn't commit the worker's changes before running the
-   reviewer. If the worker used Write/Edit tools, changes ARE on disk but may
-   or may not show in `git diff HEAD` depending on whether the worker staged them.
-   However — the cleanup plan's worker checked boxes in plan.md and edited
-   QUALITY.md. These should show in `git diff HEAD` since they're unstaged.
+**New file: `hooks/ralph-reviewer-stop.sh`**
 
-3. **Reproduce locally** — Run the reviewer prompt manually against the
-   completed plan to see what it actually does. Capture its output.
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-### Fixes
+# Only active for reviewer sessions
+[[ "${RALPH_ROLE:-}" == "reviewer" ]] || exit 0
 
-1. **Prompt hardening** — Make the write instruction more prominent. Add a
-   mandatory first action: "Before doing anything else, create the output file."
-   Move the file write instruction from step 3 to step 1.
+TASK_DIR="${RALPH_TASK_DIR:-}"
+[[ -n "${TASK_DIR}" ]] || exit 0
 
-2. **Fallback in ralph-loop.sh** — If `review-result.txt` is missing after
-   the reviewer runs, check if all completion criteria checkboxes are checked
-   in plan.md. If yes, treat as SHIP with a warning. This prevents infinite
-   loops when the reviewer fails but the work is done.
+RESULT_FILE="${TASK_DIR}/review-result.txt"
+if [[ ! -f "${RESULT_FILE}" ]]; then
+  echo "STOP BLOCKED: You must write ${RESULT_FILE} before exiting."
+  echo "First line must be exactly: SHIP, REVISE, or BLOCKED."
+  exit 2
+fi
+```
 
-3. **Reviewer validation** — After `claude -p` returns, check if the file
-   exists. If not, log a specific error and retry the reviewer once before
-   falling back to REVISE.
+The hook uses exit code 2 to block the stop. The agent gets the message
+and is forced to write the file before it can exit.
+
+### Fix 2: Pass env vars from ralph-loop.sh to reviewer
+
+Update the reviewer invocation in ralph-loop.sh to set `RALPH_ROLE=reviewer`
+and `RALPH_TASK_DIR` so the Stop hook can detect reviewer sessions:
+
+```bash
+RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
+  env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+```
+
+Also set `RALPH_ROLE=worker` for the worker invocation (no stop hook needed
+for workers, but consistent labeling).
+
+### Fix 3: Fallback in ralph-loop.sh
+
+If `review-result.txt` is still missing after the reviewer exits (hook
+failed, agent crashed, etc.), check plan.md checkboxes as a last resort:
+- All completion criteria checked → treat as SHIP with a warning log
+- Otherwise → REVISE as before
+
+This prevents infinite stagnation loops.
+
+### Fix 4: Prompt adjustment (minor)
+
+Move the file write instruction higher in the reviewer prompt — from step 3
+to a prominent callout at the top. Belt and suspenders with the hook.
 
 ## Files to touch
 
 | File | Change |
 |------|--------|
-| `scripts/ralph-reviewer-prompt.md` | Restructure: file write as first action, explicit path, redundant instruction |
-| `scripts/ralph-loop.sh` | Add reviewer retry on missing file, add checkbox-based fallback |
+| `hooks/ralph-reviewer-stop.sh` | New — Stop hook that blocks reviewer exit if review-result.txt missing |
+| `settings.json` | Add ralph-reviewer-stop.sh to Stop hooks |
+| `scripts/ralph-loop.sh` | Pass `RALPH_ROLE` and `RALPH_TASK_DIR` env vars to reviewer; add checkbox fallback |
+| `scripts/ralph-reviewer-prompt.md` | Move file write instruction to top-level callout |
+| `commands/apply-core.md` | Add hook to install manifest |
 
 ## Risks and open questions
 
-- **Q: Is `-p` mode limiting the reviewer's tool access?**
-  Need to test. If `claude -p` with `--dangerously-skip-permissions` doesn't
-  have Write tool access, the reviewer literally cannot create the file.
+- **Q: Does the Stop hook receive env vars from the parent process?**
+  `claude -p` is spawned by ralph-loop.sh which sets the env vars. The hook
+  runs inside that Claude session, so it should inherit them. Need to verify.
 
-- **Q: Is the reviewer running out of context?**
-  The prompt + plan + work-summary + git diff might be large. If the reviewer
-  truncates or fails silently, no file gets written.
-
-- **Q: Should the reviewer use Bash `echo > file` instead of Write tool?**
-  More reliable for a single-line file, but goes against the tool preference
-  conventions. Could be a pragmatic exception.
+- **Q: Can the Stop hook block exit in `-p` mode?**
+  In interactive mode, exit code 2 blocks the stop. Need to confirm this
+  also works for `claude -p` sessions (prompt mode may behave differently).
 
 ## Progress log
 
-- [ ] Reproduce: run reviewer prompt manually against completed cleanup plan, capture behavior
-- [ ] Check if `claude -p --dangerously-skip-permissions` has Write tool access
-- [ ] Identify which of the three causes (prompt, permissions, context) is the actual failure
-- [ ] Fix reviewer prompt — make file write the first and most prominent instruction
-- [ ] Add reviewer retry logic to ralph-loop.sh (retry once on missing file)
-- [ ] Add checkbox-based fallback to ralph-loop.sh (if all criteria checked and reviewer fails, treat as SHIP with warning)
+- [ ] Write `hooks/ralph-reviewer-stop.sh` — Stop hook enforcing review-result.txt
+- [ ] Add hook to `settings.json` Stop hooks array
+- [ ] Update `scripts/ralph-loop.sh` — pass RALPH_ROLE and RALPH_TASK_DIR env vars to reviewer and worker
+- [ ] Update `scripts/ralph-reviewer-prompt.md` — move write instruction to prominent top callout
+- [ ] Add checkbox-based fallback to ralph-loop.sh (all criteria checked + no file → SHIP with warning)
+- [ ] Add hook to `commands/apply-core.md` install manifest
+- [ ] Test: verify Stop hook blocks exit when review-result.txt missing
 - [ ] Test: run ralph loop on a trivial already-complete plan, confirm SHIP in iteration 1
 
 ## Decision log
 
 | Decision | Alternatives considered | Rationale |
 |----------|------------------------|-----------|
-| (Pending) Fix approach | Prompt-only vs loop-level fallback vs both | Need reproduction results first |
+| Stop hook as primary enforcement | Prompt-only, retry logic, bash echo fallback | Hooks are structural — they fire regardless of what the agent decides to do. Prompts are suggestions the agent can ignore. |
+| Checkbox fallback as safety net | No fallback (rely on hook only) | Defense in depth. If the hook fails (env var missing, -p mode edge case), the loop still exits instead of stagnating. |
+| Env var detection for hook scope | Always-on hook, file-based flag | Env vars are clean — no temp files to manage, no stale state. The hook is a no-op outside ralph sessions. |
 
 ## Completion criteria
 
-- [ ] Root cause identified with evidence (not speculation)
-- [ ] Reviewer writes `review-result.txt` on a clean test run
+- [ ] `hooks/ralph-reviewer-stop.sh` exists and is wired in settings.json
+- [ ] Reviewer writes `review-result.txt` on a test run
 - [ ] Ralph loop on an already-complete plan exits SHIP in iteration 1
-- [ ] Fallback exists in ralph-loop.sh so a missing file doesn't cause infinite loops
+- [ ] Fallback exists in ralph-loop.sh so a missing file can't cause infinite loops
