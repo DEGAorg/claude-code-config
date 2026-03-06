@@ -33,12 +33,12 @@ rename — flag but don't block on it.
 
 ## Progress log
 
-- [ ] Move `active/20260303-demo-prep/` to `completed/20260303-demo-prep/`
-- [ ] Run `/cleanup` scan — grade Core scripts, Canon layer, hooks, commands, docs, terminal-ui
-- [ ] Populate QUALITY.md with grades from the scan
-- [ ] Sweep for stale references: grep for `canon-init.sh` (renamed to `canon-scaffold.sh`), deleted files, broken paths
-- [ ] Fix any stale references found
-- [ ] Verify no dead imports or broken script paths in `scripts/`
+- [x] Move `active/20260303-demo-prep/` to `completed/20260303-demo-prep/`
+- [x] Run `/cleanup` scan — grade Core scripts, Canon layer, hooks, commands, docs, terminal-ui
+- [x] Populate QUALITY.md with grades from the scan
+- [x] Sweep for stale references: grep for `canon-init.sh` (renamed to `canon-scaffold.sh`), deleted files, broken paths
+- [x] Fix any stale references found
+- [x] Verify no dead imports or broken script paths in `scripts/`
 
 ## Decision log
 
@@ -48,7 +48,7 @@ rename — flag but don't block on it.
 
 ## Completion criteria
 
-- [ ] No active exec plans from before today remain in `active/`
-- [ ] QUALITY.md has at least 5 graded areas
-- [ ] `rg 'canon-init\.sh'` returns zero hits outside of git history
-- [ ] All script paths in commands/ resolve to existing files
+- [x] No active exec plans from before today remain in `active/`
+- [x] QUALITY.md has at least 5 graded areas
+- [x] `rg 'canon-init\.sh'` returns zero hits outside of git history
+- [x] All script paths in commands/ resolve to existing files

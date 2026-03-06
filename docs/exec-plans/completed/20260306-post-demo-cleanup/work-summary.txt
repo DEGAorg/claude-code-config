@@ -1,0 +1,21 @@
+DONE:
+- Moved active/20260303-demo-prep/ to completed/20260303-demo-prep/
+- Ran /cleanup scan across 6 codebase areas using parallel subagent exploration
+- Populated docs/QUALITY.md with grades: Commands (A), Hooks (B), Docs (B), Core Scripts (C), Canon Layer (C), Terminal UI (C)
+- Documented strengths, known issues, and trends for each area
+- Verified QUALITY.md grades (already populated by cleanup scan worker)
+- Swept for stale references to canon-init.sh — zero stale refs in active code
+- Cross-checked all script/hook paths in commands/, settings.json, canon/commands/ — all resolve
+- Fixed 4 stale references: hook schema mismatch (.tool_result → .tool_response) in update-exec-plan-reminder.sh and log-gam.sh, dangling meet.md ref in Dev_Flow.md, nonexistent template path in canon-start.md
+- Updated QUALITY.md to mark fixed issues
+- Verified scripts/ directory: all 12 .sh files have shebangs, all inter-script references resolve, all 24 paths in apply-core.md exist, log-server.py uses only stdlib imports
+- Verified completion criterion: no pre-today exec plans remain in active/ (all 5 dirs dated 20260306)
+- Verified completion criterion: QUALITY.md has 6 graded areas (exceeds minimum of 5)
+- Verified completion criterion: `rg 'canon-init\.sh'` returns zero hits outside docs/exec-plans (historical records and self-references only)
+- Verified completion criterion: all 51 script paths in commands/apply-core.md resolve to existing files, plus canon/commands/ script refs verified
+
+REMAINING:
+- none — all progress log items and completion criteria are checked
+
+BLOCKERS:
+- none
