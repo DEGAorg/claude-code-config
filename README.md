@@ -14,6 +14,8 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 
 ## Contents
 
+**[File Structure](#file-structure)**
+
 **[Getting Started](#getting-started)**
 - [Read These First](#read-these-first)
 - [Prerequisites](#prerequisites)
@@ -39,6 +41,27 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 - [Writing Skills and Agents](#writing-skills-and-agents)
 - [Recommended Skills](#recommended-skills)
 - [Recommended MCP Servers](#recommended-mcp-servers)
+
+## File Structure
+
+| Path | Purpose |
+|------|---------|
+| `commands/` | Global slash commands (`/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
+| `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
+| `skills/` | Core skills (app-legibility, custom-linter-authoring, sound-notifications) |
+| `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
+| `scripts/` | Shell scripts and tooling — Ralph Loop engine, terminal-ui dashboard, logging, Canon scripts |
+| `sounds/` | MP3 sound files played on task completion |
+| `docs/` | Pipeline docs, architecture, exec plans |
+| `tests/` | Test scripts for hooks and infrastructure |
+| `canon/` | Canon layer — prediction market skills, agents, hooks, commands, templates |
+| `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
+| `claude-md-template.md` | Global CLAUDE.md template for `~/.claude/CLAUDE.md` |
+| `settings.json` | Claude Code settings template (hooks, permissions, statusline) |
+| `mcp-template.json` | MCP server configuration template |
+| `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
+
+For the full file-level map, see the Repo Map table in [`CLAUDE.md`](CLAUDE.md).
 
 ## Getting Started
 

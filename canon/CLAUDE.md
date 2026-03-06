@@ -10,10 +10,13 @@ specific to prediction market development. Generic patterns belong in the parent
 ```
 canon/
 ├── CLAUDE.md          ← You are here
-├── commands/          ← Canon-specific slash commands
+├── AGENTS.md          ← Agent personas, skills, and workflow reference
+├── commands/          ← Slash commands (canon-start, develop, discover, register, ralph-cycle, quick-dev)
 ├── hooks/             ← Canon-specific lifecycle hooks
-├── skills/            ← Canon-specific skills (market analysis, oracle patterns, etc.)
-├── agents/            ← Canon-specific agents (market analyst, risk evaluator, etc.)
+├── skills/            ← Skills (prediction-markets, polymarket, strategy-patterns, risk-management, backtesting, arena-tracking, canon-conventions, ralph-loop)
+├── agents/            ← Agent personas (dev, market-analyst, strategy-architect, risk-analyst, qa, deployment-ops)
+├── rules/             ← Domain layering enforcement (ast-grep)
+├── templates/         ← Strategy templates (client-polymarket.ts, client-sportsbook.ts, nba-momentum/)
 └── docs/              ← Canon architecture, domain models, API references
 ```
 
@@ -43,16 +46,16 @@ Requires Core to be installed first:
 
 ---
 
-## Domain (to be expanded)
+## Domain
 
-Canon targets prediction market development. Key areas to be covered:
+Canon targets prediction market development. Shipped skills cover:
 
-- Market creation and resolution patterns
-- Oracle integration and data feeds
-- Position management and risk modeling
-- Liquidity pool mechanics
-- Event outcome verification
-- Smart contract patterns for prediction markets
+- Prediction market fundamentals and terminology (`skills/prediction-markets.md`)
+- Polymarket API integration (`skills/polymarket.md`)
+- Strategy design patterns (`skills/strategy-patterns.md`)
+- Risk management and position sizing (`skills/risk-management.md`)
+- Backtesting methodology (`skills/backtesting.md`)
+- Arena tracking and performance monitoring (`skills/arena-tracking.md`)
 
 ---
 
@@ -72,9 +75,11 @@ for how to write and extend these rules.
 
 ## Active Work
 
-This layer is being scaffolded. Next steps:
+The Canon layer is shipped. Commands, skills, agents, rules, and templates are
+all in place. The live runner with terminal dashboard and Ralph Loop convergence
+are operational.
 
-1. Define the Canon domain model in `docs/`.
-2. Create first Canon-specific skills for market analysis.
-3. Create first Canon-specific agents with domain personas.
-4. ~~Build the `/apply-canon` command.~~ **Done** — `commands/apply-canon.md` created.
+Current focus areas:
+- Strategy template expansion (new market types beyond NBA/sports)
+- Arena integration for live performance tracking
+- Backtesting pipeline refinement

@@ -53,20 +53,39 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | Path | Purpose |
 |---|---|
 | `README.md` | Full reference guide — source of truth for all config explanations |
+| `DECISIONS.md` | Settled architecture decisions for Core + Canon |
 | `claude-md-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) — lean map, ~120 lines |
 | `rules/` | Language-specific standards loaded by file type (python, node-typescript, rust, bash, github-actions) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
-| `scripts/statusline.sh` | Two-line terminal status bar for zsh |
-| `commands/` | Global slash commands (`fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden`) |
-| `skills/` | Core skills (`custom-linter-authoring`) |
+| `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
+| `commands/` | Global slash commands — `apply-core`, `canon-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
+| `skills/` | Core skills — `app-legibility`, `custom-linter-authoring`, `sound-notifications` |
 | `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
+| `scripts/` | Shell scripts and tooling (see below) |
+| `scripts/ralph-loop.sh` | Ralph Loop orchestrator — drives worker/reviewer agents to convergence |
+| `scripts/ralph-worker-prompt.md` | Worker agent system prompt for Ralph iterations |
+| `scripts/ralph-reviewer-prompt.md` | Reviewer agent system prompt for Ralph iterations |
+| `scripts/plan-advance.sh` | Advances Ralph state to next task item |
+| `scripts/ralph-check.sh` | Health check for Ralph Loop state |
+| `scripts/create-exec-plan.sh` | Scaffolds a new exec-plan directory |
+| `scripts/task-complete.sh` | Marks task done and plays completion sound |
+| `scripts/statusline.sh` | Two-line terminal status bar for zsh |
+| `scripts/terminal-session.sh` | Terminal session management |
+| `scripts/terminal-ui/` | Ink-based terminal dashboard (TypeScript/React) — real-time agent monitoring |
+| `scripts/terminal-ui-write.sh` | Writes structured data to terminal-ui |
+| `scripts/log-server.py` | WebSocket log aggregation server |
+| `scripts/log-client.sh` | Log client for structured event streaming |
+| `scripts/canon.sh` | Canon bootstrap wrapper |
+| `scripts/canon-runner.sh` | Canon strategy runner |
+| `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
-| `ace/Pipeline_Diagrams.md` | Team pipeline + harness-enhanced diagrams |
+| `tests/` | Test scripts for hooks and infrastructure |
+| `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
 
 ---
@@ -81,12 +100,14 @@ hooks, and commands specifically for prediction market development.
 claude-code-config/             ← Core (this repo root)
 ├── CLAUDE.md                   ← You are here
 ├── rules/                      ← Language rules (glob-matched, load only for matching file types)
-├── commands/                   ← Generic commands (fix-issue, review-pr, plan, cleanup)
+├── commands/                   ← Global commands (apply-core, canon-init, fix-issue, review-pr, plan, cleanup, doc-garden)
 ├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker, sound player)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
+├── scripts/                    ← Ralph Loop engine, terminal-ui, logging, Canon scripts
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
-├── skills/                     ← Core skills (to be created)
+├── skills/                     ← Core skills (app-legibility, custom-linter-authoring, sound-notifications)
+├── tests/                      ← Test scripts for hooks and infrastructure
 │
 └── canon/                      ← Canon layer (prediction markets)
     ├── CLAUDE.md               ← Canon-specific context and conventions
@@ -179,13 +200,19 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 
 ## Active Work
 
-### Current focus (Ace: Phase I, no Arena)
+### Current focus
 
-Core harness is complete (all 7 gaps). Active work is now on the Canon layer:
+Core harness (all 7 gaps) and Canon layer are both shipped. The demo sprint
+delivered end-to-end: strategy scaffolding, live runner with dashboard, and
+the Ralph Loop driving worker/reviewer convergence per-item.
 
-1. Scaffold `canon/` with Canon-specific skills, agents, hooks, and commands.
-2. Build `/apply-canon` installation command (mirrors `/apply-core` for Canon artifacts).
-3. Wire `canon_ralph` integration — MCP tool shim connecting Ralph Loop to Canon success criteria.
+Active work is infrastructure hardening and docs:
+
+1. Fix Ralph reviewer not writing `review-result.txt` (Stop hook enforcement).
+2. Add cleanup-on-PR hook — run `/cleanup` automatically when opening PRs.
+3. Parallel worktrees for subagent isolation (`wt switch`).
+4. Docs pass — update CLAUDE.md, README, canon/CLAUDE.md, Dev_Flow.md to reflect shipped state.
+5. `/core-init` command — one-shot setup for new repos adopting the harness.
 
 ### Key concepts
 

@@ -86,6 +86,58 @@ even the worst-case delivery clears a minimum acceptable bar.
 
 ---
 
+## Stages 4-5 Enhancement — Ralph Loop and Terminal Dashboard
+
+Stages 4 and 5 can run unattended using the **Ralph Loop**, an orchestrator
+that spawns worker and reviewer agents in sequence until the reviewer outputs
+SHIP or the iteration budget is exhausted.
+
+### Ralph Loop lifecycle
+
+```
+ralph-loop.sh <task-slug>
+  ├── per-item worker loop
+  │     worker reads plan.md → executes one task → marks [x] → writes handoff
+  │     (repeats for each unchecked item)
+  ├── stagnation check (flags if no file changes across 2 iterations)
+  ├── reviewer evaluates work-summary.txt against plan criteria
+  │     → SHIP: health check → archive → commit
+  │     → REVISE: write feedback → next iteration
+  │     → BLOCKED: stop, wait for human
+  └── repeats up to max_iterations (configured in ralph.yaml)
+```
+
+The worker handles Stage 4 (implement per the plan, TDD), and the reviewer
+handles Stage 5 (AI code review against acceptance criteria). Each iteration
+archives its state files so the full decision history is preserved.
+
+### Terminal dashboard
+
+The **terminal-ui** (`scripts/terminal-ui/`) is an Ink-based React app that
+renders a real-time status bar during Ralph Loop execution. The orchestrator
+writes structured state via `terminal-ui-write.sh`, which atomically updates
+a JSON state file with:
+
+- **Phase and status** — current pipeline phase (develop, review) and state
+  (running, idle, error)
+- **Metrics** — iteration count, items completed, current task, reviewer
+  verdict
+- **Logs** — ring-buffered log entries (capped at 50) with timestamps and
+  severity levels
+
+The dashboard is optional — the Ralph Loop functions identically without it,
+writing the same state files regardless. The dashboard simply reads the state
+file and renders it.
+
+### When to use
+
+- **Interactive sessions**: run Stages 4-5 manually as described above.
+- **AFK / batch sessions**: launch `ralph-loop.sh` and let it converge
+  autonomously. Monitor progress via the terminal dashboard or by reading
+  the state files directly.
+
+---
+
 ## Stage 6 — Record Walkthrough Video
 
 **Who:** Developer
