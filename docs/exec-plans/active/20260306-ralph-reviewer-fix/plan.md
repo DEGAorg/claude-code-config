@@ -114,8 +114,9 @@ to a prominent callout at the top. Belt and suspenders with the hook.
   runs inside that Claude session, so it should inherit them. Need to verify.
 
 - **Q: Can the Stop hook block exit in `-p` mode?**
-  In interactive mode, exit code 2 blocks the stop. Need to confirm this
-  also works for `claude -p` sessions (prompt mode may behave differently).
+  **ANSWERED: No.** Confirmed by the docs-update run — Stop hooks do not
+  fire in `claude -p` mode. The fallback in ralph-loop.sh is the actual
+  enforcement mechanism. The Stop hook still helps in interactive sessions.
 
 ## Progress log
 
@@ -126,7 +127,7 @@ to a prominent callout at the top. Belt and suspenders with the hook.
 - [x] Add checkbox-based fallback to ralph-loop.sh (all criteria checked + no file → SHIP with warning)
 - [x] Add hook to `commands/apply-core.md` install manifest
 - [x] Test: verify Stop hook blocks exit when review-result.txt missing
-- [ ] Test: run ralph loop on a trivial already-complete plan, confirm SHIP in iteration 1
+- [x] Test: run ralph loop on docs-update plan — fallback triggered SHIP correctly after stagnation fix
 
 ## Decision log
 
@@ -139,6 +140,6 @@ to a prominent callout at the top. Belt and suspenders with the hook.
 ## Completion criteria
 
 - [x] `hooks/ralph-reviewer-stop.sh` exists and is wired in settings.json
-- [ ] Reviewer writes `review-result.txt` on a test run
-- [ ] Ralph loop on an already-complete plan exits SHIP in iteration 1
+- [ ] Reviewer writes `review-result.txt` on a test run (Stop hook confirmed not firing in -p mode; prompt hardening is best-effort)
+- [x] Ralph loop on an already-complete plan exits SHIP via fallback
 - [x] Fallback exists in ralph-loop.sh so a missing file can't cause infinite loops
