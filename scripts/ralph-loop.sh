@@ -206,7 +206,8 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 
 ${HANDOFF}"
 		fi
-		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
+		RALPH_ROLE=worker RALPH_TASK_DIR="${TASK_DIR}" \
+			env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
 	done
 	# All items processed — mark last task claimed so health check passes
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
@@ -239,17 +240,27 @@ ${HANDOFF}"
 	# --- Reviewer phase ---
 	echo "→ reviewer: evaluating..."
 	REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
-	env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+	RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
+		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
 	echo "→ reviewer: done"
 
 	# --- Read reviewer decision ---
 	RESULT_FILE="${TASK_DIR}/review-result.txt"
 	if [[ ! -f "${RESULT_FILE}" ]]; then
-		echo "✗ reviewer did not write review-result.txt — treating as REVISE"
-		log_event "REVIEWER_DECISION" \
-			"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE"}')"
-		echo ""
-		continue
+		echo "⚠ reviewer did not write review-result.txt"
+		# Fallback: if all completion criteria are checked, treat as SHIP
+		_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" \
+			| grep -c '^\- \[ \]' 2>/dev/null || true)
+		if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
+			echo "→ fallback: all completion criteria checked — treating as SHIP"
+			echo "SHIP" >"${RESULT_FILE}"
+		else
+			echo "→ fallback: ${_CC_UNCHECKED} unchecked criteria — treating as REVISE"
+			log_event "REVIEWER_DECISION" \
+				"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE","reason":"no_result_file"}')"
+			echo ""
+			continue
+		fi
 	fi
 
 	RESULT=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')

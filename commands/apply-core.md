@@ -32,6 +32,7 @@ Files available:
 - `hooks/update-exec-plan-reminder.sh`
 - `hooks/session-start-logging.sh`
 - `hooks/structured-log.sh`
+- `hooks/ralph-reviewer-stop.sh`
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
@@ -214,9 +215,11 @@ Create `~/.claude/hooks/` if it doesn't exist.
 Write and `chmod +x` each file:
 - `hooks/session-start-logging.sh` → `~/.claude/hooks/session-start-logging.sh`
 - `hooks/structured-log.sh` → `~/.claude/hooks/structured-log.sh`
+- `hooks/ralph-reviewer-stop.sh` → `~/.claude/hooks/ralph-reviewer-stop.sh`
 
 Safe to overwrite. These hooks reference `${HOME}/.claude/scripts/log-server.py`
-so they work from any project directory.
+so they work from any project directory. The reviewer stop hook is scoped
+via `RALPH_ROLE` env var — it's a no-op outside ralph loop sessions.
 
 #### Ralph Loop — Global scripts
 

@@ -113,6 +113,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash ~/.claude/hooks/ralph-reviewer-stop.sh"
+          },
+          {
+            "type": "command",
             "command": "bash ~/.claude/hooks/play-sound.sh"
           }
         ]

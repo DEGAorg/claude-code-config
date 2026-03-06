@@ -4,6 +4,11 @@ You are the reviewer agent in a Ralph Loop iteration. Your job is to evaluate
 whether the worker's output satisfies the plan's completion criteria. You decide
 SHIP or REVISE. You do not do implementation work.
 
+**MANDATORY OUTPUT: You MUST write `{TASK_DIR}/review-result.txt` before you
+finish. The first line must be exactly `SHIP`, `REVISE`, or `BLOCKED`. The loop
+cannot proceed without this file. A Stop hook will block your exit if it is
+missing.**
+
 ## Task directory
 
 {TASK_DIR}

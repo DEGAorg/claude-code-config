@@ -119,13 +119,13 @@ to a prominent callout at the top. Belt and suspenders with the hook.
 
 ## Progress log
 
-- [ ] Write `hooks/ralph-reviewer-stop.sh` — Stop hook enforcing review-result.txt
-- [ ] Add hook to `settings.json` Stop hooks array
-- [ ] Update `scripts/ralph-loop.sh` — pass RALPH_ROLE and RALPH_TASK_DIR env vars to reviewer and worker
-- [ ] Update `scripts/ralph-reviewer-prompt.md` — move write instruction to prominent top callout
-- [ ] Add checkbox-based fallback to ralph-loop.sh (all criteria checked + no file → SHIP with warning)
-- [ ] Add hook to `commands/apply-core.md` install manifest
-- [ ] Test: verify Stop hook blocks exit when review-result.txt missing
+- [x] Write `hooks/ralph-reviewer-stop.sh` — Stop hook enforcing review-result.txt
+- [x] Add hook to `settings.json` Stop hooks array
+- [x] Update `scripts/ralph-loop.sh` — pass RALPH_ROLE and RALPH_TASK_DIR env vars to reviewer and worker
+- [x] Update `scripts/ralph-reviewer-prompt.md` — move write instruction to prominent top callout
+- [x] Add checkbox-based fallback to ralph-loop.sh (all criteria checked + no file → SHIP with warning)
+- [x] Add hook to `commands/apply-core.md` install manifest
+- [x] Test: verify Stop hook blocks exit when review-result.txt missing
 - [ ] Test: run ralph loop on a trivial already-complete plan, confirm SHIP in iteration 1
 
 ## Decision log
@@ -138,7 +138,7 @@ to a prominent callout at the top. Belt and suspenders with the hook.
 
 ## Completion criteria
 
-- [ ] `hooks/ralph-reviewer-stop.sh` exists and is wired in settings.json
+- [x] `hooks/ralph-reviewer-stop.sh` exists and is wired in settings.json
 - [ ] Reviewer writes `review-result.txt` on a test run
 - [ ] Ralph loop on an already-complete plan exits SHIP in iteration 1
-- [ ] Fallback exists in ralph-loop.sh so a missing file can't cause infinite loops
+- [x] Fallback exists in ralph-loop.sh so a missing file can't cause infinite loops
