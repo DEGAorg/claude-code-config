@@ -71,18 +71,18 @@ if [[ -f "scripts/ralph-worker-prompt.md" ]]; then
 else
 	WORKER_PROMPT="${SCRIPT_DIR}/ralph-worker-prompt.md"
 fi
-if [[ -f "scripts/ralph-reviewer-prompt.md" ]]; then
-	REVIEWER_PROMPT="scripts/ralph-reviewer-prompt.md"
+if [[ -f "scripts/ralph-item-reviewer-prompt.md" ]]; then
+	ITEM_REVIEWER_PROMPT="scripts/ralph-item-reviewer-prompt.md"
 else
-	REVIEWER_PROMPT="${SCRIPT_DIR}/ralph-reviewer-prompt.md"
+	ITEM_REVIEWER_PROMPT="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
 fi
 
 if [[ ! -f "${WORKER_PROMPT}" ]]; then
 	echo "error: worker prompt not found at ${WORKER_PROMPT}" >&2
 	exit 1
 fi
-if [[ ! -f "${REVIEWER_PROMPT}" ]]; then
-	echo "error: reviewer prompt not found at ${REVIEWER_PROMPT}" >&2
+if [[ ! -f "${ITEM_REVIEWER_PROMPT}" ]]; then
+	echo "error: item reviewer prompt not found at ${ITEM_REVIEWER_PROMPT}" >&2
 	exit 1
 fi
 
@@ -309,41 +309,156 @@ EOF
 			"${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
 	fi
 
-	# --- Reviewer phase ---
-	echo "→ reviewer: evaluating..."
-	REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
-	RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
-		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
-	echo "→ reviewer: done"
+	# --- Structural checks (gate before AI review) ---
+	echo "→ structural checks..."
+	_PL_UNCHECKED=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Progress log/ { buf = ""; capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing && /^- \[ \]/ { count++ }
+		END { print count+0 }
+	' "${TASK_DIR}/plan.md")
 
-	# --- Read reviewer decision ---
 	RESULT_FILE="${TASK_DIR}/review-result.txt"
-	if [[ ! -f "${RESULT_FILE}" ]]; then
-		echo "⚠ reviewer did not write review-result.txt"
-		# Fallback: check both completion criteria AND progress log items
-		_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" |
-			grep -c '^\- \[ \]' 2>/dev/null || true)
-		_PL_UNCHECKED=$(awk '
-			/^```/ { fence = !fence; next }
-			fence { next }
-			/^## Progress log/ { buf = ""; capturing = 1; next }
-			capturing && /^## / { capturing = 0; next }
-			capturing && /^- \[ \]/ { count++ }
-			END { print count+0 }
-		' "${TASK_DIR}/plan.md")
-		if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
-			echo "→ fallback: all completion criteria checked — treating as SHIP"
-			echo "SHIP" >"${RESULT_FILE}"
-		elif [[ "${_PL_UNCHECKED}" -eq 0 ]]; then
-			echo "→ fallback: all progress log items checked (${_CC_UNCHECKED} completion criteria unchecked) — treating as SHIP"
-			echo "SHIP" >"${RESULT_FILE}"
-		else
-			echo "→ fallback: ${_PL_UNCHECKED} progress items + ${_CC_UNCHECKED} criteria unchecked — treating as REVISE"
-			log_event "REVIEWER_DECISION" \
-				"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE","reason":"no_result_file"}')"
-			echo ""
-			continue
+	rm -f "${RESULT_FILE}"
+
+	if [[ "${_PL_UNCHECKED}" -gt 0 ]]; then
+		echo "→ structural: ${_PL_UNCHECKED} progress items unchecked — REVISE (no AI review needed)"
+		log_event "REVIEWER_DECISION" \
+			"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE","reason":"unchecked_items"}')"
+		echo ""
+		continue
+	fi
+
+	echo "→ structural: all progress items checked"
+	echo "→ running repo health check..."
+	if ! bash "${SCRIPT_DIR}/ralph-check.sh"; then
+		echo "→ health check failed — REVISE (no AI review needed)"
+		log_event "REVIEWER_DECISION" \
+			"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE","reason":"health_check_failed"}')"
+		echo ""
+		continue
+	fi
+	echo "→ health check passed"
+
+	# --- Per-item AI review ---
+	echo "→ per-item review: evaluating each item..."
+	REVIEW_DIR="${TASK_DIR}/reviews"
+	mkdir -p "${REVIEW_DIR}"
+	rm -f "${REVIEW_DIR}"/item-*-review.txt
+
+	# Parse context-handoff.txt into per-item blocks
+	HANDOFF_FILE="${TASK_DIR}/context-handoff.txt"
+	ALL_PASS=true
+	FAIL_FEEDBACK=""
+	ITEM_NUM=0
+
+	if [[ -f "${HANDOFF_FILE}" ]]; then
+		# Split handoff into items by "--- item:" delimiter
+		CURRENT_TEXT=""
+		CURRENT_HANDOFF=""
+		IN_ITEM=false
+
+		while IFS= read -r line; do
+			if [[ "${line}" =~ ^---[[:space:]]*item:[[:space:]]*(.*)[[:space:]]*--- ]]; then
+				# Save previous item if any
+				if [[ -n "${CURRENT_TEXT}" && "${IN_ITEM}" == "true" ]]; then
+					ITEM_NUM=$((ITEM_NUM + 1))
+					echo "→ reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
+					tui_write metric.step="review-item-${ITEM_NUM}" \
+						log.info="Reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
+
+					# Build per-item reviewer prompt
+					ITEM_PROMPT=$(sed \
+						-e "s|{ITEM_TEXT}|${CURRENT_TEXT}|g" \
+						-e "s|{ITEM_NUM}|${ITEM_NUM}|g" \
+						-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
+						"${ITEM_REVIEWER_PROMPT}")
+					ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${CURRENT_HANDOFF}|g")
+
+					RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
+						env -u CLAUDECODE RALPH_LOOP=1 claude -p \
+						--dangerously-skip-permissions "${ITEM_PROMPT}" || true
+
+					# Read result
+					ITEM_REVIEW="${REVIEW_DIR}/item-${ITEM_NUM}-review.txt"
+					if [[ -f "${ITEM_REVIEW}" ]]; then
+						ITEM_RESULT=$(head -1 "${ITEM_REVIEW}" | tr -d '[:space:]')
+						if [[ "${ITEM_RESULT}" != "PASS" ]]; then
+							ALL_PASS=false
+							FAIL_FEEDBACK="${FAIL_FEEDBACK}
+ITEM ${ITEM_NUM}: ${CURRENT_TEXT}
+$(tail -n +2 "${ITEM_REVIEW}")
+"
+							echo "→ item ${ITEM_NUM}: FAIL"
+						else
+							echo "→ item ${ITEM_NUM}: PASS"
+						fi
+					else
+						echo "→ item ${ITEM_NUM}: reviewer didn't write result — treating as PASS"
+					fi
+				fi
+				CURRENT_TEXT="${BASH_REMATCH[1]}"
+				CURRENT_HANDOFF=""
+				IN_ITEM=true
+			elif [[ "${line}" == "---" && "${IN_ITEM}" == "true" ]]; then
+				# End of handoff block — keep IN_ITEM true for the save on next item
+				:
+			elif [[ "${IN_ITEM}" == "true" ]]; then
+				CURRENT_HANDOFF="${CURRENT_HANDOFF}${line}
+"
+			fi
+		done <"${HANDOFF_FILE}"
+
+		# Process the last item
+		if [[ -n "${CURRENT_TEXT}" && "${IN_ITEM}" == "true" ]]; then
+			ITEM_NUM=$((ITEM_NUM + 1))
+			echo "→ reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
+
+			ITEM_PROMPT=$(sed \
+				-e "s|{ITEM_TEXT}|${CURRENT_TEXT}|g" \
+				-e "s|{ITEM_NUM}|${ITEM_NUM}|g" \
+				-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
+				"${ITEM_REVIEWER_PROMPT}")
+			ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${CURRENT_HANDOFF}|g")
+
+			RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
+				env -u CLAUDECODE RALPH_LOOP=1 claude -p \
+				--dangerously-skip-permissions "${ITEM_PROMPT}" || true
+
+			ITEM_REVIEW="${REVIEW_DIR}/item-${ITEM_NUM}-review.txt"
+			if [[ -f "${ITEM_REVIEW}" ]]; then
+				ITEM_RESULT=$(head -1 "${ITEM_REVIEW}" | tr -d '[:space:]')
+				if [[ "${ITEM_RESULT}" != "PASS" ]]; then
+					ALL_PASS=false
+					FAIL_FEEDBACK="${FAIL_FEEDBACK}
+ITEM ${ITEM_NUM}: ${CURRENT_TEXT}
+$(tail -n +2 "${ITEM_REVIEW}")
+"
+					echo "→ item ${ITEM_NUM}: FAIL"
+				else
+					echo "→ item ${ITEM_NUM}: PASS"
+				fi
+			else
+				echo "→ item ${ITEM_NUM}: reviewer didn't write result — treating as PASS"
+			fi
 		fi
+	fi
+
+	if [[ "${ITEM_NUM}" -eq 0 ]]; then
+		echo "→ no handoff entries found — skipping per-item review, treating as SHIP"
+		ALL_PASS=true
+	fi
+
+	# --- Write final decision ---
+	if [[ "${ALL_PASS}" == "true" ]]; then
+		echo "SHIP" >"${RESULT_FILE}"
+		echo "→ all ${ITEM_NUM} items passed review"
+	else
+		echo "REVISE" >"${RESULT_FILE}"
+		printf '%s\n' "${FAIL_FEEDBACK}" >"${TASK_DIR}/review-feedback.txt"
+		echo "→ some items failed review"
 	fi
 
 	RESULT=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')
@@ -360,38 +475,32 @@ EOF
 			'{"iteration":$iter,"decision":$d}')"
 
 	if [[ "${RESULT}" == "SHIP" ]]; then
-		echo "→ reviewer: SHIP"
+		echo "→ SHIP — structural checks + per-item review passed"
 		tui_write status=idle metric.step="complete" metric.decision="SHIP" \
 			log.info="SHIP — all criteria met after ${i} iteration(s)"
 		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
-		echo "→ running repo health check..."
-		if bash "${SCRIPT_DIR}/ralph-check.sh"; then
-			echo "→ archiving exec-plan to completed/..."
-			mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
-			echo "→ committing..."
-			git add -A
-			git commit -m "$(
-				cat <<EOF
+		echo "→ archiving exec-plan to completed/..."
+		mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
+		echo "→ committing..."
+		git add -A
+		git commit -m "$(
+			cat <<EOF
 complete ${TASK_SLUG} (ralph loop, iteration ${i})
 
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
-			)"
-			# Play completion sound (full configured sound, not tick)
-			_settings="${HOME}/.claude/settings.json"
-			if [[ -f "$_settings" ]]; then
-				_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
-				_volume=$(jq -r '.env.CLAUDE_SOUND_VOLUME // "50"' "$_settings")
-				CLAUDE_SOUND="${_sound}" CLAUDE_SOUND_VOLUME="${_volume}" \
-					bash "${HOME}/.claude/hooks/play-sound.sh" &
-			fi
-			echo ""
-			echo "ralph-loop: DONE — shipped after ${i} iteration(s)."
-			exit 0
-		else
-			echo "→ health check failed — criteria not met, continuing"
-			rm -f "${RESULT_FILE}"
+		)"
+		# Play completion sound
+		_settings="${HOME}/.claude/settings.json"
+		if [[ -f "$_settings" ]]; then
+			_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
+			_volume=$(jq -r '.env.CLAUDE_SOUND_VOLUME // "50"' "$_settings")
+			CLAUDE_SOUND="${_sound}" CLAUDE_SOUND_VOLUME="${_volume}" \
+				bash "${HOME}/.claude/hooks/play-sound.sh" &
 		fi
+		echo ""
+		echo "ralph-loop: DONE — shipped after ${i} iteration(s)."
+		exit 0
 	elif [[ "${RESULT}" == "BLOCKED" ]]; then
 		echo "→ reviewer: BLOCKED — human action required"
 		tui_write status=error metric.step="blocked" \
