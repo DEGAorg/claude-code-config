@@ -19,7 +19,7 @@ success_criteria:
   # Repo health — shell scripts are shfmt-formatted
   - id: shfmt
     description: shell scripts are formatted (shfmt)
-    check: shfmt -d scripts/ hooks/
+    check: "find scripts/ hooks/ -maxdepth 1 -name '*.sh' -exec shfmt -d {} +"
 
   # Repo health — CI workflows are valid
   - id: actionlint

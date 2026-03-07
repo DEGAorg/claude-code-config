@@ -155,8 +155,10 @@ tail -n 0 -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
 TAIL_PID=$!
 
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
-(while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
- kill "${TAIL_PID}" 2>/dev/null || true) &
+(
+	while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
+	kill "${TAIL_PID}" 2>/dev/null || true
+) &
 WATCHER_PID=$!
 
 while IFS= read -r line; do

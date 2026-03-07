@@ -227,8 +227,8 @@ ${HANDOFF}"
 			"${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
 		if [[ ${STAG} -ge 2 ]]; then
 			# Before declaring stagnation, check if work is actually done
-			_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" \
-				| grep -c '^\- \[ \]' 2>/dev/null || true)
+			_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" |
+				grep -c '^\- \[ \]' 2>/dev/null || true)
 			if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
 				echo "→ stagnation detected but all completion criteria checked — treating as SHIP"
 				RESULT_FILE="${TASK_DIR}/review-result.txt"
@@ -286,8 +286,8 @@ EOF
 	if [[ ! -f "${RESULT_FILE}" ]]; then
 		echo "⚠ reviewer did not write review-result.txt"
 		# Fallback: if all completion criteria are checked, treat as SHIP
-		_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" \
-			| grep -c '^\- \[ \]' 2>/dev/null || true)
+		_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" |
+			grep -c '^\- \[ \]' 2>/dev/null || true)
 		if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
 			echo "→ fallback: all completion criteria checked — treating as SHIP"
 			echo "SHIP" >"${RESULT_FILE}"
