@@ -1,0 +1,8 @@
+DONE:
+- Verified completion criterion: stale worktrees from crashed loops can be pruned
+
+REMAINING:
+- none (all progress log items and completion criteria are checked)
+
+BLOCKERS:
+- none

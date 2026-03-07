@@ -3,10 +3,12 @@
 # Spawns worker and reviewer agents in sequence until the reviewer outputs SHIP
 # and the repo health check passes, or max_iterations is reached.
 #
-# Usage: bash ~/.claude/scripts/ralph-loop.sh <task-slug>
+# Usage: bash ~/.claude/scripts/ralph-loop.sh [--workdir <dir>] <task-slug>
 # Example: bash ~/.claude/scripts/ralph-loop.sh 20260302-canon-init
+# Example: bash ~/.claude/scripts/ralph-loop.sh --workdir .claude/worktrees/my-task 20260302-canon-init
 #
 # The task-slug must match a directory in docs/exec-plans/active/.
+# --workdir: run from a different directory (used by ralph-worktree.sh for worktree isolation)
 
 set -euo pipefail
 
@@ -14,12 +16,44 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091 source=scripts/log-client.sh
 source "${SCRIPT_DIR}/log-client.sh"
 
-TASK_SLUG="${1:-}"
+# Parse flags
+WORKDIR=""
+TASK_SLUG=""
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--workdir)
+		WORKDIR="${2:-}"
+		shift 2
+		;;
+	-*)
+		echo "error: unknown flag: $1" >&2
+		echo "usage: ralph-loop.sh [--workdir <dir>] <task-slug>" >&2
+		exit 1
+		;;
+	*)
+		TASK_SLUG="$1"
+		shift
+		;;
+	esac
+done
 if [[ -z "${TASK_SLUG}" ]]; then
-	echo "error: usage: bash ~/.claude/scripts/ralph-loop.sh <task-slug>" >&2
+	echo "error: usage: bash ~/.claude/scripts/ralph-loop.sh [--workdir <dir>] <task-slug>" >&2
 	echo "  task-slug must match a directory in docs/exec-plans/active/" >&2
 	exit 1
 fi
+
+# Change to workdir if specified (used by ralph-worktree.sh for worktree isolation)
+if [[ -n "${WORKDIR}" ]]; then
+	if [[ ! -d "${WORKDIR}" ]]; then
+		echo "error: workdir does not exist: ${WORKDIR}" >&2
+		exit 1
+	fi
+	cd "${WORKDIR}"
+fi
+
+# Session ID for parallel loop isolation
+SESSION_ID="ralph-${TASK_SLUG}"
+export SESSION_ID
 
 TASK_DIR="docs/exec-plans/active/${TASK_SLUG}"
 if [[ ! -f "${TASK_DIR}/plan.md" ]]; then
@@ -102,6 +136,7 @@ COMPLETED_ITEMS="${_CHECKED:-0}"
 
 echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations, ${TOTAL_ITEMS} items"
 echo "  plan: ${TASK_DIR}/plan.md"
+echo "  session: ${SESSION_ID}"
 echo ""
 
 log_event "LOOP_START" \
@@ -207,7 +242,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 ${HANDOFF}"
 		fi
 		RALPH_ROLE=worker RALPH_TASK_DIR="${TASK_DIR}" \
-			env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
+			env -u CLAUDECODE RALPH_LOOP=1 claude -p --session-id "${SESSION_ID}-worker" --dangerously-skip-permissions "${WORKER_CONTEXT}"
 	done
 	# All items processed — mark last task claimed so health check passes
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
@@ -278,7 +313,7 @@ EOF
 	echo "→ reviewer: evaluating..."
 	REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
 	RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
-		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+		env -u CLAUDECODE RALPH_LOOP=1 claude -p --session-id "${SESSION_ID}-reviewer" --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
 	echo "→ reviewer: done"
 
 	# --- Read reviewer decision ---

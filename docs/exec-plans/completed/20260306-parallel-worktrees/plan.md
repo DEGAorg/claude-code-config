@@ -84,15 +84,15 @@ the `ralph/<slug>` branch. The orchestrator (or user) merges the branch back.
 ## Progress log
 
 - [x] Resolve discovery questions
-- [ ] Write `scripts/ralph-worktree.sh` — create worktree, run loop, cleanup
-- [ ] Update `scripts/ralph-loop.sh` — add `--workdir` flag, slug-based session names
-- [ ] Handle exec plan sync: copy into worktree, sync back on SHIP
-- [ ] Add idempotency: reattach to existing worktree if branch exists
-- [ ] Add cleanup: remove worktree on clean exit, keep on changes
-- [ ] Add `git worktree prune` call on startup to clean stale entries
-- [ ] Add ralph-worktree.sh to `commands/apply-core.md` install manifest
-- [ ] Test: two parallel loops on different plans, verify no conflicts
-- [ ] Test: loop crash recovery — verify worktree can be resumed
+- [x] Write `scripts/ralph-worktree.sh` — create worktree, run loop, cleanup
+- [x] Update `scripts/ralph-loop.sh` — add `--workdir` flag, slug-based session names
+- [x] Handle exec plan sync: copy into worktree, sync back on SHIP
+- [x] Add idempotency: reattach to existing worktree if branch exists
+- [x] Add cleanup: remove worktree on clean exit, keep on changes
+- [x] Add `git worktree prune` call on startup to clean stale entries
+- [x] Add ralph-worktree.sh to `commands/apply-core.md` install manifest
+- [x] Test: two parallel loops on different plans, verify no conflicts
+- [x] Test: loop crash recovery — verify worktree can be resumed
 
 ## Decision log
 
@@ -106,8 +106,8 @@ the `ralph/<slug>` branch. The orchestrator (or user) merges the branch back.
 
 ## Completion criteria
 
-- [ ] `scripts/ralph-worktree.sh` exists and creates worktree + branch
-- [ ] Two ralph loops can run simultaneously on different exec plans
-- [ ] Worktrees are created on start and cleaned up on clean exit
-- [ ] No state file conflicts between parallel loops
-- [ ] Stale worktrees from crashed loops can be pruned
+- [x] `scripts/ralph-worktree.sh` exists and creates worktree + branch
+- [x] Two ralph loops can run simultaneously on different exec plans
+- [x] Worktrees are created on start and cleaned up on clean exit
+- [x] No state file conflicts between parallel loops
+- [x] Stale worktrees from crashed loops can be pruned

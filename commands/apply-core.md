@@ -47,6 +47,7 @@ Files available:
 - `scripts/plan-advance.sh`
 - `scripts/task-complete.sh`
 - `scripts/canon-runner.sh`
+- `scripts/ralph-worktree.sh`
 - `scripts/terminal-session.sh`
 - `scripts/terminal-ui-write.sh`
 - `scripts/terminal-ui/package.json`
@@ -124,10 +125,12 @@ Components:
   GCP Cloud Logging is zero-config: drop `~/.claude/gcp-sa.json` and it auto-enables.
   (recommended when `~/.claude/scripts/log-server.py` is missing)
 - **Ralph Loop** — engine scripts install globally to `~/.claude/scripts/`
-  (`ralph-loop.sh`, `ralph-check.sh`, `ralph-worker-prompt.md`,
-  `ralph-reviewer-prompt.md`, `log-client.sh`, `plan-advance.sh`,
-  `task-complete.sh`); only `ralph.yaml` is per-project (written to cwd).
-  Invoke from any project: `~/.claude/scripts/ralph-loop.sh <dated-slug>`
+  (`ralph-loop.sh`, `ralph-worktree.sh`, `ralph-check.sh`,
+  `ralph-worker-prompt.md`, `ralph-reviewer-prompt.md`, `log-client.sh`,
+  `plan-advance.sh`, `task-complete.sh`); only `ralph.yaml` is per-project
+  (written to cwd). Invoke from any project:
+  `~/.claude/scripts/ralph-loop.sh <dated-slug>` (single loop) or
+  `~/.claude/scripts/ralph-worktree.sh <dated-slug>` (parallel via worktree)
   (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
 - **Sounds** — notification sounds that play when Claude finishes a task.
   Works on macOS, Linux, and WSL2. Linux needs one of: `mpv`, `ffplay`, or
@@ -229,6 +232,7 @@ Create `~/.claude/scripts/` if it doesn't exist.
 
 Write each engine script to `~/.claude/scripts/`:
 - `scripts/ralph-loop.sh` → `~/.claude/scripts/ralph-loop.sh`
+- `scripts/ralph-worktree.sh` → `~/.claude/scripts/ralph-worktree.sh`
 - `scripts/ralph-check.sh` → `~/.claude/scripts/ralph-check.sh`
 - `scripts/ralph-worker-prompt.md` → `~/.claude/scripts/ralph-worker-prompt.md`
 - `scripts/ralph-reviewer-prompt.md` → `~/.claude/scripts/ralph-reviewer-prompt.md`
@@ -237,7 +241,7 @@ Write each engine script to `~/.claude/scripts/`:
 - `scripts/task-complete.sh` → `~/.claude/scripts/task-complete.sh`
 - `scripts/canon-runner.sh` → `~/.claude/scripts/canon-runner.sh`
 
-Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh ~/.claude/scripts/canon-runner.sh` after writing.
+Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-worktree.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh ~/.claude/scripts/canon-runner.sh` after writing.
 Safe to overwrite — these are engine scripts with no user customization.
 
 #### Ralph Loop — Per-project config
