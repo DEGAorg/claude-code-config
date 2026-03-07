@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Show orchestrator status — items, workers, progress.
-# Syncs state from per-item files and detects dead workers.
+# Syncs done-files and detects dead workers.
 #
 # Usage:
 #   scripts/orch-status.sh [<slug>]
@@ -106,6 +106,6 @@ display_status() {
 
 # --- Main ---
 
-orch_sync_item_state "${SLUG}"
+orch_sync_done_files "${SLUG}"
 orch_prune_dead_workers "${SLUG}"
 display_status

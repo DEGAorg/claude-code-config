@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Start plan execution — parse items, initialize state, schedule workers
-# by dependency wave. Workers run as ralph loops scoped to one item.
+# by dependency wave. Each worker runs orch-worker.sh scoped to one item.
 #
 # Usage: scripts/orch-start.sh <slug> [--bg] [--max-workers N]
 #   slug:          exec-plan directory name (e.g., 20260307-mcp-server)
 #   --bg:          background mode (detached tmux sessions + worktrees)
 #   --max-workers: max concurrent workers (default: 4)
 #
-# Requires: jq, tmux, orch-parse-items.sh
+# Requires: jq, tmux, orch-parse-items.sh, orch-worker.sh
 #
 # State: writes to .orchestrator/state.json (atomic tmp+mv)
 
@@ -60,7 +60,6 @@ fi
 
 ORCH_STATE_DIR="${REPO_ROOT}/.orchestrator"
 ORCH_STATE_FILE="${ORCH_STATE_DIR}/state.json"
-ITEMS_DIR="${ORCH_STATE_DIR}/items/${SLUG}"
 
 # --- Parse items ---
 
@@ -76,7 +75,7 @@ echo "orch-start: plan '${SLUG}' — ${ITEM_COUNT} items, max ${MAX_WORKERS} wor
 
 # --- Initialize state ---
 
-orch_ensure_dirs "${SLUG}"
+orch_ensure_done_dir "${SLUG}"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Build items array for state.json from parsed items
@@ -133,16 +132,6 @@ orch_write_state "${STATE_JSON}"
 
 echo "orch-start: state initialized at ${ORCH_STATE_FILE}"
 
-# --- Write per-item state files ---
-
-for i in $(seq 0 $((ITEM_COUNT - 1))); do
-	ITEM=$(printf '%s' "${ITEMS_JSON}" | jq ".[$i]")
-	ITEM_ID=$(printf '%s' "${ITEM}" | jq -r '.id')
-	orch_write_item "${SLUG}" "${ITEM_ID}" "${ITEM}"
-done
-
-echo "orch-start: wrote ${ITEM_COUNT} per-item state files to ${ITEMS_DIR}/"
-
 # --- Schedule ready items ---
 
 schedule_workers() {
@@ -183,7 +172,7 @@ launch_worker() {
 	fi
 
 	# Update state: mark item as running
-	orch_update_item_status "${SLUG}" "${item_id}" "running"
+	orch_update_item_status "${item_id}" "running"
 }
 
 launch_foreground_worker() {
@@ -229,8 +218,8 @@ launch_foreground_worker() {
 		return 1
 	fi
 
-	# Build worker command: ralph loop scoped to this item
-	local worker_cmd="cd '${REPO_ROOT}' && bash '${SCRIPT_DIR}/ralph-loop.sh' '${SLUG}'"
+	# Build worker command: per-item worker scoped to this item
+	local worker_cmd="cd '${REPO_ROOT}' && bash '${SCRIPT_DIR}/orch-worker.sh' '${SLUG}' --item ${item_id}"
 	tmux send-keys -t "${session}:0.${pane_idx}" "${worker_cmd}" Enter
 	tmux select-pane -t "${session}:0.${pane_idx}" -T "worker: item ${item_id}"
 
@@ -267,9 +256,9 @@ launch_background_worker() {
 		fi
 	fi
 
-	# Launch ralph loop in a detached tmux session
+	# Launch per-item worker in a detached tmux session
 	tmux new-session -d -s "${bg_session}" -c "${wt_path}" \
-		"bash '${SCRIPT_DIR}/ralph-loop.sh' --workdir '${wt_path}' '${SLUG}'"
+		"bash '${SCRIPT_DIR}/orch-worker.sh' '${SLUG}' --item ${item_id}"
 
 	# Record worktree in state
 	local now

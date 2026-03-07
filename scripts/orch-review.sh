@@ -120,11 +120,9 @@ rm -f "${PLAN_DIR}/review-result.txt" "${PLAN_DIR}/review-feedback.txt"
 # --- Run reviewer agent ---
 
 echo "orch-review: spawning reviewer agent..."
-SESSION_ID="orch-review-${SLUG}-$(date +%s)"
 
 RALPH_ROLE=reviewer RALPH_TASK_DIR="${PLAN_DIR}" RALPH_LOOP=1 \
 	env -u CLAUDECODE claude -p \
-	--session-id "${SESSION_ID}" \
 	--dangerously-skip-permissions \
 	"${REVIEW_PROMPT}" || true
 

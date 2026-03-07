@@ -52,8 +52,7 @@ if [[ -n "${WORKDIR}" ]]; then
 fi
 
 # Session ID for parallel loop isolation
-SESSION_ID="ralph-${TASK_SLUG}"
-export SESSION_ID
+# Each worker/reviewer gets a fresh claude -p — no session continuity needed
 
 TASK_DIR="docs/exec-plans/active/${TASK_SLUG}"
 if [[ ! -f "${TASK_DIR}/plan.md" ]]; then
@@ -136,7 +135,6 @@ COMPLETED_ITEMS="${_CHECKED:-0}"
 
 echo "ralph-loop: task '${TASK_SLUG}' — max ${MAX_ITERATIONS} iterations, ${TOTAL_ITEMS} items"
 echo "  plan: ${TASK_DIR}/plan.md"
-echo "  session: ${SESSION_ID}"
 echo ""
 
 log_event "LOOP_START" \
@@ -242,7 +240,7 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 ${HANDOFF}"
 		fi
 		RALPH_ROLE=worker RALPH_TASK_DIR="${TASK_DIR}" \
-			env -u CLAUDECODE RALPH_LOOP=1 claude -p --session-id "${SESSION_ID}-worker" --dangerously-skip-permissions "${WORKER_CONTEXT}"
+			env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
 	done
 	# All items processed — mark last task claimed so health check passes
 	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
@@ -315,7 +313,7 @@ EOF
 	echo "→ reviewer: evaluating..."
 	REVIEWER_CONTEXT=$(sed "s|{TASK_DIR}|${TASK_DIR}|g" "${REVIEWER_PROMPT}")
 	RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
-		env -u CLAUDECODE RALPH_LOOP=1 claude -p --session-id "${SESSION_ID}-reviewer" --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
+		env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${REVIEWER_CONTEXT}"
 	echo "→ reviewer: done"
 
 	# --- Read reviewer decision ---

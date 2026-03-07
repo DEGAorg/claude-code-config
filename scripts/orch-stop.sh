@@ -129,7 +129,7 @@ stop_plan_workers() {
 		else
 			stop_background_worker "${slug}" "${id}"
 		fi
-		orch_mark_item_stopped "${slug}" "${id}"
+		orch_mark_item_stopped "${id}"
 		stopped=$((stopped + 1))
 	done
 
@@ -190,7 +190,7 @@ if [[ -n "${ITEM_ID}" ]]; then
 		stop_background_worker "${SLUG}" "${ITEM_ID}"
 	fi
 
-	orch_mark_item_stopped "${SLUG}" "${ITEM_ID}"
+	orch_mark_item_stopped "${ITEM_ID}"
 	echo "orch-stop: stopped worker for item ${ITEM_ID}"
 else
 	# Stop all workers for this plan
