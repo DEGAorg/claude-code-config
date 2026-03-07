@@ -348,103 +348,55 @@ EOF
 	mkdir -p "${REVIEW_DIR}"
 	rm -f "${REVIEW_DIR}"/item-*-review.txt
 
-	# Parse context-handoff.txt into per-item blocks
-	HANDOFF_FILE="${TASK_DIR}/context-handoff.txt"
 	ALL_PASS=true
 	FAIL_FEEDBACK=""
 	ITEM_NUM=0
 
-	if [[ -f "${HANDOFF_FILE}" ]]; then
-		# Split handoff into items by "--- item:" delimiter
-		CURRENT_TEXT=""
-		CURRENT_HANDOFF=""
-		IN_ITEM=false
+	while bash "${SCRIPT_DIR}/review-advance.sh" "${TASK_DIR}"; do
+		NUM=$(jq -r '.current_review.num' "${STATE_FILE}")
+		TEXT=$(jq -r '.current_review.text' "${STATE_FILE}")
+		HANDOFF=$(jq -r '.current_review.handoff' "${STATE_FILE}")
+		ITEM_NUM="${NUM}"
+		echo "→ reviewing item ${NUM}: ${TEXT}"
+		tui_write metric.step="review-item-${NUM}" \
+			log.info="Reviewing item ${NUM}: ${TEXT}"
 
-		while IFS= read -r line; do
-			if [[ "${line}" =~ ^---[[:space:]]*item:[[:space:]]*(.*)[[:space:]]*--- ]]; then
-				# Save previous item if any
-				if [[ -n "${CURRENT_TEXT}" && "${IN_ITEM}" == "true" ]]; then
-					ITEM_NUM=$((ITEM_NUM + 1))
-					echo "→ reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
-					tui_write metric.step="review-item-${ITEM_NUM}" \
-						log.info="Reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
+		# Build per-item reviewer prompt
+		ITEM_PROMPT=$(sed \
+			-e "s|{ITEM_TEXT}|${TEXT}|g" \
+			-e "s|{ITEM_NUM}|${NUM}|g" \
+			-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
+			"${ITEM_REVIEWER_PROMPT}")
+		ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${HANDOFF}|g")
 
-					# Build per-item reviewer prompt
-					ITEM_PROMPT=$(sed \
-						-e "s|{ITEM_TEXT}|${CURRENT_TEXT}|g" \
-						-e "s|{ITEM_NUM}|${ITEM_NUM}|g" \
-						-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
-						"${ITEM_REVIEWER_PROMPT}")
-					ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${CURRENT_HANDOFF}|g")
+		RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
+			RALPH_REVIEW_ITEM="${NUM}" \
+			env -u CLAUDECODE RALPH_LOOP=1 claude -p \
+			--dangerously-skip-permissions "${ITEM_PROMPT}" || true
 
-					RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
-						env -u CLAUDECODE RALPH_LOOP=1 claude -p \
-						--dangerously-skip-permissions "${ITEM_PROMPT}" || true
-
-					# Read result
-					ITEM_REVIEW="${REVIEW_DIR}/item-${ITEM_NUM}-review.txt"
-					if [[ -f "${ITEM_REVIEW}" ]]; then
-						ITEM_RESULT=$(head -1 "${ITEM_REVIEW}" | tr -d '[:space:]')
-						if [[ "${ITEM_RESULT}" != "PASS" ]]; then
-							ALL_PASS=false
-							FAIL_FEEDBACK="${FAIL_FEEDBACK}
-ITEM ${ITEM_NUM}: ${CURRENT_TEXT}
+		# Read result
+		ITEM_REVIEW="${REVIEW_DIR}/item-${NUM}-review.txt"
+		if [[ -f "${ITEM_REVIEW}" ]]; then
+			ITEM_RESULT=$(head -1 "${ITEM_REVIEW}" | tr -d '[:space:]')
+			if [[ "${ITEM_RESULT}" != "PASS" ]]; then
+				ALL_PASS=false
+				FAIL_FEEDBACK="${FAIL_FEEDBACK}
+ITEM ${NUM}: ${TEXT}
 $(tail -n +2 "${ITEM_REVIEW}")
 "
-							echo "→ item ${ITEM_NUM}: FAIL"
-						else
-							echo "→ item ${ITEM_NUM}: PASS"
-						fi
-					else
-						echo "→ item ${ITEM_NUM}: reviewer didn't write result — treating as PASS"
-					fi
-				fi
-				CURRENT_TEXT="${BASH_REMATCH[1]}"
-				CURRENT_HANDOFF=""
-				IN_ITEM=true
-			elif [[ "${line}" == "---" && "${IN_ITEM}" == "true" ]]; then
-				# End of handoff block — keep IN_ITEM true for the save on next item
-				:
-			elif [[ "${IN_ITEM}" == "true" ]]; then
-				CURRENT_HANDOFF="${CURRENT_HANDOFF}${line}
-"
-			fi
-		done <"${HANDOFF_FILE}"
-
-		# Process the last item
-		if [[ -n "${CURRENT_TEXT}" && "${IN_ITEM}" == "true" ]]; then
-			ITEM_NUM=$((ITEM_NUM + 1))
-			echo "→ reviewing item ${ITEM_NUM}: ${CURRENT_TEXT}"
-
-			ITEM_PROMPT=$(sed \
-				-e "s|{ITEM_TEXT}|${CURRENT_TEXT}|g" \
-				-e "s|{ITEM_NUM}|${ITEM_NUM}|g" \
-				-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
-				"${ITEM_REVIEWER_PROMPT}")
-			ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${CURRENT_HANDOFF}|g")
-
-			RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
-				env -u CLAUDECODE RALPH_LOOP=1 claude -p \
-				--dangerously-skip-permissions "${ITEM_PROMPT}" || true
-
-			ITEM_REVIEW="${REVIEW_DIR}/item-${ITEM_NUM}-review.txt"
-			if [[ -f "${ITEM_REVIEW}" ]]; then
-				ITEM_RESULT=$(head -1 "${ITEM_REVIEW}" | tr -d '[:space:]')
-				if [[ "${ITEM_RESULT}" != "PASS" ]]; then
-					ALL_PASS=false
-					FAIL_FEEDBACK="${FAIL_FEEDBACK}
-ITEM ${ITEM_NUM}: ${CURRENT_TEXT}
-$(tail -n +2 "${ITEM_REVIEW}")
-"
-					echo "→ item ${ITEM_NUM}: FAIL"
-				else
-					echo "→ item ${ITEM_NUM}: PASS"
-				fi
+				echo "→ item ${NUM}: FAIL"
 			else
-				echo "→ item ${ITEM_NUM}: reviewer didn't write result — treating as PASS"
+				echo "→ item ${NUM}: PASS"
 			fi
+		else
+			echo "→ item ${NUM}: no review file — treating as FAIL"
+			ALL_PASS=false
+			FAIL_FEEDBACK="${FAIL_FEEDBACK}
+ITEM ${NUM}: ${TEXT}
+Reviewer did not write item-${NUM}-review.txt
+"
 		fi
-	fi
+	done
 
 	if [[ "${ITEM_NUM}" -eq 0 ]]; then
 		echo "→ no handoff entries found — skipping per-item review, treating as SHIP"
