@@ -1,6 +1,6 @@
 # Plan: Fix Ralph Loop Reviewer Not Writing review-result.txt
 
-**Status:** In progress
+**Status:** Complete
 **Created:** 2026-03-06
 
 ## Problem Statement
@@ -114,9 +114,10 @@ to a prominent callout at the top. Belt and suspenders with the hook.
   runs inside that Claude session, so it should inherit them. Need to verify.
 
 - **Q: Can the Stop hook block exit in `-p` mode?**
-  **ANSWERED: No.** Confirmed by the docs-update run — Stop hooks do not
-  fire in `claude -p` mode. The fallback in ralph-loop.sh is the actual
-  enforcement mechanism. The Stop hook still helps in interactive sessions.
+  **ANSWERED: Yes.** Stop hooks fire in `-p` mode. Initial failure was due
+  to the hook not being installed to `~/.claude/hooks/`. Once installed,
+  the core-init reviewer run confirmed the hook works — reviewer wrote
+  `review-result.txt` with SHIP on first attempt.
 
 ## Progress log
 
@@ -140,6 +141,6 @@ to a prominent callout at the top. Belt and suspenders with the hook.
 ## Completion criteria
 
 - [x] `hooks/ralph-reviewer-stop.sh` exists and is wired in settings.json
-- [ ] Reviewer writes `review-result.txt` on a test run (Stop hook confirmed not firing in -p mode; prompt hardening is best-effort)
+- [x] Reviewer writes `review-result.txt` on a test run (confirmed: core-init reviewer wrote SHIP via Stop hook in -p mode)
 - [x] Ralph loop on an already-complete plan exits SHIP via fallback
 - [x] Fallback exists in ralph-loop.sh so a missing file can't cause infinite loops
