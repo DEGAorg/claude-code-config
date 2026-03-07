@@ -85,13 +85,13 @@ in project-specific context.
 
 ## Progress log
 
-- [ ] Write `commands/core-init.md` — command definition with all bootstrap steps
-- [ ] Write `docs/core-init-claude-template.md` — minimal CLAUDE.md template
-- [ ] Add language detection logic for ralph.yaml `check_command`
-- [ ] Add idempotency guards (skip existing files, don't overwrite)
-- [ ] Add `/core-init` to `commands/apply-core.md` source list and install section
-- [ ] Test: run in a fresh empty directory, verify all artifacts created
-- [ ] Test: run in a directory with existing CLAUDE.md, verify it's not overwritten
+- [x] Write `commands/core-init.md` — command definition with all bootstrap steps
+- [x] Write `docs/core-init-claude-template.md` — minimal CLAUDE.md template
+- [x] Add language detection logic for ralph.yaml `check_command`
+- [x] Add idempotency guards (skip existing files, don't overwrite)
+- [x] Add `/core-init` to `commands/apply-core.md` source list and install section
+- [x] Test: run in a fresh empty directory, verify all artifacts created
+- [x] Test: run in a directory with existing CLAUDE.md, verify it's not overwritten
 
 ## Decision log
 
@@ -104,8 +104,8 @@ in project-specific context.
 
 ## Completion criteria
 
-- [ ] `/core-init` command exists and is installable via `/apply-core`
-- [ ] Running in a fresh dir creates ralph.yaml, docs/exec-plans/, .claude/commands/, CLAUDE.md
-- [ ] Running in a dir with existing CLAUDE.md does not overwrite it
-- [ ] ralph.yaml check_command is populated for Node, Python, Rust, Go projects
-- [ ] ralph.yaml check_command falls back to a placeholder comment for unknown projects
+- [x] `/core-init` command exists and is installable via `/apply-core`
+- [x] Running in a fresh dir creates ralph.yaml, docs/exec-plans/, .claude/commands/, CLAUDE.md
+- [x] Running in a dir with existing CLAUDE.md does not overwrite it
+- [x] ralph.yaml check_command is populated for Node, Python, Rust, Go projects
+- [x] ralph.yaml check_command falls back to a placeholder comment for unknown projects

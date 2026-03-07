@@ -22,6 +22,7 @@ Files available:
 - `commands/plan.md`
 - `commands/cleanup.md`
 - `commands/doc-garden.md`
+- `commands/core-init.md`
 - `rules/python.md`
 - `rules/node-typescript.md`
 - `rules/rust.md`
@@ -86,6 +87,7 @@ Read and note which of these already exist:
 - `~/.claude/commands/plan.md`
 - `~/.claude/commands/cleanup.md`
 - `~/.claude/commands/doc-garden.md`
+- `~/.claude/commands/core-init.md`
 - `~/.claude/rules/` (any files)
 - `~/.claude/hooks/` (any files)
 - `~/.claude/skills/` (any files)
@@ -111,7 +113,7 @@ missing from `~/.claude/`.
 Components:
 - **settings.json** — permissions, hooks (rm-rf blocker, push-to-main blocker, doc-reminder), telemetry off
 - **CLAUDE.md** — global development standards: philosophy, no speculative features, agent-native by default
-- **Commands** — fix-issue, review-pr, plan, cleanup, doc-garden slash commands
+- **Commands** — fix-issue, review-pr, plan, cleanup, doc-garden, core-init slash commands
 - **Rules** — language-specific standards auto-loaded by file type (python, node-typescript, rust, bash, github-actions)
 - **Hooks** — enforce-package-manager and log-gam shell scripts
 - **Skills** — custom-linter-authoring, app-legibility, and sound-notifications knowledge files
@@ -374,7 +376,7 @@ Example summary:
 Installed:
 ✓ settings.json
 ✓ CLAUDE.md (review diff before next session)
-✓ Commands — fix-issue, review-pr, plan, cleanup, doc-garden
+✓ Commands — fix-issue, review-pr, plan, cleanup, doc-garden, core-init
 ✓ Rules — python, node-typescript, rust, bash, github-actions
 ✓ Hooks — enforce-package-manager, log-gam
 ✓ Skills — custom-linter-authoring, app-legibility, sound-notifications
