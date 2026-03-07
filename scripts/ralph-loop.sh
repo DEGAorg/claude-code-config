@@ -254,7 +254,9 @@ ${HANDOFF}"
 		"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"exit_code":0}')"
 
 	# --- Stagnation detection ---
-	CURRENT_HASH=$(git diff HEAD | shasum -a 256 | cut -d' ' -f1)
+	# Include both tracked changes and untracked file list in the hash
+	# so stagnation detection catches changes to new files too
+	CURRENT_HASH=$({ git diff HEAD; git status --short; } | shasum -a 256 | cut -d' ' -f1)
 	PREV_HASH=$(jq -r '.last_diff_hash // ""' "${STATE_FILE}")
 	if [[ "${CURRENT_HASH}" == "${PREV_HASH}" && -n "${PREV_HASH}" ]]; then
 		STAG=$(($(jq -r '.stagnation_count // 0' "${STATE_FILE}") + 1))
@@ -320,14 +322,25 @@ EOF
 	RESULT_FILE="${TASK_DIR}/review-result.txt"
 	if [[ ! -f "${RESULT_FILE}" ]]; then
 		echo "⚠ reviewer did not write review-result.txt"
-		# Fallback: if all completion criteria are checked, treat as SHIP
+		# Fallback: check both completion criteria AND progress log items
 		_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" |
 			grep -c '^\- \[ \]' 2>/dev/null || true)
+		_PL_UNCHECKED=$(awk '
+			/^```/ { fence = !fence; next }
+			fence { next }
+			/^## Progress log/ { buf = ""; capturing = 1; next }
+			capturing && /^## / { capturing = 0; next }
+			capturing && /^- \[ \]/ { count++ }
+			END { print count+0 }
+		' "${TASK_DIR}/plan.md")
 		if [[ "${_CC_UNCHECKED}" -eq 0 ]]; then
 			echo "→ fallback: all completion criteria checked — treating as SHIP"
 			echo "SHIP" >"${RESULT_FILE}"
+		elif [[ "${_PL_UNCHECKED}" -eq 0 ]]; then
+			echo "→ fallback: all progress log items checked (${_CC_UNCHECKED} completion criteria unchecked) — treating as SHIP"
+			echo "SHIP" >"${RESULT_FILE}"
 		else
-			echo "→ fallback: ${_CC_UNCHECKED} unchecked criteria — treating as REVISE"
+			echo "→ fallback: ${_PL_UNCHECKED} progress items + ${_CC_UNCHECKED} criteria unchecked — treating as REVISE"
 			log_event "REVIEWER_DECISION" \
 				"$(jq -n --argjson iter "${i}" '{"iteration":$iter,"decision":"REVISE","reason":"no_result_file"}')"
 			echo ""

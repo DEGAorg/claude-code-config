@@ -73,9 +73,11 @@ Focus on the **Completion criteria** section — that is your acceptance test.
 ## Evidence
 
 1. Read the plan's completion criteria
-2. Run \`git diff HEAD\` to see all uncommitted changes
-3. Read ${PLAN_DIR}/work-summary.txt for the last worker's summary
-4. Check that every completion criterion is satisfied
+2. Run \`git status --short\` to see ALL changed and new files (including untracked)
+3. Run \`git diff HEAD\` to see detailed changes to tracked files
+4. For new files shown in \`git status\` but not \`git diff\`, read them directly
+5. Read ${PLAN_DIR}/work-summary.txt for the last worker's summary
+6. Check that every completion criterion is satisfied
 
 ## Decision
 

@@ -22,7 +22,11 @@ Read these files in order:
 1. `{TASK_DIR}/plan.md` — the Completion criteria section is your acceptance test.
    The Requirements section is the definition of done.
 2. `{TASK_DIR}/work-summary.txt` — what the worker claims was done.
-3. `git diff HEAD` — what the worker changed (uncommitted working tree vs last commit).
+3. `git status --short` — shows ALL changed and new (untracked) files. Review this
+   FIRST to understand the full scope of changes, especially new files.
+4. `git diff HEAD` — detailed changes to tracked files (uncommitted working tree vs
+   last commit). Note: this does NOT show new untracked files — use `git status` for those.
+5. For any new files shown in `git status` but not in `git diff`, read them directly.
 
 ### 2. Evaluate
 
