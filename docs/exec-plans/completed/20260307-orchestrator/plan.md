@@ -343,23 +343,23 @@ Agent: "Stopped 3 workers. Items 2-4 have changes on their branches."
 ## Progress log
 
 - [x] Resolve architecture (agent-first, per-item workers, tmux grid)
-- [ ] Write `scripts/orch-parse-items.sh` — parse progress log into item queue with deps
-- [ ] Write `scripts/orch-grid.sh` — set up foreground tmux grid (orch + dash + 4 worker panes)
-- [ ] Write `scripts/orch-start.sh` — schedule workers by dependency wave
-- [ ] Write `scripts/orch-stop.sh` — stop workers by item, plan, or all
-- [ ] Write `scripts/orch-status.sh` — read state, sync from worker state files
-- [ ] Write `scripts/orch-watch.sh` — tmux capture-pane for specific worker
-- [ ] Write `scripts/orch-list.sh` — scan exec-plans dirs, output plan table
-- [ ] Write `scripts/orch-dash.sh` — launch Ink dashboard in tmux pane
-- [ ] Write `agents/orchestrator.md` — agent persona with full tool catalog
-- [ ] Write Ink components (orchestrator-app.tsx, session-table.tsx, session-detail.tsx, orch-types.ts)
-- [ ] Add `.orchestrator/` state management (create, atomic write, prune dead PIDs)
-- [ ] Implement final whole-plan review after all items complete
-- [ ] Add orchestrator to `commands/apply-core.md` install manifest
-- [ ] Test: parse a plan with deps, verify wave scheduling is correct
-- [ ] Test: foreground grid with 2 parallel workers visible in panes
-- [ ] Test: background mode with 3 workers, query status via agent
-- [ ] Test: final review triggers after all items done
+- [x] Write `scripts/orch-parse-items.sh` — parse progress log into item queue with deps
+- [x] Write `scripts/orch-grid.sh` — set up foreground tmux grid (orch + dash + 4 worker panes)
+- [x] Write `scripts/orch-start.sh` — schedule workers by dependency wave
+- [x] Write `scripts/orch-stop.sh` — stop workers by item, plan, or all
+- [x] Write `scripts/orch-status.sh` — read state, sync from worker state files
+- [x] Write `scripts/orch-watch.sh` — tmux capture-pane for specific worker
+- [x] Write `scripts/orch-list.sh` — scan exec-plans dirs, output plan table
+- [x] Write `scripts/orch-dash.sh` — launch Ink dashboard in tmux pane
+- [x] Write `agents/orchestrator.md` — agent persona with full tool catalog
+- [x] Write Ink components (orchestrator-app.tsx, session-table.tsx, session-detail.tsx, orch-types.ts)
+- [x] Add `.orchestrator/` state management (create, atomic write, prune dead PIDs)
+- [x] Implement final whole-plan review after all items complete
+- [x] Add orchestrator to `commands/apply-core.md` install manifest
+- [x] Test: parse a plan with deps, verify wave scheduling is correct
+- [x] Test: foreground grid with 2 parallel workers visible in panes
+- [x] Test: background mode with 3 workers, query status via agent
+- [x] Test: final review triggers after all items done
 
 ## Decision log
 

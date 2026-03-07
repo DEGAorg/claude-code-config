@@ -62,6 +62,21 @@ Files available:
 - `scripts/terminal-ui/src/metrics-panel.tsx`
 - `scripts/canon-scaffold.sh`
 - `scripts/canon.sh`
+- `scripts/orch-parse-items.sh`
+- `scripts/orch-grid.sh`
+- `scripts/orch-start.sh`
+- `scripts/orch-stop.sh`
+- `scripts/orch-status.sh`
+- `scripts/orch-watch.sh`
+- `scripts/orch-list.sh`
+- `scripts/orch-dash.sh`
+- `scripts/orch-state.sh`
+- `scripts/orch-review.sh`
+- `scripts/terminal-ui/src/orch-types.ts`
+- `scripts/terminal-ui/src/orchestrator-app.tsx`
+- `scripts/terminal-ui/src/session-table.tsx`
+- `scripts/terminal-ui/src/session-detail.tsx`
+- `agents/orchestrator.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -99,6 +114,17 @@ Read and note which of these already exist:
 - `~/.claude/scripts/terminal-ui/` (any files)
 - `~/.claude/scripts/canon-scaffold.sh`
 - `~/.claude/scripts/canon.sh`
+- `~/.claude/scripts/orch-parse-items.sh`
+- `~/.claude/scripts/orch-grid.sh`
+- `~/.claude/scripts/orch-start.sh`
+- `~/.claude/scripts/orch-stop.sh`
+- `~/.claude/scripts/orch-status.sh`
+- `~/.claude/scripts/orch-watch.sh`
+- `~/.claude/scripts/orch-list.sh`
+- `~/.claude/scripts/orch-dash.sh`
+- `~/.claude/scripts/orch-state.sh`
+- `~/.claude/scripts/orch-review.sh`
+- `~/.claude/agents/orchestrator.md`
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
@@ -147,6 +173,15 @@ Components:
   Requires Node.js. Installs scripts to `~/.claude/scripts/` and builds
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
+- **Orchestrator** — multi-item parallel worker coordination. Installs
+  shell scripts (`orch-parse-items.sh`, `orch-grid.sh`, `orch-start.sh`,
+  `orch-stop.sh`, `orch-status.sh`, `orch-watch.sh`, `orch-list.sh`,
+  `orch-dash.sh`, `orch-state.sh`, `orch-review.sh`) to `~/.claude/scripts/`,
+  Ink dashboard components (`orch-types.ts`, `orchestrator-app.tsx`,
+  `session-table.tsx`, `session-detail.tsx`) to `~/.claude/scripts/terminal-ui/src/`,
+  and agent persona (`orchestrator.md`) to `~/.claude/agents/`.
+  Requires Terminal UI. Invoke via `~/.claude/scripts/orch-start.sh <slug>`.
+  (opt-in; recommended when `~/.claude/scripts/orch-start.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
   market projects. Installs `canon-scaffold.sh` (deterministic project
   scaffolder called by `/canon-start`) and `canon.sh` (reference copy of
@@ -305,6 +340,45 @@ If `pnpm` is not available, fall back to `npm install && npm run build`.
 
 Safe to overwrite — these are engine scripts and app source with no user customization.
 
+#### Orchestrator
+
+Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`, and
+`~/.claude/agents/` if they don't exist.
+
+Write each shell script to `~/.claude/scripts/`:
+- `scripts/orch-parse-items.sh` → `~/.claude/scripts/orch-parse-items.sh`
+- `scripts/orch-grid.sh` → `~/.claude/scripts/orch-grid.sh`
+- `scripts/orch-start.sh` → `~/.claude/scripts/orch-start.sh`
+- `scripts/orch-stop.sh` → `~/.claude/scripts/orch-stop.sh`
+- `scripts/orch-status.sh` → `~/.claude/scripts/orch-status.sh`
+- `scripts/orch-watch.sh` → `~/.claude/scripts/orch-watch.sh`
+- `scripts/orch-list.sh` → `~/.claude/scripts/orch-list.sh`
+- `scripts/orch-dash.sh` → `~/.claude/scripts/orch-dash.sh`
+- `scripts/orch-state.sh` → `~/.claude/scripts/orch-state.sh`
+- `scripts/orch-review.sh` → `~/.claude/scripts/orch-review.sh`
+
+Run `chmod +x ~/.claude/scripts/orch-*.sh` after writing.
+
+Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
+- `scripts/terminal-ui/src/orch-types.ts` → `~/.claude/scripts/terminal-ui/src/orch-types.ts`
+- `scripts/terminal-ui/src/orchestrator-app.tsx` → `~/.claude/scripts/terminal-ui/src/orchestrator-app.tsx`
+- `scripts/terminal-ui/src/session-table.tsx` → `~/.claude/scripts/terminal-ui/src/session-table.tsx`
+- `scripts/terminal-ui/src/session-detail.tsx` → `~/.claude/scripts/terminal-ui/src/session-detail.tsx`
+
+Write the agent persona:
+- `agents/orchestrator.md` → `~/.claude/agents/orchestrator.md`
+
+Safe to overwrite — these are engine scripts, components, and agent definitions
+with no user customization.
+
+If Terminal UI was also selected, the `pnpm install && pnpm run build` step
+in that section will pick up the new orchestrator components automatically.
+If Terminal UI was not selected but the Ink app was previously installed,
+rebuild it:
+```bash
+cd ~/.claude/scripts/terminal-ui && pnpm install && pnpm run build
+```
+
 #### Canon Bootstrap
 
 Create `~/.claude/scripts/` if it doesn't exist.
@@ -388,6 +462,7 @@ Installed:
 ✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 ✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
+✓ Orchestrator — orch-*.sh → ~/.claude/scripts/, Ink components + agent persona
 ✓ Canon Bootstrap — canon-scaffold.sh + canon.sh → ~/.claude/scripts/
 
 Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
