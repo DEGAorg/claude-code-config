@@ -245,7 +245,7 @@ resolve_deps() {
 
 echo "orch-loop: starting plan '${SLUG}' (timeout: ${TIMEOUT}s)"
 
-bash "${SCRIPT_DIR}/orch-start.sh" "${SLUG}" "${MODE_ARGS[@]}"
+bash "${SCRIPT_DIR}/orch-start.sh" "${SLUG}" "${MODE_ARGS[@]+"${MODE_ARGS[@]}"}"
 
 # --- Phase 2: Poll loop ---
 
