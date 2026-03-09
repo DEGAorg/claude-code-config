@@ -62,21 +62,16 @@ Files available:
 - `scripts/terminal-ui/src/metrics-panel.tsx`
 - `scripts/canon-scaffold.sh`
 - `scripts/canon.sh`
+- `scripts/orch-run.sh`
 - `scripts/orch-parse-items.sh`
-- `scripts/orch-grid.sh`
-- `scripts/orch-start.sh`
-- `scripts/orch-stop.sh`
-- `scripts/orch-status.sh`
-- `scripts/orch-watch.sh`
-- `scripts/orch-list.sh`
-- `scripts/orch-dash.sh`
 - `scripts/orch-state.sh`
 - `scripts/orch-review.sh`
 - `scripts/terminal-ui/src/orch-types.ts`
 - `scripts/terminal-ui/src/orchestrator-app.tsx`
 - `scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx`
-- `agents/orchestrator.md`
+- `agents/orch-lead.md`
+- `agents/orch-worker.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -114,17 +109,12 @@ Read and note which of these already exist:
 - `~/.claude/scripts/terminal-ui/` (any files)
 - `~/.claude/scripts/canon-scaffold.sh`
 - `~/.claude/scripts/canon.sh`
+- `~/.claude/scripts/orch-run.sh`
 - `~/.claude/scripts/orch-parse-items.sh`
-- `~/.claude/scripts/orch-grid.sh`
-- `~/.claude/scripts/orch-start.sh`
-- `~/.claude/scripts/orch-stop.sh`
-- `~/.claude/scripts/orch-status.sh`
-- `~/.claude/scripts/orch-watch.sh`
-- `~/.claude/scripts/orch-list.sh`
-- `~/.claude/scripts/orch-dash.sh`
 - `~/.claude/scripts/orch-state.sh`
 - `~/.claude/scripts/orch-review.sh`
-- `~/.claude/agents/orchestrator.md`
+- `~/.claude/agents/orch-lead.md`
+- `~/.claude/agents/orch-worker.md`
 
 Also check in the current working directory (target project root):
 - `ralph.yaml`
@@ -173,15 +163,15 @@ Components:
   Requires Node.js. Installs scripts to `~/.claude/scripts/` and builds
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
-- **Orchestrator** — multi-item parallel worker coordination. Installs
-  shell scripts (`orch-parse-items.sh`, `orch-grid.sh`, `orch-start.sh`,
-  `orch-stop.sh`, `orch-status.sh`, `orch-watch.sh`, `orch-list.sh`,
-  `orch-dash.sh`, `orch-state.sh`, `orch-review.sh`) to `~/.claude/scripts/`,
-  Ink dashboard components (`orch-types.ts`, `orchestrator-app.tsx`,
-  `session-table.tsx`, `session-detail.tsx`) to `~/.claude/scripts/terminal-ui/src/`,
-  and agent persona (`orchestrator.md`) to `~/.claude/agents/`.
-  Requires Terminal UI. Invoke via `~/.claude/scripts/orch-start.sh <slug>`.
-  (opt-in; recommended when `~/.claude/scripts/orch-start.sh` is missing)
+- **Orchestrator** — hybrid orchestrator: persistent state layer + Agent Teams
+  execution. Installs thin launcher (`orch-run.sh`), state library
+  (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
+  (`orch-review.sh`) to `~/.claude/scripts/`, Ink dashboard components to
+  `~/.claude/scripts/terminal-ui/src/`, and agent definitions (`orch-lead.md`,
+  `orch-worker.md`) to `~/.claude/agents/`. Requires Terminal UI and
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json.
+  Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
+  (opt-in; recommended when `~/.claude/scripts/orch-run.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
   market projects. Installs `canon-scaffold.sh` (deterministic project
   scaffolder called by `/canon-start`) and `canon.sh` (reference copy of
@@ -346,14 +336,8 @@ Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`, and
 `~/.claude/agents/` if they don't exist.
 
 Write each shell script to `~/.claude/scripts/`:
+- `scripts/orch-run.sh` → `~/.claude/scripts/orch-run.sh`
 - `scripts/orch-parse-items.sh` → `~/.claude/scripts/orch-parse-items.sh`
-- `scripts/orch-grid.sh` → `~/.claude/scripts/orch-grid.sh`
-- `scripts/orch-start.sh` → `~/.claude/scripts/orch-start.sh`
-- `scripts/orch-stop.sh` → `~/.claude/scripts/orch-stop.sh`
-- `scripts/orch-status.sh` → `~/.claude/scripts/orch-status.sh`
-- `scripts/orch-watch.sh` → `~/.claude/scripts/orch-watch.sh`
-- `scripts/orch-list.sh` → `~/.claude/scripts/orch-list.sh`
-- `scripts/orch-dash.sh` → `~/.claude/scripts/orch-dash.sh`
 - `scripts/orch-state.sh` → `~/.claude/scripts/orch-state.sh`
 - `scripts/orch-review.sh` → `~/.claude/scripts/orch-review.sh`
 
@@ -365,8 +349,9 @@ Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/session-table.tsx` → `~/.claude/scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx` → `~/.claude/scripts/terminal-ui/src/session-detail.tsx`
 
-Write the agent persona:
-- `agents/orchestrator.md` → `~/.claude/agents/orchestrator.md`
+Write the agent definitions:
+- `agents/orch-lead.md` → `~/.claude/agents/orch-lead.md`
+- `agents/orch-worker.md` → `~/.claude/agents/orch-worker.md`
 
 Safe to overwrite — these are engine scripts, components, and agent definitions
 with no user customization.

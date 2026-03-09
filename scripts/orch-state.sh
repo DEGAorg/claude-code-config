@@ -6,8 +6,7 @@
 # Workers report completion via done-files (.orchestrator/done/<slug>/item-N.txt)
 # that the orchestrator reads — no per-item JSON state files.
 #
-# Provides: atomic writes, item status updates, done-file sync,
-# dead worker pruning, and state queries.
+# Provides: atomic writes, item status updates, done-file sync, and state queries.
 #
 # All functions expect ORCH_STATE_DIR and ORCH_STATE_FILE to be set
 # by the sourcing script (defaults provided below).
@@ -61,35 +60,6 @@ orch_update_item_status() {
 	orch_write_state "${updated}"
 }
 
-orch_bump_iteration() {
-	local item_id="$1"
-	local now
-	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-	local updated
-	updated=$(jq \
-		--argjson id "${item_id}" \
-		--arg now "${now}" \
-		'(.items[] | select(.id == $id)).iteration += 1 |
-     .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${updated}"
-}
-
-orch_mark_item_stopped() {
-	local item_id="$1"
-	local now
-	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-	local updated
-	updated=$(jq \
-		--argjson id "${item_id}" \
-		--arg now "${now}" \
-		'(.items[] | select(.id == $id)) |=
-      (.status = "stopped" | .workerPid = null | .tmuxPane = null) |
-     .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${updated}"
-}
-
 # --- Sync done-files into state ---
 
 orch_sync_done_files() {
@@ -124,61 +94,7 @@ orch_sync_done_files() {
 	fi
 }
 
-orch_prune_dead_workers() {
-	local slug="$1"
-	local state
-	state=$(cat "${ORCH_STATE_FILE}")
-	local mode
-	mode=$(printf '%s' "${state}" | jq -r '.mode')
-	local changed=false
-
-	local running_ids
-	running_ids=$(printf '%s' "${state}" | jq -r \
-		'.items[] | select(.status == "running") | .id')
-
-	for item_id in ${running_ids}; do
-		local alive=true
-
-		if [[ "${mode}" == "foreground" ]]; then
-			local session="orch-${slug}"
-			if ! tmux has-session -t "${session}" 2>/dev/null; then
-				alive=false
-			fi
-		else
-			local bg_session="orch-${slug}-item-${item_id}"
-			if ! tmux has-session -t "${bg_session}" 2>/dev/null; then
-				alive=false
-			fi
-		fi
-
-		if [[ "${alive}" == "false" ]]; then
-			local now
-			now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-			state=$(printf '%s' "${state}" | jq \
-				--argjson id "${item_id}" \
-				--arg now "${now}" \
-				'(.items[] | select(.id == $id)) |=
-          (.status = "stopped" | .workerPid = null | .tmuxPane = null) |
-         .updatedAt = $now')
-			changed=true
-			echo "orch-state: item ${item_id} worker is dead — marked stopped"
-		fi
-	done
-
-	if [[ "${changed}" == "true" ]]; then
-		orch_write_state "${state}"
-	fi
-}
-
 # --- Queries ---
-
-orch_get_plan() {
-	jq -r '.plan' "${ORCH_STATE_FILE}"
-}
-
-orch_get_mode() {
-	jq -r '.mode' "${ORCH_STATE_FILE}"
-}
 
 orch_count_by_status() {
 	local status="$1"
