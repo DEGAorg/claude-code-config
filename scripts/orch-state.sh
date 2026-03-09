@@ -61,6 +61,20 @@ orch_update_item_status() {
 	orch_write_state "${updated}"
 }
 
+orch_bump_iteration() {
+	local item_id="$1"
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	local updated
+	updated=$(jq \
+		--argjson id "${item_id}" \
+		--arg now "${now}" \
+		'(.items[] | select(.id == $id)).iteration += 1 |
+     .updatedAt = $now' "${ORCH_STATE_FILE}")
+	orch_write_state "${updated}"
+}
+
 orch_mark_item_stopped() {
 	local item_id="$1"
 	local now

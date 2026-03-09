@@ -254,7 +254,10 @@ ${HANDOFF}"
 	# --- Stagnation detection ---
 	# Include both tracked changes and untracked file list in the hash
 	# so stagnation detection catches changes to new files too
-	CURRENT_HASH=$({ git diff HEAD; git status --short; } | shasum -a 256 | cut -d' ' -f1)
+	CURRENT_HASH=$({
+		git diff HEAD
+		git status --short
+	} | shasum -a 256 | cut -d' ' -f1)
 	PREV_HASH=$(jq -r '.last_diff_hash // ""' "${STATE_FILE}")
 	if [[ "${CURRENT_HASH}" == "${PREV_HASH}" && -n "${PREV_HASH}" ]]; then
 		STAG=$(($(jq -r '.stagnation_count // 0' "${STATE_FILE}") + 1))

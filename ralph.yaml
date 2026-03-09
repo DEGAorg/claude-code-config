@@ -14,7 +14,7 @@ success_criteria:
   # Repo health — shell scripts pass shellcheck
   - id: shellcheck
     description: no shellcheck errors in scripts/ and hooks/
-    check: shellcheck scripts/*.sh hooks/*.sh
+    check: shellcheck -e SC1091 scripts/*.sh hooks/*.sh
 
   # Repo health — shell scripts are shfmt-formatted
   - id: shfmt

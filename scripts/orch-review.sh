@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Final whole-plan review — runs after all items complete.
-# Spawns a reviewer agent that evaluates the full diff, then
-# updates finalReview in state.json with SHIP or REVISE.
+# Final per-item review — runs after all items complete.
+# For each item, spawns a focused reviewer agent using the done-file
+# as handoff context. All items must PASS for SHIP.
 #
 # Usage: scripts/orch-review.sh <slug>
 #
@@ -24,6 +24,9 @@ fi
 ORCH_STATE_DIR="${REPO_ROOT}/.orchestrator"
 ORCH_STATE_FILE="${ORCH_STATE_DIR}/state.json"
 PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+DONE_DIR="${ORCH_STATE_DIR}/done/${SLUG}"
+REVIEW_DIR="${ORCH_STATE_DIR}/reviews/${SLUG}"
+PROMPT_TEMPLATE="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
@@ -35,7 +38,12 @@ if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	exit 1
 fi
 
-# --- Verify all items are done ---
+if [[ ! -f "${PROMPT_TEMPLATE}" ]]; then
+	echo "error: reviewer prompt template not found: ${PROMPT_TEMPLATE}" >&2
+	exit 1
+fi
+
+# --- Structural check: all items done ---
 
 NOT_DONE=$(jq '[.items[] | select(.status != "done")] | length' \
 	"${ORCH_STATE_FILE}")
@@ -47,7 +55,8 @@ if [[ "${NOT_DONE}" -gt 0 ]]; then
 	exit 1
 fi
 
-echo "orch-review: all items done — starting final whole-plan review"
+TOTAL=$(jq '.items | length' "${ORCH_STATE_FILE}")
+echo "orch-review: all ${TOTAL} items done — starting per-item review"
 
 # --- Mark final review as running ---
 
@@ -57,125 +66,94 @@ UPDATED=$(jq --arg now "${NOW}" \
 	"${ORCH_STATE_FILE}")
 orch_write_state "${UPDATED}"
 
-# --- Build reviewer prompt ---
+# --- Prepare review directory ---
 
-REVIEW_PROMPT="# Final Whole-Plan Review
+mkdir -p "${REVIEW_DIR}"
 
-You are reviewing the FULL output of plan '${SLUG}' after all items completed.
-Your job: evaluate whether the plan's completion criteria are satisfied by the
-combined work. Decide SHIP or REVISE.
+# --- Per-item review loop ---
 
-## Plan
+ITEM_IDS=$(jq -r '.items | sort_by(.id) | .[].id' "${ORCH_STATE_FILE}")
+FAILED_ITEMS=()
 
-Read: ${PLAN_DIR}/plan.md
-Focus on the **Completion criteria** section — that is your acceptance test.
-
-## Evidence
-
-1. Read the plan's completion criteria
-2. Run \`git status --short\` to see ALL changed and new files (including untracked)
-3. Run \`git diff HEAD\` to see detailed changes to tracked files
-4. For new files shown in \`git status\` but not \`git diff\`, read them directly
-5. Read ${PLAN_DIR}/work-summary.txt for the last worker's summary
-6. Check that every completion criterion is satisfied
-
-## Decision
-
-Write your decision to: ${PLAN_DIR}/review-result.txt
-
-First line must be exactly \`SHIP\` or \`REVISE\`. Nothing else on that line.
-
-If SHIP:
-\`\`\`
-SHIP
-\`\`\`
-
-If REVISE, also write ${PLAN_DIR}/review-feedback.txt with:
-- Which completion criteria failed
-- Which plan items (by number) need rework
-- Specific, actionable fixes
-
-Format for review-feedback.txt:
-\`\`\`
-REWORK_ITEMS: 3, 7
-CRITERION: <which completion criterion failed>
-FINDING: <what is missing, with file:line references>
-ACTION: <what the worker must do>
-\`\`\`
-
-The first line must be \`REWORK_ITEMS: N, M\` listing item numbers that need
-rework. One CRITERION/FINDING/ACTION block per failing criterion.
-
-## Rules
-
-- Evaluate evidence only — do not implement fixes
-- Be strict: every completion criterion must pass for SHIP
-- If the diff is empty but items are marked done, that is suspicious — REVISE
-- You MUST write review-result.txt before stopping"
-
-# --- Remove stale review files ---
-
-rm -f "${PLAN_DIR}/review-result.txt" "${PLAN_DIR}/review-feedback.txt"
-
-# --- Run reviewer agent ---
-
-echo "orch-review: spawning reviewer agent..."
-
-RALPH_ROLE=reviewer RALPH_TASK_DIR="${PLAN_DIR}" RALPH_LOOP=1 \
-	env -u CLAUDECODE claude -p \
-	--dangerously-skip-permissions \
-	"${REVIEW_PROMPT}" || true
-
-echo "orch-review: reviewer done"
-
-# --- Read decision ---
-
-RESULT_FILE="${PLAN_DIR}/review-result.txt"
-
-if [[ ! -f "${RESULT_FILE}" ]]; then
-	echo "error: reviewer did not write review-result.txt" >&2
-	# Reset final review status
-	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-	UPDATED=$(jq --arg now "${NOW}" \
-		'.finalReview.status = "pending" | .updatedAt = $now' \
+for item_id in ${ITEM_IDS}; do
+	ITEM_DESC=$(jq -r ".items[] | select(.id == ${item_id}) | .description" \
 		"${ORCH_STATE_FILE}")
-	orch_write_state "${UPDATED}"
-	exit 1
-fi
+	REVIEW_FILE="${REVIEW_DIR}/item-${item_id}-review.txt"
 
-DECISION=$(head -1 "${RESULT_FILE}" | tr -d '[:space:]')
+	echo "orch-review: reviewing item ${item_id}: ${ITEM_DESC}"
 
-case "${DECISION}" in
-SHIP)
-	echo "orch-review: SHIP — plan is complete"
-	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+	# Read done-file as handoff context
+	DONE_FILE="${DONE_DIR}/item-${item_id}.txt"
+	ITEM_HANDOFF=""
+	if [[ -f "${DONE_FILE}" ]]; then
+		ITEM_HANDOFF=$(cat "${DONE_FILE}")
+	else
+		ITEM_HANDOFF="(no done-file found — worker may not have written a summary)"
+	fi
+
+	# Build prompt from template
+	REVIEW_PROMPT=$(cat "${PROMPT_TEMPLATE}")
+	REVIEW_PROMPT="${REVIEW_PROMPT//\{ITEM_TEXT\}/${ITEM_DESC}}"
+	REVIEW_PROMPT="${REVIEW_PROMPT//\{ITEM_HANDOFF\}/${ITEM_HANDOFF}}"
+	REVIEW_PROMPT="${REVIEW_PROMPT//\{REVIEW_DIR\}/${REVIEW_DIR}}"
+	REVIEW_PROMPT="${REVIEW_PROMPT//\{ITEM_NUM\}/${item_id}}"
+
+	# Remove stale review file
+	rm -f "${REVIEW_FILE}"
+
+	# Spawn reviewer agent
+	RALPH_ROLE=reviewer RALPH_TASK_DIR="${PLAN_DIR}" RALPH_LOOP=1 \
+		env -u CLAUDECODE claude -p \
+		--dangerously-skip-permissions \
+		"${REVIEW_PROMPT}" || true
+
+	# Read decision
+	if [[ ! -f "${REVIEW_FILE}" ]]; then
+		echo "orch-review: warning: reviewer did not write review for item ${item_id}" >&2
+		FAILED_ITEMS+=("${item_id}")
+		continue
+	fi
+
+	DECISION=$(head -1 "${REVIEW_FILE}" | tr -d '[:space:]')
+
+	case "${DECISION}" in
+	PASS)
+		echo "orch-review: item ${item_id} — PASS"
+		;;
+	FAIL)
+		echo "orch-review: item ${item_id} — FAIL"
+		tail -n +2 "${REVIEW_FILE}"
+		FAILED_ITEMS+=("${item_id}")
+		;;
+	*)
+		echo "orch-review: item ${item_id} — unexpected decision: '${DECISION}'" >&2
+		FAILED_ITEMS+=("${item_id}")
+		;;
+	esac
+done
+
+# --- Aggregate decision ---
+
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+if [[ ${#FAILED_ITEMS[@]} -eq 0 ]]; then
+	echo ""
+	echo "orch-review: SHIP — all ${TOTAL} items passed"
+
 	UPDATED=$(jq --arg now "${NOW}" \
 		'.finalReview.status = "done" |
      .finalReview.result = "SHIP" |
      .finalReview.reworkItems = [] |
      .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${UPDATED}"
-	;;
-REVISE)
-	echo "orch-review: REVISE — some items need rework"
+else
+	echo ""
+	echo "orch-review: REVISE — ${#FAILED_ITEMS[@]} item(s) failed"
 
-	# Parse rework items from feedback
-	REWORK_ITEMS="[]"
-	FEEDBACK_FILE="${PLAN_DIR}/review-feedback.txt"
-	if [[ -f "${FEEDBACK_FILE}" ]]; then
-		REWORK_LINE=$(grep -i '^REWORK_ITEMS:' "${FEEDBACK_FILE}" | head -1 || true)
-		if [[ -n "${REWORK_LINE}" ]]; then
-			# Extract comma-separated numbers after the colon
-			NUMS=$(echo "${REWORK_LINE}" | sed 's/^[^:]*://' | tr ',' '\n' | tr -d ' ' | grep -E '^[0-9]+$' || true)
-			if [[ -n "${NUMS}" ]]; then
-				REWORK_ITEMS=$(echo "${NUMS}" | jq -R 'tonumber' | jq -s '.')
-			fi
-		fi
-		cat "${FEEDBACK_FILE}"
-	fi
+	# Build JSON array of failed item IDs
+	REWORK_JSON=$(printf '%s\n' "${FAILED_ITEMS[@]}" | jq -R 'tonumber' | jq -s '.')
 
-	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-	UPDATED=$(jq --arg now "${NOW}" --argjson rework "${REWORK_ITEMS}" \
+	UPDATED=$(jq --arg now "${NOW}" --argjson rework "${REWORK_JSON}" \
 		'.finalReview.status = "done" |
      .finalReview.result = "REVISE" |
      .finalReview.reworkItems = $rework |
@@ -185,18 +163,19 @@ REVISE)
      )' "${ORCH_STATE_FILE}")
 	orch_write_state "${UPDATED}"
 
-	echo ""
-	echo "orch-review: rework items: $(echo "${REWORK_ITEMS}" | jq -r 'join(", ")')"
-	echo "  Re-run orch-start.sh to schedule rework workers"
-	;;
-*)
-	echo "error: unexpected review decision: '${DECISION}'" >&2
-	echo "  Expected SHIP or REVISE as first line of ${RESULT_FILE}" >&2
-	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-	UPDATED=$(jq --arg now "${NOW}" \
-		'.finalReview.status = "pending" | .updatedAt = $now' \
-		"${ORCH_STATE_FILE}")
-	orch_write_state "${UPDATED}"
-	exit 1
-	;;
-esac
+	# Write consolidated feedback for the loop
+	FEEDBACK_FILE="${PLAN_DIR}/review-feedback.txt"
+	{
+		printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
+		for fid in "${FAILED_ITEMS[@]}"; do
+			review="${REVIEW_DIR}/item-${fid}-review.txt"
+			if [[ -f "${review}" ]]; then
+				printf '\n--- item %s ---\n' "${fid}"
+				tail -n +2 "${review}"
+			fi
+		done
+	} >"${FEEDBACK_FILE}"
+
+	echo "orch-review: rework items: $(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
+	echo "  Feedback written to ${FEEDBACK_FILE}"
+fi

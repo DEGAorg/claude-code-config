@@ -385,6 +385,166 @@ assert_eq "item 3 synced to done" "done" "${SYNC3}"
 assert_eq "item 4 synced to done" "done" "${SYNC4}"
 
 echo ""
+echo "=== Test 5b: Full 3-wave lifecycle — resolve_deps promotes waves in order ==="
+
+# Reset to clean state: all 5 items, nothing checked
+cat >"${TEST_PLAN_DIR}/plan.md" <<'PLAN'
+# Plan: Test Orchestrator E2E
+
+**Status:** In progress
+
+## Progress log
+
+- [ ] Alpha task — no dependencies
+- [ ] Beta task — no dependencies
+- [ ] Gamma task — depends on alpha and beta (deps: 1, 2)
+- [ ] Delta task — depends on beta only (deps: 2)
+- [ ] Epsilon task — depends on gamma and delta (deps: 3, 4)
+PLAN
+
+PARSED5=$("${REPO_ROOT}/scripts/orch-parse-items.sh" "${TEST_SLUG}")
+ITEMS_JSON5=$(printf '%s' "${PARSED5}" | jq --argjson maxIter 3 '[
+  .items[] | {
+    id: .id,
+    description: .description,
+    deps: .deps,
+    status: (if .checked then "done" else
+      (if (.deps | length) == 0 then "ready" else "queued" end)
+    end),
+    workerPid: null, tmuxPane: null, worktree: null,
+    iteration: 0, maxIterations: $maxIter, lastResult: null
+  }
+]')
+
+STATE5=$(jq -n \
+	--argjson version 1 \
+	--arg plan "${TEST_SLUG}" \
+	--argjson maxWorkers 4 \
+	--arg mode "foreground" \
+	--argjson items "${ITEMS_JSON5}" \
+	--arg startedAt "${NOW}" \
+	--arg updatedAt "${NOW}" \
+	'{
+    version: $version, plan: $plan, maxParallelWorkers: $maxWorkers,
+    mode: $mode, items: $items,
+    finalReview: { status: "pending", result: null, reworkItems: [] },
+    startedAt: $startedAt, updatedAt: $updatedAt
+  }')
+orch_write_state "${STATE5}"
+
+# Clean done-files from previous tests
+rm -rf "${ORCH_DIR}/done/${TEST_SLUG}"
+orch_ensure_done_dir "${TEST_SLUG}"
+DONE_DIR="${ORCH_DIR}/done/${TEST_SLUG}"
+
+# resolve_deps mirrors orch-loop.sh — promotes queued→ready when deps are done
+resolve_deps() {
+	local state
+	state=$(cat "${ORCH_STATE_FILE}")
+	local queued_ids
+	queued_ids=$(printf '%s' "${state}" | jq -r '.items[] | select(.status == "queued") | .id')
+	for item_id in ${queued_ids}; do
+		local all_deps_done
+		all_deps_done=$(printf '%s' "${state}" | jq --argjson id "${item_id}" '
+      . as $root |
+      ($root.items[] | select(.id == $id) | .deps) as $deps |
+      if ($deps | length) == 0 then true
+      else [$root.items[] | select(.id == ($deps[])) | .status] | all(. == "done")
+      end')
+		if [[ "${all_deps_done}" == "true" ]]; then
+			local now_ts
+			now_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+			state=$(printf '%s' "${state}" | jq \
+				--argjson id "${item_id}" \
+				--arg now "${now_ts}" \
+				'(.items[] | select(.id == $id)).status = "ready" | .updatedAt = $now')
+		fi
+	done
+	orch_write_state "${state}"
+}
+
+# --- Wave 1: items 1,2 are ready ---
+W1_S1=$(jq -r '.items[] | select(.id == 1) | .status' "${ORCH_STATE_FILE}")
+W1_S2=$(jq -r '.items[] | select(.id == 2) | .status' "${ORCH_STATE_FILE}")
+W1_S3=$(jq -r '.items[] | select(.id == 3) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave1: item 1 ready" "ready" "${W1_S1}"
+assert_eq "wave1: item 2 ready" "ready" "${W1_S2}"
+assert_eq "wave1: item 3 queued" "queued" "${W1_S3}"
+
+# Simulate wave 1 workers: mark running, write done-files, sync
+orch_update_item_status 1 "running"
+orch_update_item_status 2 "running"
+printf 'Alpha completed.\n' >"${DONE_DIR}/item-1.txt"
+printf 'Beta completed.\n' >"${DONE_DIR}/item-2.txt"
+orch_sync_done_files "${TEST_SLUG}"
+
+W1_D1=$(jq -r '.items[] | select(.id == 1) | .status' "${ORCH_STATE_FILE}")
+W1_D2=$(jq -r '.items[] | select(.id == 2) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave1: item 1 done after sync" "done" "${W1_D1}"
+assert_eq "wave1: item 2 done after sync" "done" "${W1_D2}"
+
+# --- Wave 2: resolve_deps should promote items 3,4 to ready ---
+resolve_deps
+
+W2_S3=$(jq -r '.items[] | select(.id == 3) | .status' "${ORCH_STATE_FILE}")
+W2_S4=$(jq -r '.items[] | select(.id == 4) | .status' "${ORCH_STATE_FILE}")
+W2_S5=$(jq -r '.items[] | select(.id == 5) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave2: item 3 promoted to ready" "ready" "${W2_S3}"
+assert_eq "wave2: item 4 promoted to ready" "ready" "${W2_S4}"
+assert_eq "wave2: item 5 still queued" "queued" "${W2_S5}"
+
+# Simulate wave 2 workers: run, done-files, sync
+orch_update_item_status 3 "running"
+orch_update_item_status 4 "running"
+printf 'Gamma completed.\n' >"${DONE_DIR}/item-3.txt"
+printf 'Delta completed.\n' >"${DONE_DIR}/item-4.txt"
+orch_sync_done_files "${TEST_SLUG}"
+
+W2_D3=$(jq -r '.items[] | select(.id == 3) | .status' "${ORCH_STATE_FILE}")
+W2_D4=$(jq -r '.items[] | select(.id == 4) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave2: item 3 done after sync" "done" "${W2_D3}"
+assert_eq "wave2: item 4 done after sync" "done" "${W2_D4}"
+
+# --- Wave 3: resolve_deps should promote item 5 to ready ---
+resolve_deps
+
+W3_S5=$(jq -r '.items[] | select(.id == 5) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave3: item 5 promoted to ready" "ready" "${W3_S5}"
+
+# Simulate wave 3 worker: run, done-file, sync
+orch_update_item_status 5 "running"
+printf 'Epsilon completed.\n' >"${DONE_DIR}/item-5.txt"
+orch_sync_done_files "${TEST_SLUG}"
+
+W3_D5=$(jq -r '.items[] | select(.id == 5) | .status' "${ORCH_STATE_FILE}")
+assert_eq "wave3: item 5 done after sync" "done" "${W3_D5}"
+
+# All done
+ALL_DONE=$(jq '[.items[] | select(.status == "done")] | length' "${ORCH_STATE_FILE}")
+assert_eq "all 5 items done" "5" "${ALL_DONE}"
+
+echo ""
+echo "=== Test 5c: Wave order enforced — item 5 never ready before deps ==="
+
+# Verify: if only item 1 is done, item 3 (deps: 1,2) should NOT be ready
+rm -rf "${ORCH_DIR}/done/${TEST_SLUG}"
+orch_ensure_done_dir "${TEST_SLUG}"
+
+orch_write_state "${STATE5}"
+orch_update_item_status 1 "running"
+printf 'Alpha done.\n' >"${DONE_DIR}/item-1.txt"
+orch_sync_done_files "${TEST_SLUG}"
+resolve_deps
+
+# Item 3 needs both 1 AND 2 — only 1 is done
+PARTIAL_S3=$(jq -r '.items[] | select(.id == 3) | .status' "${ORCH_STATE_FILE}")
+assert_eq "partial deps: item 3 still queued (only dep 1 done)" "queued" "${PARTIAL_S3}"
+
+# Item 4 needs only 2 — 2 is still ready (not done)
+PARTIAL_S4=$(jq -r '.items[] | select(.id == 4) | .status' "${ORCH_STATE_FILE}")
+assert_eq "partial deps: item 4 still queued (dep 2 not done)" "queued" "${PARTIAL_S4}"
+
+echo ""
 echo "=== Test 6: No items/ directory created ==="
 
 assert_dir_not_exists "no items/ subdirectory" "${ORCH_DIR}/items"
@@ -442,10 +602,13 @@ MODE=$(orch_get_mode)
 assert_eq "orch_get_mode" "foreground" "${MODE}"
 
 DONE_COUNT=$(orch_count_by_status "done")
-assert_eq "done count" "4" "${DONE_COUNT}"
+assert_eq "done count" "1" "${DONE_COUNT}"
+
+READY_COUNT=$(orch_count_by_status "ready")
+assert_eq "ready count" "1" "${READY_COUNT}"
 
 QUEUED_COUNT=$(orch_count_by_status "queued")
-assert_eq "queued count" "1" "${QUEUED_COUNT}"
+assert_eq "queued count" "3" "${QUEUED_COUNT}"
 
 # --- Summary ---
 
