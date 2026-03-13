@@ -1,0 +1,56 @@
+--- item: Rewrite orch-run.sh as thin launcher: read state.json for incomplete items, enable CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS, launch claude with orchestrator agent prompt that creates a team for remaining items ---
+Rewrote scripts/orch-run.sh from 137 lines of tmux grid management down to a ~150-line thin launcher.
+The new script: (1) resumes from existing state.json if it matches the slug, or initializes via orch-start.sh;
+(2) reads incomplete items and builds an orchestrator prompt describing remaining items with dependency info;
+(3) gathers done-file summaries from completed items for context;
+(4) launches `claude -p` with CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and a prompt instructing the agent to use
+TeamCreate for wave-based parallel execution. All tmux session/pane/grid/dashboard logic was removed.
+The script still depends on orch-state.sh (state library) and orch-start.sh (state initialization) — those
+will be slimmed in the next task.
+---
+
+--- item: Rewrite orch-state.sh to only keep: orch_write_state, orch_ensure_done_dir, orch_sync_done_files, orch_count_by_status, orch_update_item_status — delete all tmux/worktree/pane functions ---
+Rewrote scripts/orch-state.sh from 188 lines down to 100 lines. Kept the 5 required functions
+(orch_write_state, orch_ensure_done_dir, orch_sync_done_files, orch_count_by_status, orch_update_item_status)
+and deleted 5 tmux/worktree-specific functions (orch_bump_iteration, orch_mark_item_stopped,
+orch_prune_dead_workers, orch_get_plan, orch_get_mode). Verified all deleted functions are only
+referenced by scripts on the deletion list (orch-stop.sh, orch-status.sh, orch-loop.sh) — no
+breakage to orch-run.sh. Passes shellcheck and shfmt clean.
+---
+
+--- item: Create agents/orch-lead.md subagent definition: reads plan.md + state.json, creates team, assigns items as tasks with deps, ensures done-files are written on completion (deps: 1) ---
+Created agents/orch-lead.md (~100 lines) as the reusable agent definition for the orchestrator
+lead. Covers: wave-based parallelism via TeamCreate, worker prompt template, done-file verification,
+state updates via orch-state.sh, and the work-summary.txt write at the end. Updated orch-run.sh
+to load agents/orch-lead.md via `cat` instead of the 45-line hardcoded inline prompt — orch-run.sh
+now appends dynamic session context (paths, items, progress) after the agent definition. Also
+fixed shfmt formatting (2-space → tab indent) in orch-run.sh left from the previous worker.
+---
+
+--- item: Create agents/orch-worker.md subagent definition: receives single item, does the work, writes done-file, marks plan checkbox (deps: 1) ---
+Created agents/orch-worker.md (~60 lines) as the reusable worker agent definition. Covers the
+full lifecycle: orient (read plan + dep summaries), execute the item, mark `[x]` in plan.md,
+write done-file, and stop. Updated agents/orch-lead.md to reference orch-worker.md via file
+read instead of the inline 15-line hardcoded worker prompt — the lead now reads the file once
+and appends session context (item ID, paths, dep summaries) per worker. Both agent definitions
+follow the same structure: inputs, execution steps, rules.
+---
+
+--- item: Add TaskCompleted hook in settings.json: on item completion, run orch-state.sh to sync done-file and update state.json (deps: 2, 3, 4) ---
+Created hooks/orch-done-sync.sh (~60 lines) as a PostToolUse hook that detects Write tool calls
+targeting .orchestrator/done/*/item-*.txt paths. On match, it extracts slug and item ID from
+the path, sources orch-state.sh, and calls orch_update_item_status to mark the item "done" in
+state.json. Added the hook entry to settings.json under PostToolUse with matcher "Write". This
+automates state sync so the orch-lead doesn't need to manually call orch-state.sh after each
+worker completes — the hook fires automatically when the done-file is written.
+---
+
+--- item: Delete obsolete scripts: orch-grid.sh, orch-loop.sh, orch-start.sh, orch-stop.sh, orch-watch.sh, orch-worker.sh, orch-status.sh, orch-list.sh, orch-dash.sh ---
+Deleted 9 obsolete scripts and agents/orchestrator.md (the old agent definition replaced by
+orch-lead.md + orch-worker.md). Before deleting orch-start.sh, inlined its state initialization
+logic into orch-run.sh as an init_state() function that calls orch-parse-items.sh, builds the
+items JSON with dependency resolution, and writes state via orch_write_state. Verified no
+remaining references from kept files (orch-run.sh, orch-state.sh, orch-lead.md, orch-worker.md,
+hooks/, settings.json). Remaining orch scripts: orch-run.sh, orch-state.sh, orch-parse-items.sh,
+orch-review.sh. Note: apply-core.md still references deleted scripts — that's item 8's job.
+---
