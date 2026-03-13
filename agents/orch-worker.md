@@ -49,6 +49,23 @@ This file is read by the orchestrator and by workers on dependent items.
 Do not look for or start additional items. The orchestrator manages
 sequencing. Your job is done.
 
+## Rework iterations
+
+When the reviewer returns REVISE, the orchestrator re-runs failed items. On a
+rework iteration, your prompt includes a **Review feedback** section with the
+reviewer's notes for your specific item.
+
+If review feedback is present:
+
+1. Read the feedback carefully — it lists specific issues to fix.
+2. Address every point raised. Do not skip items or argue with the reviewer.
+3. Re-run any linters or tests mentioned in the feedback.
+4. Overwrite your previous done-file (`<done_dir>/item-<ID>.txt`) with an
+   updated summary that notes what you fixed.
+
+If no review feedback is present, this is a first-pass execution — proceed
+normally.
+
 ## Rules
 
 - **One item only** — execute exactly the item assigned to you

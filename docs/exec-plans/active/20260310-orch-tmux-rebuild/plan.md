@@ -74,12 +74,12 @@ This mirrors how `ralph-loop.sh` builds worker context from template + state.
 
 ## Progress log
 
-- [ ] Add `poll_interval_seconds` to `ralph.yaml` with default 30
-- [ ] Add `orch_promote_ready_items` to `scripts/orch-state.sh`: for each queued item, if all deps are done, set status to ready
-- [ ] Rewrite `scripts/orch-run.sh` execution engine: create tmux session, launch dashboard pane, implement wave loop (spawn workers in panes, poll done-files, promote items, advance waves) (deps: 1, 2)
-- [ ] Add rework feedback section to `agents/orch-worker.md` for review-iteration context (deps: 3)
-- [ ] Smoke test: reset `20260309-orch-smoke-test` state and run end-to-end with new tmux engine (deps: 3, 4)
-- [ ] Update `commands/apply-core.md` install manifest to reflect current orchestrator scripts (deps: 5)
+- [x] Add `poll_interval_seconds` to `ralph.yaml` with default 30
+- [x] Add `orch_promote_ready_items` to `scripts/orch-state.sh`: for each queued item, if all deps are done, set status to ready
+- [x] Rewrite `scripts/orch-run.sh` execution engine: create tmux session, launch dashboard pane, implement wave loop (spawn workers in panes, poll done-files, promote items, advance waves) (deps: 1, 2)
+- [x] Add rework feedback section to `agents/orch-worker.md` for review-iteration context (deps: 3)
+- [x] Smoke test: reset `20260309-orch-smoke-test` state and run end-to-end with new tmux engine (deps: 3, 4)
+- [x] Update `commands/apply-core.md` install manifest to reflect current orchestrator scripts (deps: 5)
 
 ## Decision log
 

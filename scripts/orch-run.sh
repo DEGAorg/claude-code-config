@@ -78,19 +78,6 @@ init_state() {
 	  }
 	]')
 
-	# Promote queued items whose deps are all done
-	ITEMS_JSON=$(printf '%s' "${ITEMS_JSON}" | jq '[
-	  . as $all |
-	  .[] | . as $item |
-	  if $item.status == "queued" then
-	    if ([$all[] | select(.id == ($item.deps[])) | .status] | all(. == "done")) then
-	      .status = "ready"
-	    else .
-	    end
-	  else .
-	  end
-	]')
-
 	STATE_JSON=$(jq -n \
 		--argjson version 1 \
 		--arg plan "${SLUG}" \
@@ -108,6 +95,7 @@ init_state() {
 	  }')
 
 	orch_write_state "${STATE_JSON}"
+	orch_promote_ready_items
 	echo "orch-run: initialized ${ITEM_COUNT} items for '${SLUG}'"
 }
 
@@ -167,15 +155,208 @@ while IFS= read -r item_json; do
 - **Item ${item_id}**: ${item_desc} (deps: ${item_deps})"
 done < <(printf '%s' "${REMAINING_JSON}" | jq -c '.[]')
 
-# --- TODO: tmux wave-based execution engine ---
-# The execution engine (tmux session, pane spawning, wave polling,
-# done-file detection, state sync) will be implemented in the
-# orchestrator rebuild plan (20260310-orch-tmux-rebuild).
+# --- Read poll interval from ralph.yaml ---
+
+POLL_INTERVAL=$(grep 'poll_interval_seconds:' ralph.yaml 2>/dev/null |
+	awk '{print $2}' | tr -d ' ' || true)
+POLL_INTERVAL="${POLL_INTERVAL:-30}"
+
+# --- Worker prompt template ---
+
+WORKER_PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-worker.md"
+if [[ ! -f "${WORKER_PROMPT_TEMPLATE}" ]]; then
+	echo "error: worker prompt not found: ${WORKER_PROMPT_TEMPLATE}" >&2
+	exit 1
+fi
+WORKER_PROMPT_BASE=$(cat "${WORKER_PROMPT_TEMPLATE}")
+
+# --- Tmux session setup ---
+
+TMUX_SESSION="orch-${SLUG}"
+
+# Kill stale session if it exists but has no windows
+if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
+	echo "orch-run: attaching to existing tmux session '${TMUX_SESSION}'"
+else
+	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" \
+		"echo 'orch-run: dashboard — watching ${ORCH_STATE_FILE}'; \
+		 while true; do clear; jq . '${ORCH_STATE_FILE}' 2>/dev/null || echo 'waiting...'; sleep 2; done"
+	echo "orch-run: created tmux session '${TMUX_SESSION}' with dashboard pane"
+fi
+
+# --- Helper: build worker prompt for an item ---
+
+build_worker_prompt() {
+	local item_id="$1"
+	local item_desc="$2"
+	local plan_path="${PLAN_DIR}/plan.md"
+	local done_dir="${DONE_DIR}"
+
+	# Gather dependency summaries (cap at 5)
+	local dep_context=""
+	local dep_ids
+	dep_ids=$(jq -r ".items[] | select(.id == ${item_id}) | .deps[]" \
+		"${ORCH_STATE_FILE}" 2>/dev/null || true)
+	local dep_count=0
+	for dep_id in ${dep_ids}; do
+		if ((dep_count >= 5)); then break; fi
+		local dep_file="${done_dir}/item-${dep_id}.txt"
+		if [[ -f "${dep_file}" ]]; then
+			local dep_desc
+			dep_desc=$(jq -r ".items[] | select(.id == ${dep_id}) | .description" \
+				"${ORCH_STATE_FILE}")
+			dep_context="${dep_context}
+### Item ${dep_id}: ${dep_desc}
+$(cat "${dep_file}")
+"
+			dep_count=$((dep_count + 1))
+		fi
+	done
+
+	# Check for per-item review feedback (rework iterations)
+	local review_file="${ORCH_STATE_DIR}/reviews/${SLUG}/item-${item_id}-review.txt"
+	local review_context=""
+	if [[ -f "${review_file}" ]]; then
+		review_context="
+## Review feedback
+
+The reviewer flagged issues with your previous work on this item.
+Address every point below before writing your done-file.
+
+$(cat "${review_file}")
+"
+	fi
+
+	cat <<-PROMPT
+		${WORKER_PROMPT_BASE}
+
+		---
+
+		## Your Assignment
+
+		- **Item ID**: ${item_id}
+		- **Item description**: ${item_desc}
+		- **Plan path**: ${plan_path}
+		- **Done-files directory**: ${done_dir}
+
+		## Completed dependency summaries
+		${dep_context:-"(no dependencies)"}
+		${review_context}
+	PROMPT
+}
+
+# --- Helper: spawn a worker in a tmux pane ---
+
+spawn_worker() {
+	local item_id="$1"
+	local item_desc="$2"
+	local pane_name="worker-${item_id}"
+
+	# Mark item as running
+	orch_update_item_status "${item_id}" "running"
+
+	# Build prompt
+	local prompt
+	prompt=$(build_worker_prompt "${item_id}" "${item_desc}")
+
+	# Write prompt to temp file (tmux send-keys has length limits)
+	local prompt_file
+	prompt_file=$(mktemp "${ORCH_STATE_DIR}/prompt-${item_id}-XXXXXX")
+	mv "${prompt_file}" "${prompt_file}.md"
+	prompt_file="${prompt_file}.md"
+	printf '%s\n' "${prompt}" >"${prompt_file}"
+
+	# Create tmux pane and run claude -p
+	tmux new-window -t "${TMUX_SESSION}" -n "${pane_name}" \
+		"RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
+		 env -u CLAUDECODE claude -p \
+		 --dangerously-skip-permissions \
+		 \"\$(cat '${prompt_file}')\" ; \
+		 echo '--- worker ${item_id} exited ---'; \
+		 sleep 5"
+
+	echo "orch-run: spawned ${pane_name} for item ${item_id}: ${item_desc}"
+}
+
+# --- Wave execution loop ---
 
 echo ""
-echo "orch-run: execution engine not yet implemented (tmux rewrite pending)"
+echo "orch-run: starting wave execution"
 echo "  plan: ${SLUG}"
-echo "  items: ${REMAINING_COUNT} remaining, ${DONE_COUNT} done"
+echo "  remaining: ${REMAINING_COUNT} items"
 echo "  max workers: ${MAX_WORKERS}"
+echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
-exit 1
+
+while true; do
+	# Sync done-files and promote newly unblocked items
+	orch_sync_done_files "${SLUG}"
+	orch_promote_ready_items
+
+	# Count current state
+	local_done=$(orch_count_by_status "done")
+	local_running=$(orch_count_by_status "running")
+	local_ready=$(orch_count_by_status "ready")
+	local_queued=$(orch_count_by_status "queued")
+
+	echo "orch-run: [poll] done=${local_done} running=${local_running} ready=${local_ready} queued=${local_queued}"
+
+	# Check if all items are done
+	if [[ "${local_running}" -eq 0 ]] && [[ "${local_ready}" -eq 0 ]] && [[ "${local_queued}" -eq 0 ]]; then
+		echo ""
+		echo "orch-run: all ${TOTAL_COUNT} items complete"
+		break
+	fi
+
+	# Spawn workers for ready items up to max concurrency
+	available_slots=$((MAX_WORKERS - local_running))
+	if ((available_slots > 0 && local_ready > 0)); then
+		# Get ready item IDs
+		ready_ids=$(jq -r '.items[] | select(.status == "ready") | .id' \
+			"${ORCH_STATE_FILE}")
+		spawned=0
+		for rid in ${ready_ids}; do
+			if ((spawned >= available_slots)); then break; fi
+			rdesc=$(jq -r ".items[] | select(.id == ${rid}) | .description" \
+				"${ORCH_STATE_FILE}")
+			spawn_worker "${rid}" "${rdesc}"
+			spawned=$((spawned + 1))
+		done
+	fi
+
+	# Sleep before next poll
+	sleep "${POLL_INTERVAL}"
+done
+
+# --- Post-completion: run per-item review ---
+
+echo "orch-run: running per-item review via orch-review.sh"
+"${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+
+# Read review result from state
+REVIEW_RESULT=$(jq -r '.finalReview.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
+
+if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
+	echo ""
+	echo "orch-run: SHIP — all items passed review"
+	# Play completion sound if available
+	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
+		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
+	fi
+	# Clean up tmux session
+	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+	echo "orch-run: tmux session '${TMUX_SESSION}' cleaned up"
+elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
+	echo ""
+	echo "orch-run: REVISE — some items need rework"
+	echo "  Review reset failed items to 'ready' in state.json"
+	echo "  Re-running wave execution for rework items..."
+	echo ""
+
+	# Update counts and re-enter the wave loop
+	# orch-review.sh already set failed items back to "ready"
+	exec "${SCRIPT_DIR}/orch-run.sh" "${SLUG}" --max-workers "${MAX_WORKERS}"
+else
+	echo "orch-run: unexpected review result: ${REVIEW_RESULT}" >&2
+	exit 1
+fi

@@ -94,6 +94,51 @@ orch_sync_done_files() {
 	fi
 }
 
+# --- Promotion (queued → ready when deps satisfied) ---
+
+orch_promote_ready_items() {
+	local state
+	state=$(cat "${ORCH_STATE_FILE}")
+
+	local before_ready
+	before_ready=$(printf '%s' "${state}" | jq \
+		'[.items[] | select(.status == "ready")] | length')
+
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	local updated
+	updated=$(printf '%s' "${state}" | jq --arg now "${now}" '
+		.items as $all |
+		.items = [
+			$all[] | . as $item |
+			if $item.status == "queued" then
+				if ($item.deps | length) == 0 then
+					.status = "ready"
+				elif ([$all[] | select(.id == ($item.deps[])) | .status] | all(. == "done")) then
+					.status = "ready"
+				else .
+				end
+			else .
+			end
+		] |
+		.updatedAt = $now
+	')
+
+	local after_ready
+	after_ready=$(printf '%s' "${updated}" | jq \
+		'[.items[] | select(.status == "ready")] | length')
+
+	local promoted=$((after_ready - before_ready))
+
+	if ((promoted > 0)); then
+		orch_write_state "${updated}"
+		echo "orch-state: promoted ${promoted} item(s) from queued to ready"
+	fi
+
+	return 0
+}
+
 # --- Queries ---
 
 orch_count_by_status() {

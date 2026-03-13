@@ -166,8 +166,9 @@ Components:
   (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
   (`orch-review.sh`) to `~/.claude/scripts/`, Ink dashboard components to
   `~/.claude/scripts/terminal-ui/src/`, and worker agent definition
-  (`orch-worker.md`) to `~/.claude/agents/`. Requires Terminal UI and tmux.
-  Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
+  (`orch-worker.md`) to `~/.claude/agents/`. Polling interval controlled by
+  `poll_interval_seconds` in `ralph.yaml` (default 30). Requires Terminal UI
+  and tmux. Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.claude/scripts/orch-run.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
   market projects. Installs `canon-scaffold.sh` (deterministic project
@@ -271,7 +272,8 @@ Safe to overwrite — these are engine scripts with no user customization.
 - If `ralph.yaml` does **not** exist in the cwd: write it directly.
 - If it **does** exist: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite — the user
-  may have customized `max_iterations` or `success_criteria`.
+  may have customized `max_iterations`, `poll_interval_seconds`, or
+  `success_criteria`.
 
 No per-project scripts are needed. The global engine at
 `~/.claude/scripts/ralph-loop.sh` reads `ralph.yaml` from `$PWD`.
