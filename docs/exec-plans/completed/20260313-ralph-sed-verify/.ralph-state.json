@@ -1,0 +1,24 @@
+{
+  "slug": "20260313-ralph-sed-verify",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Create /tmp/ralph-sed-test/goodbye.txt with content \"goodbye world\" and write a multiline context-handoff entry describing what was done (deps: 1)",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "2b48caee45994103bac72bf74e593fe1d869c8bd51d31e99013e641f2fb7a1b0",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  },
+  "current_review": {
+    "num": 2,
+    "text": "Create /tmp/ralph-sed-test/goodbye.txt with content \"goodbye world\" and write a multiline context-handoff entry describing what was done (deps: 1)",
+    "handoff": "Created /tmp/ralph-sed-test/goodbye.txt with content \"goodbye world\".\nVerified the file content reads back correctly via cat.\nBoth test files now exist: hello.txt and goodbye.txt in /tmp/ralph-sed-test/.\nThis was the second and final item — the reviewer should confirm both files\nexist and that the per-item sed handling worked without errors on multiline handoff text."
+  }
+}
