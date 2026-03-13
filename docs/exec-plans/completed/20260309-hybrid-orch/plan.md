@@ -1,4 +1,8 @@
-# Hybrid Orchestrator: State Layer + Agent Teams Execution
+# [DEPRECATED] Hybrid Orchestrator: State Layer + Agent Teams Execution
+
+> **Deprecated 2026-03-13.** Replaced by `20260310-orch-tmux-rebuild`. The Agent
+> Teams approach was abandoned in favor of provider-agnostic tmux execution.
+> State layer work from this plan was kept; execution engine was rewritten.
 
 Slim down the orchestrator to two concerns: (1) persistent state management
 for resumability, and (2) a thin launcher that delegates execution to Claude
