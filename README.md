@@ -153,7 +153,6 @@ claude-local() {
 Copy `settings.json` to `~/.claude/settings.json` (or merge entries into your existing file). The `$schema` key enables autocomplete and validation in editors that support JSON Schema. The template includes:
 
 - **`env` (privacy)** -- disables three non-essential outbound streams: Statsig telemetry (`DISABLE_TELEMETRY`), Sentry error reporting (`DISABLE_ERROR_REPORTING`), and feedback surveys (`CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`). Avoid the umbrella `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` -- it also disables auto-updates.
-- **`env` (agent teams)** -- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enables [multi-agent teams](https://code.claude.com/docs/en/agent-teams) where one session coordinates multiple teammates with independent context windows. Experimental -- known limitations around session resumption and task coordination.
 - **`enableAllProjectMcpServers: false`** -- this is the default, set explicitly so it doesn't get flipped by accident. Project `.mcp.json` files live in git, so a compromised repo could ship malicious MCP servers.
 - **`alwaysThinkingEnabled: true`** -- persists [extended thinking](https://code.claude.com/docs/en/common-workflows#use-extended-thinking-thinking-mode) across sessions. Toggle per-session with `Option+T`. Adds latency and cost on simple tasks; worth it for complex reasoning.
 - **`permissions`** -- deny rules that block reading credentials/secrets and editing shell config (see [Sandboxing](#sandboxing))

@@ -70,7 +70,6 @@ Files available:
 - `scripts/terminal-ui/src/orchestrator-app.tsx`
 - `scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx`
-- `agents/orch-lead.md`
 - `agents/orch-worker.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
@@ -113,7 +112,6 @@ Read and note which of these already exist:
 - `~/.claude/scripts/orch-parse-items.sh`
 - `~/.claude/scripts/orch-state.sh`
 - `~/.claude/scripts/orch-review.sh`
-- `~/.claude/agents/orch-lead.md`
 - `~/.claude/agents/orch-worker.md`
 
 Also check in the current working directory (target project root):
@@ -163,13 +161,12 @@ Components:
   Requires Node.js. Installs scripts to `~/.claude/scripts/` and builds
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
-- **Orchestrator** — hybrid orchestrator: persistent state layer + Agent Teams
-  execution. Installs thin launcher (`orch-run.sh`), state library
+- **Orchestrator** — tmux-based orchestrator: persistent state layer + wave-based
+  parallel execution. Installs launcher (`orch-run.sh`), state library
   (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
   (`orch-review.sh`) to `~/.claude/scripts/`, Ink dashboard components to
-  `~/.claude/scripts/terminal-ui/src/`, and agent definitions (`orch-lead.md`,
-  `orch-worker.md`) to `~/.claude/agents/`. Requires Terminal UI and
-  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.json.
+  `~/.claude/scripts/terminal-ui/src/`, and worker agent definition
+  (`orch-worker.md`) to `~/.claude/agents/`. Requires Terminal UI and tmux.
   Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.claude/scripts/orch-run.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
@@ -349,8 +346,7 @@ Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/session-table.tsx` → `~/.claude/scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx` → `~/.claude/scripts/terminal-ui/src/session-detail.tsx`
 
-Write the agent definitions:
-- `agents/orch-lead.md` → `~/.claude/agents/orch-lead.md`
+Write the agent definition:
 - `agents/orch-worker.md` → `~/.claude/agents/orch-worker.md`
 
 Safe to overwrite — these are engine scripts, components, and agent definitions

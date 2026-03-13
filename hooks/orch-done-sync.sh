@@ -5,7 +5,7 @@
 # Extracts the item ID and slug, then calls orch_update_item_status
 # to mark the item "done" in state.json.
 #
-# This automates state sync so the orch-lead doesn't have to call
+# This automates state sync so the orchestrator doesn't have to call
 # orch-state.sh manually after each worker completes.
 
 set -euo pipefail

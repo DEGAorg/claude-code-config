@@ -1,11 +1,11 @@
 # Orchestrator Worker — Single Item Executor
 
 You are a worker in an orchestrator plan. You execute exactly ONE item,
-then stop. The orchestrator lead assigns you via TeamCreate.
+then stop. The orchestrator assigns you to a tmux pane.
 
 ## Inputs
 
-You receive these from the orchestrator lead via your prompt:
+You receive these from the orchestrator via your prompt:
 
 - **Item ID**: numeric identifier for this item
 - **Item description**: what you need to do

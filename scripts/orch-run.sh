@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Thin orchestrator launcher — delegates execution to Claude Agent Teams.
+# Orchestrator launcher — spawns workers in tmux panes by dependency wave.
 #
 # Reads state.json for incomplete items (or initializes from plan.md),
-# builds an orchestrator prompt, and launches claude with Agent Teams
-# enabled. Claude's orchestrator agent creates a team of workers
-# that execute items in dependency order.
+# then launches claude workers in tmux panes grouped by dependency waves.
 #
 # Usage: scripts/orch-run.sh <slug> [--max-workers N]
 #
@@ -169,69 +167,15 @@ while IFS= read -r item_json; do
 - **Item ${item_id}**: ${item_desc} (deps: ${item_deps})"
 done < <(printf '%s' "${REMAINING_JSON}" | jq -c '.[]')
 
-# --- Build orchestrator prompt ---
-
-AGENT_DEF="${REPO_ROOT}/agents/orch-lead.md"
-if [[ ! -f "${AGENT_DEF}" ]]; then
-	echo "error: agent definition not found: ${AGENT_DEF}" >&2
-	exit 1
-fi
-
-ORCH_PROMPT="$(cat "${AGENT_DEF}")
-
-## Session context
-
-Plan path: \`${PLAN_DIR}/plan.md\`
-State file: \`${ORCH_STATE_FILE}\`
-Done-files directory: \`${DONE_DIR}/\`
-Scripts directory: \`${SCRIPT_DIR}\`
-Max parallel workers: ${MAX_WORKERS}
-Progress: ${DONE_COUNT}/${TOTAL_COUNT} items complete.
-
-## Remaining items
-${ITEMS_DESC}
-
-## What to do now
-
-1. Create team members for all items in wave 1 (deps satisfied).
-2. Wait for them to complete.
-3. Start wave 2 items whose deps are now done.
-4. Repeat until all items are complete.
-5. When all items are done, update state and report final status."
-
-# Append completed item context if resuming
-if [[ -n "${COMPLETED_CONTEXT}" ]]; then
-	ORCH_PROMPT="${ORCH_PROMPT}
-
-## Completed item summaries
-
-These items are already done. Workers for dependent items should
-read these to understand what exists.
-${COMPLETED_CONTEXT}"
-fi
-
-# --- Launch claude with Agent Teams ---
+# --- TODO: tmux wave-based execution engine ---
+# The execution engine (tmux session, pane spawning, wave polling,
+# done-file detection, state sync) will be implemented in the
+# orchestrator rebuild plan (20260310-orch-tmux-rebuild).
 
 echo ""
-echo "orch-run: launching claude with Agent Teams for '${SLUG}'"
+echo "orch-run: execution engine not yet implemented (tmux rewrite pending)"
+echo "  plan: ${SLUG}"
 echo "  items: ${REMAINING_COUNT} remaining, ${DONE_COUNT} done"
 echo "  max workers: ${MAX_WORKERS}"
 echo ""
-
-CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 \
-	env -u CLAUDECODE claude -p \
-	--dangerously-skip-permissions \
-	"${ORCH_PROMPT}" || {
-	EXIT_CODE=$?
-	echo "orch-run: claude exited with code ${EXIT_CODE}" >&2
-	exit "${EXIT_CODE}"
-}
-
-echo ""
-echo "orch-run: claude finished for plan '${SLUG}'"
-
-# --- Post-run: sync state ---
-
-orch_sync_done_files "${SLUG}"
-FINAL_DONE=$(orch_count_by_status "done")
-echo "orch-run: final state — ${FINAL_DONE}/${TOTAL_COUNT} items done"
+exit 1
