@@ -225,10 +225,9 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		tui_write metric.items="${COMPLETED_ITEMS}/${TOTAL_ITEMS}" \
 			metric.currentTask="${CURRENT_TASK}" \
 			log.info="Item ${COMPLETED_ITEMS}/${TOTAL_ITEMS}: ${CURRENT_TASK}"
-		WORKER_CONTEXT=$(sed \
-			-e "s|{TASK_DIR}|${TASK_DIR}|g" \
-			-e "s|{STATE_FILE}|${STATE_FILE}|g" \
-			"${WORKER_PROMPT}")
+		WORKER_CONTEXT=$(cat "${WORKER_PROMPT}")
+		WORKER_CONTEXT="${WORKER_CONTEXT//\{TASK_DIR\}/${TASK_DIR}}"
+		WORKER_CONTEXT="${WORKER_CONTEXT//\{STATE_FILE\}/${STATE_FILE}}"
 		HANDOFF=""
 		[[ -f "${TASK_DIR}/context-handoff.txt" ]] &&
 			HANDOFF=$(cat "${TASK_DIR}/context-handoff.txt")
@@ -365,12 +364,11 @@ EOF
 			log.info="Reviewing item ${NUM}: ${TEXT}"
 
 		# Build per-item reviewer prompt
-		ITEM_PROMPT=$(sed \
-			-e "s|{ITEM_TEXT}|${TEXT}|g" \
-			-e "s|{ITEM_NUM}|${NUM}|g" \
-			-e "s|{REVIEW_DIR}|${REVIEW_DIR}|g" \
-			"${ITEM_REVIEWER_PROMPT}")
-		ITEM_PROMPT=$(printf '%s' "${ITEM_PROMPT}" | sed "s|{ITEM_HANDOFF}|${HANDOFF}|g")
+		ITEM_PROMPT=$(cat "${ITEM_REVIEWER_PROMPT}")
+		ITEM_PROMPT="${ITEM_PROMPT//\{ITEM_TEXT\}/${TEXT}}"
+		ITEM_PROMPT="${ITEM_PROMPT//\{ITEM_NUM\}/${NUM}}"
+		ITEM_PROMPT="${ITEM_PROMPT//\{REVIEW_DIR\}/${REVIEW_DIR}}"
+		ITEM_PROMPT="${ITEM_PROMPT//\{ITEM_HANDOFF\}/${HANDOFF}}"
 
 		RALPH_ROLE=reviewer RALPH_TASK_DIR="${TASK_DIR}" \
 			RALPH_REVIEW_ITEM="${NUM}" \

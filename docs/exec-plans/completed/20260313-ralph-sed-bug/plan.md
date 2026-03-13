@@ -40,9 +40,9 @@ Two substitution sites in `ralph-loop.sh`:
 
 ## Progress log
 
-- [ ] Replace sed with bash expansion for worker prompt substitution (lines 228-231)
-- [ ] Replace sed with bash expansion for reviewer prompt substitution (lines 368-373)
-- [ ] Test: run ralph-loop.sh on a plan where context-handoff.txt has multiline content
+- [x] Replace sed with bash expansion for worker prompt substitution (lines 228-231)
+- [x] Replace sed with bash expansion for reviewer prompt substitution (lines 368-373)
+- [x] Test: run ralph-loop.sh on a plan where context-handoff.txt has multiline content
 
 ## Decision log
 
@@ -52,6 +52,6 @@ Two substitution sites in `ralph-loop.sh`:
 
 ## Completion criteria
 
-- [ ] No `sed` template substitution remains in `ralph-loop.sh` (only structural sed like completion-criteria extraction is ok)
-- [ ] shellcheck and shfmt clean
-- [ ] Per-item review runs successfully with multiline handoff text
+- [x] No `sed` template substitution remains in `ralph-loop.sh` (only structural sed like completion-criteria extraction is ok)
+- [x] shellcheck and shfmt clean
+- [x] Per-item review runs successfully with multiline handoff text
