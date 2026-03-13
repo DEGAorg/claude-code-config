@@ -63,6 +63,7 @@ Files available:
 - `scripts/canon-scaffold.sh`
 - `scripts/canon.sh`
 - `scripts/orch-run.sh`
+- `scripts/orch-display.sh`
 - `scripts/orch-parse-items.sh`
 - `scripts/orch-state.sh`
 - `scripts/orch-review.sh`
@@ -109,6 +110,7 @@ Read and note which of these already exist:
 - `~/.claude/scripts/canon-scaffold.sh`
 - `~/.claude/scripts/canon.sh`
 - `~/.claude/scripts/orch-run.sh`
+- `~/.claude/scripts/orch-display.sh`
 - `~/.claude/scripts/orch-parse-items.sh`
 - `~/.claude/scripts/orch-state.sh`
 - `~/.claude/scripts/orch-review.sh`
@@ -162,9 +164,10 @@ Components:
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
 - **Orchestrator** — tmux-based orchestrator: persistent state layer + wave-based
-  parallel execution. Installs launcher (`orch-run.sh`), state library
-  (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
-  (`orch-review.sh`) to `~/.claude/scripts/`, Ink dashboard components to
+  parallel execution. Installs launcher (`orch-run.sh`), display opener
+  (`orch-display.sh`), state library (`orch-state.sh`), plan parser
+  (`orch-parse-items.sh`), review script (`orch-review.sh`) to
+  `~/.claude/scripts/`, Ink dashboard components to
   `~/.claude/scripts/terminal-ui/src/`, and worker agent definition
   (`orch-worker.md`) to `~/.claude/agents/`. Polling interval controlled by
   `poll_interval_seconds` in `ralph.yaml` (default 30). Requires Terminal UI
@@ -336,6 +339,7 @@ Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`, and
 
 Write each shell script to `~/.claude/scripts/`:
 - `scripts/orch-run.sh` → `~/.claude/scripts/orch-run.sh`
+- `scripts/orch-display.sh` → `~/.claude/scripts/orch-display.sh`
 - `scripts/orch-parse-items.sh` → `~/.claude/scripts/orch-parse-items.sh`
 - `scripts/orch-state.sh` → `~/.claude/scripts/orch-state.sh`
 - `scripts/orch-review.sh` → `~/.claude/scripts/orch-review.sh`

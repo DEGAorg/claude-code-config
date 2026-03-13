@@ -4,9 +4,14 @@
 # Reads state.json for incomplete items (or initializes from plan.md),
 # then launches claude workers in tmux panes grouped by dependency waves.
 #
-# Usage: scripts/orch-run.sh <slug> [--max-workers N]
+# Usage: scripts/orch-run.sh <slug> [--max-workers N] [--background]
+#
+# Options:
+#   --max-workers N   Max concurrent workers (default: 4)
+#   --background      Headless mode — tmux only, no display windows
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
+# Example: scripts/orch-run.sh 20260309-orch-smoke-test --background
 
 set -euo pipefail
 
@@ -20,6 +25,7 @@ source "${SCRIPT_DIR}/orch-state.sh"
 
 SLUG=""
 MAX_WORKERS=4
+BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -27,9 +33,13 @@ while [[ $# -gt 0 ]]; do
 		MAX_WORKERS="${2:-4}"
 		shift 2
 		;;
+	--background)
+		BACKGROUND=true
+		shift
+		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--max-workers N]" >&2
+		echo "usage: orch-run.sh <slug> [--max-workers N] [--background]" >&2
 		exit 1
 		;;
 	*)
@@ -40,7 +50,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--max-workers N]" >&2
+	echo "error: usage: orch-run.sh <slug> [--max-workers N] [--background]" >&2
 	exit 1
 fi
 
@@ -178,10 +188,19 @@ TMUX_SESSION="orch-${SLUG}"
 if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	echo "orch-run: attaching to existing tmux session '${TMUX_SESSION}'"
 else
+	TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
 	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" \
-		"echo 'orch-run: dashboard — watching ${ORCH_STATE_FILE}'; \
-		 while true; do clear; jq . '${ORCH_STATE_FILE}' 2>/dev/null || echo 'waiting...'; sleep 2; done"
-	echo "orch-run: created tmux session '${TMUX_SESSION}' with dashboard pane"
+		"node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}'"
+	echo "orch-run: created tmux session '${TMUX_SESSION}' with Ink dashboard"
+fi
+
+# --- Open display windows (foreground mode) ---
+
+if [[ "${BACKGROUND}" == false ]]; then
+	bash "${SCRIPT_DIR}/orch-display.sh" "${TMUX_SESSION}" || true
+else
+	echo "orch-run: background mode — skipping display windows"
+	echo "  Attach manually: tmux attach-session -t '${TMUX_SESSION}' -r"
 fi
 
 # --- Helper: build worker prompt for an item ---
@@ -355,7 +374,12 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 
 	# Update counts and re-enter the wave loop
 	# orch-review.sh already set failed items back to "ready"
-	exec "${SCRIPT_DIR}/orch-run.sh" "${SLUG}" --max-workers "${MAX_WORKERS}"
+	BACKGROUND_FLAG=""
+	if [[ "${BACKGROUND}" == true ]]; then
+		BACKGROUND_FLAG="--background"
+	fi
+	# shellcheck disable=SC2086
+	exec "${SCRIPT_DIR}/orch-run.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" ${BACKGROUND_FLAG}
 else
 	echo "orch-run: unexpected review result: ${REVIEW_RESULT}" >&2
 	exit 1

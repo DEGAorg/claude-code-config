@@ -1,0 +1,17 @@
+DONE:
+- Created scripts/orch-display.sh: platform-aware terminal opener with read-only tmux attach
+- Added --orch <state-path> entry point to scripts/terminal-ui/src/cli.tsx that renders OrchestratorApp
+- Built terminal-ui: pnpm install (deps up to date) and pnpm run build (tsc) both succeeded
+- Build output verified: dist/cli.js and dist/orchestrator-app.js present
+- Replaced `watch jq` dashboard in orch-run.sh with Ink dashboard command (node terminal-ui/dist/cli.js --orch <state-path>)
+- Added --background flag to orch-run.sh (foreground with auto-open display windows is default)
+- Tested on macOS: orch-display.sh opens Terminal.app window, Ink dashboard renders correctly in tmux, error handling works
+- Fixed orch-display.sh: added portable run_with_timeout (macOS lacks GNU timeout), wrapped osascript with 10s timeout
+- Verified shellcheck and shfmt clean on both scripts
+- Updated commands/apply-core.md manifest with orch-display.sh in Source list, inventory check, install section, and component description
+
+REMAINING:
+- none (all progress log items checked)
+
+BLOCKERS:
+- none

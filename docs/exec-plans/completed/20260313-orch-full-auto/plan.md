@@ -58,13 +58,13 @@ Add `--orch <state-path>` mode to `cli.tsx` that renders `orchestrator-app.tsx`.
 
 ## Progress log
 
-- [ ] Create `scripts/orch-display.sh`: detect platform, open terminal window(s) attached to tmux session (read-only)
-- [ ] Add `--orch <state-path>` entry point to `scripts/terminal-ui/src/cli.tsx` that renders `orchestrator-app.tsx`
-- [ ] Build terminal-ui: `cd scripts/terminal-ui && pnpm install && pnpm run build` (deps: 2)
-- [ ] Replace `watch jq` dashboard in `orch-run.sh` with Ink dashboard command (deps: 3)
-- [ ] Add `--background` flag to `orch-run.sh`, make foreground (auto-open windows) the default (deps: 1, 4)
-- [ ] Test: `orch-run.sh <slug>` opens terminal windows with dashboard and workers visible on macOS (deps: 5)
-- [ ] Update `commands/apply-core.md` manifest with `orch-display.sh` (deps: 5)
+- [x] Create `scripts/orch-display.sh`: detect platform, open terminal window(s) attached to tmux session (read-only)
+- [x] Add `--orch <state-path>` entry point to `scripts/terminal-ui/src/cli.tsx` that renders `orchestrator-app.tsx`
+- [x] Build terminal-ui: `cd scripts/terminal-ui && pnpm install && pnpm run build` (deps: 2)
+- [x] Replace `watch jq` dashboard in `orch-run.sh` with Ink dashboard command (deps: 3)
+- [x] Add `--background` flag to `orch-run.sh`, make foreground (auto-open windows) the default (deps: 1, 4)
+- [x] Test: `orch-run.sh <slug>` opens terminal windows with dashboard and workers visible on macOS (deps: 5)
+- [x] Update `commands/apply-core.md` manifest with `orch-display.sh` (deps: 5)
 
 ## Decision log
 
