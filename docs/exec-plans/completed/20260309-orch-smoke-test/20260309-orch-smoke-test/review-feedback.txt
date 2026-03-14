@@ -1,0 +1,5 @@
+REWORK_ITEMS: 8
+
+--- item 8 ---
+FINDING: report.md:42 claims "All 16 assertions passed across 3 test files" but the actual count is 14 (2 math + 3 string + 9 integration). The report's own PASS lines also total 14, contradicting the summary.
+ACTION: Change line 42 of /tmp/orch-smoke-test/docs/report.md from "All 16 assertions passed" to "All 14 assertions passed"
