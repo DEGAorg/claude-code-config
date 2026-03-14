@@ -49,12 +49,18 @@ orch_plan_review_dir() {
 	printf '%s/reviews' "$(orch_plan_dir "${slug}")"
 }
 
+orch_plan_log_dir() {
+	local slug="$1"
+	printf '%s/logs' "$(orch_plan_dir "${slug}")"
+}
+
 # --- Directory setup ---
 
 orch_ensure_plan_dirs() {
 	local slug="$1"
 	mkdir -p "$(orch_plan_done_dir "${slug}")"
 	mkdir -p "$(orch_plan_review_dir "${slug}")"
+	mkdir -p "$(orch_plan_log_dir "${slug}")"
 }
 
 # --- Atomic writes ---
@@ -416,6 +422,42 @@ orch_cleanup_worktree() {
 		git -C "${ORCH_REPO_ROOT}" branch -D "${branch}"
 		echo "orch-state: deleted branch ${branch}"
 	fi
+}
+
+# --- Kill finished worker windows ---
+
+orch_kill_done_workers() {
+	local slug="$1"
+	local tmux_session="orch-${slug}"
+
+	if ! tmux has-session -t "${tmux_session}" 2>/dev/null; then
+		return 0
+	fi
+
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
+	if [[ ! -f "${state_file}" ]]; then
+		return 0
+	fi
+
+	local done_ids
+	done_ids=$(jq -r '.items[] | select(.status == "done") | .id' "${state_file}")
+
+	if [[ -z "${done_ids}" ]]; then
+		return 0
+	fi
+
+	local live_windows
+	live_windows=$(tmux list-windows -t "${tmux_session}" \
+		-F '#{window_name}' 2>/dev/null || true)
+
+	for item_id in ${done_ids}; do
+		local window_name="worker-${item_id}"
+		if printf '%s\n' "${live_windows}" | grep -qx "${window_name}"; then
+			tmux kill-window -t "${tmux_session}:${window_name}" 2>/dev/null || true
+			echo "orch-state: killed finished worker window ${window_name}"
+		fi
+	done
 }
 
 # --- Queries ---

@@ -80,14 +80,14 @@ tmux kill-window -t "${SESSION}:worker-${ID}" 2>/dev/null
 
 ## Progress log
 
-- [ ] Add `orch_plan_log_dir()` to `orch-state.sh` and `orch_ensure_plan_dirs`. (deps: none)
-- [ ] Add `orch_kill_done_workers()` to `orch-state.sh`: takes slug, reads state for newly-done items with tmux windows, kills them. (deps: none)
-- [ ] Update `orch-run.sh` spawn_worker: add `-d` flag to `tmux new-window`, add `tmux pipe-pane` after spawn to stream output to `logs/worker-N.log`. (deps: 1)
-- [ ] Update `orch-run.sh` poll loop: call `orch_kill_done_workers` after `orch_sync_done_files`. (deps: 2)
-- [ ] Add `orchPlanLogDir()` to `orch-types.ts`. (deps: none)
-- [ ] Update `orchestrator-app.tsx`: watch selected item's log file via chokidar, read tail on change, set `outputLines` state. Swap watcher on selection change. (deps: 5)
-- [ ] Update `session-detail.tsx`: strip ANSI escape sequences from output lines before rendering. (deps: none)
-- [ ] Rebuild terminal-ui and test with the demo plan: verify live output appears in dashboard, workers don't steal focus, finished windows auto-close. (deps: 3, 4, 6, 7)
+- [x] Add `orch_plan_log_dir()` to `orch-state.sh` and `orch_ensure_plan_dirs`. (deps: none)
+- [x] Add `orch_kill_done_workers()` to `orch-state.sh`: takes slug, reads state for newly-done items with tmux windows, kills them. (deps: none)
+- [x] Update `orch-run.sh` spawn_worker: add `-d` flag to `tmux new-window`, add `tmux pipe-pane` after spawn to stream output to `logs/worker-N.log`. (deps: 1)
+- [x] Update `orch-run.sh` poll loop: call `orch_kill_done_workers` after `orch_sync_done_files`. (deps: 2)
+- [x] Add `orchPlanLogDir()` to `orch-types.ts`. (deps: none)
+- [x] Update `orchestrator-app.tsx`: watch selected item's log file via chokidar, read tail on change, set `outputLines` state. Swap watcher on selection change. (deps: 5)
+- [x] Update `session-detail.tsx`: strip ANSI escape sequences from output lines before rendering. (deps: none)
+- [x] Rebuild terminal-ui and test with the demo plan: verify live output appears in dashboard, workers don't steal focus, finished windows auto-close. (deps: 3, 4, 6, 7)
 
 ## Decision log
 

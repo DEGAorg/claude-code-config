@@ -65,6 +65,7 @@ fi
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
+LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # --- Initialize or resume state ---
@@ -325,12 +326,20 @@ spawn_worker() {
 		claude_cmd="claude --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
 	fi
 
-	tmux new-window -t "${TMUX_SESSION}" -n "${pane_name}" \
+	# Kill stale window from previous iteration if it exists
+	tmux kill-window -t "${TMUX_SESSION}:${pane_name}" 2>/dev/null || true
+
+	# Spawn in background (-d) so dashboard keeps focus
+	tmux new-window -d -t "${TMUX_SESSION}" -n "${pane_name}" \
 		"cd '${WORKTREE_DIR}' && \
 		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
 		 env -u CLAUDECODE ${claude_cmd} ; \
 		 echo '--- worker ${item_id} exited ---'; \
 		 sleep 5"
+
+	# Stream worker output to log file for the dashboard
+	tmux pipe-pane -t "${TMUX_SESSION}:${pane_name}" \
+		-o "cat >> '${LOG_DIR}/worker-${item_id}.log'"
 
 	echo "orch-run: spawned ${pane_name} for item ${item_id}: ${item_desc}"
 }
@@ -347,8 +356,9 @@ echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
 while true; do
-	# Sync done-files, detect stale workers, and promote newly unblocked items
+	# Sync done-files, kill finished windows, detect stale workers, promote
 	orch_sync_done_files "${SLUG}"
+	orch_kill_done_workers "${SLUG}"
 	orch_detect_stale_workers "${SLUG}"
 	orch_promote_ready_items "${SLUG}"
 

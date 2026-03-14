@@ -172,6 +172,11 @@ export function orchPlanReviewsDir(slug: string): string {
   return `${ORCH_PLANS_DIR}/${slug}/reviews`;
 }
 
+/** Build path to a plan's log directory relative to project root. */
+export function orchPlanLogDir(slug: string): string {
+  return `${ORCH_PLANS_DIR}/${slug}/logs`;
+}
+
 /** Build path to a plan's worktree relative to project root. */
 export function orchPlanWorktree(slug: string): string {
   return `${ORCH_WORKTREES_DIR}/${slug}`;

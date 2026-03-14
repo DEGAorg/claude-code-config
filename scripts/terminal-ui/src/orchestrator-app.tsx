@@ -69,6 +69,42 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     };
   }, [statePath, loadState]);
 
+  // Watch the selected item's log file for live output
+  const hasState = state !== null;
+  useEffect(() => {
+    if (selectedId === null || !hasState) {
+      setOutputLines([]);
+      return;
+    }
+
+    const logDir = resolve(dirname(statePath), "logs");
+    const logPath = resolve(logDir, `worker-${selectedId}.log`);
+
+    const readTail = async () => {
+      try {
+        const content = await readFile(logPath, "utf-8");
+        const lines = content.split("\n");
+        setOutputLines(lines.slice(-200));
+      } catch {
+        // File may not exist yet if worker hasn't started
+      }
+    };
+
+    void readTail();
+
+    const logWatcher = watch(logPath, {
+      persistent: true,
+      ignoreInitial: true,
+    });
+
+    logWatcher.on("change", () => void readTail());
+    logWatcher.on("add", () => void readTail());
+
+    return () => {
+      void logWatcher.close();
+    };
+  }, [selectedId, hasState, statePath]);
+
   // Keyboard navigation: j/k or arrows to select items
   // Only enable when raw mode is supported (requires TTY stdin)
   const { isRawModeSupported } = useStdin();
