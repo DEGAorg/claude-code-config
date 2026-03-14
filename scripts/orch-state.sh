@@ -456,6 +456,63 @@ orch_create_worktree() {
 	echo "orch-state: created worktree at ${worktree_dir} on branch ${branch}"
 }
 
+orch_commit_worktree() {
+	local slug="$1"
+	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
+
+	if [[ ! -d "${worktree_dir}" ]]; then
+		echo "orch-state: no worktree to commit"
+		return 0
+	fi
+
+	# Check for any changes (staged, unstaged, or untracked)
+	local has_changes
+	has_changes=$(git -C "${worktree_dir}" status --porcelain 2>/dev/null || true)
+
+	if [[ -z "${has_changes}" ]]; then
+		echo "orch-state: worktree has no changes to commit"
+		return 0
+	fi
+
+	# Stage and commit all changes in the worktree
+	git -C "${worktree_dir}" add -A
+	git -C "${worktree_dir}" commit -m "orch: ${slug} — worker changes
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+	echo "orch-state: committed worker changes in worktree"
+}
+
+orch_merge_worktree() {
+	local slug="$1"
+	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
+	local branch="orch/${slug}"
+
+	if [[ ! -d "${worktree_dir}" ]]; then
+		echo "orch-state: no worktree to merge"
+		return 0
+	fi
+
+	# Commit any uncommitted changes first
+	orch_commit_worktree "${slug}"
+
+	# Check if the worktree branch has commits ahead of the source
+	local source_branch
+	source_branch=$(git -C "${ORCH_REPO_ROOT}" rev-parse --abbrev-ref HEAD)
+	local ahead
+	ahead=$(git -C "${ORCH_REPO_ROOT}" rev-list \
+		"${source_branch}..${branch}" --count 2>/dev/null || echo "0")
+
+	if [[ "${ahead}" -eq 0 ]]; then
+		echo "orch-state: worktree branch has no new commits to merge"
+		return 0
+	fi
+
+	# Merge the worktree branch into the current branch
+	git -C "${ORCH_REPO_ROOT}" merge "${branch}" \
+		--no-edit -m "orch: merge ${slug} worker changes"
+	echo "orch-state: merged ${ahead} commit(s) from ${branch} into ${source_branch}"
+}
+
 orch_cleanup_worktree() {
 	local slug="$1"
 	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"

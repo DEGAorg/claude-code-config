@@ -416,7 +416,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
 	fi
-	# Deregister from master and clean up worktree
+	# Merge worker changes, deregister, and clean up worktree
+	orch_merge_worktree "${SLUG}"
 	orch_master_deregister "${SLUG}" "completed"
 	orch_cleanup_worktree "${SLUG}"
 	# Clean up tmux session
