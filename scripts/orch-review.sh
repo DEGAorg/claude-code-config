@@ -28,6 +28,7 @@ PROMPT_TEMPLATE="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
+WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
@@ -102,11 +103,19 @@ for item_id in ${ITEM_IDS}; do
 	# Remove stale review file
 	rm -f "${REVIEW_FILE}"
 
+	# Run reviewer in the worktree so it sees worker changes
+	REVIEW_CWD="${REPO_ROOT}"
+	if [[ -d "${WORKTREE_DIR}" ]]; then
+		REVIEW_CWD="${WORKTREE_DIR}"
+		echo "orch-review: running in worktree: ${WORKTREE_DIR}"
+	fi
+
 	# Spawn reviewer agent
-	RALPH_ROLE=reviewer RALPH_TASK_DIR="${PLAN_DIR}" RALPH_LOOP=1 \
-		env -u CLAUDECODE claude -p \
-		--dangerously-skip-permissions \
-		"${REVIEW_PROMPT}" || true
+	(cd "${REVIEW_CWD}" &&
+		RALPH_ROLE=reviewer RALPH_TASK_DIR="${PLAN_DIR}" RALPH_LOOP=1 \
+			env -u CLAUDECODE claude -p \
+			--dangerously-skip-permissions \
+			"${REVIEW_PROMPT}") || true
 
 	# Read decision
 	if [[ ! -f "${REVIEW_FILE}" ]]; then

@@ -122,6 +122,8 @@ orch_sync_done_files() {
 	state=$(cat "${state_file}")
 	local changed=false
 
+	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
+
 	local running_ids
 	running_ids=$(printf '%s' "${state}" | jq -r \
 		'.items[] | select(.status == "running") | .id')
@@ -129,6 +131,55 @@ orch_sync_done_files() {
 	for item_id in ${running_ids}; do
 		local done_file="${done_dir}/item-${item_id}.txt"
 		if [[ -f "${done_file}" ]]; then
+			# Verify worker actually changed files in the worktree
+			if [[ -d "${worktree_dir}" ]]; then
+				local has_changes
+				has_changes=$(git -C "${worktree_dir}" \
+					diff --stat HEAD 2>/dev/null || true)
+				local has_staged
+				has_staged=$(git -C "${worktree_dir}" \
+					diff --cached --stat HEAD 2>/dev/null || true)
+				local has_untracked
+				has_untracked=$(git -C "${worktree_dir}" \
+					ls-files --others --exclude-standard 2>/dev/null || true)
+
+				if [[ -z "${has_changes}" && -z "${has_staged}" && -z "${has_untracked}" ]]; then
+					echo "orch-state: item ${item_id} done-file exists but NO file changes in worktree — rejecting"
+					rm -f "${done_file}"
+
+					local cur_iter max_iter
+					cur_iter=$(printf '%s' "${state}" | jq \
+						".items[] | select(.id == ${item_id}) | .iteration // 0")
+					max_iter=$(printf '%s' "${state}" | jq \
+						".items[] | select(.id == ${item_id}) | .maxIterations // 3")
+					local next_iter=$((cur_iter + 1))
+
+					local now
+					now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+					if ((next_iter >= max_iter)); then
+						state=$(printf '%s' "${state}" | jq \
+							--argjson id "${item_id}" \
+							--arg now "${now}" \
+							'(.items[] | select(.id == $id)) |=
+							  (.status = "failed" | .lastResult = "no-changes-max-retries") |
+							 .updatedAt = $now')
+						echo "orch-state: item ${item_id} no changes — max retries exhausted, marked failed"
+					else
+						state=$(printf '%s' "${state}" | jq \
+							--argjson id "${item_id}" \
+							--argjson iter "${next_iter}" \
+							--arg now "${now}" \
+							'(.items[] | select(.id == $id)) |=
+							  (.status = "ready" | .iteration = $iter | .lastResult = "no-changes-retry") |
+							 .updatedAt = $now')
+						echo "orch-state: item ${item_id} no changes — reset to ready (iteration ${next_iter})"
+					fi
+					changed=true
+					continue
+				fi
+			fi
+
 			local now
 			now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 			state=$(printf '%s' "${state}" | jq \
