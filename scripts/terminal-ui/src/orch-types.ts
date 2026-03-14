@@ -99,6 +99,42 @@ export interface PlanSummary {
   readonly activeWorkers: number;
 }
 
+/** Progress snapshot for a plan in the master registry. */
+export interface PlanProgress {
+  readonly total: number;
+  readonly done: number;
+  readonly running: number;
+  readonly failed: number;
+}
+
+/** Status of a plan in the master registry. */
+export type PlanStatus = "running" | "completed" | "failed";
+
+/** Single plan entry in the master state registry. */
+export interface PlanEntry {
+  readonly slug: string;
+  readonly status: PlanStatus;
+  /** Relative path from `.orchestrator/` to the plan's state file. */
+  readonly statePath: string;
+  readonly tmuxSession: string;
+  /** Relative path from `.orchestrator/` to the plan's worktree. */
+  readonly worktree: string;
+  /** ISO 8601 — when the plan was started. */
+  readonly startedAt: string;
+  /** ISO 8601 — last update to this entry. */
+  readonly updatedAt: string;
+  /** Denormalized progress snapshot, updated each poll cycle. */
+  readonly progress: PlanProgress;
+}
+
+/** Master state registry (`.orchestrator/master.json`). */
+export interface MasterState {
+  readonly version: 1;
+  readonly plans: readonly PlanEntry[];
+  /** ISO 8601 — last master state write. */
+  readonly updatedAt: string;
+}
+
 /**
  * Default values for new orchestrator state.
  * Scripts use these when creating `.orchestrator/state.json`.
@@ -112,5 +148,37 @@ export const ORCH_DEFAULTS = {
 /** Path to orchestrator state dir relative to project root. */
 export const ORCH_STATE_DIR = ".orchestrator";
 
-/** Path to state file relative to project root. */
+/** Path to master state file relative to project root. */
+export const ORCH_MASTER_FILE = `${ORCH_STATE_DIR}/master.json`;
+
+/** Path to per-plan directory relative to project root. */
+export const ORCH_PLANS_DIR = `${ORCH_STATE_DIR}/plans`;
+
+/** Path to worktrees directory relative to project root. */
+export const ORCH_WORKTREES_DIR = `${ORCH_STATE_DIR}/worktrees`;
+
+/** Build path to a plan's state file relative to project root. */
+export function orchPlanStateFile(slug: string): string {
+  return `${ORCH_PLANS_DIR}/${slug}/state.json`;
+}
+
+/** Build path to a plan's done-files directory relative to project root. */
+export function orchPlanDoneDir(slug: string): string {
+  return `${ORCH_PLANS_DIR}/${slug}/done`;
+}
+
+/** Build path to a plan's reviews directory relative to project root. */
+export function orchPlanReviewsDir(slug: string): string {
+  return `${ORCH_PLANS_DIR}/${slug}/reviews`;
+}
+
+/** Build path to a plan's worktree relative to project root. */
+export function orchPlanWorktree(slug: string): string {
+  return `${ORCH_WORKTREES_DIR}/${slug}`;
+}
+
+/**
+ * @deprecated Use `orchPlanStateFile(slug)` for per-plan state.
+ * Kept temporarily for migration — will be removed.
+ */
 export const ORCH_STATE_FILE = `${ORCH_STATE_DIR}/state.json`;

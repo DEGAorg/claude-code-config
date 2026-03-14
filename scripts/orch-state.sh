@@ -2,14 +2,16 @@
 # Shared orchestrator state management library.
 # Source this from orch-*.sh scripts — do not execute directly.
 #
-# Single state file model: all item state lives in .orchestrator/state.json.
-# Workers report completion via done-files (.orchestrator/done/<slug>/item-N.txt)
+# Multi-plan model: each plan's state lives under .orchestrator/plans/<slug>/.
+# A master registry (.orchestrator/master.json) tracks all running plans.
+# Workers report completion via done-files (plans/<slug>/done/item-N.txt)
 # that the orchestrator reads — no per-item JSON state files.
 #
-# Provides: atomic writes, item status updates, done-file sync, and state queries.
+# Provides: atomic writes, item status updates, done-file sync, state queries,
+# master state registry, and worktree helpers.
 #
-# All functions expect ORCH_STATE_DIR and ORCH_STATE_FILE to be set
-# by the sourcing script (defaults provided below).
+# All functions expect ORCH_STATE_DIR to be set by the sourcing script
+# (default provided below). Per-plan paths are derived from the slug.
 #
 # Requires: jq
 
@@ -23,30 +25,72 @@ fi
 
 : "${ORCH_REPO_ROOT:="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"}"
 : "${ORCH_STATE_DIR:="${ORCH_REPO_ROOT}/.orchestrator"}"
-: "${ORCH_STATE_FILE:="${ORCH_STATE_DIR}/state.json"}"
+: "${ORCH_MASTER_FILE:="${ORCH_STATE_DIR}/master.json"}"
+
+# --- Per-plan path helpers ---
+
+orch_plan_dir() {
+	local slug="$1"
+	printf '%s/plans/%s' "${ORCH_STATE_DIR}" "${slug}"
+}
+
+orch_plan_state_file() {
+	local slug="$1"
+	printf '%s/state.json' "$(orch_plan_dir "${slug}")"
+}
+
+orch_plan_done_dir() {
+	local slug="$1"
+	printf '%s/done' "$(orch_plan_dir "${slug}")"
+}
+
+orch_plan_review_dir() {
+	local slug="$1"
+	printf '%s/reviews' "$(orch_plan_dir "${slug}")"
+}
 
 # --- Directory setup ---
 
-orch_ensure_done_dir() {
+orch_ensure_plan_dirs() {
 	local slug="$1"
-	mkdir -p "${ORCH_STATE_DIR}/done/${slug}"
+	mkdir -p "$(orch_plan_done_dir "${slug}")"
+	mkdir -p "$(orch_plan_review_dir "${slug}")"
 }
 
 # --- Atomic writes ---
 
 orch_write_state() {
-	local json="$1"
+	local slug="$1"
+	local json="$2"
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
+	local plan_dir
+	plan_dir=$(orch_plan_dir "${slug}")
+
+	mkdir -p "${plan_dir}"
 	local tmp
-	tmp=$(mktemp "${ORCH_STATE_DIR}/state.XXXXXX.json")
+	tmp=$(mktemp "${plan_dir}/state.XXXXXX.json")
 	printf '%s\n' "${json}" >"${tmp}"
-	mv "${tmp}" "${ORCH_STATE_FILE}"
+	mv "${tmp}" "${state_file}"
+}
+
+orch_write_master() {
+	local json="$1"
+	mkdir -p "${ORCH_STATE_DIR}"
+	local tmp
+	tmp=$(mktemp "${ORCH_STATE_DIR}/master.XXXXXX.json")
+	printf '%s\n' "${json}" >"${tmp}"
+	mv "${tmp}" "${ORCH_MASTER_FILE}"
 }
 
 # --- Item status updates ---
 
 orch_update_item_status() {
-	local item_id="$1"
-	local new_status="$2"
+	local slug="$1"
+	local item_id="$2"
+	local new_status="$3"
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
 	local now
 	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -56,17 +100,20 @@ orch_update_item_status() {
 		--arg status "${new_status}" \
 		--arg now "${now}" \
 		'(.items[] | select(.id == $id)).status = $status |
-     .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${updated}"
+     .updatedAt = $now' "${state_file}")
+	orch_write_state "${slug}" "${updated}"
 }
 
 # --- Sync done-files into state ---
 
 orch_sync_done_files() {
 	local slug="$1"
-	local done_dir="${ORCH_STATE_DIR}/done/${slug}"
+	local done_dir
+	done_dir=$(orch_plan_done_dir "${slug}")
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
 	local state
-	state=$(cat "${ORCH_STATE_FILE}")
+	state=$(cat "${state_file}")
 	local changed=false
 
 	local running_ids
@@ -90,15 +137,18 @@ orch_sync_done_files() {
 	done
 
 	if [[ "${changed}" == "true" ]]; then
-		orch_write_state "${state}"
+		orch_write_state "${slug}" "${state}"
 	fi
 }
 
 # --- Promotion (queued → ready when deps satisfied) ---
 
 orch_promote_ready_items() {
+	local slug="$1"
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
 	local state
-	state=$(cat "${ORCH_STATE_FILE}")
+	state=$(cat "${state_file}")
 
 	local before_ready
 	before_ready=$(printf '%s' "${state}" | jq \
@@ -132,7 +182,7 @@ orch_promote_ready_items() {
 	local promoted=$((after_ready - before_ready))
 
 	if ((promoted > 0)); then
-		orch_write_state "${updated}"
+		orch_write_state "${slug}" "${updated}"
 		echo "orch-state: promoted ${promoted} item(s) from queued to ready"
 	fi
 
@@ -150,8 +200,10 @@ orch_detect_stale_workers() {
 		return 0
 	fi
 
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
 	local state
-	state=$(cat "${ORCH_STATE_FILE}")
+	state=$(cat "${state_file}")
 
 	local running_ids
 	running_ids=$(printf '%s' "${state}" | jq -r \
@@ -215,14 +267,164 @@ orch_detect_stale_workers() {
 	done
 
 	if [[ "${changed}" == "true" ]]; then
-		orch_write_state "${state}"
+		orch_write_state "${slug}" "${state}"
+	fi
+}
+
+# --- Master state registry ---
+
+orch_master_register() {
+	local slug="$1"
+	local tmux_session="orch-${slug}"
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	local master
+	if [[ -f "${ORCH_MASTER_FILE}" ]]; then
+		master=$(cat "${ORCH_MASTER_FILE}")
+		# Remove stale entry for same slug if present
+		master=$(printf '%s' "${master}" | jq \
+			--arg slug "${slug}" \
+			'.plans = [.plans[] | select(.slug != $slug)]')
+	else
+		master='{"version":1,"plans":[],"updatedAt":""}'
+	fi
+
+	local state_path="plans/${slug}/state.json"
+	local worktree_path="worktrees/${slug}"
+
+	master=$(printf '%s' "${master}" | jq \
+		--arg slug "${slug}" \
+		--arg status "running" \
+		--arg statePath "${state_path}" \
+		--arg tmux "${tmux_session}" \
+		--arg worktree "${worktree_path}" \
+		--arg now "${now}" \
+		'.plans += [{
+			slug: $slug,
+			status: $status,
+			statePath: $statePath,
+			tmuxSession: $tmux,
+			worktree: $worktree,
+			startedAt: $now,
+			updatedAt: $now,
+			progress: { total: 0, done: 0, running: 0, failed: 0 }
+		}] |
+		.updatedAt = $now')
+
+	orch_write_master "${master}"
+	echo "orch-state: registered plan ${slug} in master state"
+}
+
+orch_master_deregister() {
+	local slug="$1"
+	local final_status="${2:-completed}"
+
+	if [[ ! -f "${ORCH_MASTER_FILE}" ]]; then
+		return 0
+	fi
+
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	local master
+	master=$(jq \
+		--arg slug "${slug}" \
+		--arg status "${final_status}" \
+		--arg now "${now}" \
+		'(.plans[] | select(.slug == $slug)) |=
+			(.status = $status | .updatedAt = $now) |
+		 .updatedAt = $now' "${ORCH_MASTER_FILE}")
+
+	orch_write_master "${master}"
+	echo "orch-state: deregistered plan ${slug} (status: ${final_status})"
+}
+
+orch_master_update_progress() {
+	local slug="$1"
+
+	if [[ ! -f "${ORCH_MASTER_FILE}" ]]; then
+		return 0
+	fi
+
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
+	if [[ ! -f "${state_file}" ]]; then
+		return 0
+	fi
+
+	local cnt_total cnt_done cnt_running cnt_failed
+	cnt_total=$(jq '.items | length' "${state_file}")
+	cnt_done=$(jq '[.items[] | select(.status == "done")] | length' "${state_file}")
+	cnt_running=$(jq '[.items[] | select(.status == "running")] | length' "${state_file}")
+	cnt_failed=$(jq '[.items[] | select(.status == "failed")] | length' "${state_file}")
+
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	local master
+	master=$(jq \
+		--arg slug "${slug}" \
+		--argjson total "${cnt_total}" \
+		--argjson cnt_done "${cnt_done}" \
+		--argjson running "${cnt_running}" \
+		--argjson failed "${cnt_failed}" \
+		--arg now "${now}" \
+		'(.plans[] | select(.slug == $slug)) |=
+			(.progress = {
+				total: $total,
+				done: $cnt_done,
+				running: $running,
+				failed: $failed
+			} | .updatedAt = $now) |
+		 .updatedAt = $now' "${ORCH_MASTER_FILE}")
+
+	orch_write_master "${master}"
+}
+
+# --- Worktree helpers ---
+
+orch_create_worktree() {
+	local slug="$1"
+	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
+
+	if [[ -d "${worktree_dir}" ]]; then
+		echo "orch-state: worktree already exists at ${worktree_dir}"
+		return 0
+	fi
+
+	local branch="orch/${slug}"
+	mkdir -p "${ORCH_STATE_DIR}/worktrees"
+	git -C "${ORCH_REPO_ROOT}" worktree add "${worktree_dir}" -b "${branch}" HEAD
+	echo "orch-state: created worktree at ${worktree_dir} on branch ${branch}"
+}
+
+orch_cleanup_worktree() {
+	local slug="$1"
+	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
+
+	if [[ ! -d "${worktree_dir}" ]]; then
+		echo "orch-state: no worktree at ${worktree_dir} — nothing to clean up"
+		return 0
+	fi
+
+	git -C "${ORCH_REPO_ROOT}" worktree remove "${worktree_dir}" --force
+	echo "orch-state: removed worktree at ${worktree_dir}"
+
+	local branch="orch/${slug}"
+	if git -C "${ORCH_REPO_ROOT}" rev-parse --verify "${branch}" >/dev/null 2>&1; then
+		git -C "${ORCH_REPO_ROOT}" branch -D "${branch}"
+		echo "orch-state: deleted branch ${branch}"
 	fi
 }
 
 # --- Queries ---
 
 orch_count_by_status() {
-	local status="$1"
+	local slug="$1"
+	local status="$2"
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
 	jq "[.items[] | select(.status == \"${status}\")] | length" \
-		"${ORCH_STATE_FILE}"
+		"${state_file}"
 }

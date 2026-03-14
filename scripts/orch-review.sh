@@ -21,12 +21,13 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-ORCH_STATE_DIR="${REPO_ROOT}/.orchestrator"
-ORCH_STATE_FILE="${ORCH_STATE_DIR}/state.json"
 PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
-DONE_DIR="${ORCH_STATE_DIR}/done/${SLUG}"
-REVIEW_DIR="${ORCH_STATE_DIR}/reviews/${SLUG}"
 PROMPT_TEMPLATE="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
+
+# Per-plan paths from orch-state.sh helpers
+ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
+DONE_DIR=$(orch_plan_done_dir "${SLUG}")
+REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
@@ -64,7 +65,7 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq --arg now "${NOW}" \
 	'.finalReview.status = "running" | .updatedAt = $now' \
 	"${ORCH_STATE_FILE}")
-orch_write_state "${UPDATED}"
+orch_write_state "${SLUG}" "${UPDATED}"
 
 # --- Prepare review directory ---
 
@@ -145,7 +146,7 @@ if [[ ${#FAILED_ITEMS[@]} -eq 0 ]]; then
      .finalReview.result = "SHIP" |
      .finalReview.reworkItems = [] |
      .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${UPDATED}"
+	orch_write_state "${SLUG}" "${UPDATED}"
 else
 	echo ""
 	echo "orch-review: REVISE — ${#FAILED_ITEMS[@]} item(s) failed"
@@ -161,7 +162,7 @@ else
      reduce ($rework[] | tostring | tonumber) as $id (.;
        (.items[] | select(.id == $id)).status = "ready"
      )' "${ORCH_STATE_FILE}")
-	orch_write_state "${UPDATED}"
+	orch_write_state "${SLUG}" "${UPDATED}"
 
 	# Write consolidated feedback for the loop
 	FEEDBACK_FILE="${PLAN_DIR}/review-feedback.txt"

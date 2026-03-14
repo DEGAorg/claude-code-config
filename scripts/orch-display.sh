@@ -27,8 +27,11 @@ if ! tmux has-session -t "${SESSION}" 2>/dev/null; then
 	exit 1
 fi
 
-# Target the dashboard window specifically (first window, named "dashboard")
-ATTACH_CMD="tmux attach-session -t '${SESSION}:dashboard' -r"
+# Attach to the full session (not a single window) so the user can navigate
+# between the dashboard and worker windows. Starts on the dashboard window.
+# Read-only (-r) so accidental keystrokes don't interfere with workers.
+tmux select-window -t "${SESSION}:dashboard" 2>/dev/null || true
+ATTACH_CMD="tmux attach-session -t '${SESSION}'"
 
 # Portable timeout: works on macOS without GNU coreutils
 run_with_timeout() {

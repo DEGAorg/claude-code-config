@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Orchestrator launcher — spawns workers in tmux panes by dependency wave.
 #
-# Reads state.json for incomplete items (or initializes from plan.md),
+# Reads per-plan state.json for incomplete items (or initializes from plan.md),
 # then launches claude workers in tmux panes grouped by dependency waves.
+# Each plan gets its own worktree for file isolation and registers in master.json.
 #
 # Usage: scripts/orch-run.sh <slug> [--max-workers N] [--background]
 #
@@ -60,8 +61,11 @@ if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	exit 1
 fi
 
-ORCH_STATE_DIR="${REPO_ROOT}/.orchestrator"
-ORCH_STATE_FILE="${ORCH_STATE_DIR}/state.json"
+# Per-plan state paths (from orch-state.sh helpers)
+ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
+DONE_DIR=$(orch_plan_done_dir "${SLUG}")
+REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
+WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # --- Initialize or resume state ---
 
@@ -74,7 +78,7 @@ init_state() {
 		exit 1
 	fi
 
-	orch_ensure_done_dir "${SLUG}"
+	orch_ensure_plan_dirs "${SLUG}"
 	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 	MAX_ITER="${MAX_ITERATIONS:-3}"
@@ -114,8 +118,8 @@ init_state() {
 	    updatedAt: $updatedAt
 	  }')
 
-	orch_write_state "${STATE_JSON}"
-	orch_promote_ready_items
+	orch_write_state "${SLUG}" "${STATE_JSON}"
+	orch_promote_ready_items "${SLUG}"
 	echo "orch-run: initialized ${ITEM_COUNT} items for '${SLUG}'"
 }
 
@@ -132,6 +136,15 @@ else
 	init_state
 fi
 
+# --- Create worktree for file isolation ---
+
+orch_create_worktree "${SLUG}"
+echo "orch-run: workers will execute in worktree: ${WORKTREE_DIR}"
+
+# --- Register in master state ---
+
+orch_master_register "${SLUG}"
+
 # --- Read incomplete items from state ---
 
 REMAINING_JSON=$(jq '[.items[] | select(.status != "done")]' "${ORCH_STATE_FILE}")
@@ -141,14 +154,19 @@ DONE_COUNT=$(jq '[.items[] | select(.status == "done")] | length' "${ORCH_STATE_
 
 if [[ "${REMAINING_COUNT}" -eq 0 ]]; then
 	echo "orch-run: all ${TOTAL_COUNT} items already complete"
+	orch_master_deregister "${SLUG}" "completed"
+	orch_cleanup_worktree "${SLUG}"
 	exit 0
 fi
 
 echo "orch-run: ${DONE_COUNT}/${TOTAL_COUNT} done, ${REMAINING_COUNT} remaining"
 
+# --- Update master progress with initial counts ---
+
+orch_master_update_progress "${SLUG}"
+
 # --- Gather done-file summaries for completed items ---
 
-DONE_DIR="${ORCH_STATE_DIR}/done/${SLUG}"
 COMPLETED_CONTEXT=""
 
 DONE_IDS=$(jq -r '.items[] | select(.status == "done") | .id' "${ORCH_STATE_FILE}")
@@ -245,7 +263,7 @@ $(cat "${dep_file}")
 	done
 
 	# Check for per-item review feedback (rework iterations)
-	local review_file="${ORCH_STATE_DIR}/reviews/${SLUG}/item-${item_id}-review.txt"
+	local review_file="${REVIEW_DIR}/item-${item_id}-review.txt"
 	local review_context=""
 	if [[ -f "${review_file}" ]]; then
 		review_context="
@@ -269,6 +287,7 @@ $(cat "${review_file}")
 		- **Item description**: ${item_desc}
 		- **Plan path**: ${plan_path}
 		- **Done-files directory**: ${done_dir}
+		- **Worktree**: ${WORKTREE_DIR}
 
 		## Completed dependency summaries
 		${dep_context:-"(no dependencies)"}
@@ -284,7 +303,7 @@ spawn_worker() {
 	local pane_name="worker-${item_id}"
 
 	# Mark item as running
-	orch_update_item_status "${item_id}" "running"
+	orch_update_item_status "${SLUG}" "${item_id}" "running"
 
 	# Build prompt
 	local prompt
@@ -297,12 +316,19 @@ spawn_worker() {
 	prompt_file="${prompt_file}.md"
 	printf '%s\n' "${prompt}" >"${prompt_file}"
 
-	# Create tmux pane and run claude -p
+	# Create tmux window and run claude worker
+	# Foreground: interactive TUI (full claude). Background: headless (claude -p).
+	local claude_cmd
+	if [[ "${BACKGROUND}" == true ]]; then
+		claude_cmd="claude -p --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+	else
+		claude_cmd="claude --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+	fi
+
 	tmux new-window -t "${TMUX_SESSION}" -n "${pane_name}" \
-		"RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
-		 env -u CLAUDECODE claude -p \
-		 --dangerously-skip-permissions \
-		 \"\$(cat '${prompt_file}')\" ; \
+		"cd '${WORKTREE_DIR}' && \
+		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
+		 env -u CLAUDECODE ${claude_cmd} ; \
 		 echo '--- worker ${item_id} exited ---'; \
 		 sleep 5"
 
@@ -316,6 +342,7 @@ echo "orch-run: starting wave execution"
 echo "  plan: ${SLUG}"
 echo "  remaining: ${REMAINING_COUNT} items"
 echo "  max workers: ${MAX_WORKERS}"
+echo "  worktree: ${WORKTREE_DIR}"
 echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
@@ -323,14 +350,17 @@ while true; do
 	# Sync done-files, detect stale workers, and promote newly unblocked items
 	orch_sync_done_files "${SLUG}"
 	orch_detect_stale_workers "${SLUG}"
-	orch_promote_ready_items
+	orch_promote_ready_items "${SLUG}"
+
+	# Update master state with current progress
+	orch_master_update_progress "${SLUG}"
 
 	# Count current state
-	local_failed=$(orch_count_by_status "failed")
-	local_done=$(orch_count_by_status "done")
-	local_running=$(orch_count_by_status "running")
-	local_ready=$(orch_count_by_status "ready")
-	local_queued=$(orch_count_by_status "queued")
+	local_failed=$(orch_count_by_status "${SLUG}" "failed")
+	local_done=$(orch_count_by_status "${SLUG}" "done")
+	local_running=$(orch_count_by_status "${SLUG}" "running")
+	local_ready=$(orch_count_by_status "${SLUG}" "ready")
+	local_queued=$(orch_count_by_status "${SLUG}" "queued")
 
 	echo "orch-run: [poll] done=${local_done} running=${local_running} ready=${local_ready} queued=${local_queued} failed=${local_failed}"
 
@@ -376,6 +406,9 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
 	fi
+	# Deregister from master and clean up worktree
+	orch_master_deregister "${SLUG}" "completed"
+	orch_cleanup_worktree "${SLUG}"
 	# Clean up tmux session
 	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
 	echo "orch-run: tmux session '${TMUX_SESSION}' cleaned up"
@@ -385,6 +418,9 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo "  Review reset failed items to 'ready' in state.json"
 	echo "  Re-running wave execution for rework items..."
 	echo ""
+
+	# Update master progress before re-exec
+	orch_master_update_progress "${SLUG}"
 
 	# Update counts and re-enter the wave loop
 	# orch-review.sh already set failed items back to "ready"
@@ -396,5 +432,8 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	exec "${SCRIPT_DIR}/orch-run.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" ${BACKGROUND_FLAG}
 else
 	echo "orch-run: unexpected review result: ${REVIEW_RESULT}" >&2
+	# Deregister as failed
+	orch_master_deregister "${SLUG}" "failed"
+	orch_cleanup_worktree "${SLUG}"
 	exit 1
 fi
