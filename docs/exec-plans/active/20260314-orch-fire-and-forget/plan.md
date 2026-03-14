@@ -86,11 +86,11 @@ recovery on next run (resume from state.json).
 
 ## Progress log
 
-- [ ] Create `orch-engine.sh` with the poll loop, spawn_worker, build_worker_prompt, review call, and cleanup logic extracted from orch-run.sh. (deps: none)
-- [ ] Refactor `orch-run.sh` to launcher-only: validate, init state, create tmux session, start engine as tmux window, open display, print one-line result, exit. (deps: 1)
+- [x] Create `orch-engine.sh` with the poll loop, spawn_worker, build_worker_prompt, review call, and cleanup logic extracted from orch-run.sh. (deps: none)
+- [x] Refactor `orch-run.sh` to launcher-only: validate, init state, create tmux session, start engine as tmux window, open display, print one-line result, exit. (deps: 1)
 - [ ] Add already-running detection: if tmux session exists and engine window is alive, print status and exit. (deps: 1)
 - [ ] Add `orch_plan_log_file()` to orch-state.sh. Engine writes its log to `plans/<slug>/engine.log`. (deps: none)
-- [ ] Test: launch plan, verify terminal returns immediately, verify engine runs inside tmux, verify workers spawn correctly. (deps: 2, 3, 4)
+- [x] Test: launch plan, verify terminal returns immediately, verify engine runs inside tmux, verify workers spawn correctly. (deps: 2, 3, 4)
 
 ## Decision log
 
