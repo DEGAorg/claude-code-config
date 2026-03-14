@@ -139,6 +139,86 @@ orch_promote_ready_items() {
 	return 0
 }
 
+# --- Stale worker detection ---
+
+orch_detect_stale_workers() {
+	local slug="$1"
+	local tmux_session="orch-${slug}"
+
+	# Bail if tmux session doesn't exist
+	if ! tmux has-session -t "${tmux_session}" 2>/dev/null; then
+		return 0
+	fi
+
+	local state
+	state=$(cat "${ORCH_STATE_FILE}")
+
+	local running_ids
+	running_ids=$(printf '%s' "${state}" | jq -r \
+		'.items[] | select(.status == "running") | .id')
+
+	if [[ -z "${running_ids}" ]]; then
+		return 0
+	fi
+
+	# Get live (non-dead) worker windows from tmux
+	# Format: "worker-N 0" or "worker-N 1" where 1 = pane_dead
+	local live_workers
+	live_workers=$(tmux list-windows -t "${tmux_session}" \
+		-F '#{window_name} #{pane_dead}' 2>/dev/null || true)
+
+	local changed=false
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	for item_id in ${running_ids}; do
+		local pane_name="worker-${item_id}"
+		local is_alive=false
+
+		# Check if pane exists and is not dead
+		if printf '%s\n' "${live_workers}" | grep -q "^${pane_name} 0$"; then
+			is_alive=true
+		fi
+
+		if [[ "${is_alive}" == false ]]; then
+			# Worker pane is gone or dead — item is stale
+			local cur_iter max_iter
+			cur_iter=$(printf '%s' "${state}" | jq \
+				".items[] | select(.id == ${item_id}) | .iteration // 0")
+			max_iter=$(printf '%s' "${state}" | jq \
+				".items[] | select(.id == ${item_id}) | .maxIterations // 3")
+
+			local next_iter=$((cur_iter + 1))
+
+			if ((next_iter >= max_iter)); then
+				# Exhausted retries — mark failed
+				state=$(printf '%s' "${state}" | jq \
+					--argjson id "${item_id}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)) |=
+					  (.status = "failed" | .lastResult = "stale-max-retries") |
+					 .updatedAt = $now')
+				echo "orch-state: item ${item_id} stale — max retries exhausted, marked failed"
+			else
+				# Reset to ready for retry
+				state=$(printf '%s' "${state}" | jq \
+					--argjson id "${item_id}" \
+					--argjson iter "${next_iter}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)) |=
+					  (.status = "ready" | .iteration = $iter | .lastResult = "stale-retry") |
+					 .updatedAt = $now')
+				echo "orch-state: item ${item_id} stale — reset to ready (iteration ${next_iter})"
+			fi
+			changed=true
+		fi
+	done
+
+	if [[ "${changed}" == "true" ]]; then
+		orch_write_state "${state}"
+	fi
+}
+
 # --- Queries ---
 
 orch_count_by_status() {

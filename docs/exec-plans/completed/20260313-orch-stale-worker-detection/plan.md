@@ -44,11 +44,11 @@ mark as "failed" instead.
 
 ## Progress log
 
-- [ ] Add `orch_detect_stale_workers()` to `orch-state.sh` — checks tmux panes vs running items
-- [ ] Integrate stale detection into poll loop in `orch-run.sh` (after sync, before spawn)
-- [ ] Handle iteration increment and max-retry failure
-- [ ] Test: kill a worker pane mid-run, verify item gets re-spawned
-- [ ] Test: kill a worker 3 times, verify item marked "failed" after max iterations
+- [x] Add `orch_detect_stale_workers()` to `orch-state.sh` — checks tmux panes vs running items
+- [x] Integrate stale detection into poll loop in `orch-run.sh` (after sync, before spawn)
+- [x] Handle iteration increment and max-retry failure
+- [x] Test: kill a worker pane mid-run, verify item gets re-spawned
+- [x] Test: kill a worker 3 times, verify item marked "failed" after max iterations
 
 ## Decision log
 
@@ -60,7 +60,7 @@ mark as "failed" instead.
 
 ## Completion criteria
 
-- [ ] Stale workers detected and retried automatically
-- [ ] Items fail after `maxIterations` retries
-- [ ] Detection integrated into poll loop
-- [ ] shellcheck clean
+- [x] Stale workers detected and retried automatically
+- [x] Items fail after `maxIterations` retries
+- [x] Detection integrated into poll loop
+- [x] shellcheck clean

@@ -320,17 +320,19 @@ echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
 while true; do
-	# Sync done-files and promote newly unblocked items
+	# Sync done-files, detect stale workers, and promote newly unblocked items
 	orch_sync_done_files "${SLUG}"
+	orch_detect_stale_workers "${SLUG}"
 	orch_promote_ready_items
 
 	# Count current state
+	local_failed=$(orch_count_by_status "failed")
 	local_done=$(orch_count_by_status "done")
 	local_running=$(orch_count_by_status "running")
 	local_ready=$(orch_count_by_status "ready")
 	local_queued=$(orch_count_by_status "queued")
 
-	echo "orch-run: [poll] done=${local_done} running=${local_running} ready=${local_ready} queued=${local_queued}"
+	echo "orch-run: [poll] done=${local_done} running=${local_running} ready=${local_ready} queued=${local_queued} failed=${local_failed}"
 
 	# Check if all items are done
 	if [[ "${local_running}" -eq 0 ]] && [[ "${local_ready}" -eq 0 ]] && [[ "${local_queued}" -eq 0 ]]; then
