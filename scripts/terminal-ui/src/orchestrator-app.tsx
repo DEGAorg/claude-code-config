@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
 import { readFile } from "node:fs/promises";
 import type { OrchestratorState } from "./orch-types.js";
@@ -64,27 +64,32 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
   }, [statePath, loadState]);
 
   // Keyboard navigation: j/k or arrows to select items
-  useInput((input, key) => {
-    if (!state || state.items.length === 0) return;
+  // Only enable when raw mode is supported (requires TTY stdin)
+  const { isRawModeSupported } = useStdin();
+  useInput(
+    (input, key) => {
+      if (!state || state.items.length === 0) return;
 
-    const ids = state.items.map((i) => i.id);
-    const currentIdx = selectedId !== null ? ids.indexOf(selectedId) : -1;
+      const ids = state.items.map((i) => i.id);
+      const currentIdx = selectedId !== null ? ids.indexOf(selectedId) : -1;
 
-    if (input === "j" || key.downArrow) {
-      const nextIdx =
-        currentIdx < 0 ? 0 : Math.min(currentIdx + 1, ids.length - 1);
-      setSelectedId(ids[nextIdx] ?? null);
-      setOutputLines([]);
-    } else if (input === "k" || key.upArrow) {
-      const prevIdx =
-        currentIdx < 0 ? 0 : Math.max(currentIdx - 1, 0);
-      setSelectedId(ids[prevIdx] ?? null);
-      setOutputLines([]);
-    } else if (key.escape) {
-      setSelectedId(null);
-      setOutputLines([]);
-    }
-  });
+      if (input === "j" || key.downArrow) {
+        const nextIdx =
+          currentIdx < 0 ? 0 : Math.min(currentIdx + 1, ids.length - 1);
+        setSelectedId(ids[nextIdx] ?? null);
+        setOutputLines([]);
+      } else if (input === "k" || key.upArrow) {
+        const prevIdx =
+          currentIdx < 0 ? 0 : Math.max(currentIdx - 1, 0);
+        setSelectedId(ids[prevIdx] ?? null);
+        setOutputLines([]);
+      } else if (key.escape) {
+        setSelectedId(null);
+        setOutputLines([]);
+      }
+    },
+    { isActive: isRawModeSupported },
+  );
 
   if (!state) {
     return (
@@ -101,8 +106,9 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
       ? (state.items.find((i) => i.id === selectedId) ?? null)
       : null;
 
-  const reviewDone = state.finalReview.status === "done";
-  const reviewColor = state.finalReview.result === "SHIP"
+  const finalReview = state.finalReview ?? { status: "pending", result: null };
+  const reviewDone = finalReview.status === "done";
+  const reviewColor = finalReview.result === "SHIP"
     ? "greenBright"
     : "red";
 
@@ -123,9 +129,9 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
         {reviewDone ? (
           <Text color={reviewColor}>
             {" "}
-            review: {state.finalReview.result ?? "done"}
+            review: {finalReview.result ?? "done"}
           </Text>
-        ) : state.finalReview.status === "running" ? (
+        ) : finalReview.status === "running" ? (
           <Text dimColor> review: running</Text>
         ) : null}
       </Box>

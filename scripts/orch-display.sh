@@ -7,6 +7,7 @@
 # Platform detection order:
 #   macOS + iTerm2     → osascript opens new iTerm2 tab
 #   macOS + Terminal   → osascript opens new Terminal.app window
+#   macOS fallback     → .command file (no Automation permission needed)
 #   WSL               → wt.exe opens new Windows Terminal tab
 #   Linux + desktop   → gnome-terminal / konsole / xterm
 #   Fallback          → prints the command for manual attach
@@ -26,7 +27,8 @@ if ! tmux has-session -t "${SESSION}" 2>/dev/null; then
 	exit 1
 fi
 
-ATTACH_CMD="tmux attach-session -t '${SESSION}' -r"
+# Target the dashboard window specifically (first window, named "dashboard")
+ATTACH_CMD="tmux attach-session -t '${SESSION}:dashboard' -r"
 
 # Portable timeout: works on macOS without GNU coreutils
 run_with_timeout() {
@@ -50,6 +52,16 @@ run_with_timeout() {
 	fi
 }
 
+# --- .command file fallback (no Automation permissions needed) ---
+
+open_command_file() {
+	local cmd_file="/tmp/orch-attach-${SESSION}.command"
+	printf '#!/bin/bash\n%s\n' "${ATTACH_CMD}" >"${cmd_file}"
+	chmod +x "${cmd_file}"
+	open "${cmd_file}"
+	echo "orch-display: opened via .command file"
+}
+
 # --- Platform detection ---
 
 open_iterm2() {
@@ -66,8 +78,8 @@ open_iterm2() {
 	APPLESCRIPT
 		echo "orch-display: opened iTerm2 tab (read-only attach)"
 	else
-		echo "orch-display: iTerm2 automation timed out or failed" >&2
-		print_fallback
+		echo "orch-display: iTerm2 osascript failed, using .command file" >&2
+		open_command_file
 	fi
 }
 
@@ -80,8 +92,8 @@ open_terminal_app() {
 	APPLESCRIPT
 		echo "orch-display: opened Terminal.app window (read-only attach)"
 	else
-		echo "orch-display: Terminal.app automation timed out or failed" >&2
-		print_fallback
+		echo "orch-display: osascript failed, using .command file" >&2
+		open_command_file
 	fi
 }
 
@@ -114,11 +126,9 @@ print_fallback() {
 
 case "$(uname -s)" in
 Darwin)
-	if [[ -d "/Applications/iTerm.app" ]]; then
-		open_iterm2
-	else
-		open_terminal_app
-	fi
+	# .command file is the most reliable on macOS — no Automation
+	# permissions needed. osascript often returns 0 but silently fails.
+	open_command_file
 	;;
 Linux)
 	if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then

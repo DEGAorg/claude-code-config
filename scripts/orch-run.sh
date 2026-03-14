@@ -77,14 +77,21 @@ init_state() {
 	orch_ensure_done_dir "${SLUG}"
 	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-	ITEMS_JSON=$(printf '%s' "${PARSED}" | jq '[
+	MAX_ITER="${MAX_ITERATIONS:-3}"
+	ITEMS_JSON=$(printf '%s' "${PARSED}" | jq --argjson maxIter "${MAX_ITER}" '[
 	  .items[] | {
 	    id: .id,
 	    description: .description,
 	    deps: .deps,
 	    status: (if .checked then "done" else
 	      (if (.deps | length) == 0 then "ready" else "queued" end)
-	    end)
+	    end),
+	    workerPid: null,
+	    tmuxPane: null,
+	    worktree: null,
+	    iteration: 0,
+	    maxIterations: $maxIter,
+	    lastResult: null
 	  }
 	]')
 
@@ -93,13 +100,16 @@ init_state() {
 		--arg plan "${SLUG}" \
 		--argjson maxWorkers "${MAX_WORKERS}" \
 		--argjson items "${ITEMS_JSON}" \
+		--arg mode "foreground" \
 		--arg startedAt "${NOW}" \
 		--arg updatedAt "${NOW}" \
 		'{
 	    version: $version,
 	    plan: $plan,
 	    maxParallelWorkers: $maxWorkers,
+	    mode: $mode,
 	    items: $items,
+	    finalReview: { status: "pending", result: null, reworkItems: [] },
 	    startedAt: $startedAt,
 	    updatedAt: $updatedAt
 	  }')
@@ -189,8 +199,10 @@ if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	echo "orch-run: attaching to existing tmux session '${TMUX_SESSION}'"
 else
 	TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
-	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" \
-		"node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}'"
+	# Dashboard command: restart on crash, stay alive until tmux session dies
+	DASH_CMD="while true; do node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null; echo '[dashboard restarting in 3s...]'; sleep 3; done"
+	# Create session with dashboard as the main window (keeps session alive)
+	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
 	echo "orch-run: created tmux session '${TMUX_SESSION}' with Ink dashboard"
 fi
 

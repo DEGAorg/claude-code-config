@@ -40,7 +40,7 @@ function formatWorker(item: OrchestratorItem): string {
 
 function formatIteration(item: OrchestratorItem): string {
   if (item.status === "queued" || item.status === "blocked") return "—";
-  return `${item.iteration}/${item.maxIterations}`;
+  return `${item.iteration ?? 0}/${item.maxIterations ?? 3}`;
 }
 
 function ItemRow({
