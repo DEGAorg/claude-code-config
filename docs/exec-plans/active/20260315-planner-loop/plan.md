@@ -224,9 +224,9 @@ completion criteria).
 
 ## Completion criteria
 
-- [ ] `planner-loop.sh` runs end-to-end: reads focus.yaml, spawns assess agent, creates plan, launches orch, monitors completion
-- [ ] Budget guard stops the loop after `max_plans` completed plans
-- [ ] Failure guard stops after `max_consecutive_failures` consecutive failures
-- [ ] Credit exhaustion detected and exits cleanly
-- [ ] `focus.yaml` schema documented and example provided
-- [ ] `shellcheck` passes on planner-loop.sh
+- [x] `planner-loop.sh` runs end-to-end: reads focus.yaml, spawns assess agent, creates plan, launches orch, monitors completion
+- [x] Budget guard stops the loop after `max_plans` completed plans
+- [x] Failure guard stops after `max_consecutive_failures` consecutive failures
+- [x] Credit exhaustion detected and exits cleanly
+- [x] `focus.yaml` schema documented and example provided
+- [x] `shellcheck` passes on planner-loop.sh
