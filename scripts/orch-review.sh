@@ -46,20 +46,36 @@ if [[ ! -f "${PROMPT_TEMPLATE}" ]]; then
 	exit 1
 fi
 
-# --- Structural check: all items done ---
+# --- Structural check: all items settled (done or failed) ---
 
-NOT_DONE=$(jq '[.items[] | select(.status != "done")] | length' \
+TOTAL=$(jq '.items | length' "${ORCH_STATE_FILE}")
+CNT_DONE=$(jq '[.items[] | select(.status == "done")] | length' \
+	"${ORCH_STATE_FILE}")
+CNT_FAILED=$(jq '[.items[] | select(.status == "failed")] | length' \
+	"${ORCH_STATE_FILE}")
+CNT_IN_PROGRESS=$(jq \
+	'[.items[] | select(.status != "done" and .status != "failed")] | length' \
 	"${ORCH_STATE_FILE}")
 
-if [[ "${NOT_DONE}" -gt 0 ]]; then
-	echo "error: ${NOT_DONE} items not done — final review requires all items complete" >&2
-	jq -r '.items[] | select(.status != "done") |
+if [[ "${CNT_IN_PROGRESS}" -gt 0 ]]; then
+	echo "error: ${CNT_IN_PROGRESS} items still in progress — review requires all items settled" >&2
+	jq -r '.items[] | select(.status != "done" and .status != "failed") |
     "  item \(.id): \(.description) (\(.status))"' "${ORCH_STATE_FILE}" >&2
 	exit 1
 fi
 
-TOTAL=$(jq '.items | length' "${ORCH_STATE_FILE}")
-echo "orch-review: all ${TOTAL} items done — starting per-item review"
+if [[ "${CNT_DONE}" -eq 0 ]]; then
+	echo "error: no items completed — nothing to review (${CNT_FAILED} failed)" >&2
+	exit 1
+fi
+
+if [[ "${CNT_FAILED}" -gt 0 ]]; then
+	echo "orch-review: ${CNT_DONE}/${TOTAL} items done, ${CNT_FAILED} failed — reviewing done items only"
+	jq -r '.items[] | select(.status == "failed") |
+    "  skipping item \(.id): \(.description) (failed)"' "${ORCH_STATE_FILE}"
+else
+	echo "orch-review: all ${TOTAL} items done — starting per-item review"
+fi
 
 # --- Read concurrency and poll settings from state ---
 
@@ -68,12 +84,13 @@ POLL_INTERVAL=$(grep 'poll_interval_seconds:' ralph.yaml 2>/dev/null |
 	awk '{print $2}' | tr -d ' ' || true)
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
-# --- Mark final review as running ---
+# --- Mark failed work items as review-skipped ---
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq --arg now "${NOW}" \
-	'.finalReview.status = "running" | .updatedAt = $now' \
-	"${ORCH_STATE_FILE}")
+	'(.items[] | select(.status == "failed")).reviewStatus = "skipped" |
+	 .finalReview.status = "running" |
+	 .updatedAt = $now' "${ORCH_STATE_FILE}")
 orch_write_state "${SLUG}" "${UPDATED}"
 
 # --- Prepare review directory ---

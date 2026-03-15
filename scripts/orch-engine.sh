@@ -236,10 +236,20 @@ while true; do
 
 	echo "orch-engine: [poll] done=${local_done} running=${local_running} ready=${local_ready} queued=${local_queued} failed=${local_failed}"
 
-	# Check if all items are done
+	# Check if wave is finished (nothing left to run)
 	if [[ "${local_running}" -eq 0 ]] && [[ "${local_ready}" -eq 0 ]] && [[ "${local_queued}" -eq 0 ]]; then
 		echo ""
-		echo "orch-engine: all ${TOTAL_COUNT} items complete"
+		if [[ "${local_failed}" -gt 0 ]]; then
+			echo "orch-engine: wave finished — ${local_done}/${TOTAL_COUNT} items done, ${local_failed} failed"
+			# List which items failed
+			failed_ids=$(jq -r '.items[] | select(.status == "failed") | "\(.id): \(.description)"' \
+				"${ORCH_STATE_FILE}")
+			while IFS= read -r line; do
+				echo "orch-engine:   FAILED — item ${line}"
+			done <<< "${failed_ids}"
+		else
+			echo "orch-engine: all ${TOTAL_COUNT} items complete"
+		fi
 		break
 	fi
 
@@ -365,7 +375,19 @@ fi
 
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
-	echo "orch-engine: SHIP — all items passed review and completion criteria verified"
+
+	# Summarize failed items (if any) for operator visibility
+	FAILED_COUNT=$(orch_count_by_status "${SLUG}" "failed")
+	DONE_COUNT=$(orch_count_by_status "${SLUG}" "done")
+
+	if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+		echo "orch-engine: SHIP — ${DONE_COUNT}/${TOTAL_COUNT} items passed review (${FAILED_COUNT} failed)"
+		echo "orch-engine: failed items:"
+		jq -r '.items[] | select(.status == "failed") | "  - item \(.id): \(.description) (reason: \(.lastResult // "unknown"))"' \
+			"${ORCH_STATE_FILE}"
+	else
+		echo "orch-engine: SHIP — all ${TOTAL_COUNT} items passed review and completion criteria verified"
+	fi
 
 	SHIP_ERRORS=0
 
