@@ -77,10 +77,9 @@ fi
 
 TOTAL_COUNT=$(jq '.items | length' "${ORCH_STATE_FILE}")
 
-# --- Read poll interval from ralph.yaml ---
+# --- Read poll interval from config ---
 
-POLL_INTERVAL=$(grep 'poll_interval_seconds:' ralph.yaml 2>/dev/null |
-	awk '{print $2}' | tr -d ' ' || true)
+POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
 
 # --- Worker prompt template ---

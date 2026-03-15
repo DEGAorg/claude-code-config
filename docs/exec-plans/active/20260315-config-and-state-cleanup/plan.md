@@ -71,7 +71,7 @@ Completed exec-plans are historical records — do NOT update them.
 
 - [x] Rename `ralph.yaml` to `dega-core.yaml` in this repo (deps: none)
 - [x] Add config-reading helper to `orch-state.sh` that checks `dega-core.yaml` then falls back to `ralph.yaml` with warning (deps: none)
-- [ ] Update `scripts/ralph-loop.sh` to use the config helper (deps: 2)
+- [x] Update `scripts/ralph-loop.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/ralph-check.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/orch-engine.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/orch-review.sh` to use the config helper (deps: 2)
