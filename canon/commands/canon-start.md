@@ -55,7 +55,7 @@ top-to-bottom — the first match determines the current phase.
 
 **Required scaffold files** (for scaffold-complete check):
 - `.canon/config.yaml`
-- `ralph.yaml` (project root)
+- `dega-core.yaml` (project root)
 - `.canon/agents/` directory with at least one `.md` file
 - `.canon/skills/` directory with at least one `.md` file
 - `package.json`
@@ -303,7 +303,7 @@ remain unchecked — those are what the Ralph Loop will build.
 the strategy plan template (to be created in `.canon/templates/`) and fill in the placeholders
 based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
 
-Also ensure `ralph.yaml` exists at the project root (it should from scaffold).
+Also ensure `dega-core.yaml` exists at the project root (it should from scaffold).
 If not, create it with the standard success criteria:
 
 ```yaml

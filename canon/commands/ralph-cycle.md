@@ -20,13 +20,13 @@ Write state update:
     phase=execute status=running log.info="Iteration ${ITERATION:-1}: executing..."
 ```
 
-Implement or modify code toward the success criteria defined in `.canon/ralph.yaml`.
+Implement or modify code toward the success criteria defined in `.canon/dega-core.yaml`.
 
 Load skills: canon-conventions, ralph-loop.
 
 Input:
 - Task description
-- Success criteria from `.canon/ralph.yaml`
+- Success criteria from `.canon/dega-core.yaml`
 - Feedback from previous iteration (if any)
 
 Apply changes. Follow domain layering and error message conventions.
@@ -41,7 +41,7 @@ Write state update:
     phase=check status=running log.info="Running success criteria checks..."
 ```
 
-Run every check command listed in `.canon/ralph.yaml` under `success_criteria`.
+Run every check command listed in `.canon/dega-core.yaml` under `success_criteria`.
 
 For each entry, run the `check` command (e.g., `pnpm exec tsc --noEmit`,
 `pnpm exec oxlint src/`, `pnpm exec vitest run`).

@@ -59,7 +59,7 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 | `claude-md-template.md` | Global CLAUDE.md template for `~/.claude/CLAUDE.md` |
 | `settings.json` | Claude Code settings template (hooks, permissions, statusline) |
 | `mcp-template.json` | MCP server configuration template |
-| `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
+| `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 
 For the full file-level map, see the Repo Map table in [`CLAUDE.md`](CLAUDE.md).
 

@@ -1,10 +1,10 @@
 # Apply Core
 
-@description Install DEGA Core AI development artifacts globally to ~/.claude/. Ralph Loop engine scripts install globally; only ralph.yaml is per-project.
+@description Install DEGA Core AI development artifacts globally to ~/.claude/. Ralph Loop engine scripts install globally; only dega-core.yaml is per-project.
 
 Install Core harness artifacts from GitHub into `~/.claude/`. Works from any
 directory — no need to clone the repo. Ralph Loop engine scripts install
-globally to `~/.claude/scripts/`; only `ralph.yaml` is per-project.
+globally to `~/.claude/scripts/`; only `dega-core.yaml` is per-project.
 
 ## Source
 
@@ -38,7 +38,7 @@ Files available:
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
 - `scripts/log-server.py`
-- `ralph.yaml`
+- `dega-core.yaml`
 - `scripts/ralph-check.sh`
 - `scripts/ralph-loop.sh`
 - `scripts/ralph-worker-prompt.md`
@@ -117,7 +117,7 @@ Read and note which of these already exist:
 - `~/.claude/agents/orch-worker.md`
 
 Also check in the current working directory (target project root):
-- `ralph.yaml`
+- `dega-core.yaml`
 
 ---
 
@@ -143,7 +143,7 @@ Components:
 - **Ralph Loop** — engine scripts install globally to `~/.claude/scripts/`
   (`ralph-loop.sh`, `ralph-worktree.sh`, `ralph-check.sh`,
   `ralph-worker-prompt.md`, `ralph-reviewer-prompt.md`, `log-client.sh`,
-  `plan-advance.sh`, `task-complete.sh`); only `ralph.yaml` is per-project
+  `plan-advance.sh`, `task-complete.sh`); only `dega-core.yaml` is per-project
   (written to cwd). Invoke from any project:
   `~/.claude/scripts/ralph-loop.sh <dated-slug>` (single loop) or
   `~/.claude/scripts/ralph-worktree.sh <dated-slug>` (parallel via worktree)
@@ -170,7 +170,7 @@ Components:
   `~/.claude/scripts/`, Ink dashboard components to
   `~/.claude/scripts/terminal-ui/src/`, and worker agent definition
   (`orch-worker.md`) to `~/.claude/agents/`. Polling interval controlled by
-  `poll_interval_seconds` in `ralph.yaml` (default 30). Requires Terminal UI
+  `poll_interval_seconds` in `dega-core.yaml` (default 30). Requires Terminal UI
   and tmux. Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.claude/scripts/orch-run.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
@@ -272,14 +272,14 @@ Safe to overwrite — these are engine scripts with no user customization.
 
 #### Ralph Loop — Per-project config
 
-- If `ralph.yaml` does **not** exist in the cwd: write it directly.
+- If `dega-core.yaml` does **not** exist in the cwd: write it directly.
 - If it **does** exist: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite — the user
   may have customized `max_iterations`, `poll_interval_seconds`, or
   `success_criteria`.
 
 No per-project scripts are needed. The global engine at
-`~/.claude/scripts/ralph-loop.sh` reads `ralph.yaml` from `$PWD`.
+`~/.claude/scripts/ralph-loop.sh` reads `dega-core.yaml` from `$PWD`.
 
 #### Sounds
 
@@ -446,7 +446,7 @@ Installed:
 ✓ Hooks — enforce-package-manager, log-gam
 ✓ Skills — custom-linter-authoring, app-legibility, sound-notifications
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
-✓ Ralph Loop — scripts → ~/.claude/scripts/, ralph.yaml → cwd
+✓ Ralph Loop — scripts → ~/.claude/scripts/, dega-core.yaml → cwd
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 ✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
 ✓ Orchestrator — orch-*.sh → ~/.claude/scripts/, Ink components + agent persona

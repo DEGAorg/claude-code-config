@@ -28,7 +28,7 @@ Check that these files are present:
 - `tsconfig.json`
 - `src/types/TradeSignal.ts`
 - `src/types/RiskInterface.ts`
-- `.canon/ralph.yaml`
+- `.canon/dega-core.yaml`
 - `.canon/config.yaml`
 - `AGENTS.md`
 
@@ -70,7 +70,7 @@ Write state update:
     phase=test status=running log.info="Running checks..."
 ```
 
-Run every check command from `.canon/ralph.yaml` `success_criteria`:
+Run every check command from `.canon/dega-core.yaml` `success_criteria`:
 
 ```
 pnpm exec tsc --noEmit
@@ -78,7 +78,7 @@ pnpm exec oxlint src/
 pnpm exec vitest run
 ```
 
-All three must pass. If `.canon/ralph.yaml` has additional strategy-specific
+All three must pass. If `.canon/dega-core.yaml` has additional strategy-specific
 checks beyond these defaults, run those too.
 
 Review test results against the design spec's success criteria — tests passing
@@ -91,12 +91,12 @@ not met, iterate:
 
 1. Read the failing check output to identify what broke.
 2. Fix the issue in code.
-3. Re-run all check commands from `.canon/ralph.yaml` `success_criteria`.
+3. Re-run all check commands from `.canon/dega-core.yaml` `success_criteria`.
 4. Repeat until all checks pass.
 
 Load ralph-loop skill for iteration guidance.
 
-The `max_iterations` in `.canon/ralph.yaml` limits how many cycles to attempt.
+The `max_iterations` in `.canon/dega-core.yaml` limits how many cycles to attempt.
 If the limit is reached without meeting all criteria, surface the specific
 failing criteria for human review before proceeding.
 

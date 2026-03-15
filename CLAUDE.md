@@ -58,7 +58,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `rules/` | Language-specific standards loaded by file type (python, node-typescript, rust, bash, github-actions) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
-| `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
+| `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 | `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
 | `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
@@ -289,7 +289,7 @@ The task-slug must match a directory in `docs/exec-plans/active/` (format: `YYYY
 fresh `claude -p` instances for each iteration — worker reads the plan and does work,
 reviewer reads the plan and work-summary, decides SHIP or REVISE.
 
-**Per-project config:** Each project provides a `ralph.yaml` at its root with
+**Per-project config:** Each project provides a `dega-core.yaml` at its root with
 `max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project
 scripts are needed — `/apply-core` installs all engine scripts globally to
 `~/.claude/scripts/`.
