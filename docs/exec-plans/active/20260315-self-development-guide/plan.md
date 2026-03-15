@@ -58,5 +58,5 @@ None — this is a documentation-only plan.
 
 ## Completion criteria
 
-- [ ] `docs/Self_Development.md` exists with all sections
-- [ ] CLAUDE.md and README.md link to the new guide
+- [x] `docs/Self_Development.md` exists with all sections
+- [x] CLAUDE.md and README.md link to the new guide
