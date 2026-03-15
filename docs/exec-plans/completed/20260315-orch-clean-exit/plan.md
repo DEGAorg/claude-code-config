@@ -32,8 +32,8 @@ The terminal cleanup (exec, clean close) is handled by the separate fullscreen-t
 
 ## Progress log
 
-- [ ] Write completed status to state.json on SHIP path in orch-engine.sh, add sleep before kill
-- [ ] Detect completed status in orchestrator-app.tsx and render SHIP banner
+- [x] Write completed status to state.json on SHIP path in orch-engine.sh, add sleep before kill
+- [x] Detect completed status in orchestrator-app.tsx and render SHIP banner
 
 ## Decision log
 

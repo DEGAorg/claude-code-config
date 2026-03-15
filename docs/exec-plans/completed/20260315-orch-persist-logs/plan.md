@@ -28,7 +28,7 @@ The engine already tee's output to a log file. Verify it survives `orch_cleanup_
 
 ## Progress log
 
-- [ ] Add log path message and state.json copy to SHIP path in orch-engine.sh
+- [x] Add log path message and state.json copy to SHIP path in orch-engine.sh
 
 ## Decision log
 
