@@ -54,18 +54,19 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
-if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
-	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
-	exit 1
-fi
-
 # Per-plan state paths
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+
+# Plan dir points to the worktree copy so workers never touch main repo
+PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
+	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
+	exit 1
+fi
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state.json not found — orch-run.sh must initialize first" >&2
@@ -371,6 +372,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	fi
 	# Kill worker/reviewer windows now that we're done
 	orch_kill_done_workers "${SLUG}"
+	# Sync worktree plan.md (with checked boxes) back to main repo
+	MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
+	if [[ -f "${WT_PLAN}" ]]; then
+		cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"
+		echo "orch-engine: synced plan.md from worktree to main repo"
+	fi
 	# Merge worker changes, deregister, and clean up worktree
 	orch_merge_worktree "${SLUG}"
 	orch_master_deregister "${SLUG}" "completed"

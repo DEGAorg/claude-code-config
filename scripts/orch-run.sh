@@ -86,6 +86,17 @@ if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	exit 1
 fi
 
+# --- Uncommitted plan guard ---
+plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
+if [[ -n "${plan_dirty}" ]]; then
+	echo "error: plan has uncommitted changes — commit before running orch" >&2
+	echo "  dirty files:" >&2
+	while IFS= read -r line; do
+		echo "    ${line}" >&2
+	done <<< "${plan_dirty}"
+	exit 1
+fi
+
 # --- Already-running detection ---
 
 TMUX_SESSION="orch-${SLUG}"
@@ -193,6 +204,14 @@ fi
 # --- Create worktree for file isolation ---
 
 orch_create_worktree "${SLUG}"
+
+# --- Copy plan directory into worktree ---
+
+WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+mkdir -p "${WORKTREE_PLAN_DIR}"
+cp -r "${PLAN_DIR}/"* "${WORKTREE_PLAN_DIR}/"
+echo "orch: copied plan into worktree at ${WORKTREE_PLAN_DIR}"
 
 # --- Register in master state ---
 
