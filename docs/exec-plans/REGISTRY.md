@@ -73,3 +73,4 @@
 | 2026-03-15 | [20260315-dashboard-viewport-flexgrow](completed/20260315-dashboard-viewport-flexgrow/plan.md) | completed | 0 | orch |
 | 2026-03-15 | [20260315-config-and-state-cleanup](completed/20260315-config-and-state-cleanup/plan.md) | completed | 0 | orch |
 | 2026-03-15 | [20260315-planner-loop](completed/20260315-planner-loop/plan.md) | completed | 1 | orch |
+| 2026-03-15 | [20260315-fix-apply-core-orch-files](completed/20260315-fix-apply-core-orch-files/plan.md) | completed | 1 | orch |
