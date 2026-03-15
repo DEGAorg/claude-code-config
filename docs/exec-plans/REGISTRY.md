@@ -70,3 +70,4 @@
 | 2026-03-15 | [20260315-orch-progress-resilience](completed/20260315-orch-progress-resilience/plan.md) | completed | 1 | orch |
 | 2026-03-15 | [20260315-orch-worktree-plan-isolation](completed/20260315-orch-worktree-plan-isolation/plan.md) | completed | 1 | orch |
 | 2026-03-15 | [20260315-self-development-guide](completed/20260315-self-development-guide/plan.md) | completed | 0 | orch |
+| 2026-03-15 | [20260315-dashboard-viewport-flexgrow](completed/20260315-dashboard-viewport-flexgrow/plan.md) | completed | 0 | orch |
