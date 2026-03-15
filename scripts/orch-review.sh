@@ -273,13 +273,15 @@ while true; do
 		"${ORCH_STATE_FILE}")
 	cnt_failed=$(jq '[.items[] | select(.reviewStatus == "failed")] | length' \
 		"${ORCH_STATE_FILE}")
+	cnt_skipped=$(jq '[.items[] | select(.reviewStatus == "skipped")] | length' \
+		"${ORCH_STATE_FILE}")
 
-	echo "orch-review: [poll] reviewing=${cnt_reviewing} pending=${cnt_pending} passed=${cnt_passed} failed=${cnt_failed}"
+	echo "orch-review: [poll] reviewing=${cnt_reviewing} pending=${cnt_pending} passed=${cnt_passed} failed=${cnt_failed} skipped=${cnt_skipped}"
 
 	# All reviews complete when nothing is reviewing or pending
 	if [[ "${cnt_reviewing}" -eq 0 ]] && [[ "${cnt_pending}" -eq 0 ]]; then
 		echo ""
-		echo "orch-review: all ${TOTAL} reviews complete"
+		echo "orch-review: reviews complete — ${cnt_passed} passed, ${cnt_failed} failed, ${cnt_skipped} skipped"
 		break
 	fi
 
@@ -303,16 +305,28 @@ done
 
 # --- Aggregate decision ---
 
-FAILED_IDS=$(jq -r '.items[] | select(.reviewStatus == "failed") | .id' \
+# Review-failed: items that were reviewed and failed review
+REVIEW_FAILED_IDS=$(jq -r '.items[] | select(.reviewStatus == "failed") | .id' \
 	"${ORCH_STATE_FILE}")
-FAILED_ITEMS=()
-for fid in ${FAILED_IDS}; do
-	FAILED_ITEMS+=("${fid}")
+REVIEW_FAILED=()
+for fid in ${REVIEW_FAILED_IDS}; do
+	REVIEW_FAILED+=("${fid}")
 done
+
+# Work-failed: items that failed execution and were skipped by review
+WORK_FAILED_IDS=$(jq -r '.items[] | select(.reviewStatus == "skipped") | .id' \
+	"${ORCH_STATE_FILE}")
+WORK_FAILED=()
+for fid in ${WORK_FAILED_IDS}; do
+	WORK_FAILED+=("${fid}")
+done
+
+# Combined rework set
+REWORK_ITEMS=("${REVIEW_FAILED[@]}" "${WORK_FAILED[@]}")
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-if [[ ${#FAILED_ITEMS[@]} -eq 0 ]]; then
+if [[ ${#REWORK_ITEMS[@]} -eq 0 ]]; then
 	echo ""
 	echo "orch-review: SHIP — all ${TOTAL} items passed"
 
@@ -324,10 +338,14 @@ if [[ ${#FAILED_ITEMS[@]} -eq 0 ]]; then
 	orch_write_state "${SLUG}" "${UPDATED}"
 else
 	echo ""
-	echo "orch-review: REVISE — ${#FAILED_ITEMS[@]} item(s) failed"
+	if [[ ${#WORK_FAILED[@]} -gt 0 ]]; then
+		echo "orch-review: REVISE — ${#REVIEW_FAILED[@]} review failure(s), ${#WORK_FAILED[@]} work failure(s) (skipped review)"
+	else
+		echo "orch-review: REVISE — ${#REVIEW_FAILED[@]} item(s) failed review"
+	fi
 
-	# Build JSON array of failed item IDs
-	REWORK_JSON=$(printf '%s\n' "${FAILED_ITEMS[@]}" | jq -R 'tonumber' | jq -s '.')
+	# Build JSON array of rework item IDs
+	REWORK_JSON=$(printf '%s\n' "${REWORK_ITEMS[@]}" | jq -R 'tonumber' | jq -s '.')
 
 	UPDATED=$(jq --arg now "${NOW}" --argjson rework "${REWORK_JSON}" \
 		'.finalReview.status = "done" |
@@ -343,13 +361,16 @@ else
 	# Write consolidated feedback for the loop
 	FEEDBACK_FILE="${PLAN_DIR}/review-feedback.txt"
 	{
-		printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
-		for fid in "${FAILED_ITEMS[@]}"; do
+		printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${REWORK_ITEMS[@]}" | paste -sd ', ' -)"
+		for fid in "${REVIEW_FAILED[@]}"; do
 			review="${REVIEW_DIR}/item-${fid}-review.txt"
 			if [[ -f "${review}" ]]; then
-				printf '\n--- item %s ---\n' "${fid}"
+				printf '\n--- item %s (review failed) ---\n' "${fid}"
 				tail -n +2 "${review}"
 			fi
+		done
+		for fid in "${WORK_FAILED[@]}"; do
+			printf '\n--- item %s (work failed, review skipped) ---\n' "${fid}"
 		done
 	} >"${FEEDBACK_FILE}"
 
