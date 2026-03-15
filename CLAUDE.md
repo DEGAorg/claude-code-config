@@ -88,13 +88,14 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/review-advance.sh` | Per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
+| `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `docs/Self_Development.md` | How to apply fixes and features — manual, Ralph Loop, and orchestrator workflows |
-| `agents/` | Agent prompt templates (orch-worker, orch-verifier) |
+| `agents/` | Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
@@ -115,7 +116,7 @@ claude-code-config/             ← Core (this repo root)
 ├── hooks/                      ← Lifecycle hooks (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
 ├── scripts/                    ← Orchestrator engine, Ralph Loop, terminal-ui, logging, Canon scripts
-├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier)
+├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
 ├── skills/                     ← Core skills (app-legibility, custom-linter-authoring, sound-notifications)
