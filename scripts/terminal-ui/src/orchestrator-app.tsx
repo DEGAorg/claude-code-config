@@ -218,7 +218,7 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
   })();
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" height="100%">
       <Box
         borderStyle="single"
         borderBottom={false}
@@ -379,7 +379,7 @@ export function MasterOrchestratorApp({
       const orchDir = dirname(masterPath);
       const statePath = resolve(orchDir, plan.statePath);
       return (
-        <Box flexDirection="column">
+        <Box flexDirection="column" height="100%">
           <Box paddingX={1}>
             <Text dimColor>esc: back to all plans</Text>
             <Box flexGrow={1} />
@@ -405,7 +405,7 @@ export function MasterOrchestratorApp({
   }
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" height="100%">
       <Box
         borderStyle="single"
         borderBottom={false}

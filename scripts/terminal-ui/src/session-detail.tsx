@@ -1,4 +1,4 @@
-import { Box, Text, useStdout } from "ink";
+import { Box, Text } from "ink";
 import type { ItemReviewStatus, OrchestratorItem } from "./orch-types.js";
 
 interface SessionDetailProps {
@@ -10,20 +10,15 @@ interface SessionDetailProps {
 }
 
 export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetailProps) {
-  const { stdout } = useStdout();
-  const termRows = stdout?.rows ?? 24;
-
-  // Reserve ~60% of terminal for the table above; detail gets the rest
-  const maxLines = Math.max(3, Math.floor(termRows * 0.35));
-  const visible = outputLines.slice(-maxLines);
-
   if (!item) {
     return (
       <Box
+        flexGrow={1}
         flexDirection="column"
         borderStyle="single"
         borderTop={false}
         paddingX={1}
+        overflow="hidden"
       >
         <Text dimColor>Select an item to view output</Text>
       </Box>
@@ -43,10 +38,12 @@ export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetail
 
   return (
     <Box
+      flexGrow={1}
       flexDirection="column"
       borderStyle="single"
       borderTop={false}
       paddingX={1}
+      overflow="hidden"
     >
       <Box gap={1}>
         <Text color={headerColor} bold>
@@ -61,10 +58,10 @@ export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetail
         </Text>
       </Box>
 
-      {visible.length === 0 ? (
+      {outputLines.length === 0 ? (
         <Text dimColor>No output captured</Text>
       ) : (
-        visible.map((line, idx) => (
+        outputLines.map((line, idx) => (
           <Text key={idx} wrap="truncate">
             {line}
           </Text>
