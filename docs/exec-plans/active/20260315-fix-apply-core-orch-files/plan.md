@@ -60,7 +60,7 @@ No other files change — this is purely a docs/command fix.
 
 ## Completion criteria
 
-- [ ] All 4 missing orch files listed in Source and Orchestrator sections
-- [ ] Planner component with 3 files listed in Source, menu, and install section
-- [ ] Post-install example includes planner line
-- [ ] Every file path in apply-core.md matches a real file in the repo
+- [x] All 4 missing orch files listed in Source and Orchestrator sections
+- [x] Planner component with 3 files listed in Source, menu, and install section
+- [x] Post-install example includes planner line
+- [x] Every file path in apply-core.md matches a real file in the repo
