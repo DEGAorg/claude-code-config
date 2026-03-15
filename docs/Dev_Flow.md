@@ -104,7 +104,7 @@ ralph-loop.sh <task-slug>
   │     → SHIP: health check → archive → commit
   │     → REVISE: write feedback → next iteration
   │     → BLOCKED: stop, wait for human
-  └── repeats up to max_iterations (configured in ralph.yaml)
+  └── repeats up to max_iterations (configured in dega-core.yaml)
 ```
 
 The worker handles Stage 4 (implement per the plan, TDD), and the reviewer

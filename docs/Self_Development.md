@@ -110,7 +110,7 @@ bash scripts/ralph-loop.sh <slug>
 6. If any fail: REVISE — write feedback, worker re-runs failed items
 7. If no file changes in 2 consecutive iterations: STAGNATED — stop for human
 
-**Configuration** in `ralph.yaml` at the repo root:
+**Configuration** in `dega-core.yaml` at the repo root:
 
 ```yaml
 max_iterations: 3          # budget cap
@@ -241,7 +241,7 @@ bash scripts/ralph-loop.sh <slug>
 The iteration budget ran out before the reviewer approved.
 
 **Fix:** Check `review-feedback.txt` for the last REVISE reason. Either fix the
-issue manually, increase `max_iterations` in `ralph.yaml`, or re-run.
+issue manually, increase `max_iterations` in `dega-core.yaml`, or re-run.
 
 ### Orchestrator worker fails
 
@@ -258,7 +258,7 @@ Read the worker output in the tmux pane or the iteration archive.
 ### Health check failures
 
 The Ralph Loop runs `ralph-check.sh` before SHIP. Health checks are defined in
-`ralph.yaml` under `success_criteria`. Common failures:
+`dega-core.yaml` under `success_criteria`. Common failures:
 
 | Check | Fix |
 |-------|-----|

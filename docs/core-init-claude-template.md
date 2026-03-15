@@ -18,7 +18,7 @@
 ## Working Conventions
 
 - Language-specific standards load from `~/.claude/rules/` by file type
-- Ralph Loop config: `ralph.yaml` (edit `check_command` for your toolchain)
+- Ralph Loop config: `dega-core.yaml` (edit `check_command` for your toolchain)
 - Exec plans: `docs/exec-plans/active/<YYYYMMDD-slug>/plan.md`
 - Do not push directly to `main` — use feature branches and PRs
 

@@ -81,8 +81,7 @@ fi
 # --- Read concurrency and poll settings from state ---
 
 MAX_WORKERS=$(jq '.maxParallelWorkers // 4' "${ORCH_STATE_FILE}")
-POLL_INTERVAL=$(grep 'poll_interval_seconds:' ralph.yaml 2>/dev/null |
-	awk '{print $2}' | tr -d ' ' || true)
+POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
 # --- Mark failed work items as review-skipped ---

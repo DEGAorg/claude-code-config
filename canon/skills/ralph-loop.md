@@ -27,7 +27,7 @@ agent behavior, distinct from the L3 (Tool-enabled) behavior of standard coding 
 5. If criteria fail → Agent analyzes failures, plans fix, loops back to step 2
 6. Budget/iteration limits prevent infinite loops
 
-### Configuration (.canon/ralph.yaml)
+### Configuration (.canon/dega-core.yaml)
 
 ```yaml
 ralph_loop:

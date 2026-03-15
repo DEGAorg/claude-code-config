@@ -2,7 +2,7 @@
 
 ## Quick Reference
 - Framework config: `.canon/config.yaml`
-- Ralph Loop config: `.canon/ralph.yaml`
+- Ralph Loop config: `.canon/dega-core.yaml`
 - Agent personas: `.canon/agents/`
 - Skills (domain knowledge): `.canon/skills/`
 - Workflows: `.canon/workflows/`
@@ -57,4 +57,4 @@ platform-specific knowledge, see `.canon/skills/`:
 - `src/strategy.ts` — Strategy logic
 - `src/types/TradeSignal.ts` — Output interface
 - `src/types/RiskInterface.ts` — Risk validation
-- `.canon/ralph.yaml` — Ralph Loop config
+- `.canon/dega-core.yaml` — Ralph Loop config

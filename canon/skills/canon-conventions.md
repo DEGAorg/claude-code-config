@@ -37,7 +37,7 @@ All strategies implement two interfaces:
 - `src/strategy.ts` — Main strategy logic
 - `src/types/TradeSignal.ts` — Output interface
 - `src/types/RiskInterface.ts` — Risk validation interface
-- `.canon/ralph.yaml` — Ralph Loop configuration
+- `.canon/dega-core.yaml` — Ralph Loop configuration
 - `AGENTS.md` — Agent entry point
 
 ### Error Messages (Agent-Oriented)
@@ -48,7 +48,7 @@ All error messages include three parts:
 
 Example: "Position size exceeds 5% limit (what). This violates risk management
 rules and could cause catastrophic loss (why). Reduce position size to <5% of
-portfolio value or adjust risk parameters in .canon/ralph.yaml (how)."
+portfolio value or adjust risk parameters in .canon/dega-core.yaml (how)."
 
 ### Three Non-Negotiable Constraints
 1. "If it's not in the repo, it doesn't exist"

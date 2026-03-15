@@ -63,10 +63,10 @@ if [[ ! -f "${TASK_DIR}/plan.md" ]]; then
 fi
 STATE_FILE="${TASK_DIR}/.ralph-state.json"
 
-# Read config from ralph.yaml
-MAX_ITERATIONS=$(grep 'max_iterations:' ralph.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ' || true)
+# Read config from dega-core.yaml (falls back to ralph.yaml with warning)
+MAX_ITERATIONS=$(orch_read_config "max_iterations")
 MAX_ITERATIONS="${MAX_ITERATIONS:-10}"
-WARN_AT=$(grep 'warn_at_iteration:' ralph.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ' || true)
+WARN_AT=$(orch_read_config "warn_at_iteration")
 # Prompt fallback: project-local scripts/ first, then global SCRIPT_DIR
 if [[ -f "scripts/ralph-worker-prompt.md" ]]; then
 	WORKER_PROMPT="scripts/ralph-worker-prompt.md"

@@ -1,6 +1,6 @@
 # Core Init
 
-@description Bootstrap any repo for Core AI development tools — creates ralph.yaml, exec-plans, .claude/ directory, and minimal CLAUDE.md.
+@description Bootstrap any repo for Core AI development tools — creates dega-core.yaml, exec-plans, .claude/ directory, and minimal CLAUDE.md.
 
 Run every step below in order. This command is idempotent — it skips files
 that already exist and never overwrites user-customized config.
@@ -26,7 +26,7 @@ Do not continue.
 ## 2. Detect project language
 
 Check for language markers in the current directory to auto-populate
-`check_command` in ralph.yaml. Check in this order, use the first match:
+`check_command` in dega-core.yaml. Check in this order, use the first match:
 
 **Language detection table:**
 
@@ -54,7 +54,7 @@ Substitute `<PKG_MGR>` with the detected package manager in the check_command.
 ```yaml
 check_command: |
   # TODO: Replace with your project's test/lint/typecheck commands
-  echo "No check_command configured — edit ralph.yaml"
+  echo "No check_command configured — edit dega-core.yaml"
   exit 1
 ```
 
@@ -81,11 +81,11 @@ Add `.gitkeep` files to empty directories so git tracks them:
 
 ---
 
-## 4. Write ralph.yaml
+## 4. Write dega-core.yaml
 
-**If `ralph.yaml` already exists:** tell the user it exists and skip. Print:
+**If `dega-core.yaml` already exists:** tell the user it exists and skip. Print:
 
-> `ralph.yaml` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
+> `dega-core.yaml` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
 
 **If it does not exist:** write it using the detected language from Step 2.
 
@@ -146,7 +146,7 @@ Replace this with a one-line description of your project.
 ## Working Conventions
 
 - Language-specific standards load from `~/.claude/rules/` by file type
-- Ralph Loop config: `ralph.yaml` (edit `check_command` for your toolchain)
+- Ralph Loop config: `dega-core.yaml` (edit `check_command` for your toolchain)
 - Exec plans: `docs/exec-plans/active/<YYYYMMDD-slug>/plan.md`
 
 ## Session Start
@@ -167,7 +167,7 @@ Created:
 ✓ docs/exec-plans/active/       — execution plan directory
 ✓ docs/exec-plans/completed/    — archived plans
 ✓ .claude/commands/              — local commands directory
-✓ ralph.yaml                     — Ralph Loop config (<LANGUAGE> detected, <PKG_MGR> if Node)
+✓ dega-core.yaml                     — Ralph Loop config (<LANGUAGE> detected, <PKG_MGR> if Node)
 ✓ CLAUDE.md                      — minimal project context
 
 Skipped (already existed):
@@ -175,7 +175,7 @@ Skipped (already existed):
 
 Next steps:
 1. Edit CLAUDE.md — add your project's repo map and conventions
-2. Edit ralph.yaml — verify check_command matches your toolchain
+2. Edit dega-core.yaml — verify check_command matches your toolchain
 3. Run /apply-core to install global tools (hooks, scripts, commands)
 4. Create your first exec plan: /plan
 ```

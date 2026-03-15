@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Ralph Loop health check — project-agnostic.
-# Reads success_criteria from ralph.yaml in the current directory.
+# Reads success_criteria from dega-core.yaml (falls back to ralph.yaml).
 # Run from project root: bash ~/.claude/scripts/ralph-check.sh
 # Exit 0 if all criteria pass, exit 1 if any fail.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source orch-state.sh for config resolution helpers
+# shellcheck source=orch-state.sh
+source "${SCRIPT_DIR}/orch-state.sh"
+
 PASS=0
 FAIL=0
 LOG=".ralph-runs.log"
-RALPH_YAML="ralph.yaml"
+CONFIG_FILE=$(orch_resolve_config)
 
 check() {
 	local id="$1"
@@ -26,9 +31,9 @@ check() {
 	fi
 }
 
-# --- Project success criteria from ralph.yaml ---
+# --- Project success criteria from config file ---
 
-if [[ -f "${RALPH_YAML}" ]]; then
+if [[ -n "${CONFIG_FILE}" ]]; then
 	# Parse success_criteria entries: extract id, description, check
 	# YAML structure is flat single-line values, safe to parse with awk.
 	current_id=""
@@ -55,14 +60,14 @@ if [[ -f "${RALPH_YAML}" ]]; then
 			current_check="${current_check#\"}"
 			current_check="${current_check%\"}"
 		fi
-	done <"${RALPH_YAML}"
+	done <"${CONFIG_FILE}"
 
 	# Run the last entry
 	if [[ -n "${current_id}" && -n "${current_check}" ]]; then
 		check "${current_id}" "${current_desc}" "${current_check}"
 	fi
 else
-	echo "— no ralph.yaml found; skipping project checks"
+	echo "— no dega-core.yaml (or ralph.yaml) found; skipping project checks"
 fi
 
 # --- Generic loop-state checks ---

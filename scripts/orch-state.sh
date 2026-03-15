@@ -27,6 +27,41 @@ fi
 : "${ORCH_STATE_DIR:="${ORCH_REPO_ROOT}/.orchestrator"}"
 : "${ORCH_MASTER_FILE:="${ORCH_STATE_DIR}/master.json"}"
 
+# --- Config file resolution (dega-core.yaml with ralph.yaml fallback) ---
+
+# Resolve the project config file path. Checks dega-core.yaml first,
+# falls back to ralph.yaml with a deprecation warning. Returns empty
+# string if neither exists.
+orch_resolve_config() {
+	if [[ -f "${ORCH_REPO_ROOT}/dega-core.yaml" ]]; then
+		printf '%s/dega-core.yaml' "${ORCH_REPO_ROOT}"
+	elif [[ -f "${ORCH_REPO_ROOT}/ralph.yaml" ]]; then
+		echo "orch-state: WARNING — ralph.yaml is deprecated, rename to dega-core.yaml" >&2
+		printf '%s/ralph.yaml' "${ORCH_REPO_ROOT}"
+	else
+		printf ''
+	fi
+}
+
+# Read a YAML key from the project config file. Returns the value or
+# empty string if the key or file is not found.
+#   Usage: value=$(orch_read_config "poll_interval_seconds")
+orch_read_config() {
+	local key="$1"
+	local config_file
+	config_file=$(orch_resolve_config)
+
+	if [[ -z "${config_file}" ]]; then
+		printf ''
+		return 0
+	fi
+
+	local value
+	value=$(grep "${key}:" "${config_file}" 2>/dev/null |
+		awk '{print $2}' | tr -d ' ' || true)
+	printf '%s' "${value}"
+}
+
 # --- Per-plan path helpers ---
 
 orch_plan_dir() {

@@ -37,7 +37,7 @@ Canon specifications live in a sibling docs repo. Do not duplicate them in Core.
 | `Canon_MVP_Technical_Roadmap.md` | Scaffold structure, canon_init, 10 templates, .canon/ tree |
 | `Canon_Installation_Architecture_Analysis.md` | Core vs Canon split, install scope, canon_init behavior |
 | `specs/SAS_Agent_Framework.md` | Agent personas, skills, workflows, .canon/ conventions |
-| `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/ralph.yaml, hooks |
+| `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/dega-core.yaml, hooks |
 | `specs/SAS_Automation_Model.md` | Strategy scaffolds, automation patterns |
 | `Canon_Key_Components.md` | High-level components, canon init --profile |
 | `specs/SAS_Deployment.md` | Cloud execution, $HOME/.canon/, image registry |
@@ -58,7 +58,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `rules/` | Language-specific standards loaded by file type (python, node-typescript, rust, bash, github-actions) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
-| `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
+| `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 | `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
 | `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
@@ -289,7 +289,7 @@ The task-slug must match a directory in `docs/exec-plans/active/` (format: `YYYY
 fresh `claude -p` instances for each iteration — worker reads the plan and does work,
 reviewer reads the plan and work-summary, decides SHIP or REVISE.
 
-**Per-project config:** Each project provides a `ralph.yaml` at its root with
+**Per-project config:** Each project provides a `dega-core.yaml` at its root with
 `max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project
 scripts are needed — `/apply-core` installs all engine scripts globally to
 `~/.claude/scripts/`.
