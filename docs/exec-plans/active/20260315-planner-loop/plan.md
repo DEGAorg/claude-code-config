@@ -189,7 +189,7 @@ completion criteria).
 - [x] Create `scripts/planner-loop.sh` — main loop: read focus, assess, plan, execute, monitor, budget check (deps: 1, 2)
 - [x] Create `focus.yaml` example for this repo with current tech debt priorities (deps: none)
 - [x] Add `focus.yaml` to `.gitignore` (deps: none)
-- [ ] Update `CLAUDE.md` repo map and Self_Development.md with planner loop workflow (deps: 3)
+- [x] Update `CLAUDE.md` repo map and Self_Development.md with planner loop workflow (deps: 3)
 - [x] Run shellcheck on `scripts/planner-loop.sh` (deps: 3)
 - [ ] End-to-end test: run planner-loop.sh with max_plans=1, verify it assesses, plans, and launches orch (deps: 3, 4)
 
