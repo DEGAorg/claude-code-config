@@ -47,7 +47,7 @@ scrutiny during reviews and where to be cautious when making changes.
 ### Core Scripts (`scripts/`)
 
 **Grade:** C
-**Last reviewed:** 2026-03-06
+**Last reviewed:** 2026-03-15
 **Reviewer:** `/cleanup` run
 
 **Strengths:**
@@ -55,45 +55,47 @@ scrutiny during reviews and where to be cautious when making changes.
 - Python log-server.py is well-typed with structured logging
 - Consistent use of `${HOME}` paths (no hardcoded absolutes)
 - Good separation of concerns across scripts
+- Orchestrator suite (7 scripts) is the primary workhorse, well-structured
 
 **Known issues:**
-- 3 scripts missing `set -euo pipefail`: statusline.sh, canon-runner.sh, canon-scaffold.sh
-- ralph-loop.sh uses hardcoded `/tmp/` paths instead of `mktemp` (race condition risk)
-- statusline.sh lacks error handling for `cd` and git command failures
+- `orch-state.sh` is 822 lines (2x the 400-line limit) — needs splitting
+- 5 scripts use `#!/bin/bash` instead of `#!/usr/bin/env bash`
+- `orch-engine.sh` calls `play-sound.sh` with wrong interface (positional arg vs env var)
+- Duplicate 20-line SHIP block in `ralph-loop.sh`
+- `statusline.sh` lacks error handling for `cd` and git command failures
 
-**Trend:** Stable
+**Trend:** Stable (orchestrator growing in complexity)
 
 ---
 
 ### Hooks (`hooks/`)
 
 **Grade:** B
-**Last reviewed:** 2026-03-06
+**Last reviewed:** 2026-03-15
 **Reviewer:** `/cleanup` run
 
 **Strengths:**
-- All 9 hooks have `set -euo pipefail`
+- All 10 hooks have `set -euo pipefail`
 - Clean lifecycle convention compliance (PreToolUse, PostToolUse, Stop)
-- No dead code or commented-out code
 - play-sound.sh has excellent cross-platform support
 
 **Known issues:**
-- ~~update-exec-plan-reminder.sh uses `.tool_result.exit_code`~~ **Fixed** → `.tool_response.exit_code`
-- ~~log-gam.sh (example) has same schema mismatch~~ **Fixed**
+- `orch-done-sync.sh` had broken `orch_update_item_status` call (missing slug) — **Fixed**
+- ~~`test-echo.sh` diagnostic debris~~ **Removed**
 - Several hooks have 644 permissions instead of 755
 
-**Trend:** Stable
+**Trend:** Improving
 
 ---
 
 ### Commands (`commands/`)
 
 **Grade:** A
-**Last reviewed:** 2026-03-06
+**Last reviewed:** 2026-03-15
 **Reviewer:** `/cleanup` run
 
 **Strengths:**
-- Consistent structure across all 7 commands
+- Consistent structure across all 8 commands
 - All file references verified and valid
 - canon-init.sh → canon-scaffold.sh rename fully propagated
 - Convergence loop well-documented in fix-issue and review-pr
@@ -109,7 +111,7 @@ scrutiny during reviews and where to be cautious when making changes.
 ### Canon Layer (`canon/`)
 
 **Grade:** C
-**Last reviewed:** 2026-03-06
+**Last reviewed:** 2026-03-15
 **Reviewer:** `/cleanup` run
 
 **Strengths:**
@@ -120,32 +122,54 @@ scrutiny during reviews and where to be cautious when making changes.
 
 **Known issues:**
 - Package manager inconsistency: quick-dev.md, register.md, arena-tracking.md use `npm`/`npx` instead of `pnpm exec`
-- ~~canon-start.md references nonexistent template~~ **Fixed** — replaced with generic path note
-- CLAUDE.md claims apply-canon.md is done but the command file does not exist
+- ~~CLAUDE.md claims apply-canon.md is done but the command file does not exist~~ **Fixed** — removed `/apply-canon` references
+- `canon/hooks/` and `canon/docs/` are empty directories (marked as future use)
 - Only 1 of 6 strategy patterns has a bootstrap template
+- 12 TODO stub tests in `canon/templates/nba-momentum` assert nothing
 
-**Trend:** Improving
+**Trend:** Stable
 
 ---
 
 ### Documentation (`docs/`)
 
 **Grade:** B
-**Last reviewed:** 2026-03-06
-**Reviewer:** `/cleanup` run
+**Last reviewed:** 2026-03-15
+**Reviewer:** `/cleanup` + `/doc-garden` run
 
 **Strengths:**
 - Dev_Flow.md and AI_Dev_Pipeline.md are well-structured
 - Exec-plans structure is clean with proper active/completed separation
 - All new plans use YYYYMMDD date prefix convention
-- Skills directory has 3 complete, well-documented skill files
+- CLAUDE.md repo map now includes orchestrator scripts and agents/
 
 **Known issues:**
-- ~~Dev_Flow.md references nonexistent `meet.md`~~ **Fixed** — removed dangling ref
 - README.md still has Trail of Bits branding from upstream fork
 - 26 of 33 completed exec-plans lack date prefixes (accepted debt)
 
-**Trend:** Improving
+**Trend:** Improving (doc-garden scan cleaned 17 stale references)
+
+---
+
+### Orchestrator (`scripts/orch-*.sh`)
+
+**Grade:** C+
+**Last reviewed:** 2026-03-15
+**Reviewer:** `/cleanup` run
+
+**Strengths:**
+- Complete end-to-end pipeline: parse → spawn → poll → review → SHIP/merge
+- Per-plan state isolation with worktrees
+- 8-step SHIP path with validation and changelog/registry updates
+- Dashboard with live tmux capture-pane output
+
+**Known issues:**
+- `orch-state.sh` is 822 lines — needs splitting into logical modules
+- `orch-engine.sh` is 568 lines
+- Test suites (`test-orch-e2e.sh`, `test-orch-stale-detection.sh`) broken against multi-plan API
+- Dashboard viewport loses output after SHIP (worker windows killed, no log-file fallback)
+
+**Trend:** Rapidly growing — needs structural refactoring to stay maintainable
 
 ---
 

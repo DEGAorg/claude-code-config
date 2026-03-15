@@ -195,9 +195,3 @@ export function orchPlanLogDir(slug: string): string {
 export function orchPlanWorktree(slug: string): string {
   return `${ORCH_WORKTREES_DIR}/${slug}`;
 }
-
-/**
- * @deprecated Use `orchPlanStateFile(slug)` for per-plan state.
- * Kept temporarily for migration — will be removed.
- */
-export const ORCH_STATE_FILE = `${ORCH_STATE_DIR}/state.json`;

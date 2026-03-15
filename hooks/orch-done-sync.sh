@@ -59,7 +59,7 @@ export ORCH_STATE_FILE="${ORCH_DIR}/state.json"
 # shellcheck source=../scripts/orch-state.sh
 source "${STATE_LIB}"
 
-orch_update_item_status "${ITEM_ID}" "done"
+orch_update_item_status "${SLUG}" "${ITEM_ID}" "done"
 echo "orch-done-sync: item ${ITEM_ID} (slug: ${SLUG}) marked done in state.json"
 
 exit 0
