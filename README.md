@@ -46,7 +46,7 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 
 | Path | Purpose |
 |------|---------|
-| `commands/` | Global slash commands (`/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
+| `commands/` | Global slash commands (`/apply-core`, `/canon-init`, `/core-init`, `/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
 | `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
 | `skills/` | Core skills (app-legibility, custom-linter-authoring, sound-notifications) |
 | `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
@@ -524,7 +524,7 @@ If you do use it, enable it at session start. Toggling it on mid-conversation re
 
 ## Commands
 
-Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The two in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
+Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The commands in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
 
 ```bash
 mkdir -p ~/.claude/commands

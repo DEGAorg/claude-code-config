@@ -12,12 +12,12 @@ canon/
 ├── CLAUDE.md          ← You are here
 ├── AGENTS.md          ← Agent personas, skills, and workflow reference
 ├── commands/          ← Slash commands (canon-start, develop, discover, register, ralph-cycle, quick-dev)
-├── hooks/             ← Canon-specific lifecycle hooks
+├── hooks/             ← Canon-specific lifecycle hooks (empty — future use)
 ├── skills/            ← Skills (prediction-markets, polymarket, strategy-patterns, risk-management, backtesting, arena-tracking, canon-conventions, ralph-loop)
 ├── agents/            ← Agent personas (dev, market-analyst, strategy-architect, risk-analyst, qa, deployment-ops)
 ├── rules/             ← Domain layering enforcement (ast-grep)
 ├── templates/         ← Strategy templates (client-polymarket.ts, client-sportsbook.ts, nba-momentum/)
-└── docs/              ← Canon architecture, domain models, API references
+└── docs/              ← Canon-specific docs (empty — future use)
 ```
 
 ---
@@ -41,8 +41,10 @@ Requires Core to be installed first:
 
 ```
 /apply-core            # Install generic AI development infrastructure
-/apply-canon           # Layer Canon on top
 ```
+
+Canon artifacts are included in the repo and loaded automatically when working
+in the `canon/` directory. No separate install command needed.
 
 ---
 

@@ -11,7 +11,7 @@ harness patterns. Everything here is **generic and reusable** — project-specif
 **Ace** works on **Phase I** of the Canon MVP Technical Roadmap, across both Core and Canon layers.
 
 - **Core harness** (all 7 gaps): complete. Core artifacts must remain project-agnostic.
-- **Canon layer** (`canon/`): now active. Skills, agents, hooks, commands, and the `/apply-canon` installation command.
+- **Canon layer** (`canon/`): now active. Skills, agents, commands, and templates.
 - **Ignore Canon Arena**: No Arena web dashboard, no Arena frontend, no leaderboard UI, no UI work of any kind. Arena is out of scope for Ace.
 
 Source of truth for Phase I scope: `../../canon-docs/Canon_MVP_Technical_Roadmap.md`
@@ -59,9 +59,9 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
 | `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
-| `commands/` | Global slash commands — `apply-core`, `canon-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
+| `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
 | `skills/` | Core skills — `app-legibility`, `custom-linter-authoring`, `sound-notifications` |
-| `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
+| `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
 | `scripts/` | Shell scripts and tooling (see below) |
 | `scripts/ralph-loop.sh` | Ralph Loop orchestrator — drives worker/reviewer agents to convergence |
@@ -77,6 +77,15 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/terminal-ui-write.sh` | Writes structured data to terminal-ui |
 | `scripts/log-server.py` | WebSocket log aggregation server |
 | `scripts/log-client.sh` | Log client for structured event streaming |
+| `scripts/orch-run.sh` | Orchestrator launcher — validates, initializes state, creates tmux session, starts engine |
+| `scripts/orch-engine.sh` | Orchestrator engine — poll loop, worker spawning, review, SHIP/REVISE handling |
+| `scripts/orch-state.sh` | Orchestrator state helpers — read/write state.json, worktree management, master state |
+| `scripts/orch-parse-items.sh` | Parses plan.md progress log into JSON items with dependencies |
+| `scripts/orch-review.sh` | Per-item reviewer — spawns reviewer agents, collects SHIP/REVISE decisions |
+| `scripts/orch-verify.sh` | Completion criteria verifier — checks unchecked criteria after review |
+| `scripts/orch-display.sh` | Opens tmux dashboard in a terminal window (macOS .command / Linux terminal) |
+| `scripts/ralph-worktree.sh` | Worktree management for parallel Ralph Loop isolation |
+| `scripts/review-advance.sh` | Per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
@@ -85,6 +94,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `docs/Self_Development.md` | How to apply fixes and features — manual, Ralph Loop, and orchestrator workflows |
+| `agents/` | Agent prompt templates (orch-worker, orch-verifier) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
@@ -101,10 +111,11 @@ hooks, and commands specifically for prediction market development.
 claude-code-config/             ← Core (this repo root)
 ├── CLAUDE.md                   ← You are here
 ├── rules/                      ← Language rules (glob-matched, load only for matching file types)
-├── commands/                   ← Global commands (apply-core, canon-init, fix-issue, review-pr, plan, cleanup, doc-garden)
-├── hooks/                      ← Generic hooks (rm-rf blocker, push-to-main blocker, sound player)
+├── commands/                   ← Global commands (apply-core, canon-init, core-init, fix-issue, review-pr, plan, cleanup, doc-garden)
+├── hooks/                      ← Lifecycle hooks (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
-├── scripts/                    ← Ralph Loop engine, terminal-ui, logging, Canon scripts
+├── scripts/                    ← Orchestrator engine, Ralph Loop, terminal-ui, logging, Canon scripts
+├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
 ├── skills/                     ← Core skills (app-legibility, custom-linter-authoring, sound-notifications)
@@ -113,10 +124,10 @@ claude-code-config/             ← Core (this repo root)
 └── canon/                      ← Canon layer (prediction markets)
     ├── CLAUDE.md               ← Canon-specific context and conventions
     ├── commands/               ← Canon-specific commands
-    ├── hooks/                  ← Canon-specific hooks
+    ├── hooks/                  ← Canon-specific hooks (empty — future use)
     ├── skills/                 ← Canon-specific skills (market analysis, etc.)
     ├── agents/                 ← Canon-specific agents
-    └── docs/                   ← Canon architecture, domain models, references
+    └── docs/                   ← Canon-specific docs (empty — future use)
 ```
 
 ### Separation principle
@@ -130,10 +141,7 @@ claude-code-config/             ← Core (this repo root)
 
 ### Installation model
 
-Two commands, no manual file copying:
-
 - `/apply-core` — installs all Core artifacts globally (`~/.claude/`)
-- `/apply-canon` — installs Canon artifacts on top of Core
 
 ---
 
@@ -203,17 +211,15 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 
 ### Current focus
 
-Core harness (all 7 gaps) and Canon layer are both shipped. The demo sprint
-delivered end-to-end: strategy scaffolding, live runner with dashboard, and
-the Ralph Loop driving worker/reviewer convergence per-item.
+Core harness (all 7 gaps), Canon layer, and the orchestrator are all shipped.
+The orchestrator drives parallel worker agents via tmux with an Ink dashboard,
+per-item review, completion criteria gates, and automatic SHIP/merge/archive.
 
-Active work is infrastructure hardening and docs:
+Active work:
 
-1. Fix Ralph reviewer not writing `review-result.txt` (Stop hook enforcement).
-2. Add cleanup-on-PR hook — run `/cleanup` automatically when opening PRs.
-3. Parallel worktrees for subagent isolation (`wt switch`).
-4. Docs pass — update CLAUDE.md, README, canon/CLAUDE.md, Dev_Flow.md to reflect shipped state.
-5. `/core-init` command — one-shot setup for new repos adopting the harness.
+1. Add cleanup-on-PR hook — run `/cleanup` automatically when opening PRs.
+2. Orchestrator Linux/WSL testing and platform fixes.
+3. Dashboard viewport improvements (log-file fallback for post-completion browsing).
 
 ### Key concepts
 
