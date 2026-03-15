@@ -44,6 +44,6 @@ rather than being capped by `maxLines`.
 
 ## Completion criteria
 
-- [ ] `pnpm run build` succeeds in `scripts/terminal-ui/`
-- [ ] Detail panel fills remaining space below the session table
-- [ ] No TypeScript errors
+- [x] `pnpm run build` succeeds in `scripts/terminal-ui/`
+- [x] Detail panel fills remaining space below the session table
+- [x] No TypeScript errors
