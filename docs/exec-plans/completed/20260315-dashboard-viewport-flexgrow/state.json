@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "plan": "20260315-dashboard-viewport-flexgrow",
+  "maxParallelWorkers": 1,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Update `orchestrator-app.tsx` outermost Box to use `height=\"100%\"` so flexGrow children can expand (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 2,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Refactor `session-detail.tsx` to remove percentage-based maxLines and use `flexGrow={1}` with `overflow=\"hidden\"` on the outer Box",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 2,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Build the terminal-ui to verify TypeScript compiles cleanly",
+      "deps": [
+        1,
+        2
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 2,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-15T16:43:26Z",
+  "updatedAt": "2026-03-15T16:50:29Z",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}
