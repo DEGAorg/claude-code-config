@@ -1,6 +1,6 @@
 # Core Init
 
-@description Bootstrap any repo for Core AI development tools — creates dega-core.yaml, exec-plans, .claude/ directory, and minimal CLAUDE.md.
+@description Bootstrap any repo for DEGA Core — creates dega-core.yaml, exec-plans, .gitignore entries, and minimal CLAUDE.md. Enables Ralph Loop and orchestrator.
 
 Run every step below in order. This command is idempotent — it skips files
 that already exist and never overwrites user-customized config.
@@ -79,6 +79,21 @@ Add `.gitkeep` files to empty directories so git tracks them:
 [[ -z "$(ls -A .claude/commands 2>/dev/null)" ]] && touch .claude/commands/.gitkeep
 ```
 
+### .gitignore entries
+
+Append these lines to `.gitignore` if they aren't already present:
+
+```
+# DEGA Core — orchestrator runtime state (ephemeral, not tracked)
+/.orchestrator/
+
+# DEGA Core — personal focus config for planner loop
+focus.yaml
+```
+
+Check each line before appending — skip if already in `.gitignore`. Create
+`.gitignore` if it doesn't exist.
+
 ---
 
 ## 4. Write dega-core.yaml
@@ -92,7 +107,7 @@ Add `.gitkeep` files to empty directories so git tracks them:
 Template (substitute `<CHECK_COMMAND>` with the detected value):
 
 ```yaml
-# Ralph Loop config — edit to match your project
+# DEGA Core config — edit to match your project
 version: 1
 max_iterations: 20
 
@@ -100,6 +115,7 @@ budget:
   warn_at_iteration: 15
 check_command: |
   <CHECK_COMMAND>
+poll_interval_seconds: 30
 
 # Worker and reviewer prompts (global, installed by /apply-core)
 worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
@@ -167,8 +183,9 @@ Created:
 ✓ docs/exec-plans/active/       — execution plan directory
 ✓ docs/exec-plans/completed/    — archived plans
 ✓ .claude/commands/              — local commands directory
-✓ dega-core.yaml                     — Ralph Loop config (<LANGUAGE> detected, <PKG_MGR> if Node)
-✓ CLAUDE.md                      — minimal project context
+✓ .gitignore                     — added .orchestrator/ and focus.yaml entries
+✓ dega-core.yaml                — core config (<LANGUAGE> detected, <PKG_MGR> if Node)
+✓ CLAUDE.md                     — minimal project context
 
 Skipped (already existed):
 ⊘ <list any files that were skipped>
@@ -176,8 +193,9 @@ Skipped (already existed):
 Next steps:
 1. Edit CLAUDE.md — add your project's repo map and conventions
 2. Edit dega-core.yaml — verify check_command matches your toolchain
-3. Run /apply-core to install global tools (hooks, scripts, commands)
+3. Run /apply-core to install global tools (if not already installed)
 4. Create your first exec plan: /plan
+5. Run it: bash ~/.claude/scripts/orch-run.sh <slug>
 ```
 
 Adapt the summary to what actually happened — only show "Skipped" if
