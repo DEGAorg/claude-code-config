@@ -91,7 +91,7 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     const capturePane = () => {
       execFile(
         "tmux",
-        ["capture-pane", "-t", target, "-p"],
+        ["capture-pane", "-t", target, "-p", "-S", "-200"],
         { timeout: 5000 },
         (err, stdout) => {
           if (err) {

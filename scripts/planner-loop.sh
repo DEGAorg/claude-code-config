@@ -6,14 +6,17 @@
 # Each Claude invocation is a fresh `claude -p` call. The bash script is
 # the long-lived process; Claude instances are short-lived tools.
 #
-# Usage: scripts/planner-loop.sh [--dry-run] [--background]
+# Usage: scripts/planner-loop.sh [--dry-run] [--background] [--create-plans]
 #
 # Options:
-#   --dry-run      Run ASSESS phase only, print decision, do not create plans
-#   --background   Pass --background to orch-run.sh (headless tmux)
+#   --dry-run        Run ASSESS phase only, print decision, do not execute
+#   --background     Pass --background to orch-run.sh (headless tmux)
+#   --create-plans   Enable plan creation (experimental). Without this flag,
+#                    the planner only executes existing active plans.
 #
-# Example: scripts/planner-loop.sh
-# Example: scripts/planner-loop.sh --dry-run
+# Example: scripts/planner-loop.sh                    # execute existing plans only
+# Example: scripts/planner-loop.sh --create-plans     # also create new plans
+# Example: scripts/planner-loop.sh --dry-run          # assess only, no execution
 
 set -euo pipefail
 
@@ -40,6 +43,7 @@ PREFIX="planner"
 
 DRY_RUN=false
 BACKGROUND=false
+CREATE_PLANS=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -51,9 +55,13 @@ while [[ $# -gt 0 ]]; do
 		BACKGROUND=true
 		shift
 		;;
+	--create-plans)
+		CREATE_PLANS=true
+		shift
+		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: planner-loop.sh [--dry-run] [--background]" >&2
+		echo "usage: planner-loop.sh [--dry-run] [--background] [--create-plans]" >&2
 		exit 1
 		;;
 	*)
@@ -428,6 +436,23 @@ log "planner loop starting"
 log "  repo: ${REPO_ROOT}"
 log "  log: ${LOGFILE}"
 log "  dry-run: ${DRY_RUN}"
+log "  create-plans: ${CREATE_PLANS}"
+
+# --- Find existing active plans ---
+
+find_existing_plans() {
+	local plans=()
+	if [[ -d "${ACTIVE_PLANS_DIR}" ]]; then
+		for dir in "${ACTIVE_PLANS_DIR}"/*/; do
+			if [[ -f "${dir}plan.md" ]]; then
+				local slug
+				slug=$(basename "${dir}")
+				plans+=("${slug}")
+			fi
+		done
+	fi
+	printf '%s\n' "${plans[@]}"
+}
 
 plans_completed=0
 consecutive_failures=0
@@ -435,6 +460,90 @@ consecutive_failures=0
 while true; do
 	# Re-read focus config each iteration (allows mid-run edits)
 	read_focus
+
+	# --- EXECUTE EXISTING PLANS FIRST ---
+	# Before creating new plans, execute any active plans that aren't
+	# currently running in an orch session.
+	existing_plans=$(find_existing_plans)
+	ran_existing=false
+
+	if [[ -n "${existing_plans}" ]]; then
+		while IFS= read -r slug; do
+			[[ -z "${slug}" ]] && continue
+
+			# Skip if already running in a tmux session
+			if tmux has-session -t "orch-${slug}" 2>/dev/null; then
+				log "existing plan ${slug} already running — skipping"
+				continue
+			fi
+
+			# Skip if already completed (state says done)
+			state_file=$(orch_plan_state_file "${slug}")
+			if [[ -f "${state_file}" ]]; then
+				remaining=$(jq '[.items[] | select(.status != "done")] | length' "${state_file}" 2>/dev/null || echo "1")
+				if [[ "${remaining}" -eq 0 ]]; then
+					log "existing plan ${slug} already complete — skipping"
+					continue
+				fi
+			fi
+
+			log "found existing active plan: ${slug}"
+
+			if [[ "${DRY_RUN}" == true ]]; then
+				log "dry-run — would execute existing plan: ${slug}"
+				continue
+			fi
+
+			# Execute it
+			execute_exit=0
+			run_execute "${slug}" || execute_exit=$?
+
+			if [[ ${execute_exit} -ne 0 ]]; then
+				consecutive_failures=$((consecutive_failures + 1))
+				log "execute failed for existing plan ${slug}"
+				continue
+			fi
+
+			# Monitor it
+			monitor_exit=0
+			run_monitor "${slug}" || monitor_exit=$?
+
+			if [[ ${monitor_exit} -ne 0 ]]; then
+				consecutive_failures=$((consecutive_failures + 1))
+				log "existing plan ${slug} failed execution"
+			else
+				consecutive_failures=0
+				plans_completed=$((plans_completed + 1))
+				log "existing plan ${slug} completed (${plans_completed}/${MAX_PLANS})"
+			fi
+
+			ran_existing=true
+
+			# Budget check after each plan
+			if [[ ${plans_completed} -ge ${MAX_PLANS} ]]; then
+				log "budget exhausted after existing plans"
+				break 2
+			fi
+
+			if [[ ${consecutive_failures} -ge ${MAX_CONSECUTIVE_FAILURES} ]]; then
+				log "stopping — max consecutive failures during existing plans"
+				break 2
+			fi
+		done <<< "${existing_plans}"
+	fi
+
+	# If we ran existing plans this cycle, loop back to check for more
+	if [[ "${ran_existing}" == true ]]; then
+		log "cooling down ${COOLDOWN_SECONDS}s after existing plan execution"
+		sleep "${COOLDOWN_SECONDS}"
+		continue
+	fi
+
+	# --- CREATE NEW PLANS (requires --create-plans flag) ---
+	if [[ "${CREATE_PLANS}" != true ]]; then
+		log "no existing plans to execute and --create-plans not set — exiting"
+		break
+	fi
 
 	# --- ASSESS ---
 	assess_exit=0
