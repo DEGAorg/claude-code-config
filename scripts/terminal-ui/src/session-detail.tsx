@@ -1,14 +1,16 @@
 import { Box, Text, useStdout } from "ink";
 import stripAnsi from "strip-ansi";
-import type { OrchestratorItem } from "./orch-types.js";
+import type { ItemReviewStatus, OrchestratorItem } from "./orch-types.js";
 
 interface SessionDetailProps {
   readonly item: OrchestratorItem | null;
-  /** Last N lines captured from the worker's tmux pane. */
+  /** Last N lines captured from the worker/reviewer tmux pane. */
   readonly outputLines: readonly string[];
+  /** Current review status for the selected item. */
+  readonly reviewStatus?: ItemReviewStatus;
 }
 
-export function SessionDetail({ item, outputLines }: SessionDetailProps) {
+export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetailProps) {
   const { stdout } = useStdout();
   const termRows = stdout?.rows ?? 24;
 
@@ -24,13 +26,17 @@ export function SessionDetail({ item, outputLines }: SessionDetailProps) {
         borderTop={false}
         paddingX={1}
       >
-        <Text dimColor>Select an item to view worker output</Text>
+        <Text dimColor>Select an item to view output</Text>
       </Box>
     );
   }
 
-  const headerColor =
-    item.status === "running"
+  const isReviewing = reviewStatus === "reviewing";
+  const roleLabel = isReviewing ? "reviewer" : "worker";
+
+  const headerColor = isReviewing
+    ? "magenta"
+    : item.status === "running"
       ? "green"
       : item.status === "failed"
         ? "red"
@@ -45,7 +51,7 @@ export function SessionDetail({ item, outputLines }: SessionDetailProps) {
     >
       <Box gap={1}>
         <Text color={headerColor} bold>
-          worker {item.tmuxPane ?? `item-${item.id}`}:
+          {roleLabel} {item.tmuxPane ?? `item-${item.id}`}:
         </Text>
         <Text>
           item {item.id} — {item.description}
