@@ -1,0 +1,10 @@
+REWORK_ITEMS: 1,4
+
+--- item 1 ---
+FINDING: The commit 90a1636 only changed 3 comment lines in scripts/orch-review.sh:1-4. No logic was modified. The structural check at scripts/orch-review.sh:51-59 still requires all items to have status=="done" and exits 1 if any are not done. Failed items are not accepted as "settled", no reviewStatus="skipped" is set for failed work items, and the aggregate decision section has no distinction between review failures and work failures.
+ACTION: Implement the actual logic changes described in the item: (1) replace the NOT_DONE check with a settled check that accepts done+failed, requiring at least one done and zero running/ready/queued; (2) before the poll loop, set reviewStatus="skipped" on items with status=="failed"; (3) in the aggregate decision, distinguish work-failed (skipped review) from review-failed (reviewer rejected) and label them in the feedback file.
+
+--- item 4 ---
+FINDING: The item 4 commit (57026c6) only changed scripts/orch-review.sh, not scripts/orch-engine.sh. The failed-items summary in the SHIP path of orch-engine.sh (lines 379-390 in worktree) was actually added by the item 2 commit (8dbc746). The item 4 changes to orch-review.sh are useful (skipped-item tracking, better REVISE messaging) but don't match what this item asks for: "Add a summary line listing any failed items [to the SHIP path] so the operator knows what wasn't shipped."
+FINDING: Bug in scripts/orch-review.sh:378 — references undefined variable `FAILED_ITEMS` (was renamed to `REWORK_ITEMS` in the same commit). With `set -euo pipefail`, this will crash the REVISE path at runtime.
+ACTION: Fix the stale `FAILED_ITEMS` reference at orch-review.sh:378 — replace with `REWORK_ITEMS`. Verify no other references to the old variable name remain.

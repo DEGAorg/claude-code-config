@@ -322,14 +322,17 @@ for fid in ${WORK_FAILED_IDS}; do
 	WORK_FAILED+=("${fid}")
 done
 
-# Combined rework set
-REWORK_ITEMS=("${REVIEW_FAILED[@]}" "${WORK_FAILED[@]}")
-
+# SHIP/REVISE decision based on review failures only —
+# work-failed items are logged but don't block SHIP
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-if [[ ${#REWORK_ITEMS[@]} -eq 0 ]]; then
+if [[ ${#REVIEW_FAILED[@]} -eq 0 ]]; then
 	echo ""
-	echo "orch-review: SHIP — all ${TOTAL} items passed"
+	if [[ ${#WORK_FAILED[@]} -gt 0 ]]; then
+		echo "orch-review: SHIP — all reviewed items passed (${#WORK_FAILED[@]} work-failed items skipped)"
+	else
+		echo "orch-review: SHIP — all ${TOTAL} items passed"
+	fi
 
 	UPDATED=$(jq --arg now "${NOW}" \
 		'.finalReview.status = "done" |
@@ -339,14 +342,13 @@ if [[ ${#REWORK_ITEMS[@]} -eq 0 ]]; then
 	orch_write_state "${SLUG}" "${UPDATED}"
 else
 	echo ""
+	echo "orch-review: REVISE — ${#REVIEW_FAILED[@]} item(s) failed review"
 	if [[ ${#WORK_FAILED[@]} -gt 0 ]]; then
-		echo "orch-review: REVISE — ${#REVIEW_FAILED[@]} review failure(s), ${#WORK_FAILED[@]} work failure(s) (skipped review)"
-	else
-		echo "orch-review: REVISE — ${#REVIEW_FAILED[@]} item(s) failed review"
+		echo "orch-review: (${#WORK_FAILED[@]} work-failed items also skipped)"
 	fi
 
-	# Build JSON array of rework item IDs
-	REWORK_JSON=$(printf '%s\n' "${REWORK_ITEMS[@]}" | jq -R 'tonumber' | jq -s '.')
+	# Build JSON array of rework item IDs (review failures only)
+	REWORK_JSON=$(printf '%s\n' "${REVIEW_FAILED[@]}" | jq -R 'tonumber' | jq -s '.')
 
 	UPDATED=$(jq --arg now "${NOW}" --argjson rework "${REWORK_JSON}" \
 		'.finalReview.status = "done" |
@@ -362,7 +364,7 @@ else
 	# Write consolidated feedback for the loop
 	FEEDBACK_FILE="${PLAN_DIR}/review-feedback.txt"
 	{
-		printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${REWORK_ITEMS[@]}" | paste -sd ', ' -)"
+		printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${REVIEW_FAILED[@]}" | paste -sd ', ' -)"
 		for fid in "${REVIEW_FAILED[@]}"; do
 			review="${REVIEW_DIR}/item-${fid}-review.txt"
 			if [[ -f "${review}" ]]; then
@@ -370,11 +372,8 @@ else
 				tail -n +2 "${review}"
 			fi
 		done
-		for fid in "${WORK_FAILED[@]}"; do
-			printf '\n--- item %s (work failed, review skipped) ---\n' "${fid}"
-		done
 	} >"${FEEDBACK_FILE}"
 
-	echo "orch-review: rework items: $(printf '%s\n' "${REWORK_ITEMS[@]}" | paste -sd ', ' -)"
+	echo "orch-review: rework items: $(printf '%s\n' "${REVIEW_FAILED[@]}" | paste -sd ', ' -)"
 	echo "  Feedback written to ${FEEDBACK_FILE}"
 fi
