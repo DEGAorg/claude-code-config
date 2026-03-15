@@ -73,11 +73,11 @@ shutdown — the state file must be written before the tmux session is killed.
 
 ## Progress log
 
-- [ ] In orch-engine.sh, replace "dashboard stays open" with auto-close after 10s delay on SHIP (deps: none)
-- [ ] In orch-engine.sh, add auto-close after 5s delay on FAILED (deps: none)
-- [ ] In orch-engine.sh, add SHIP summary with total elapsed time (deps: none)
-- [ ] Verify planner-loop.sh run_monitor reads state.json status field correctly (deps: none)
-- [ ] Run shellcheck on modified files (deps: 1-4)
+- [x] In orch-engine.sh, replace "dashboard stays open" with auto-close after 10s delay on SHIP (deps: none)
+- [x] In orch-engine.sh, add auto-close after 5s delay on FAILED (deps: none)
+- [x] In orch-engine.sh, add SHIP summary with total elapsed time (deps: none)
+- [x] Verify planner-loop.sh run_monitor reads state.json status field correctly (deps: none)
+- [x] Run shellcheck on modified files (deps: 1-4)
 
 ## Decision log
 
@@ -89,8 +89,8 @@ shutdown — the state file must be written before the tmux session is killed.
 
 ## Completion criteria
 
-- [ ] After SHIP, tmux session auto-closes within ~15 seconds
-- [ ] After FAILED, tmux session auto-closes within ~10 seconds
-- [ ] `state.json` has `"status": "completed"` before session closes
-- [ ] Dashboard renders SHIP screen before session closes
-- [ ] `shellcheck` passes on modified files
+- [x] After SHIP, tmux session auto-closes within ~15 seconds
+- [x] After FAILED, tmux session auto-closes within ~10 seconds
+- [x] `state.json` has `"status": "completed"` before session closes
+- [x] Dashboard renders SHIP screen before session closes
+- [x] `shellcheck` passes on modified files
