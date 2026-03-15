@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Box, Text, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import type { OrchestratorState, MasterState } from "./orch-types.js";
@@ -69,47 +70,47 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     };
   }, [statePath, loadState]);
 
-  // Watch the selected item's log file for live output
-  const hasState = state !== null;
+  // Poll tmux capture-pane for live terminal output
+  const planSlug = state?.plan ?? null;
   const selectedReviewStatus =
     selectedId !== null && state !== null
       ? (state.items.find((i) => i.id === selectedId)?.reviewStatus ?? "pending")
       : "pending";
 
   useEffect(() => {
-    if (selectedId === null || !hasState) {
+    if (selectedId === null || planSlug === null) {
       setOutputLines([]);
       return;
     }
 
-    const logDir = resolve(dirname(statePath), "logs");
-    const logPrefix = selectedReviewStatus === "reviewing" ? "reviewer" : "worker";
-    const logPath = resolve(logDir, `${logPrefix}-${selectedId}.log`);
+    const sessionName = `orch-${planSlug}`;
+    const windowPrefix =
+      selectedReviewStatus === "reviewing" ? "reviewer" : "worker";
+    const target = `${sessionName}:${windowPrefix}-${selectedId}`;
 
-    const readTail = async () => {
-      try {
-        const content = await readFile(logPath, "utf-8");
-        const lines = content.split("\n");
-        setOutputLines(lines.slice(-200));
-      } catch {
-        // File may not exist yet if worker hasn't started
-      }
+    const capturePane = () => {
+      execFile(
+        "tmux",
+        ["capture-pane", "-t", target, "-p"],
+        { timeout: 5000 },
+        (err, stdout) => {
+          if (err) {
+            // Pane may not exist yet or worker finished
+            return;
+          }
+          const lines = stdout.split("\n");
+          setOutputLines(lines.slice(-200));
+        },
+      );
     };
 
-    void readTail();
-
-    const logWatcher = watch(logPath, {
-      persistent: true,
-      ignoreInitial: true,
-    });
-
-    logWatcher.on("change", () => void readTail());
-    logWatcher.on("add", () => void readTail());
+    capturePane();
+    const interval = setInterval(capturePane, 1500);
 
     return () => {
-      void logWatcher.close();
+      clearInterval(interval);
     };
-  }, [selectedId, hasState, statePath, selectedReviewStatus]);
+  }, [selectedId, planSlug, selectedReviewStatus]);
 
   // Keyboard navigation: j/k or arrows to select items
   // Only enable when raw mode is supported (requires TTY stdin)
