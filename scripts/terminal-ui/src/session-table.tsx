@@ -43,6 +43,23 @@ function formatIteration(item: OrchestratorItem): string {
   return `${item.iteration ?? 0}/${item.maxIterations ?? 3}`;
 }
 
+function rowStyle(status: ItemStatus): {
+  color: string;
+  bold: boolean;
+  dimColor: boolean;
+} {
+  switch (status) {
+    case "running":
+      return { color: "greenBright", bold: true, dimColor: false };
+    case "failed":
+      return { color: "red", bold: true, dimColor: false };
+    case "done":
+      return { color: "green", bold: false, dimColor: true };
+    default:
+      return { color: "white", bold: false, dimColor: false };
+  }
+}
+
 function ItemRow({
   item,
   isSelected,
@@ -52,10 +69,11 @@ function ItemRow({
   readonly isSelected: boolean;
   readonly descWidth: number;
 }) {
-  const color = STATUS_COLORS[item.status];
+  const statusColor = STATUS_COLORS[item.status];
   const icon = STATUS_ICONS[item.status];
   const desc = truncate(item.description, descWidth);
   const idStr = String(item.id).padStart(2);
+  const style = rowStyle(item.status);
 
   return (
     <Box>
@@ -63,7 +81,9 @@ function ItemRow({
         {isSelected ? (
           <Text color="blueBright">{idStr}</Text>
         ) : (
-          <Text>{idStr}</Text>
+          <Text color={style.color} bold={style.bold} dimColor={style.dimColor}>
+            {idStr}
+          </Text>
         )}
       </Box>
       <Box flexGrow={1}>
@@ -72,11 +92,13 @@ function ItemRow({
             {desc}
           </Text>
         ) : (
-          <Text>{desc}</Text>
+          <Text color={style.color} bold={style.bold} dimColor={style.dimColor}>
+            {desc}
+          </Text>
         )}
       </Box>
-      <Box width={10}>
-        <Text color={color}>
+      <Box width={12}>
+        <Text color={statusColor} bold={style.bold}>
           {icon} {item.status}
         </Text>
       </Box>
@@ -98,7 +120,7 @@ export function SessionTable({
   const { stdout } = useStdout();
   const termCols = stdout?.columns ?? 80;
 
-  const fixedCols = 4 + 10 + 5 + 8 + 4;
+  const fixedCols = 4 + 12 + 5 + 8 + 4;
   const descWidth = Math.max(20, termCols - fixedCols - 4);
 
   const doneCount = items.filter((i) => i.status === "done").length;
@@ -115,8 +137,11 @@ export function SessionTable({
     >
       <Box justifyContent="space-between">
         <Text bold>PLAN: {plan}</Text>
-        <Text dimColor>
-          {doneCount}/{items.length} done, {activeCount} active
+        <Text>
+          <Text color="green">{doneCount}/{items.length}</Text>
+          <Text dimColor> done, </Text>
+          <Text color="greenBright" bold={activeCount > 0}>{activeCount}</Text>
+          <Text dimColor> active</Text>
         </Text>
       </Box>
 
@@ -127,7 +152,7 @@ export function SessionTable({
         <Box flexGrow={1}>
           <Text bold dimColor>ITEM</Text>
         </Box>
-        <Box width={10}>
+        <Box width={12}>
           <Text bold dimColor>STATUS</Text>
         </Box>
         <Box width={5}>

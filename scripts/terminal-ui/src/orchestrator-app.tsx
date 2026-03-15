@@ -149,10 +149,26 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
       : null;
 
   const finalReview = state.finalReview ?? { status: "pending", result: null };
-  const reviewDone = finalReview.status === "done";
-  const reviewColor = finalReview.result === "SHIP"
-    ? "greenBright"
-    : "red";
+
+  const runningCount = state.items.filter((i) => i.status === "running").length;
+  const doneCount = state.items.filter((i) => i.status === "done").length;
+  const failedCount = state.items.filter((i) => i.status === "failed").length;
+
+  const statusBadge = (() => {
+    if (finalReview.status === "done" && finalReview.result === "SHIP") {
+      return { label: " SHIP ", color: "greenBright" } as const;
+    }
+    if (finalReview.status === "done" && finalReview.result === "REVISE") {
+      return { label: " REVISE ", color: "red" } as const;
+    }
+    if (finalReview.status === "running") {
+      return { label: " REVIEWING ", color: "cyanBright" } as const;
+    }
+    if (runningCount > 0) {
+      return { label: " RUNNING ", color: "greenBright" } as const;
+    }
+    return { label: " IDLE ", color: "yellow" } as const;
+  })();
 
   return (
     <Box flexDirection="column">
@@ -164,18 +180,37 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
         alignItems="center"
       >
         <Text bold>ORCHESTRATOR</Text>
-        <Box flexGrow={1} />
-        <Text dimColor>
-          {state.items.length} items, max {state.maxParallelWorkers} workers
+        <Text bold color={statusBadge.color} inverse>
+          {statusBadge.label}
         </Text>
-        {reviewDone ? (
-          <Text color={reviewColor}>
-            {" "}
-            review: {finalReview.result ?? "done"}
+        <Box flexGrow={1} />
+        <Text color="greenBright" bold>
+          {doneCount}
+        </Text>
+        <Text dimColor>/</Text>
+        <Text>{state.items.length}</Text>
+        <Text dimColor> done</Text>
+        {runningCount > 0 ? (
+          <Text>
+            {"  "}
+            <Text color="greenBright" bold>
+              {runningCount}
+            </Text>
+            <Text dimColor> running</Text>
           </Text>
-        ) : finalReview.status === "running" ? (
-          <Text dimColor> review: running</Text>
         ) : null}
+        {failedCount > 0 ? (
+          <Text>
+            {"  "}
+            <Text color="red" bold>
+              {failedCount}
+            </Text>
+            <Text dimColor> failed</Text>
+          </Text>
+        ) : null}
+        <Text dimColor>
+          {"  "}max {state.maxParallelWorkers}w
+        </Text>
       </Box>
 
       {warning ? <Text color="yellow">⚠ {warning}</Text> : null}
