@@ -56,7 +56,7 @@ No other files change — this is purely a docs/command fix.
 - [x] Add missing orchestrator files to the Orchestrator install section (deps: 1)
 - [x] Add Planner component to the user menu and install section (deps: 1)
 - [x] Update post-install summary example to include planner (deps: 3)
-- [ ] Verify all referenced files actually exist in the repo (deps: 1, 2, 3)
+- [x] Verify all referenced files actually exist in the repo (deps: 1, 2, 3)
 
 ## Completion criteria
 
