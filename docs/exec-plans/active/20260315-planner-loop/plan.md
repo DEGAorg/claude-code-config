@@ -184,10 +184,10 @@ completion criteria).
 
 ## Progress log
 
-- [ ] Create `agents/planner-assess.md` — assessment agent prompt with JSON output schema (deps: none)
+- [x] Create `agents/planner-assess.md` — assessment agent prompt with JSON output schema (deps: none)
 - [ ] Create `agents/planner-writer.md` — plan-writing agent prompt (deps: none)
 - [ ] Create `scripts/planner-loop.sh` — main loop: read focus, assess, plan, execute, monitor, budget check (deps: 1, 2)
-- [ ] Create `focus.yaml` example for this repo with current tech debt priorities (deps: none)
+- [x] Create `focus.yaml` example for this repo with current tech debt priorities (deps: none)
 - [x] Add `focus.yaml` to `.gitignore` (deps: none)
 - [ ] Update `CLAUDE.md` repo map and Self_Development.md with planner loop workflow (deps: 3)
 - [ ] Run shellcheck on `scripts/planner-loop.sh` (deps: 3)
