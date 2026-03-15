@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Final per-item review — runs after all items complete.
+# Final per-item review — runs after all items settle (done or failed).
 # Spawns reviewer agents in parallel via tmux windows, polls for review
-# files, respects max-workers concurrency. All items must PASS for SHIP.
+# files, respects max-workers concurrency. Failed work items are skipped.
+# All reviewed items must PASS for SHIP; any failures trigger REVISE.
 #
 # Usage: scripts/orch-review.sh <slug>
 #

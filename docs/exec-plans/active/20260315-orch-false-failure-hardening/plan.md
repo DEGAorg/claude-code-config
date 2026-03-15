@@ -48,7 +48,7 @@ The SHIP path currently assumes all items passed. Add a summary line listing any
 
 ## Progress log
 
-- [ ] Change orch-review.sh to accept partial completion (review done items, skip failed)
+- [x] Change orch-review.sh to accept partial completion (review done items, skip failed)
 - [x] Update orch-engine.sh wave exit to log partial completion summary
 - [x] Relax done-file too-small guard in orch-state.sh to warn-and-accept
 - [x] Add failed-items summary to SHIP path output
