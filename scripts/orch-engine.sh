@@ -371,6 +371,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	fi
 	# Kill worker/reviewer windows now that we're done
 	orch_kill_done_workers "${SLUG}"
+	# Sync worktree plan.md (with checked boxes) back to main repo
+	MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
+	if [[ -f "${WT_PLAN}" ]]; then
+		cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"
+		echo "orch-engine: synced plan.md from worktree to main repo"
+	fi
 	# Merge worker changes, deregister, and clean up worktree
 	orch_merge_worktree "${SLUG}"
 	orch_master_deregister "${SLUG}" "completed"

@@ -66,7 +66,7 @@ This happens before `orch_merge_worktree` which will commit and merge everything
 
 - [ ] Add uncommitted plan guard to orch-run.sh
 - [ ] Copy plan directory into worktree after creation in orch-run.sh
-- [ ] Change PLAN_DIR to worktree path in orch-engine.sh
+- [x] Change PLAN_DIR to worktree path in orch-engine.sh
 - [ ] Sync plan.md back to main repo on SHIP path in orch-engine.sh
 
 ## Decision log

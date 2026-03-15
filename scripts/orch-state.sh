@@ -136,6 +136,45 @@ orch_sync_done_files() {
 	for item_id in ${running_ids}; do
 		local done_file="${done_dir}/item-${item_id}.txt"
 		if [[ -f "${done_file}" ]]; then
+			# Reject done-files smaller than 20 bytes (empty or trivial)
+			local file_size
+			file_size=$(wc -c < "${done_file}")
+			if ((file_size < 20)); then
+				echo "orch-state: item ${item_id} done-file too small (${file_size} bytes < 20) — rejecting"
+				rm -f "${done_file}"
+
+				local cur_iter max_iter
+				cur_iter=$(printf '%s' "${state}" | jq \
+					".items[] | select(.id == ${item_id}) | .iteration // 0")
+				max_iter=$(printf '%s' "${state}" | jq \
+					".items[] | select(.id == ${item_id}) | .maxIterations // 3")
+				local next_iter=$((cur_iter + 1))
+
+				local now
+				now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+				if ((next_iter >= max_iter)); then
+					state=$(printf '%s' "${state}" | jq \
+						--argjson id "${item_id}" \
+						--arg now "${now}" \
+						'(.items[] | select(.id == $id)) |=
+						  (.status = "failed" | .lastResult = "done-file-too-small-max-retries") |
+						 .updatedAt = $now')
+					echo "orch-state: item ${item_id} done-file too small — max retries exhausted, marked failed"
+				else
+					state=$(printf '%s' "${state}" | jq \
+						--argjson id "${item_id}" \
+						--argjson iter "${next_iter}" \
+						--arg now "${now}" \
+						'(.items[] | select(.id == $id)) |=
+						  (.status = "ready" | .iteration = $iter | .lastResult = "done-file-too-small-retry") |
+						 .updatedAt = $now')
+					echo "orch-state: item ${item_id} done-file too small — reset to ready (iteration ${next_iter})"
+				fi
+				changed=true
+				continue
+			fi
+
 			# Verify worker actually changed files in the worktree
 			if [[ -d "${worktree_dir}" ]]; then
 				local has_changes
@@ -195,6 +234,23 @@ orch_sync_done_files() {
          .updatedAt = $now')
 			changed=true
 			echo "orch-state: item ${item_id} done-file found — marked done"
+
+			# Warn if the plan.md checkbox is still unchecked
+			local plan_file="${ORCH_REPO_ROOT}/docs/exec-plans/active/${slug}/plan.md"
+			if [[ -f "${plan_file}" ]]; then
+				local item_desc
+				item_desc=$(printf '%s' "${state}" | jq -r \
+					--argjson id "${item_id}" \
+					'.items[] | select(.id == $id) | .description // ""')
+				if [[ -n "${item_desc}" ]]; then
+					local escaped_desc
+					# shellcheck disable=SC2016 # \& is a sed backreference, not shell expansion
+					escaped_desc=$(printf '%s' "${item_desc}" | sed 's/[.[\*^$()+?{|]/\\&/g')
+					if grep -q "^- \[ \] ${escaped_desc}" "${plan_file}"; then
+						echo "orch-state: WARNING — item ${item_id} done but plan.md checkbox is unchecked"
+					fi
+				fi
+			fi
 		fi
 	done
 

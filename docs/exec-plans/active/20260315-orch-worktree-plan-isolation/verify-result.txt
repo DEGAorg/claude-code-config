@@ -1,0 +1,7 @@
+PASS
+All completion criteria verified.
+
+1. orch-run.sh rejects plans with uncommitted changes — guard added at line 89, checks git status --porcelain and exits 1 if dirty.
+2. Workers edit worktree copies — PLAN_DIR in orch-engine.sh points to ${WORKTREE_DIR}/..., plan copied into worktree in orch-run.sh.
+3. Plan.md checkbox state preserved — SHIP path copies worktree plan.md back to main repo before merge.
+4. shellcheck clean — zero warnings/errors (only SC1091 info-level notes about sourced files, expected).
