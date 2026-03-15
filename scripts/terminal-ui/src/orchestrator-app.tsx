@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Text, useInput, useStdin } from "ink";
+import { Box, Text, useApp, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
@@ -116,11 +116,17 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     };
   }, [selectedId, planSlug, selectedReviewStatus]);
 
-  // Keyboard navigation: j/k or arrows to select items
-  // Only enable when raw mode is supported (requires TTY stdin)
+  // Keyboard navigation: j/k or arrows to select items, q to quit on terminal screens
   const { isRawModeSupported } = useStdin();
+  const { exit } = useApp();
   useInput(
     (input, key) => {
+      // q exits on terminal screens (completed/failed)
+      if (input === "q" && state && (state.status === "completed" || state.status === "failed")) {
+        exit();
+        return;
+      }
+
       if (!state || state.items.length === 0) return;
 
       const ids = state.items.map((i) => i.id);
@@ -154,7 +160,25 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     );
   }
 
-  // Render final screen when the engine writes a terminal status
+  // Render final/transitional screens based on state.status
+  if (state.status === "verifying") {
+    const total = state.items.length;
+    const done = state.items.filter((i) => i.status === "done").length;
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Box>
+          <Text bold color="cyanBright" inverse>
+            {" VERIFYING "}
+          </Text>
+          <Text bold>{" "}{state.plan}</Text>
+        </Box>
+        <Text>
+          All {total} items passed review ({done} done). Checking completion criteria...
+        </Text>
+      </Box>
+    );
+  }
+
   if (state.status === "completed") {
     const total = state.items.length;
     const done = state.items.filter((i) => i.status === "done").length;
@@ -162,14 +186,14 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
       <Box flexDirection="column" padding={1}>
         <Box>
           <Text bold color="greenBright" inverse>
-            {" SHIP "}
+            {" DONE "}
           </Text>
           <Text bold>{" "}{state.plan}</Text>
         </Box>
         <Text>
-          All {total} items completed ({done} done).
+          All {total} items completed ({done} done). Plan shipped and archived.
         </Text>
-        <Text dimColor>Window will close shortly.</Text>
+        <Text dimColor>Press q or close the terminal window to exit.</Text>
       </Box>
     );
   }
@@ -184,8 +208,8 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
           </Text>
           <Text bold>{" "}{state.plan}</Text>
         </Box>
-        <Text>{failed} item(s) failed.</Text>
-        <Text dimColor>Window will close shortly.</Text>
+        <Text>{failed} item(s) failed. Check engine log for details.</Text>
+        <Text dimColor>Press q or close the terminal window to exit.</Text>
       </Box>
     );
   }
@@ -201,6 +225,7 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
   const doneCount = state.items.filter((i) => i.status === "done").length;
   const failedCount = state.items.filter((i) => i.status === "failed").length;
 
+  // Status badge — only reached for "running" states (terminal screens return early)
   const statusBadge = (() => {
     if (finalReview.status === "done" && finalReview.result === "SHIP") {
       return { label: " SHIP ", color: "greenBright" } as const;

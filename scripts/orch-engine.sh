@@ -308,12 +308,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ "${CC_UNCHECKED}" -gt 0 ]]; then
 		echo "orch-engine: ${CC_UNCHECKED} unchecked completion criteria — spawning verifier"
 
-		# Update state with verification status
+		# Update state with verification status — dashboard shows VERIFYING
 		now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 		updated=$(jq \
 			--arg now "${now}" \
 			--argjson count "${CC_UNCHECKED}" \
-			'.verification = {
+			'.status = "verifying" |
+			.verification = {
 				status: "running",
 				uncheckedCount: $count,
 				iteration: ((.verification.iteration // 0) + 1)
@@ -563,10 +564,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
 
-	# Auto-close: let dashboard render SHIP screen, then kill session
-	echo "orch-engine: session will close in 10 seconds..."
-	sleep 10
-	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+	# Engine exits — dashboard stays open showing DONE screen
 	exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo ""
@@ -598,9 +596,6 @@ else
 		'.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${updated}"
 
-	# Auto-close: let dashboard render FAILED screen, then kill session
-	echo "orch-engine: session will close in 5 seconds..."
-	sleep 5
-	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+	# Engine exits — dashboard stays open showing FAILED screen
 	exit 1
 fi

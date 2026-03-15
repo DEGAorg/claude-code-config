@@ -63,7 +63,7 @@ export interface OrchestratorItem {
 }
 
 /** Overall orchestrator run status. */
-export type OrchRunStatus = "running" | "completed" | "failed";
+export type OrchRunStatus = "running" | "verifying" | "completed" | "failed";
 
 /** Top-level orchestrator state (`.orchestrator/state.json`). */
 export interface OrchestratorState {
