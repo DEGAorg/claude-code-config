@@ -290,7 +290,81 @@ REVIEW_RESULT=$(jq -r '.finalReview.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
 
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
-	echo "orch-engine: SHIP — all items passed review"
+	echo "orch-engine: review passed — checking completion criteria"
+
+	# --- Completion criteria gate ---
+	CC_UNCHECKED=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
+
+	if [[ "${CC_UNCHECKED}" -gt 0 ]]; then
+		echo "orch-engine: ${CC_UNCHECKED} unchecked completion criteria — spawning verifier"
+
+		# Update state with verification status
+		now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+		updated=$(jq \
+			--arg now "${now}" \
+			--argjson count "${CC_UNCHECKED}" \
+			'.verification = {
+				status: "running",
+				uncheckedCount: $count,
+				iteration: ((.verification.iteration // 0) + 1)
+			} |
+			.updatedAt = $now' "${ORCH_STATE_FILE}")
+		orch_write_state "${SLUG}" "${updated}"
+
+		if "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
+			# Verifier succeeded — re-check criteria
+			CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
+			if [[ "${CC_AFTER}" -gt 0 ]]; then
+				echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — REVISE"
+				now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+				updated=$(jq \
+					--arg now "${now}" \
+					--argjson count "${CC_AFTER}" \
+					'.verification.status = "failed" |
+					 .verification.uncheckedCount = $count |
+					 .updatedAt = $now' "${ORCH_STATE_FILE}")
+				orch_write_state "${SLUG}" "${updated}"
+				REVIEW_RESULT="REVISE"
+			else
+				echo "orch-engine: all completion criteria verified"
+				now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+				updated=$(jq \
+					--arg now "${now}" \
+					'.verification.status = "passed" |
+					 .verification.uncheckedCount = 0 |
+					 .updatedAt = $now' "${ORCH_STATE_FILE}")
+				orch_write_state "${SLUG}" "${updated}"
+			fi
+		else
+			echo "orch-engine: verifier failed — REVISE"
+			now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+			updated=$(jq \
+				--arg now "${now}" \
+				'.verification.status = "failed" |
+				 .updatedAt = $now' "${ORCH_STATE_FILE}")
+			orch_write_state "${SLUG}" "${updated}"
+			REVIEW_RESULT="REVISE"
+		fi
+	else
+		echo "orch-engine: all completion criteria already checked"
+		now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+		updated=$(jq \
+			--arg now "${now}" \
+			'.verification = {
+				status: "passed",
+				uncheckedCount: 0,
+				iteration: 0
+			} |
+			.updatedAt = $now' "${ORCH_STATE_FILE}")
+		orch_write_state "${SLUG}" "${updated}"
+	fi
+fi
+
+# --- Actual SHIP / REVISE handling ---
+
+if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
+	echo ""
+	echo "orch-engine: SHIP — all items passed review and completion criteria verified"
 	# Play completion sound if available
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
