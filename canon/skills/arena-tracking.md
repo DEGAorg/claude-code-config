@@ -31,7 +31,7 @@ infrastructure; strategies run on users' own machines.
 - [ ] Types valid (`npx tsc --noEmit`)
 - [ ] RiskInterface implemented with hard limits
 - [ ] Backtest results acceptable (see backtesting skill)
-- [ ] ralph.yaml configured with appropriate budget limits
+- [ ] dega-core.yaml configured with appropriate budget limits
 - [ ] Strategy name and description set in package.json
 - [ ] Polymarket wallet address configured
 

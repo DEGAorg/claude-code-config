@@ -37,7 +37,7 @@ Canon specifications live in a sibling docs repo. Do not duplicate them in Core.
 | `Canon_MVP_Technical_Roadmap.md` | Scaffold structure, canon_init, 10 templates, .canon/ tree |
 | `Canon_Installation_Architecture_Analysis.md` | Core vs Canon split, install scope, canon_init behavior |
 | `specs/SAS_Agent_Framework.md` | Agent personas, skills, workflows, .canon/ conventions |
-| `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/ralph.yaml, hooks |
+| `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/dega-core.yaml, hooks |
 | `specs/SAS_Automation_Model.md` | Strategy scaffolds, automation patterns |
 | `Canon_Key_Components.md` | High-level components, canon init --profile |
 | `specs/SAS_Deployment.md` | Cloud execution, $HOME/.canon/, image registry |

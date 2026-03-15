@@ -7,7 +7,7 @@ Settled decisions for Core + Canon config layer. Updated as decisions are made.
 ## Layer separation
 
 - **Harness** → Core (repo root). Generic AI development infrastructure.
-- **Ralph Loop hook mechanism** (`ralph-stop-hook.sh`, `ralph.yaml` template) → Core. Generic enough for any project.
+- **Ralph Loop hook mechanism** (`ralph-stop-hook.sh`, `dega-core.yaml` template) → Core. Generic enough for any project.
 - **Ralph Loop implementation** (`ralph-loop.ts`, `canon_ralph` MCP tool) → Canon application repo (separate repo, not this one).
 - **`canon/` in this repo** → Canon's Claude Code config only (skills, hooks, commands, rules). Not Canon application code.
 - **Canon application code** → lives in a separate Canon app repo. Developed using the config installed from this repo.

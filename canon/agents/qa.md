@@ -31,7 +31,7 @@ and meet Canon's quality standards before they reach registration.
 ## Workflow
 1. Receive implementation from Dev
 2. Code review: Conventions compliance, domain layering, error messages
-3. Run all check commands from `.canon/ralph.yaml` `success_criteria` across multiple timeframes (7d, 30d, 90d if data available)
+3. Run all check commands from `.canon/dega-core.yaml` `success_criteria` across multiple timeframes (7d, 30d, 90d if data available)
 4. Analyze backtest results against acceptance criteria
 5. Check for common biases and overfitting signals
 6. Test edge cases

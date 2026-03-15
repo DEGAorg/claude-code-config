@@ -43,7 +43,7 @@ Verify each item:
 - [ ] Types valid (`npx tsc --noEmit`)
 - [ ] RiskInterface implemented with hard limits
 - [ ] Backtest results acceptable (win rate >50%, profit_factor >1.0)
-- [ ] `ralph.yaml` configured with appropriate budget limits
+- [ ] `dega-core.yaml` configured with appropriate budget limits
 - [ ] Strategy name and description set in `package.json`
 - [ ] Polymarket wallet address configured
 

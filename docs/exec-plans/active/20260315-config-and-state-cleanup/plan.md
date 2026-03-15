@@ -75,7 +75,7 @@ Completed exec-plans are historical records — do NOT update them.
 - [x] Update `scripts/ralph-check.sh` to use the config helper (deps: 2)
 - [x] Update `scripts/orch-engine.sh` to use the config helper (deps: 2)
 - [x] Update `scripts/orch-review.sh` to use the config helper (deps: 2)
-- [ ] Update `scripts/orch-verify.sh` to use the config helper (deps: 2)
+- [x] Update `scripts/orch-verify.sh` to use the config helper (deps: 2)
 - [x] Update `scripts/canon-scaffold.sh` to write `dega-core.yaml` (deps: none)
 - [x] Update `tests/test-parallel-worktrees.sh` to create `dega-core.yaml` (deps: none)
 - [ ] Update all live docs: CLAUDE.md, README.md, Self_Development.md, commands/, canon/ (deps: 1)
