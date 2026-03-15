@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 ### Changed
+- Rename ralph.yaml to dega-core.yaml (`20260315-config-and-state-cleanup`) — 2026-03-15
+
 - Dashboard viewport uses flexGrow for adaptive sizing (`20260315-dashboard-viewport-flexgrow`) — 2026-03-15
 
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
