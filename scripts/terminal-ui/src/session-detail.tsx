@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { Box, Text, useStdout } from "ink";
 import type { ItemReviewStatus, OrchestratorItem } from "./orch-types.js";
 
 interface SessionDetailProps {
@@ -7,9 +7,17 @@ interface SessionDetailProps {
   readonly outputLines: readonly string[];
   /** Current review status for the selected item. */
   readonly reviewStatus?: ItemReviewStatus;
+  /** Number of rows consumed by header, table, and footer above this component. */
+  readonly reservedRows?: number;
 }
 
-export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetailProps) {
+export function SessionDetail({ item, outputLines, reviewStatus, reservedRows }: SessionDetailProps) {
+  const { stdout } = useStdout();
+  const termRows = stdout?.rows ?? 40;
+  // Available lines = terminal height - reserved rows (header+table+footer+borders)
+  // Subtract 3 for this component's own chrome (border + header line + padding)
+  const availableLines = Math.max(3, termRows - (reservedRows ?? 0) - 3);
+  const visibleLines = outputLines.slice(-availableLines);
   if (!item) {
     return (
       <Box
@@ -58,10 +66,10 @@ export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetail
         </Text>
       </Box>
 
-      {outputLines.length === 0 ? (
+      {visibleLines.length === 0 ? (
         <Text dimColor>No output captured</Text>
       ) : (
-        outputLines.map((line, idx) => (
+        visibleLines.map((line, idx) => (
           <Text key={idx} wrap="truncate">
             {line}
           </Text>

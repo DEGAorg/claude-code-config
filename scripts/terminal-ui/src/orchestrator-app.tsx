@@ -272,6 +272,7 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
         item={selectedItem}
         outputLines={outputLines}
         reviewStatus={selectedItem?.reviewStatus ?? "pending"}
+        reservedRows={3 + state.items.length + 4 + 1 + (warning ? 1 : 0)}
       />
 
       <Box paddingX={1}>
