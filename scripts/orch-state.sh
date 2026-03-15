@@ -561,8 +561,19 @@ orch_merge_worktree() {
 		return 0
 	fi
 
-	# Commit any uncommitted changes first
+	# Commit any uncommitted changes in the worktree
 	orch_commit_worktree "${slug}"
+
+	# Commit any dirty files in the main repo to avoid merge conflicts
+	local main_dirty
+	main_dirty=$(git -C "${ORCH_REPO_ROOT}" status --porcelain 2>/dev/null || true)
+	if [[ -n "${main_dirty}" ]]; then
+		git -C "${ORCH_REPO_ROOT}" add -A
+		git -C "${ORCH_REPO_ROOT}" commit -m "orch: auto-commit before merging ${slug}
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+		echo "orch-state: committed dirty files in main repo before merge"
+	fi
 
 	# Check if the worktree branch has commits ahead of the source
 	local source_branch
@@ -576,10 +587,28 @@ orch_merge_worktree() {
 		return 0
 	fi
 
-	# Merge the worktree branch into the current branch
-	git -C "${ORCH_REPO_ROOT}" merge "${branch}" \
-		--no-edit -m "orch: merge ${slug} worker changes"
-	echo "orch-state: merged ${ahead} commit(s) from ${branch} into ${source_branch}"
+	# Merge the worktree branch, auto-resolving plan.md conflicts
+	if git -C "${ORCH_REPO_ROOT}" merge "${branch}" \
+		--no-edit -m "orch: merge ${slug} worker changes"; then
+		echo "orch-state: merged ${ahead} commit(s) from ${branch} into ${source_branch}"
+	else
+		# Resolve conflicts by taking the worktree version (workers have latest state)
+		local conflicted
+		conflicted=$(git -C "${ORCH_REPO_ROOT}" diff --name-only --diff-filter=U)
+		if [[ -n "${conflicted}" ]]; then
+			echo "orch-state: resolving merge conflicts (taking worktree version)"
+			echo "${conflicted}" | while IFS= read -r f; do
+				git -C "${ORCH_REPO_ROOT}" checkout --theirs -- "${f}"
+				git -C "${ORCH_REPO_ROOT}" add "${f}"
+			done
+			git -C "${ORCH_REPO_ROOT}" commit --no-edit
+			echo "orch-state: merged ${ahead} commit(s) with conflict resolution"
+		else
+			echo "orch-state: merge failed for unknown reason" >&2
+			git -C "${ORCH_REPO_ROOT}" merge --abort 2>/dev/null || true
+			return 1
+		fi
+	fi
 }
 
 orch_cleanup_worktree() {
