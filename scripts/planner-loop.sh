@@ -477,9 +477,15 @@ while true; do
 				continue
 			fi
 
-			# Skip if already completed (state says done)
+			# Skip if already completed or failed (check top-level status first,
+			# then fall back to item-level check for backwards compatibility)
 			state_file=$(orch_plan_state_file "${slug}")
 			if [[ -f "${state_file}" ]]; then
+				top_status=$(jq -r '.status // "running"' "${state_file}" 2>/dev/null || echo "running")
+				if [[ "${top_status}" == "completed" ]] || [[ "${top_status}" == "failed" ]]; then
+					log "existing plan ${slug} already ${top_status} — skipping"
+					continue
+				fi
 				remaining=$(jq '[.items[] | select(.status != "done")] | length' "${state_file}" 2>/dev/null || echo "1")
 				if [[ "${remaining}" -eq 0 ]]; then
 					log "existing plan ${slug} already complete — skipping"
