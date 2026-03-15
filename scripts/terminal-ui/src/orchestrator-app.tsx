@@ -98,7 +98,11 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
             // Pane may not exist yet or worker finished
             return;
           }
-          const lines = stdout.split("\n");
+          // Trim trailing empty lines (tmux pads to full pane height)
+          const raw = stdout.split("\n");
+          let end = raw.length;
+          while (end > 0 && raw[end - 1]!.trim() === "") end--;
+          const lines = raw.slice(0, end);
           setOutputLines(lines.slice(-200));
         },
       );
