@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 ### Changed
+- Dashboard viewport uses flexGrow for adaptive sizing (`20260315-dashboard-viewport-flexgrow`) — 2026-03-15
+
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
