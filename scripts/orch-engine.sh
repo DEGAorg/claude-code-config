@@ -217,9 +217,9 @@ echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
 while true; do
-	# Sync done-files, kill finished windows, detect stale workers, promote
+	# Sync done-files, detect stale workers, promote
+	# Worker windows stay alive until SHIP/REVISE so capture-pane output is visible
 	orch_sync_done_files "${SLUG}"
-	orch_kill_done_workers "${SLUG}"
 	orch_detect_stale_workers "${SLUG}"
 	orch_promote_ready_items "${SLUG}"
 
@@ -369,6 +369,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
 	fi
+	# Kill worker/reviewer windows now that we're done
+	orch_kill_done_workers "${SLUG}"
 	# Merge worker changes, deregister, and clean up worktree
 	orch_merge_worktree "${SLUG}"
 	orch_master_deregister "${SLUG}" "completed"
@@ -389,17 +391,15 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# Log path message (log written by tee in orch-run.sh)
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
-
-	# Give the dashboard time to render the final screen
-	sleep 5
-	# Clean up tmux session
-	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
-	echo "orch-engine: tmux session '${TMUX_SESSION}' cleaned up"
+	echo "orch-engine: dashboard stays open — close the terminal window when done"
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo ""
 	echo "orch-engine: REVISE — some items need rework"
 	echo "  Re-running wave execution for rework items..."
 	echo ""
+
+	# Kill worker windows before re-exec
+	orch_kill_done_workers "${SLUG}"
 
 	# Update master progress before re-exec
 	orch_master_update_progress "${SLUG}"
@@ -421,7 +421,6 @@ else
 		--arg now "${now}" \
 		'.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${updated}"
-	sleep 5
-	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+	echo "orch-engine: dashboard stays open — close the terminal window when done"
 	exit 1
 fi
