@@ -1,5 +1,4 @@
 import { Box, Text, useStdout } from "ink";
-import stripAnsi from "strip-ansi";
 import type { ItemReviewStatus, OrchestratorItem } from "./orch-types.js";
 
 interface SessionDetailProps {
@@ -16,7 +15,7 @@ export function SessionDetail({ item, outputLines, reviewStatus }: SessionDetail
 
   // Reserve ~60% of terminal for the table above; detail gets the rest
   const maxLines = Math.max(3, Math.floor(termRows * 0.35));
-  const visible = outputLines.slice(-maxLines).map(stripAnsi);
+  const visible = outputLines.slice(-maxLines);
 
   if (!item) {
     return (
