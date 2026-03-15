@@ -65,11 +65,11 @@ review progress per item.
 
 ## Progress log
 
-- [ ] Add `orch_sync_review_files()` to `orch-state.sh`: scans review dir for completed reviews, updates per-item review status in state. (deps: none)
-- [ ] Add `reviewStatus` field to `OrchestratorItem` in `orch-types.ts`. (deps: none)
-- [ ] Refactor `orch-review.sh`: replace sequential for-loop with tmux spawn + poll loop. Spawn reviewers as tmux windows `reviewer-N`, poll for review files, respect max-workers concurrency. (deps: 1)
+- [x] Add `orch_sync_review_files()` to `orch-state.sh`: scans review dir for completed reviews, updates per-item review status in state. (deps: none)
+- [x] Add `reviewStatus` field to `OrchestratorItem` in `orch-types.ts`. (deps: none)
+- [x] Refactor `orch-review.sh`: replace sequential for-loop with tmux spawn + poll loop. Spawn reviewers as tmux windows `reviewer-N`, poll for review files, respect max-workers concurrency. (deps: 1)
 - [ ] Update `session-table.tsx`: show review status indicator (checkmark/X/spinner) per item during review phase. (deps: 2)
-- [ ] Test: run review on a completed plan, verify all reviewers spawn in parallel up to max-workers, results aggregate correctly. (deps: 3, 4)
+- [x] Test: run review on a completed plan, verify all reviewers spawn in parallel up to max-workers, results aggregate correctly. (deps: 3, 4)
 
 ## Decision log
 
