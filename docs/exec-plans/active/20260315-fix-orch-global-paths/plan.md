@@ -82,7 +82,7 @@ its own REPO_ROOT derivation is sufficient.
 - [x] Fix `scripts/orch-engine.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [x] Fix `scripts/orch-review.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [ ] Fix `scripts/orch-verify.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
-- [ ] Fix `scripts/planner-loop.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
+- [x] Fix `scripts/planner-loop.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [ ] Run shellcheck on all 6 modified files (deps: 1-6)
 - [ ] Verify orch-run.sh works from a different project directory by checking REPO_ROOT resolves correctly (deps: 1-6)
 
