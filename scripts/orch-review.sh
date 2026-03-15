@@ -375,6 +375,6 @@ else
 		done
 	} >"${FEEDBACK_FILE}"
 
-	echo "orch-review: rework items: $(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
+	echo "orch-review: rework items: $(printf '%s\n' "${REWORK_ITEMS[@]}" | paste -sd ', ' -)"
 	echo "  Feedback written to ${FEEDBACK_FILE}"
 fi
