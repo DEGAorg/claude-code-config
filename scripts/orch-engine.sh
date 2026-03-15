@@ -390,12 +390,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		'.status = "completed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${updated}"
 
-	# Preserve final state.json (with completed status) in the exec-plan directory
+	# Move plan from active/ to completed/ and commit
+	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
+	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
+		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+		mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"
+		echo "orch-engine: moved plan to ${COMPLETED_DIR}"
+	fi
+
+	# Save final state.json into completed plan directory
 	if [[ -d "${COMPLETED_DIR}" ]]; then
 		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
 		echo "orch-engine: state.json saved to ${COMPLETED_DIR}/state.json"
 	fi
+
+	# Commit the plan move
+	git -C "${REPO_ROOT}" add \
+		"docs/exec-plans/active/${SLUG}" \
+		"docs/exec-plans/completed/${SLUG}" 2>/dev/null || true
+	git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed" \
+		--allow-empty 2>/dev/null || true
 
 	# Log path message (log written by tee in orch-run.sh)
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
@@ -422,7 +437,7 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 else
 	echo "orch-engine: unexpected review result: ${REVIEW_RESULT}" >&2
 	orch_master_deregister "${SLUG}" "failed"
-	orch_cleanup_worktree "${SLUG}"
+	# Keep worktree on failure — preserves committed progress for resume
 	# Write failed status so the dashboard renders a final screen
 	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 	updated=$(jq \

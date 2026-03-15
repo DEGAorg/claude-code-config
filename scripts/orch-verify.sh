@@ -28,13 +28,19 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-verifier.md"
 
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+
+# Use worktree plan path if worktree exists (matches orch-engine.sh)
+if [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+else
+	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+fi
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2

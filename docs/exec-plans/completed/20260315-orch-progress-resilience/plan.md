@@ -61,9 +61,9 @@ Currently `orch-run.sh` only calls `init_state` when the state file doesn't exis
 
 ## Progress log
 
-- [ ] Add per-item commit to `orch_sync_done_files` in orch-state.sh — commit worktree after accepting each done-file
-- [ ] Remove `orch_cleanup_worktree` from error path in orch-engine.sh — keep worktree on failure
-- [ ] Verify resume works: re-running a failed plan skips done items and reuses existing worktree
+- [x] Add per-item commit to `orch_sync_done_files` in orch-state.sh — commit worktree after accepting each done-file
+- [x] Remove `orch_cleanup_worktree` from error path in orch-engine.sh — keep worktree on failure
+- [x] Verify resume works: re-running a failed plan skips done items and reuses existing worktree
 
 ## Decision log
 
@@ -75,7 +75,7 @@ Currently `orch-run.sh` only calls `init_state` when the state file doesn't exis
 
 ## Completion criteria
 
-- [ ] Worktree has one commit per completed item
-- [ ] Killing an orch run preserves worktree and state
-- [ ] Re-running the same plan resumes from where it left off
-- [ ] `shellcheck scripts/orch-state.sh scripts/orch-engine.sh` clean
+- [x] Worktree has one commit per completed item
+- [x] Killing an orch run preserves worktree and state
+- [x] Re-running the same plan resumes from where it left off
+- [x] `shellcheck scripts/orch-state.sh scripts/orch-engine.sh` clean

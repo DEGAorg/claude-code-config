@@ -235,13 +235,27 @@ orch_sync_done_files() {
 			changed=true
 			echo "orch-state: item ${item_id} done-file found — marked done"
 
+			# Fetch description for commit message and checkbox check
+			local item_desc
+			item_desc=$(printf '%s' "${state}" | jq -r \
+				--argjson id "${item_id}" \
+				'.items[] | select(.id == $id) | .description // ""')
+
+			# Commit worktree changes for this item (progress resilience)
+			if [[ -d "${worktree_dir}" ]]; then
+				local wt_changes
+				wt_changes=$(git -C "${worktree_dir}" status --porcelain 2>/dev/null || true)
+				if [[ -n "${wt_changes}" ]]; then
+					git -C "${worktree_dir}" add -A
+					git -C "${worktree_dir}" commit \
+						-m "orch: item ${item_id} — ${item_desc}"
+					echo "orch-state: committed item ${item_id} changes in worktree"
+				fi
+			fi
+
 			# Warn if the plan.md checkbox is still unchecked
 			local plan_file="${ORCH_REPO_ROOT}/docs/exec-plans/active/${slug}/plan.md"
 			if [[ -f "${plan_file}" ]]; then
-				local item_desc
-				item_desc=$(printf '%s' "${state}" | jq -r \
-					--argjson id "${item_id}" \
-					'.items[] | select(.id == $id) | .description // ""')
 				if [[ -n "${item_desc}" ]]; then
 					local escaped_desc
 					# shellcheck disable=SC2016 # \& is a sed backreference, not shell expansion
