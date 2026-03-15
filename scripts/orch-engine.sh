@@ -409,7 +409,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
 		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
 		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
-			echo "orch-engine: [SHIP 4/6] moved plan to completed/"
+			echo "orch-engine: [SHIP 4/7] moved plan to completed/"
 		else
 			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -431,7 +431,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 	else
 		if git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed"; then
-			echo "orch-engine: [SHIP 5/6] committed plan move"
+			echo "orch-engine: [SHIP 5/7] committed plan move"
 		else
 			echo "orch-engine: ERROR — git commit failed for plan move" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -441,6 +441,11 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	# --- Step 6: Append to plan registry ---
 	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
 	if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+		# Commit registry update
+		git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
+		if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+			git -C "${REPO_ROOT}" commit -m "orch: update plan registry for ${SLUG}"
+		fi
 		echo "orch-engine: [SHIP 6/7] appended to plan registry"
 	else
 		echo "orch-engine: WARN — registry append failed (non-fatal)"
@@ -483,7 +488,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	fi
 
 	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
-		echo "orch-engine: SHIP complete — all 6 steps passed, validation OK"
+		echo "orch-engine: SHIP complete — all 7 steps passed, validation OK"
 	else
 		echo "orch-engine: SHIP completed with issues — ${SHIP_ERRORS} error(s), validation=${VALIDATION_OK}" >&2
 		echo "orch-engine: review .orchestrator/plans/${SLUG}/logs/engine.log for details" >&2

@@ -291,6 +291,7 @@ complete ${TASK_SLUG} (ralph loop, iteration ${i}, fallback SHIP)
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 					)"
+					orch_registry_append "${TASK_SLUG}" "completed" "${i}" "ralph"
 					_settings="${HOME}/.claude/settings.json"
 					if [[ -f "$_settings" ]]; then
 						_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
