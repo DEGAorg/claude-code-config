@@ -15,6 +15,9 @@ __pycache__/
 # Orchestrator runtime state
 /.orchestrator/
 
+# Planner focus config (personal/session-specific)
+focus.yaml
+
 # Test artifacts (exec-plan lifecycle smoke test)
 /hello-world.md
 /tests/scratch/
