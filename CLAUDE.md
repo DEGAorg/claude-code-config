@@ -60,7 +60,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `mcp-template.json` | MCP server configuration template |
 | `ralph.yaml` | Ralph Loop per-project config (max iterations, success criteria) |
 | `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
-| `skills/` | Core skills — `app-legibility`, `custom-linter-authoring`, `sound-notifications` |
+| `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
 | `scripts/` | Shell scripts and tooling (see below) |
