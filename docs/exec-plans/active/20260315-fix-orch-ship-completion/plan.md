@@ -77,7 +77,7 @@ shutdown — the state file must be written before the tmux session is killed.
 - [x] In orch-engine.sh, add auto-close after 5s delay on FAILED (deps: none)
 - [x] In orch-engine.sh, add SHIP summary with total elapsed time (deps: none)
 - [x] Verify planner-loop.sh run_monitor reads state.json status field correctly (deps: none)
-- [ ] Run shellcheck on modified files (deps: 1-4)
+- [x] Run shellcheck on modified files (deps: 1-4)
 
 ## Decision log
 
