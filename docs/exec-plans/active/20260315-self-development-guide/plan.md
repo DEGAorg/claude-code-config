@@ -46,8 +46,8 @@ None — this is a documentation-only plan.
 ## Progress log
 
 - [ ] Write `docs/Self_Development.md` with all sections
-- [ ] Add cross-reference link in CLAUDE.md repo map
-- [ ] Add cross-reference link in README.md
+- [x] Add cross-reference link in CLAUDE.md repo map
+- [x] Add cross-reference link in README.md
 
 ## Decision log
 

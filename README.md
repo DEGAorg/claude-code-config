@@ -52,7 +52,7 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 | `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
 | `scripts/` | Shell scripts and tooling — Ralph Loop engine, terminal-ui dashboard, logging, Canon scripts |
 | `sounds/` | MP3 sound files played on task completion |
-| `docs/` | Pipeline docs, architecture, exec plans |
+| `docs/` | Pipeline docs, architecture, exec plans, [self-development guide](docs/Self_Development.md) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `canon/` | Canon layer — prediction market skills, agents, hooks, commands, templates |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
