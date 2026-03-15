@@ -6,11 +6,12 @@
 # The poll loop, worker spawning, review, and cleanup all run inside
 # orch-engine.sh in a tmux window named "engine".
 #
-# Usage: scripts/orch-run.sh <slug> [--max-workers N] [--background]
+# Usage: scripts/orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]
 #
 # Options:
-#   --max-workers N   Max concurrent workers (default: 4)
-#   --background      Headless mode — tmux only, no display windows
+#   --max-workers N      Max concurrent workers (default: 4)
+#   --max-iterations N   Max review/rework iterations per item (default: 3)
+#   --background         Headless mode — tmux only, no display windows
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --background
@@ -23,10 +24,29 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
 
+# --- Check dependencies ---
+
+check_deps() {
+	local missing=()
+	for cmd in jq tmux node; do
+		if ! command -v "${cmd}" >/dev/null 2>&1; then
+			missing+=("${cmd}")
+		fi
+	done
+	if [[ ${#missing[@]} -gt 0 ]]; then
+		echo "error: missing required tools: ${missing[*]}" >&2
+		echo "  install them and ensure they are on your PATH" >&2
+		exit 1
+	fi
+}
+
+check_deps
+
 # --- Parse args ---
 
 SLUG=""
 MAX_WORKERS=4
+MAX_ITERATIONS=3
 BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
@@ -35,13 +55,17 @@ while [[ $# -gt 0 ]]; do
 		MAX_WORKERS="${2:-4}"
 		shift 2
 		;;
+	--max-iterations)
+		MAX_ITERATIONS="${2:-3}"
+		shift 2
+		;;
 	--background)
 		BACKGROUND=true
 		shift
 		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--max-workers N] [--background]" >&2
+		echo "usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
 		exit 1
 		;;
 	*)
@@ -52,7 +76,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--max-workers N] [--background]" >&2
+	echo "error: usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
 	exit 1
 fi
 
@@ -102,7 +126,7 @@ init_state() {
 	orch_ensure_plan_dirs "${SLUG}"
 	NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-	MAX_ITER="${MAX_ITERATIONS:-3}"
+	MAX_ITER="${MAX_ITERATIONS}"
 	ITEMS_JSON=$(printf '%s' "${PARSED}" | jq --argjson maxIter "${MAX_ITER}" '[
 	  .items[] | {
 	    id: .id,
@@ -185,7 +209,7 @@ fi
 
 # --- Start engine as a tmux window ---
 
-ENGINE_ARGS="${SLUG} --max-workers ${MAX_WORKERS}"
+ENGINE_ARGS="${SLUG} --max-workers ${MAX_WORKERS} --max-iterations ${MAX_ITERATIONS}"
 if [[ "${BACKGROUND}" == true ]]; then
 	ENGINE_ARGS="${ENGINE_ARGS} --background"
 fi
