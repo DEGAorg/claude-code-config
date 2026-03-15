@@ -52,15 +52,15 @@ No other files change — this is purely a docs/command fix.
 
 ## Progress log
 
-- [ ] Add missing orchestrator files to the Source list in apply-core.md (deps: none)
-- [ ] Add missing orchestrator files to the Orchestrator install section (deps: 1)
-- [ ] Add Planner component to the user menu and install section (deps: 1)
-- [ ] Update post-install summary example to include planner (deps: 3)
-- [ ] Verify all referenced files actually exist in the repo (deps: 1, 2, 3)
+- [x] Add missing orchestrator files to the Source list in apply-core.md (deps: none)
+- [x] Add missing orchestrator files to the Orchestrator install section (deps: 1)
+- [x] Add Planner component to the user menu and install section (deps: 1)
+- [x] Update post-install summary example to include planner (deps: 3)
+- [x] Verify all referenced files actually exist in the repo (deps: 1, 2, 3)
 
 ## Completion criteria
 
-- [ ] All 4 missing orch files listed in Source and Orchestrator sections
-- [ ] Planner component with 3 files listed in Source, menu, and install section
-- [ ] Post-install example includes planner line
-- [ ] Every file path in apply-core.md matches a real file in the repo
+- [x] All 4 missing orch files listed in Source and Orchestrator sections
+- [x] Planner component with 3 files listed in Source, menu, and install section
+- [x] Post-install example includes planner line
+- [x] Every file path in apply-core.md matches a real file in the repo
