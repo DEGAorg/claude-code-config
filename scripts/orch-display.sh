@@ -59,7 +59,11 @@ run_with_timeout() {
 
 open_command_file() {
 	local cmd_file="/tmp/orch-attach-${SESSION}.command"
-	printf '#!/bin/bash\n%s\n' "${ATTACH_CMD}" >"${cmd_file}"
+	cat >"${cmd_file}" <<-EOF
+		#!/bin/bash
+		printf '\e[9;1t'
+		exec ${ATTACH_CMD}
+	EOF
 	chmod +x "${cmd_file}"
 	open "${cmd_file}"
 	echo "orch-display: opened via .command file"
