@@ -191,7 +191,7 @@ completion criteria).
 - [x] Add `focus.yaml` to `.gitignore` (deps: none)
 - [x] Update `CLAUDE.md` repo map and Self_Development.md with planner loop workflow (deps: 3)
 - [x] Run shellcheck on `scripts/planner-loop.sh` (deps: 3)
-- [ ] End-to-end test: run planner-loop.sh with max_plans=1, verify it assesses, plans, and launches orch (deps: 3, 4)
+- [x] End-to-end test: run planner-loop.sh with max_plans=1, verify it assesses, plans, and launches orch (deps: 3, 4)
 
 ## Decision log
 
