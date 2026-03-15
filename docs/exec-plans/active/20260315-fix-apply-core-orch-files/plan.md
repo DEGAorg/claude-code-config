@@ -52,7 +52,7 @@ No other files change — this is purely a docs/command fix.
 
 ## Progress log
 
-- [ ] Add missing orchestrator files to the Source list in apply-core.md (deps: none)
+- [x] Add missing orchestrator files to the Source list in apply-core.md (deps: none)
 - [ ] Add missing orchestrator files to the Orchestrator install section (deps: 1)
 - [ ] Add Planner component to the user menu and install section (deps: 1)
 - [ ] Update post-install summary example to include planner (deps: 3)

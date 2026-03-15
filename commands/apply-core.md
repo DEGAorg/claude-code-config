@@ -71,7 +71,14 @@ Files available:
 - `scripts/terminal-ui/src/orchestrator-app.tsx`
 - `scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx`
+- `scripts/orch-engine.sh`
+- `scripts/orch-verify.sh`
 - `agents/orch-worker.md`
+- `agents/orch-verifier.md`
+- `hooks/orch-done-sync.sh`
+- `scripts/planner-loop.sh`
+- `agents/planner-assess.md`
+- `agents/planner-writer.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
