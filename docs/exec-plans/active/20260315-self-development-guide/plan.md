@@ -45,9 +45,9 @@ None — this is a documentation-only plan.
 
 ## Progress log
 
-- [ ] Write `docs/Self_Development.md` with all sections
-- [ ] Add cross-reference link in CLAUDE.md repo map
-- [ ] Add cross-reference link in README.md
+- [x] Write `docs/Self_Development.md` with all sections
+- [x] Add cross-reference link in CLAUDE.md repo map
+- [x] Add cross-reference link in README.md
 
 ## Decision log
 
@@ -58,5 +58,5 @@ None — this is a documentation-only plan.
 
 ## Completion criteria
 
-- [ ] `docs/Self_Development.md` exists with all sections
-- [ ] CLAUDE.md and README.md link to the new guide
+- [x] `docs/Self_Development.md` exists with all sections
+- [x] CLAUDE.md and README.md link to the new guide
