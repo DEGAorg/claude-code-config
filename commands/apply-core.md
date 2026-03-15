@@ -121,7 +121,14 @@ Read and note which of these already exist:
 - `~/.claude/scripts/orch-parse-items.sh`
 - `~/.claude/scripts/orch-state.sh`
 - `~/.claude/scripts/orch-review.sh`
+- `~/.claude/scripts/orch-engine.sh`
+- `~/.claude/scripts/orch-verify.sh`
 - `~/.claude/agents/orch-worker.md`
+- `~/.claude/agents/orch-verifier.md`
+- `~/.claude/hooks/orch-done-sync.sh`
+- `~/.claude/scripts/planner-loop.sh`
+- `~/.claude/agents/planner-assess.md`
+- `~/.claude/agents/planner-writer.md`
 
 Also check in the current working directory (target project root):
 - `dega-core.yaml`
@@ -171,15 +178,25 @@ Components:
   the Ink app with `pnpm install && pnpm run build`.
   (opt-in; recommended when `~/.claude/scripts/terminal-ui/` is missing)
 - **Orchestrator** — tmux-based orchestrator: persistent state layer + wave-based
-  parallel execution. Installs launcher (`orch-run.sh`), display opener
-  (`orch-display.sh`), state library (`orch-state.sh`), plan parser
-  (`orch-parse-items.sh`), review script (`orch-review.sh`) to
-  `~/.claude/scripts/`, Ink dashboard components to
-  `~/.claude/scripts/terminal-ui/src/`, and worker agent definition
-  (`orch-worker.md`) to `~/.claude/agents/`. Polling interval controlled by
-  `poll_interval_seconds` in `dega-core.yaml` (default 30). Requires Terminal UI
-  and tmux. Invoke via `~/.claude/scripts/orch-run.sh <slug>`.
+  parallel execution. Installs launcher (`orch-run.sh`), engine loop
+  (`orch-engine.sh`), display opener (`orch-display.sh`), state library
+  (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
+  (`orch-review.sh`), completion verifier (`orch-verify.sh`) to
+  `~/.claude/scripts/`, done-file sync hook (`orch-done-sync.sh`) to
+  `~/.claude/hooks/`, Ink dashboard components to
+  `~/.claude/scripts/terminal-ui/src/`, and agent definitions
+  (`orch-worker.md`, `orch-verifier.md`) to `~/.claude/agents/`. Polling
+  interval controlled by `poll_interval_seconds` in `dega-core.yaml`
+  (default 30). Requires Terminal UI and tmux. Invoke via
+  `~/.claude/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.claude/scripts/orch-run.sh` is missing)
+- **Planner** — autonomous planner loop that reads `focus.yaml`, assesses the
+  project, writes execution plans, and launches the orchestrator. Installs
+  `planner-loop.sh` to `~/.claude/scripts/` and agent prompts
+  (`planner-assess.md`, `planner-writer.md`) to `~/.claude/agents/`.
+  Requires Orchestrator. Invoke via
+  `~/.claude/scripts/planner-loop.sh`.
+  (opt-in; recommended when `~/.claude/scripts/planner-loop.sh` is missing)
 - **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
   market projects. Installs `canon-scaffold.sh` (deterministic project
   scaffolder called by `/canon-start`) and `canon.sh` (reference copy of
@@ -341,17 +358,24 @@ Safe to overwrite — these are engine scripts and app source with no user custo
 
 #### Orchestrator
 
-Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`, and
-`~/.claude/agents/` if they don't exist.
+Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`,
+`~/.claude/agents/`, and `~/.claude/hooks/` if they don't exist.
 
 Write each shell script to `~/.claude/scripts/`:
 - `scripts/orch-run.sh` → `~/.claude/scripts/orch-run.sh`
+- `scripts/orch-engine.sh` → `~/.claude/scripts/orch-engine.sh`
 - `scripts/orch-display.sh` → `~/.claude/scripts/orch-display.sh`
 - `scripts/orch-parse-items.sh` → `~/.claude/scripts/orch-parse-items.sh`
 - `scripts/orch-state.sh` → `~/.claude/scripts/orch-state.sh`
 - `scripts/orch-review.sh` → `~/.claude/scripts/orch-review.sh`
+- `scripts/orch-verify.sh` → `~/.claude/scripts/orch-verify.sh`
 
 Run `chmod +x ~/.claude/scripts/orch-*.sh` after writing.
+
+Write the done-sync hook to `~/.claude/hooks/`:
+- `hooks/orch-done-sync.sh` → `~/.claude/hooks/orch-done-sync.sh`
+
+Run `chmod +x ~/.claude/hooks/orch-done-sync.sh` after writing.
 
 Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/orch-types.ts` → `~/.claude/scripts/terminal-ui/src/orch-types.ts`
@@ -359,11 +383,12 @@ Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/session-table.tsx` → `~/.claude/scripts/terminal-ui/src/session-table.tsx`
 - `scripts/terminal-ui/src/session-detail.tsx` → `~/.claude/scripts/terminal-ui/src/session-detail.tsx`
 
-Write the agent definition:
+Write the agent definitions to `~/.claude/agents/`:
 - `agents/orch-worker.md` → `~/.claude/agents/orch-worker.md`
+- `agents/orch-verifier.md` → `~/.claude/agents/orch-verifier.md`
 
-Safe to overwrite — these are engine scripts, components, and agent definitions
-with no user customization.
+Safe to overwrite — these are engine scripts, hooks, components, and agent
+definitions with no user customization.
 
 If Terminal UI was also selected, the `pnpm install && pnpm run build` step
 in that section will pick up the new orchestrator components automatically.
@@ -372,6 +397,22 @@ rebuild it:
 ```bash
 cd ~/.claude/scripts/terminal-ui && pnpm install && pnpm run build
 ```
+
+#### Planner
+
+Create `~/.claude/scripts/` and `~/.claude/agents/` if they don't exist.
+
+Write the planner loop script to `~/.claude/scripts/`:
+- `scripts/planner-loop.sh` → `~/.claude/scripts/planner-loop.sh`
+
+Run `chmod +x ~/.claude/scripts/planner-loop.sh` after writing.
+
+Write the agent prompts to `~/.claude/agents/`:
+- `agents/planner-assess.md` → `~/.claude/agents/planner-assess.md`
+- `agents/planner-writer.md` → `~/.claude/agents/planner-writer.md`
+
+Safe to overwrite — these are engine scripts and agent definitions with no
+user customization.
 
 #### Canon Bootstrap
 
