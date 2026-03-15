@@ -116,7 +116,8 @@ init_state() {
 	    worktree: null,
 	    iteration: 0,
 	    maxIterations: $maxIter,
-	    lastResult: null
+	    lastResult: null,
+	    reviewStatus: "pending"
 	  }
 	]')
 
