@@ -4,7 +4,7 @@
 # Runs inside a tmux window (started by orch-run.sh). Drives workers to
 # completion, invokes review, handles SHIP/REVISE outcomes, and cleans up.
 #
-# Usage: scripts/orch-engine.sh <slug> [--max-workers N] [--background]
+# Usage: scripts/orch-engine.sh <slug> [--max-workers N] [--max-iterations N] [--background]
 #
 # This script is not invoked directly by users. orch-run.sh launches it
 # inside a tmux window named "engine" in the orch-<slug> session.
@@ -21,12 +21,17 @@ source "${SCRIPT_DIR}/orch-state.sh"
 
 SLUG=""
 MAX_WORKERS=4
+MAX_ITERATIONS=3
 BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--max-workers)
 		MAX_WORKERS="${2:-4}"
+		shift 2
+		;;
+	--max-iterations)
+		MAX_ITERATIONS="${2:-3}"
 		shift 2
 		;;
 	--background)
@@ -45,7 +50,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-engine.sh <slug> [--max-workers N] [--background]" >&2
+	echo "error: usage: orch-engine.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
 	exit 1
 fi
 
@@ -312,7 +317,7 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 		BACKGROUND_FLAG="--background"
 	fi
 	# shellcheck disable=SC2086
-	exec "${SCRIPT_DIR}/orch-engine.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" ${BACKGROUND_FLAG}
+	exec "${SCRIPT_DIR}/orch-engine.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" --max-iterations "${MAX_ITERATIONS}" ${BACKGROUND_FLAG}
 else
 	echo "orch-engine: unexpected review result: ${REVIEW_RESULT}" >&2
 	orch_master_deregister "${SLUG}" "failed"
