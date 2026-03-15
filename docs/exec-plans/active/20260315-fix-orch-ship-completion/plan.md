@@ -89,8 +89,8 @@ shutdown — the state file must be written before the tmux session is killed.
 
 ## Completion criteria
 
-- [ ] After SHIP, tmux session auto-closes within ~15 seconds
-- [ ] After FAILED, tmux session auto-closes within ~10 seconds
-- [ ] `state.json` has `"status": "completed"` before session closes
-- [ ] Dashboard renders SHIP screen before session closes
-- [ ] `shellcheck` passes on modified files
+- [x] After SHIP, tmux session auto-closes within ~15 seconds
+- [x] After FAILED, tmux session auto-closes within ~10 seconds
+- [x] `state.json` has `"status": "completed"` before session closes
+- [x] Dashboard renders SHIP screen before session closes
+- [x] `shellcheck` passes on modified files
