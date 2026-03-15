@@ -15,6 +15,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091 source=scripts/log-client.sh
 source "${SCRIPT_DIR}/log-client.sh"
+# shellcheck disable=SC1091 source=scripts/orch-state.sh
+source "${SCRIPT_DIR}/orch-state.sh"
 
 # Parse flags
 WORKDIR=""
@@ -447,6 +449,7 @@ complete ${TASK_SLUG} (ralph loop, iteration ${i})
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 		)"
+		orch_registry_append "${TASK_SLUG}" "completed" "${i}" "ralph"
 		# Play completion sound
 		_settings="${HOME}/.claude/settings.json"
 		if [[ -f "$_settings" ]]; then

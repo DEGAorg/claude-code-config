@@ -382,7 +382,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
 	if [[ -f "${WT_PLAN}" ]]; then
 		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
-			echo "orch-engine: [SHIP 1/6] synced plan.md from worktree"
+			echo "orch-engine: [SHIP 1/7] synced plan.md from worktree"
 		else
 			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -393,7 +393,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 2: Merge worktree branch into main ---
 	if orch_merge_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 2/6] worktree merged"
+		echo "orch-engine: [SHIP 2/7] worktree merged"
 	else
 		echo "orch-engine: ERROR — worktree merge failed" >&2
 		SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -401,7 +401,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
-	echo "orch-engine: [SHIP 3/6] deregistered from master state"
+	echo "orch-engine: [SHIP 3/7] deregistered from master state"
 
 	# --- Step 4: Move plan from active/ to completed/ ---
 	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
@@ -438,9 +438,17 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		fi
 	fi
 
-	# --- Step 6: Clean up worktree ---
+	# --- Step 6: Append to plan registry ---
+	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
+	if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+		echo "orch-engine: [SHIP 6/7] appended to plan registry"
+	else
+		echo "orch-engine: WARN — registry append failed (non-fatal)"
+	fi
+
+	# --- Step 7: Clean up worktree ---
 	if orch_cleanup_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 6/6] worktree cleaned up"
+		echo "orch-engine: [SHIP 7/7] worktree cleaned up"
 	else
 		echo "orch-engine: WARN — worktree cleanup failed (non-fatal)"
 	fi
