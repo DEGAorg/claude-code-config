@@ -62,6 +62,9 @@ export interface OrchestratorItem {
   readonly reviewStatus: ItemReviewStatus;
 }
 
+/** Overall orchestrator run status. */
+export type OrchRunStatus = "running" | "completed" | "failed";
+
 /** Top-level orchestrator state (`.orchestrator/state.json`). */
 export interface OrchestratorState {
   /** Schema version for forward compat. */
@@ -72,6 +75,8 @@ export interface OrchestratorState {
   readonly maxParallelWorkers: number;
   /** Foreground (tmux grid) or background (detached). */
   readonly mode: OrchestratorMode;
+  /** Overall run status — set to "completed" on SHIP. */
+  readonly status?: OrchRunStatus;
   /** All items parsed from the plan's progress log. */
   readonly items: readonly OrchestratorItem[];
   /** Final whole-plan review state. */

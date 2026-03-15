@@ -27,7 +27,7 @@ Modify `open_command_file()` in `orch-display.sh`:
 
 ## Progress log
 
-- [ ] Add maximize escape and exec to .command file in orch-display.sh
+- [x] Add maximize escape and exec to .command file in orch-display.sh
 
 ## Decision log
 
@@ -38,6 +38,6 @@ Modify `open_command_file()` in `orch-display.sh`:
 
 ## Completion criteria
 
-- [ ] Terminal window opens maximized on macOS
-- [ ] Terminal window closes cleanly when tmux session ends
-- [ ] `shellcheck scripts/orch-display.sh` clean
+- [x] Terminal window opens maximized on macOS
+- [x] Terminal window closes cleanly when tmux session ends
+- [x] `shellcheck scripts/orch-display.sh` clean

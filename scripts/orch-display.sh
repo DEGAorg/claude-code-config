@@ -59,10 +59,16 @@ run_with_timeout() {
 
 open_command_file() {
 	local cmd_file="/tmp/orch-attach-${SESSION}.command"
-	printf '#!/bin/bash\n%s\n' "${ATTACH_CMD}" >"${cmd_file}"
+	cat >"${cmd_file}" <<-CMDEOF
+		#!/bin/bash
+		# Maximize the terminal window (xterm escape sequence)
+		printf '\e[9;1t'
+		# exec replaces this shell — when tmux exits, the window closes cleanly
+		exec ${ATTACH_CMD}
+	CMDEOF
 	chmod +x "${cmd_file}"
 	open "${cmd_file}"
-	echo "orch-display: opened via .command file"
+	echo "orch-display: opened via .command file (maximized)"
 }
 
 # --- Platform detection ---

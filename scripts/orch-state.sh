@@ -56,7 +56,7 @@ orch_plan_log_dir() {
 
 orch_plan_log_file() {
 	local slug="$1"
-	printf '%s/engine.log' "$(orch_plan_dir "${slug}")"
+	printf '%s/engine.log' "$(orch_plan_log_dir "${slug}")"
 }
 
 # --- Directory setup ---

@@ -373,6 +373,25 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	orch_merge_worktree "${SLUG}"
 	orch_master_deregister "${SLUG}" "completed"
 	orch_cleanup_worktree "${SLUG}"
+	# Write completed status so the dashboard renders a final SHIP screen
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+	updated=$(jq \
+		--arg now "${now}" \
+		'.status = "completed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+	orch_write_state "${SLUG}" "${updated}"
+
+	# Preserve final state.json (with completed status) in the exec-plan directory
+	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
+	if [[ -d "${COMPLETED_DIR}" ]]; then
+		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
+		echo "orch-engine: state.json saved to ${COMPLETED_DIR}/state.json"
+	fi
+
+	# Log path message (log written by tee in orch-run.sh)
+	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
+
+	# Give the dashboard time to render the final screen
+	sleep 5
 	# Clean up tmux session
 	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
 	echo "orch-engine: tmux session '${TMUX_SESSION}' cleaned up"
@@ -396,5 +415,13 @@ else
 	echo "orch-engine: unexpected review result: ${REVIEW_RESULT}" >&2
 	orch_master_deregister "${SLUG}" "failed"
 	orch_cleanup_worktree "${SLUG}"
+	# Write failed status so the dashboard renders a final screen
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+	updated=$(jq \
+		--arg now "${now}" \
+		'.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+	orch_write_state "${SLUG}" "${updated}"
+	sleep 5
+	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
 	exit 1
 fi

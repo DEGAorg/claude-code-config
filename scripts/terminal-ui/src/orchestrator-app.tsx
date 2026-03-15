@@ -154,6 +154,42 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     );
   }
 
+  // Render final screen when the engine writes a terminal status
+  if (state.status === "completed") {
+    const total = state.items.length;
+    const done = state.items.filter((i) => i.status === "done").length;
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Box>
+          <Text bold color="greenBright" inverse>
+            {" SHIP "}
+          </Text>
+          <Text bold>{" "}{state.plan}</Text>
+        </Box>
+        <Text>
+          All {total} items completed ({done} done).
+        </Text>
+        <Text dimColor>Window will close shortly.</Text>
+      </Box>
+    );
+  }
+
+  if (state.status === "failed") {
+    const failed = state.items.filter((i) => i.status === "failed").length;
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Box>
+          <Text bold color="red" inverse>
+            {" FAILED "}
+          </Text>
+          <Text bold>{" "}{state.plan}</Text>
+        </Box>
+        <Text>{failed} item(s) failed.</Text>
+        <Text dimColor>Window will close shortly.</Text>
+      </Box>
+    );
+  }
+
   const selectedItem =
     selectedId !== null
       ? (state.items.find((i) => i.id === selectedId) ?? null)
