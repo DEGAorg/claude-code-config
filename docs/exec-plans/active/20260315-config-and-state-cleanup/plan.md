@@ -90,7 +90,7 @@ Completed exec-plans are historical records — do NOT update them.
 
 ## Completion criteria
 
-- [ ] `dega-core.yaml` exists at repo root with same content as old ralph.yaml
-- [ ] `ralph.yaml` is deleted from this repo
-- [ ] All scripts read `dega-core.yaml` first, fall back to `ralph.yaml` with warning
-- [ ] `shellcheck` passes on all modified .sh files
+- [x] `dega-core.yaml` exists at repo root with same content as old ralph.yaml
+- [x] `ralph.yaml` is deleted from this repo
+- [x] All scripts read `dega-core.yaml` first, fall back to `ralph.yaml` with warning
+- [x] `shellcheck` passes on all modified .sh files
