@@ -31,9 +31,9 @@ rather than being capped by `maxLines`.
 
 ## Progress log
 
-- [ ] Update `orchestrator-app.tsx` outermost Box to use `height="100%"` so flexGrow children can expand (deps: none)
-- [ ] Refactor `session-detail.tsx` to remove percentage-based maxLines and use `flexGrow={1}` with `overflow="hidden"` on the outer Box (deps: 1)
-- [ ] Build the terminal-ui to verify TypeScript compiles cleanly (deps: 1, 2)
+- [x] Update `orchestrator-app.tsx` outermost Box to use `height="100%"` so flexGrow children can expand (deps: none)
+- [x] Refactor `session-detail.tsx` to remove percentage-based maxLines and use `flexGrow={1}` with `overflow="hidden"` on the outer Box (deps: 1)
+- [x] Build the terminal-ui to verify TypeScript compiles cleanly (deps: 1, 2)
 
 ## Decision log
 
@@ -44,6 +44,6 @@ rather than being capped by `maxLines`.
 
 ## Completion criteria
 
-- [ ] `pnpm run build` succeeds in `scripts/terminal-ui/`
-- [ ] Detail panel fills remaining space below the session table
-- [ ] No TypeScript errors
+- [x] `pnpm run build` succeeds in `scripts/terminal-ui/`
+- [x] Detail panel fills remaining space below the session table
+- [x] No TypeScript errors
