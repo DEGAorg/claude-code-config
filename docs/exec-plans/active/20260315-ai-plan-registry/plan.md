@@ -56,7 +56,7 @@ Write a one-time script or inline loop that scans `docs/exec-plans/completed/*/p
 ## Progress log
 
 - [ ] Add `orch_registry_append` helper to orch-state.sh
-- [ ] Create `docs/exec-plans/REGISTRY.md` with header row
+- [x] Create `docs/exec-plans/REGISTRY.md` with header row
 - [ ] Wire registry append into orch-engine.sh SHIP path (after step 5)
 - [ ] Wire registry append into ralph-loop.sh SHIP path (after commit)
 - [ ] Backfill existing completed plans into the registry

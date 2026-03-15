@@ -736,6 +736,35 @@ orch_kill_done_workers() {
 	done
 }
 
+# --- Plan registry ---
+
+orch_registry_append() {
+	local slug="$1" status="$2" iterations="$3" method="$4"
+	local registry="${ORCH_REPO_ROOT}/docs/exec-plans/REGISTRY.md"
+	local date
+	date=$(date -u +"%Y-%m-%d")
+
+	# Create file with header if missing
+	if [[ ! -f "${registry}" ]]; then
+		mkdir -p "$(dirname "${registry}")"
+		printf '# Plan Registry\n\n' >"${registry}"
+		printf '| Date | Slug | Status | Iterations | Method |\n' >>"${registry}"
+		printf '|------|------|--------|------------|--------|\n' >>"${registry}"
+	fi
+
+	# Build link to plan.md (completed plans live under completed/)
+	local link
+	if [[ "${status}" == "completed" ]]; then
+		link="[${slug}](completed/${slug}/plan.md)"
+	else
+		link="[${slug}](active/${slug}/plan.md)"
+	fi
+
+	printf '| %s | %s | %s | %s | %s |\n' \
+		"${date}" "${link}" "${status}" "${iterations}" "${method}" \
+		>>"${registry}"
+}
+
 # --- Queries ---
 
 orch_count_by_status() {
