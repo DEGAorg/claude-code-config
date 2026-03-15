@@ -676,3 +676,21 @@ orch_count_by_status() {
 	jq "[.items[] | select(.status == \"${status}\")] | length" \
 		"${state_file}"
 }
+
+# --- Completion criteria helpers ---
+
+orch_count_unchecked_criteria() {
+	local plan_file="$1"
+	if [[ ! -f "${plan_file}" ]]; then
+		echo "0"
+		return 0
+	fi
+	awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Completion criteria/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing && /^- \[ \]/ { count++ }
+		END { print count+0 }
+	' "${plan_file}"
+}

@@ -97,10 +97,10 @@ workers complete → per-item review → all PASS?
 
 ## Progress log
 
-- [ ] Add `orch_count_unchecked_criteria()` helper to `orch-state.sh` — awk parser for `## Completion criteria` section
-- [ ] Create `agents/orch-verifier.md` — verifier agent prompt template
-- [ ] Create `scripts/orch-verify.sh` — spawns verifier in tmux, polls for result, returns pass/fail
-- [ ] Add completion criteria gate to `orch-engine.sh` — between review SHIP and actual SHIP, call verifier if unchecked criteria exist
+- [x] Add `orch_count_unchecked_criteria()` helper to `orch-state.sh` — awk parser for `## Completion criteria` section
+- [x] Create `agents/orch-verifier.md` — verifier agent prompt template
+- [x] Create `scripts/orch-verify.sh` — spawns verifier in tmux, polls for result, returns pass/fail
+- [x] Add completion criteria gate to `orch-engine.sh` — between review SHIP and actual SHIP, call verifier if unchecked criteria exist
 
 ## Decision log
 
