@@ -30,8 +30,8 @@ The checkbox check is best-effort: match the item description text against plan.
 
 ## Progress log
 
-- [ ] Add minimum done-file size check (20 bytes) to `orch_sync_done_files` in orch-state.sh
-- [ ] Add checkbox-unchecked warning to `orch_sync_done_files` in orch-state.sh
+- [x] Add minimum done-file size check (20 bytes) to `orch_sync_done_files` in orch-state.sh
+- [x] Add checkbox-unchecked warning to `orch_sync_done_files` in orch-state.sh
 
 ## Decision log
 
