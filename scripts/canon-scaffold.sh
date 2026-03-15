@@ -284,9 +284,9 @@ standards:
     - "If it is not in the repo, it does not exist"
 EOF
 
-# ── 7. Write ralph.yaml (project root — where ralph-loop.sh expects it) ──────
-echo "→ writing ralph.yaml..."
-cat >"ralph.yaml" <<EOF
+# ── 7. Write dega-core.yaml (project root — where ralph-loop.sh expects it) ──
+echo "→ writing dega-core.yaml..."
+cat >"dega-core.yaml" <<EOF
 version: 1
 strategy: ${PROJECT_NAME}
 
@@ -320,7 +320,7 @@ cat >"AGENTS.md" <<'EOF'
 
 ## Quick Reference
 - Framework config: `.canon/config.yaml`
-- Ralph Loop config: `.canon/ralph.yaml`
+- Ralph Loop config: `dega-core.yaml`
 - Agent personas: `.canon/agents/`
 - Skills (domain knowledge): `.canon/skills/`
 
@@ -365,7 +365,7 @@ for f in \
 	.canon/skills/prediction-markets.md \
 	.canon/skills/canon-conventions.md \
 	.canon/config.yaml \
-	ralph.yaml \
+	dega-core.yaml \
 	.canon/templates/nba-momentum/strategy.md \
 	.canon/templates/nba-momentum/plan.md \
 	.claude/commands/canon-start.md \
@@ -402,7 +402,7 @@ echo "    skills/    — 8 domain knowledge modules"
 echo "    execution/ — decision logs written here at runtime"
 echo "    config.yaml"
 echo ""
-echo "  ralph.yaml  <- edit success_criteria to match your strategy"
+echo "  dega-core.yaml  <- edit success_criteria to match your strategy"
 echo ""
 echo "  .claude/commands/"
 echo "    canon-start, develop, ralph-cycle, discover, register, quick-dev"

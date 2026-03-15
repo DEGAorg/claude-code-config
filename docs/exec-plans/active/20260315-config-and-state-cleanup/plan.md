@@ -69,15 +69,15 @@ Completed exec-plans are historical records — do NOT update them.
 
 ## Progress log
 
-- [ ] Rename `ralph.yaml` to `dega-core.yaml` in this repo (deps: none)
-- [ ] Add config-reading helper to `orch-state.sh` that checks `dega-core.yaml` then falls back to `ralph.yaml` with warning (deps: none)
+- [x] Rename `ralph.yaml` to `dega-core.yaml` in this repo (deps: none)
+- [x] Add config-reading helper to `orch-state.sh` that checks `dega-core.yaml` then falls back to `ralph.yaml` with warning (deps: none)
 - [ ] Update `scripts/ralph-loop.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/ralph-check.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/orch-engine.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/orch-review.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/orch-verify.sh` to use the config helper (deps: 2)
 - [ ] Update `scripts/canon-scaffold.sh` to write `dega-core.yaml` (deps: none)
-- [ ] Update `tests/test-parallel-worktrees.sh` to create `dega-core.yaml` (deps: none)
+- [x] Update `tests/test-parallel-worktrees.sh` to create `dega-core.yaml` (deps: none)
 - [ ] Update all live docs: CLAUDE.md, README.md, Self_Development.md, commands/, canon/ (deps: 1)
 - [ ] Run shellcheck on all modified .sh files (deps: 2-9)
 

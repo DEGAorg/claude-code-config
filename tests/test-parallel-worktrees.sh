@@ -78,8 +78,8 @@ PLAN
 STATE
 done
 
-# Minimal ralph.yaml
-cat >ralph.yaml <<YAML
+# Minimal dega-core.yaml
+cat >dega-core.yaml <<YAML
 max_iterations: 1
 warn_at_iteration: 1
 YAML

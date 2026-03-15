@@ -1,4 +1,4 @@
-# Ralph Loop config for claude-code-config repo
+# Dega Core config for claude-code-config repo
 version: 1
 max_iterations: 3
 
