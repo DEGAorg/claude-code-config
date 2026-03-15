@@ -59,7 +59,7 @@ Write a one-time script or inline loop that scans `docs/exec-plans/completed/*/p
 - [x] Create `docs/exec-plans/REGISTRY.md` with header row
 - [x] Wire registry append into orch-engine.sh SHIP path (after step 5)
 - [x] Wire registry append into ralph-loop.sh SHIP path (after commit)
-- [ ] Backfill existing completed plans into the registry
+- [x] Backfill existing completed plans into the registry
 
 ## Decision log
 
