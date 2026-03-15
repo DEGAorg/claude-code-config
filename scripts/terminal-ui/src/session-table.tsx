@@ -1,5 +1,9 @@
 import { Box, Text, useStdout } from "ink";
-import type { OrchestratorItem, ItemStatus } from "./orch-types.js";
+import type {
+  OrchestratorItem,
+  ItemStatus,
+  ItemReviewStatus,
+} from "./orch-types.js";
 
 interface SessionTableProps {
   readonly plan: string;
@@ -30,6 +34,24 @@ const STATUS_ICONS: Record<ItemStatus, string> = {
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.slice(0, max - 1) + "…";
+}
+
+const REVIEW_ICONS: Record<ItemReviewStatus, string> = {
+  pending: "—",
+  reviewing: "⟳",
+  passed: "✓",
+  failed: "✗",
+};
+
+const REVIEW_COLORS: Record<ItemReviewStatus, string> = {
+  pending: "gray",
+  reviewing: "cyan",
+  passed: "green",
+  failed: "red",
+};
+
+function formatReview(item: OrchestratorItem): string {
+  return REVIEW_ICONS[item.reviewStatus];
 }
 
 function formatWorker(item: OrchestratorItem): string {
@@ -102,6 +124,11 @@ function ItemRow({
           {icon} {item.status}
         </Text>
       </Box>
+      <Box width={6}>
+        <Text color={REVIEW_COLORS[item.reviewStatus]}>
+          {formatReview(item)}
+        </Text>
+      </Box>
       <Box width={5}>
         <Text dimColor>{formatIteration(item)}</Text>
       </Box>
@@ -120,7 +147,7 @@ export function SessionTable({
   const { stdout } = useStdout();
   const termCols = stdout?.columns ?? 80;
 
-  const fixedCols = 4 + 12 + 5 + 8 + 4;
+  const fixedCols = 4 + 12 + 6 + 5 + 8 + 4;
   const descWidth = Math.max(20, termCols - fixedCols - 4);
 
   const doneCount = items.filter((i) => i.status === "done").length;
@@ -154,6 +181,9 @@ export function SessionTable({
         </Box>
         <Box width={12}>
           <Text bold dimColor>STATUS</Text>
+        </Box>
+        <Box width={6}>
+          <Text bold dimColor>REV</Text>
         </Box>
         <Box width={5}>
           <Text bold dimColor>ITER</Text>

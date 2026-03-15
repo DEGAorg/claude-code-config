@@ -203,6 +203,70 @@ orch_sync_done_files() {
 	fi
 }
 
+# --- Sync review files into state ---
+
+orch_sync_review_files() {
+	local slug="$1"
+	local review_dir
+	review_dir=$(orch_plan_review_dir "${slug}")
+	local state_file
+	state_file=$(orch_plan_state_file "${slug}")
+	local state
+	state=$(cat "${state_file}")
+	local changed=false
+
+	local reviewing_ids
+	reviewing_ids=$(printf '%s' "${state}" | jq -r \
+		'.items[] | select(.reviewStatus == "reviewing") | .id')
+
+	if [[ -z "${reviewing_ids}" ]]; then
+		return 0
+	fi
+
+	local now
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+	for item_id in ${reviewing_ids}; do
+		local review_file="${review_dir}/item-${item_id}-review.txt"
+		if [[ -f "${review_file}" ]]; then
+			local decision
+			decision=$(head -1 "${review_file}" | tr -d '[:space:]')
+
+			case "${decision}" in
+			PASS)
+				state=$(printf '%s' "${state}" | jq \
+					--argjson id "${item_id}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)).reviewStatus = "passed" |
+					 .updatedAt = $now')
+				echo "orch-state: item ${item_id} review — PASS"
+				;;
+			FAIL)
+				state=$(printf '%s' "${state}" | jq \
+					--argjson id "${item_id}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)).reviewStatus = "failed" |
+					 .updatedAt = $now')
+				echo "orch-state: item ${item_id} review — FAIL"
+				;;
+			*)
+				state=$(printf '%s' "${state}" | jq \
+					--argjson id "${item_id}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)).reviewStatus = "failed" |
+					 .updatedAt = $now')
+				echo "orch-state: item ${item_id} review — unexpected decision '${decision}', marking failed"
+				;;
+			esac
+			changed=true
+		fi
+	done
+
+	if [[ "${changed}" == "true" ]]; then
+		orch_write_state "${slug}" "${state}"
+	fi
+}
+
 # --- Promotion (queued → ready when deps satisfied) ---
 
 orch_promote_ready_items() {

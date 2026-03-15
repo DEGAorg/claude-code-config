@@ -18,6 +18,13 @@ export type ItemStatus =
 /** Worker execution mode. */
 export type OrchestratorMode = "foreground" | "background";
 
+/** Per-item review status during parallel review phase. */
+export type ItemReviewStatus =
+  | "pending"
+  | "reviewing"
+  | "passed"
+  | "failed";
+
 /** Final review outcome. */
 export type ReviewResult = "SHIP" | "REVISE";
 
@@ -51,6 +58,8 @@ export interface OrchestratorItem {
   readonly maxIterations: number;
   /** Last review result for this item. */
   readonly lastResult: ReviewResult | null;
+  /** Per-item review status during parallel review phase. */
+  readonly reviewStatus: ItemReviewStatus;
 }
 
 /** Top-level orchestrator state (`.orchestrator/state.json`). */
