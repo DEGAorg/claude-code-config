@@ -382,7 +382,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
 	if [[ -f "${WT_PLAN}" ]]; then
 		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
-			echo "orch-engine: [SHIP 1/7] synced plan.md from worktree"
+			echo "orch-engine: [SHIP 1/8] synced plan.md from worktree"
 		else
 			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -393,7 +393,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 2: Merge worktree branch into main ---
 	if orch_merge_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 2/7] worktree merged"
+		echo "orch-engine: [SHIP 2/8] worktree merged"
 	else
 		echo "orch-engine: ERROR — worktree merge failed" >&2
 		SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -401,7 +401,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
-	echo "orch-engine: [SHIP 3/7] deregistered from master state"
+	echo "orch-engine: [SHIP 3/8] deregistered from master state"
 
 	# --- Step 4: Move plan from active/ to completed/ ---
 	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
@@ -409,7 +409,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
 		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
 		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
-			echo "orch-engine: [SHIP 4/7] moved plan to completed/"
+			echo "orch-engine: [SHIP 4/8] moved plan to completed/"
 		else
 			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -431,7 +431,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 	else
 		if git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed"; then
-			echo "orch-engine: [SHIP 5/7] committed plan move"
+			echo "orch-engine: [SHIP 5/8] committed plan move"
 		else
 			echo "orch-engine: ERROR — git commit failed for plan move" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -446,14 +446,30 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
 			git -C "${REPO_ROOT}" commit -m "orch: update plan registry for ${SLUG}"
 		fi
-		echo "orch-engine: [SHIP 6/7] appended to plan registry"
+		echo "orch-engine: [SHIP 6/8] appended to plan registry"
 	else
 		echo "orch-engine: WARN — registry append failed (non-fatal)"
 	fi
 
-	# --- Step 7: Clean up worktree ---
+	# --- Step 7: Append to changelog ---
+	PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
+	if [[ -n "${PLAN_TITLE}" ]]; then
+		if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
+			git -C "${REPO_ROOT}" add "CHANGELOG.md"
+			if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+				git -C "${REPO_ROOT}" commit -m "orch: update changelog for ${SLUG}"
+			fi
+			echo "orch-engine: [SHIP 7/8] appended to changelog"
+		else
+			echo "orch-engine: WARN — changelog append failed (non-fatal)"
+		fi
+	else
+		echo "orch-engine: WARN — could not extract plan title for changelog"
+	fi
+
+	# --- Step 8: Clean up worktree ---
 	if orch_cleanup_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 7/7] worktree cleaned up"
+		echo "orch-engine: [SHIP 8/8] worktree cleaned up"
 	else
 		echo "orch-engine: WARN — worktree cleanup failed (non-fatal)"
 	fi
@@ -488,7 +504,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	fi
 
 	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
-		echo "orch-engine: SHIP complete — all 7 steps passed, validation OK"
+		echo "orch-engine: SHIP complete — all 8 steps passed, validation OK"
 	else
 		echo "orch-engine: SHIP completed with issues — ${SHIP_ERRORS} error(s), validation=${VALIDATION_OK}" >&2
 		echo "orch-engine: review .orchestrator/plans/${SLUG}/logs/engine.log for details" >&2

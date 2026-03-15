@@ -56,7 +56,7 @@ Scan `docs/exec-plans/completed/*/plan.md`, extract title from first `# Plan:` l
 
 ## Progress log
 
-- [ ] Add `orch_changelog_append` helper to orch-state.sh
+- [x] Add `orch_changelog_append` helper to orch-state.sh
 - [x] Create `CHANGELOG.md` with initial structure
 - [ ] Wire changelog append into orch-engine.sh SHIP path
 - [ ] Wire changelog append into ralph-loop.sh SHIP path

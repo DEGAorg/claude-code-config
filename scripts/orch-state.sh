@@ -765,6 +765,94 @@ orch_registry_append() {
 		>>"${registry}"
 }
 
+# --- Changelog ---
+
+orch_changelog_append() {
+	local slug="$1" title="$2" category="${3:-}"
+	local changelog="${ORCH_REPO_ROOT}/CHANGELOG.md"
+
+	# Auto-detect category from title keywords if not provided
+	if [[ -z "${category}" ]]; then
+		local lower_title
+		lower_title=$(printf '%s' "${title}" | tr '[:upper:]' '[:lower:]')
+		case "${lower_title}" in
+		*fix* | *bug* | *patch*) category="Fixed" ;;
+		*add* | *new* | *create* | *introduce*) category="Added" ;;
+		*remove* | *delete* | *drop*) category="Removed" ;;
+		*) category="Changed" ;;
+		esac
+	fi
+
+	local date
+	date=$(date -u +"%Y-%m-%d")
+
+	# Create file with Keep a Changelog header if missing
+	if [[ ! -f "${changelog}" ]]; then
+		{
+			printf '# Changelog\n\n'
+			printf 'All notable changes to this project will be documented in this file.\n\n'
+			printf 'The format is based on [Keep a Changelog](https://keepachangelog.com/).\n\n'
+			printf '## [Unreleased]\n'
+		} >"${changelog}"
+	fi
+
+	# Insert [Unreleased] section if missing
+	if ! grep -q '## \[Unreleased\]' "${changelog}"; then
+		local tmp
+		tmp=$(mktemp "${changelog}.XXXXXX")
+		awk '
+			/^# Changelog/ { print; found_header = 1; next }
+			found_header && !inserted && /^$/ {
+				print ""
+				print "## [Unreleased]"
+				inserted = 1
+			}
+			{ print }
+		' "${changelog}" >"${tmp}"
+		mv "${tmp}" "${changelog}"
+	fi
+
+	# Build the entry line
+	local entry="- ${title} (\`${slug}\`) — ${date}"
+
+	# Insert entry under the correct category within [Unreleased]
+	# If the category heading exists, append after it; otherwise create it
+	local tmp
+	tmp=$(mktemp "${changelog}.XXXXXX")
+	awk -v cat="${category}" -v entry="${entry}" '
+		/^## \[Unreleased\]/ { in_unreleased = 1; print; next }
+		in_unreleased && $0 == "### " cat {
+			print
+			getline
+			print entry
+			if ($0 != "") print ""
+			print
+			in_unreleased = 0
+			found_cat = 1
+			next
+		}
+		in_unreleased && /^## / {
+			# Hit next version section — category not found, insert before it
+			print ""
+			print "### " cat
+			print entry
+			print ""
+			in_unreleased = 0
+			found_cat = 1
+		}
+		{ print }
+		END {
+			if (!found_cat) {
+				# [Unreleased] was last section — append at end
+				print ""
+				print "### " cat
+				print entry
+			}
+		}
+	' "${changelog}" >"${tmp}"
+	mv "${tmp}" "${changelog}"
+}
+
 # --- Queries ---
 
 orch_count_by_status() {

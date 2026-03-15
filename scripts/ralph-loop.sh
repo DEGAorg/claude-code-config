@@ -281,6 +281,7 @@ ${HANDOFF}"
 				echo "→ running repo health check..."
 				if bash "${SCRIPT_DIR}/ralph-check.sh"; then
 					echo "→ archiving exec-plan to completed/..."
+					_plan_title=$(sed -n 's/^# Plan: *//p' "${TASK_DIR}/plan.md" | head -1)
 					mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
 					echo "→ committing..."
 					git add -A
@@ -292,6 +293,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 					)"
 					orch_registry_append "${TASK_SLUG}" "completed" "${i}" "ralph"
+					orch_changelog_append "${TASK_SLUG}" "${_plan_title}"
 					_settings="${HOME}/.claude/settings.json"
 					if [[ -f "$_settings" ]]; then
 						_sound=$(jq -r '.env.CLAUDE_SOUND // "unstoppable"' "$_settings")
@@ -440,6 +442,7 @@ Reviewer did not write item-${NUM}-review.txt
 			log.info="SHIP — all criteria met after ${i} iteration(s)"
 		log_event "SHIP" "$(jq -n --argjson iter "${i}" '{"iteration":$iter}')"
 		echo "→ archiving exec-plan to completed/..."
+		_plan_title=$(sed -n 's/^# Plan: *//p' "${TASK_DIR}/plan.md" | head -1)
 		mv "${TASK_DIR}" "docs/exec-plans/completed/${TASK_SLUG}"
 		echo "→ committing..."
 		git add -A
@@ -451,6 +454,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 		)"
 		orch_registry_append "${TASK_SLUG}" "completed" "${i}" "ralph"
+		orch_changelog_append "${TASK_SLUG}" "${_plan_title}"
 		# Play completion sound
 		_settings="${HOME}/.claude/settings.json"
 		if [[ -f "$_settings" ]]; then
