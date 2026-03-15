@@ -498,6 +498,7 @@ Installed:
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 ✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
 ✓ Orchestrator — orch-*.sh → ~/.claude/scripts/, Ink components + agent persona
+✓ Planner — planner-loop.sh → ~/.claude/scripts/, agent prompts → ~/.claude/agents/
 ✓ Canon Bootstrap — canon-scaffold.sh + canon.sh → ~/.claude/scripts/
 
 Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
