@@ -96,6 +96,6 @@ its own REPO_ROOT derivation is sufficient.
 
 ## Completion criteria
 
-- [ ] All 6 scripts use git-toplevel instead of SCRIPT_DIR-based REPO_ROOT
-- [ ] `shellcheck` passes on all modified files
-- [ ] Running `bash ~/.claude/scripts/orch-run.sh <slug>` from a project dir resolves REPO_ROOT to that project, not ~/.claude
+- [x] All 6 scripts use git-toplevel instead of SCRIPT_DIR-based REPO_ROOT
+- [x] `shellcheck` passes on all modified files
+- [x] Running `bash ~/.claude/scripts/orch-run.sh <slug>` from a project dir resolves REPO_ROOT to that project, not ~/.claude
