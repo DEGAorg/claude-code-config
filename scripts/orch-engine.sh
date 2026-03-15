@@ -524,15 +524,50 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		VALIDATION_OK=false
 	fi
 
-	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
-		echo "orch-engine: SHIP complete — all 8 steps passed, validation OK"
+	# --- SHIP summary with elapsed time ---
+	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
+	if [[ -n "${STARTED_AT}" ]]; then
+		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null \
+			|| date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
+		if [[ -n "${START_EPOCH}" ]]; then
+			NOW_EPOCH=$(date +%s)
+			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
+			ELAPSED_MIN=$((ELAPSED_SECS / 60))
+			ELAPSED_SEC=$((ELAPSED_SECS % 60))
+			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
+		else
+			ELAPSED_STR="unknown"
+		fi
 	else
-		echo "orch-engine: SHIP completed with issues — ${SHIP_ERRORS} error(s), validation=${VALIDATION_OK}" >&2
-		echo "orch-engine: review .orchestrator/plans/${SLUG}/logs/engine.log for details" >&2
+		ELAPSED_STR="unknown"
 	fi
 
+	echo ""
+	echo "========================================"
+	echo "  SHIP COMPLETE"
+	echo "========================================"
+	echo "  Plan:     ${SLUG}"
+	echo "  Items:    ${DONE_COUNT}/${TOTAL_COUNT} passed"
+	if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+		echo "  Failed:   ${FAILED_COUNT}"
+	fi
+	echo "  Errors:   ${SHIP_ERRORS}"
+	echo "  Elapsed:  ${ELAPSED_STR}"
+	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
+		echo "  Status:   all 8 steps passed, validation OK"
+	else
+		echo "  Status:   completed with issues (${SHIP_ERRORS} error(s), validation=${VALIDATION_OK})" >&2
+		echo "  Details:  .orchestrator/plans/${SLUG}/logs/engine.log" >&2
+	fi
+	echo "========================================"
+	echo ""
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
-	echo "orch-engine: dashboard stays open — close the terminal window when done"
+
+	# Auto-close: let dashboard render SHIP screen, then kill session
+	echo "orch-engine: session will close in 10 seconds..."
+	sleep 10
+	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+	exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo ""
 	echo "orch-engine: REVISE — some items need rework"
@@ -562,6 +597,10 @@ else
 		--arg now "${now}" \
 		'.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${updated}"
-	echo "orch-engine: dashboard stays open — close the terminal window when done"
+
+	# Auto-close: let dashboard render FAILED screen, then kill session
+	echo "orch-engine: session will close in 5 seconds..."
+	sleep 5
+	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
 	exit 1
 fi
