@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 ### Changed
+- Clear SHIP completion — state, dashboard, and session cleanup (`20260315-fix-orch-ship-completion`) — 2026-03-15
+
 - Autonomous planner loop — long-running agent that plans and executes (`20260315-planner-loop`) — 2026-03-15
 
 - Rename ralph.yaml to dega-core.yaml (`20260315-config-and-state-cleanup`) — 2026-03-15
