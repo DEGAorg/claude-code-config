@@ -366,53 +366,121 @@ fi
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
 	echo "orch-engine: SHIP — all items passed review and completion criteria verified"
+
+	SHIP_ERRORS=0
+
 	# Play completion sound if available
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
 	fi
+
 	# Kill worker/reviewer windows now that we're done
 	orch_kill_done_workers "${SLUG}"
-	# Sync worktree plan.md (with checked boxes) back to main repo
+
+	# --- Step 1: Sync worktree plan.md back to main repo ---
 	MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
 	if [[ -f "${WT_PLAN}" ]]; then
-		cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"
-		echo "orch-engine: synced plan.md from worktree to main repo"
+		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
+			echo "orch-engine: [SHIP 1/6] synced plan.md from worktree"
+		else
+			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
+			SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		fi
+	else
+		echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
 	fi
-	# Merge worker changes, deregister, and clean up worktree
-	orch_merge_worktree "${SLUG}"
+
+	# --- Step 2: Merge worktree branch into main ---
+	if orch_merge_worktree "${SLUG}"; then
+		echo "orch-engine: [SHIP 2/6] worktree merged"
+	else
+		echo "orch-engine: ERROR — worktree merge failed" >&2
+		SHIP_ERRORS=$((SHIP_ERRORS + 1))
+	fi
+
+	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
-	orch_cleanup_worktree "${SLUG}"
-	# Write completed status so the dashboard renders a final SHIP screen
+	echo "orch-engine: [SHIP 3/6] deregistered from master state"
+
+	# --- Step 4: Move plan from active/ to completed/ ---
+	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
+	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
+		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
+			echo "orch-engine: [SHIP 4/6] moved plan to completed/"
+		else
+			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
+			SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		fi
+	else
+		echo "orch-engine: WARN — active plan dir not found: ${ACTIVE_PLAN_DIR}"
+	fi
+
+	# Save final state.json into completed plan directory
+	if [[ -d "${COMPLETED_DIR}" ]]; then
+		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
+	fi
+
+	# --- Step 5: Commit the plan move ---
+	git -C "${REPO_ROOT}" add \
+		"docs/exec-plans/active/${SLUG}" \
+		"docs/exec-plans/completed/${SLUG}"
+	if git -C "${REPO_ROOT}" diff --cached --quiet; then
+		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
+	else
+		if git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed"; then
+			echo "orch-engine: [SHIP 5/6] committed plan move"
+		else
+			echo "orch-engine: ERROR — git commit failed for plan move" >&2
+			SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		fi
+	fi
+
+	# --- Step 6: Clean up worktree ---
+	if orch_cleanup_worktree "${SLUG}"; then
+		echo "orch-engine: [SHIP 6/6] worktree cleaned up"
+	else
+		echo "orch-engine: WARN — worktree cleanup failed (non-fatal)"
+	fi
+
+	# --- Write completed status ---
 	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 	updated=$(jq \
 		--arg now "${now}" \
 		'.status = "completed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${updated}"
 
-	# Move plan from active/ to completed/ and commit
-	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
-	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
-	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
-		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
-		mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"
-		echo "orch-engine: moved plan to ${COMPLETED_DIR}"
+	# --- Post-SHIP validation ---
+	echo ""
+	VALIDATION_OK=true
+	if [[ -d "${REPO_ROOT}/docs/exec-plans/active/${SLUG}" ]]; then
+		echo "orch-engine: VALIDATION FAIL — plan still in active/" >&2
+		VALIDATION_OK=false
 	fi
-
-	# Save final state.json into completed plan directory
-	if [[ -d "${COMPLETED_DIR}" ]]; then
-		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
-		echo "orch-engine: state.json saved to ${COMPLETED_DIR}/state.json"
+	if [[ ! -d "${COMPLETED_DIR}" ]]; then
+		echo "orch-engine: VALIDATION FAIL — plan not in completed/" >&2
+		VALIDATION_OK=false
 	fi
-
-	# Commit the plan move
-	git -C "${REPO_ROOT}" add \
+	if [[ ! -f "${COMPLETED_DIR}/plan.md" ]]; then
+		echo "orch-engine: VALIDATION FAIL — plan.md missing from completed/" >&2
+		VALIDATION_OK=false
+	fi
+	if git -C "${REPO_ROOT}" status --porcelain \
 		"docs/exec-plans/active/${SLUG}" \
-		"docs/exec-plans/completed/${SLUG}" 2>/dev/null || true
-	git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed" \
-		--allow-empty 2>/dev/null || true
+		"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
+		echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
+		VALIDATION_OK=false
+	fi
 
-	# Log path message (log written by tee in orch-run.sh)
+	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
+		echo "orch-engine: SHIP complete — all 6 steps passed, validation OK"
+	else
+		echo "orch-engine: SHIP completed with issues — ${SHIP_ERRORS} error(s), validation=${VALIDATION_OK}" >&2
+		echo "orch-engine: review .orchestrator/plans/${SLUG}/logs/engine.log for details" >&2
+	fi
+
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
 	echo "orch-engine: dashboard stays open — close the terminal window when done"
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
