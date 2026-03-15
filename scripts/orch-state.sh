@@ -23,7 +23,7 @@ fi
 
 # --- Defaults (sourcing script can override before calling functions) ---
 
-: "${ORCH_REPO_ROOT:="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"}"
+: "${ORCH_REPO_ROOT:="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"}"
 : "${ORCH_STATE_DIR:="${ORCH_REPO_ROOT}/.orchestrator"}"
 : "${ORCH_MASTER_FILE:="${ORCH_STATE_DIR}/master.json"}"
 

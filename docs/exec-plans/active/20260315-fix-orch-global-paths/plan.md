@@ -77,10 +77,10 @@ its own REPO_ROOT derivation is sufficient.
 
 ## Progress log
 
-- [ ] Fix `scripts/orch-state.sh` line 26 — change ORCH_REPO_ROOT default from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
-- [ ] Fix `scripts/orch-run.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
-- [ ] Fix `scripts/orch-engine.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
-- [ ] Fix `scripts/orch-review.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
+- [x] Fix `scripts/orch-state.sh` line 26 — change ORCH_REPO_ROOT default from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
+- [x] Fix `scripts/orch-run.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
+- [x] Fix `scripts/orch-engine.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
+- [x] Fix `scripts/orch-review.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [ ] Fix `scripts/orch-verify.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [ ] Fix `scripts/planner-loop.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)
 - [ ] Run shellcheck on all 6 modified files (deps: 1-6)
