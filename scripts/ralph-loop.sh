@@ -155,8 +155,9 @@ for i in $(seq 1 "${MAX_ITERATIONS}"); do
 		if [[ "${WARNED}" == "false" ]]; then
 			echo "⚠ ralph-loop: iteration ${i} of ${MAX_ITERATIONS} — approaching budget limit"
 			echo "  Press Ctrl-C to stop. State is saved in ${STATE_FILE}"
-			jq '.budget.warned = true' "${STATE_FILE}" >/tmp/ralph_w.tmp &&
-				mv /tmp/ralph_w.tmp "${STATE_FILE}"
+			_tmp=$(mktemp "${TASK_DIR}/.ralph-XXXXXX")
+			jq '.budget.warned = true' "${STATE_FILE}" >"${_tmp}" &&
+				mv "${_tmp}" "${STATE_FILE}"
 		fi
 	fi
 
@@ -242,8 +243,9 @@ ${HANDOFF}"
 			env -u CLAUDECODE RALPH_LOOP=1 claude -p --dangerously-skip-permissions "${WORKER_CONTEXT}"
 	done
 	# All items processed — mark last task claimed so health check passes
-	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >/tmp/ralph_c.tmp &&
-		mv /tmp/ralph_c.tmp "${STATE_FILE}"
+	_tmp=$(mktemp "${TASK_DIR}/.ralph-XXXXXX")
+	jq '.current_task.claimed_complete = true' "${STATE_FILE}" >"${_tmp}" &&
+		mv "${_tmp}" "${STATE_FILE}"
 	echo "→ worker: done (${ITEM_NUM} items this iteration)"
 	tui_write metric.step="review" metric.currentTask="" \
 		log.info="All items done — reviewing (iteration ${i}/${MAX_ITERATIONS})"
@@ -260,8 +262,9 @@ ${HANDOFF}"
 	PREV_HASH=$(jq -r '.last_diff_hash // ""' "${STATE_FILE}")
 	if [[ "${CURRENT_HASH}" == "${PREV_HASH}" && -n "${PREV_HASH}" ]]; then
 		STAG=$(($(jq -r '.stagnation_count // 0' "${STATE_FILE}") + 1))
+		_tmp=$(mktemp "${TASK_DIR}/.ralph-XXXXXX")
 		jq ".stagnation_count = ${STAG} | .current_task.claimed_complete = true" \
-			"${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
+			"${STATE_FILE}" >"${_tmp}" && mv "${_tmp}" "${STATE_FILE}"
 		if [[ ${STAG} -ge 2 ]]; then
 			# Before declaring stagnation, check if work is actually done
 			_CC_UNCHECKED=$(sed -n '/^## Completion criteria/,/^## /p' "${TASK_DIR}/plan.md" |
@@ -307,8 +310,9 @@ EOF
 			exit 2
 		fi
 	else
+		_tmp=$(mktemp "${TASK_DIR}/.ralph-XXXXXX")
 		jq ".stagnation_count = 0 | .last_diff_hash = \"${CURRENT_HASH}\" | .current_task.claimed_complete = true" \
-			"${STATE_FILE}" >/tmp/ralph_s.tmp && mv /tmp/ralph_s.tmp "${STATE_FILE}"
+			"${STATE_FILE}" >"${_tmp}" && mv "${_tmp}" "${STATE_FILE}"
 	fi
 
 	# --- Structural checks (gate before AI review) ---

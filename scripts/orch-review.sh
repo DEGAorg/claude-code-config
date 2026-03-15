@@ -318,7 +318,8 @@ else
      .finalReview.reworkItems = $rework |
      .updatedAt = $now |
      reduce ($rework[] | tostring | tonumber) as $id (.;
-       (.items[] | select(.id == $id)).status = "ready"
+       (.items[] | select(.id == $id)) |=
+         (.status = "ready" | .iteration = (.iteration + 1) | .reviewStatus = "pending")
      )' "${ORCH_STATE_FILE}")
 	orch_write_state "${SLUG}" "${UPDATED}"
 

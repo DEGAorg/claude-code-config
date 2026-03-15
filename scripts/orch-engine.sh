@@ -245,6 +245,25 @@ while true; do
 		spawned=0
 		for rid in ${ready_ids}; do
 			if ((spawned >= available_slots)); then break; fi
+
+			# Check max-iterations guard before spawning
+			cur_iter=$(jq ".items[] | select(.id == ${rid}) | .iteration // 0" \
+				"${ORCH_STATE_FILE}")
+			max_iter=$(jq ".items[] | select(.id == ${rid}) | .maxIterations // 3" \
+				"${ORCH_STATE_FILE}")
+			if ((cur_iter >= max_iter)); then
+				echo "orch-engine: item ${rid} exhausted ${max_iter} iterations — marking failed"
+				now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+				updated=$(jq \
+					--argjson id "${rid}" \
+					--arg now "${now}" \
+					'(.items[] | select(.id == $id)) |=
+					  (.status = "failed" | .lastResult = "review-max-retries") |
+					 .updatedAt = $now' "${ORCH_STATE_FILE}")
+				orch_write_state "${SLUG}" "${updated}"
+				continue
+			fi
+
 			rdesc=$(jq -r ".items[] | select(.id == ${rid}) | .description" \
 				"${ORCH_STATE_FILE}")
 			spawn_worker "${rid}" "${rdesc}"
