@@ -71,6 +71,11 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
 
   // Watch the selected item's log file for live output
   const hasState = state !== null;
+  const selectedReviewStatus =
+    selectedId !== null && state !== null
+      ? (state.items.find((i) => i.id === selectedId)?.reviewStatus ?? "pending")
+      : "pending";
+
   useEffect(() => {
     if (selectedId === null || !hasState) {
       setOutputLines([]);
@@ -78,7 +83,8 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     }
 
     const logDir = resolve(dirname(statePath), "logs");
-    const logPath = resolve(logDir, `worker-${selectedId}.log`);
+    const logPrefix = selectedReviewStatus === "reviewing" ? "reviewer" : "worker";
+    const logPath = resolve(logDir, `${logPrefix}-${selectedId}.log`);
 
     const readTail = async () => {
       try {
@@ -103,7 +109,7 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     return () => {
       void logWatcher.close();
     };
-  }, [selectedId, hasState, statePath]);
+  }, [selectedId, hasState, statePath, selectedReviewStatus]);
 
   // Keyboard navigation: j/k or arrows to select items
   // Only enable when raw mode is supported (requires TTY stdin)
@@ -221,7 +227,11 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
         selectedId={selectedId}
       />
 
-      <SessionDetail item={selectedItem} outputLines={outputLines} />
+      <SessionDetail
+        item={selectedItem}
+        outputLines={outputLines}
+        reviewStatus={selectedItem?.reviewStatus ?? "pending"}
+      />
 
       <Box paddingX={1}>
         <Text dimColor>j/k: navigate  esc: deselect</Text>
