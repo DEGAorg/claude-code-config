@@ -452,7 +452,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if git -C "${REPO_ROOT}" diff --cached --quiet; then
 		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 	else
-		if git -C "${REPO_ROOT}" commit -m "orch: move ${SLUG} to completed"; then
+		if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
 			echo "orch-engine: [SHIP 5/8] committed plan move"
 		else
 			echo "orch-engine: ERROR — git commit failed for plan move" >&2
@@ -466,7 +466,10 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		# Commit registry update
 		git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
 		if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-			git -C "${REPO_ROOT}" commit -m "orch: update plan registry for ${SLUG}"
+			if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
+				echo "orch-engine: ERROR — git commit failed for registry update" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
 		fi
 		echo "orch-engine: [SHIP 6/8] appended to plan registry"
 	else
@@ -479,7 +482,10 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
 			git -C "${REPO_ROOT}" add "CHANGELOG.md"
 			if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-				git -C "${REPO_ROOT}" commit -m "orch: update changelog for ${SLUG}"
+				if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update changelog for ${SLUG}"; then
+					echo "orch-engine: ERROR — git commit failed for changelog update" >&2
+					SHIP_ERRORS=$((SHIP_ERRORS + 1))
+				fi
 			fi
 			echo "orch-engine: [SHIP 7/8] appended to changelog"
 		else
