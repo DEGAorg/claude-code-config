@@ -53,8 +53,9 @@ The plan must include every section below:
 
 ## Progress log
 
-- [ ] [Step 1]
-- [ ] [Step 2]
+- [ ] [Step 1] (deps: none)
+- [ ] [Step 2] (deps: 1)
+- [ ] [Step 3] (deps: 2)
 - [ ] ...
 
 ## Decision log
@@ -75,6 +76,13 @@ autonomously. Do not add steps that require human action (browser OAuth, manual
 approvals, external credentials, PR creation via authenticated CLI, etc.) unless
 the user explicitly asks for them. Post-loop human steps (opening a PR, deploying,
 granting access) belong in a follow-up note, not in the completion criteria.
+
+**Rule:** Every Progress log item (except the first) MUST have a `(deps: N)`
+annotation. The orchestrator runs all dep-free items in parallel — without
+annotations, every step launches simultaneously and workers conflict on the same
+files. Use `(deps: none)` for the first item or truly independent items. Chain
+sequential items: `(deps: 1)`, `(deps: 2)`, etc. For parallel branches that
+rejoin, use multiple deps: `(deps: 3, 4)`.
 
 ## 3. Resolve open questions
 
@@ -97,9 +105,13 @@ When all steps are complete, move the whole plan directory from
 Output the following to the user as part of the hand-off:
 
 ```
-To run the ralph loop for this plan:
+To run with the orchestrator (parallel workers, review, SHIP):
 
-    bash scripts/ralph-loop.sh <dated-slug>
+    bash ~/.claude/scripts/orch-run.sh <dated-slug>
+
+To run with the ralph loop (sequential worker/reviewer convergence):
+
+    bash ~/.claude/scripts/ralph-loop.sh <dated-slug>
 ```
 
 Replace `<dated-slug>` with the `YYYYMMDD-slug` derived in Step 2
