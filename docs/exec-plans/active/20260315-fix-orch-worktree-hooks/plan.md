@@ -60,10 +60,10 @@ hooks on the merge commit. Running hooks in the worktree is:
 
 ## Progress log
 
-- [ ] Fix `scripts/orch-state.sh` — add `--no-verify` to worktree commits at lines 224 and 592, add error handling (deps: none)
-- [ ] Fix `scripts/orch-engine.sh` — add `--no-verify` to SHIP commits at lines 455, 469, 482, add error handling (deps: none)
-- [ ] Fix `scripts/orch-state.sh` — add `--no-verify` to main-repo auto-commit at line 616, add error handling (deps: 1)
-- [ ] Run shellcheck on both modified files (deps: 1, 2, 3)
+- [x] Fix `scripts/orch-state.sh` — add `--no-verify` to worktree commits at lines 224 and 592, add error handling (deps: none)
+- [x] Fix `scripts/orch-engine.sh` — add `--no-verify` to SHIP commits at lines 455, 469, 482, add error handling (deps: none)
+- [x] Fix `scripts/orch-state.sh` — add `--no-verify` to main-repo auto-commit at line 616, add error handling (deps: 1)
+- [x] Run shellcheck on both modified files (deps: 1, 2, 3)
 
 ## Decision log
 
@@ -74,6 +74,6 @@ hooks on the merge commit. Running hooks in the worktree is:
 
 ## Completion criteria
 
-- [ ] All `git commit` calls in orch-state.sh and orch-engine.sh use `--no-verify`
-- [ ] All `git commit` calls have error handling (no silent stalls)
-- [ ] `shellcheck` passes on both files
+- [x] All `git commit` calls in orch-state.sh and orch-engine.sh use `--no-verify`
+- [x] All `git commit` calls have error handling (no silent stalls)
+- [x] `shellcheck` passes on both files
