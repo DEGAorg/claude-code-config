@@ -619,10 +619,13 @@ orch_merge_worktree() {
 	main_dirty=$(git -C "${ORCH_REPO_ROOT}" status --porcelain 2>/dev/null || true)
 	if [[ -n "${main_dirty}" ]]; then
 		git -C "${ORCH_REPO_ROOT}" add -A
-		git -C "${ORCH_REPO_ROOT}" commit -m "orch: auto-commit before merging ${slug}
+		if git -C "${ORCH_REPO_ROOT}" commit --no-verify -m "orch: auto-commit before merging ${slug}
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
-		echo "orch-state: committed dirty files in main repo before merge"
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"; then
+			echo "orch-state: committed dirty files in main repo before merge"
+		else
+			echo "orch-state: WARNING — failed to auto-commit main repo before merging ${slug} (exit $?)" >&2
+		fi
 	fi
 
 	# Check if the worktree branch has commits ahead of the source

@@ -62,7 +62,7 @@ hooks on the merge commit. Running hooks in the worktree is:
 
 - [x] Fix `scripts/orch-state.sh` — add `--no-verify` to worktree commits at lines 224 and 592, add error handling (deps: none)
 - [x] Fix `scripts/orch-engine.sh` — add `--no-verify` to SHIP commits at lines 455, 469, 482, add error handling (deps: none)
-- [ ] Fix `scripts/orch-state.sh` — add `--no-verify` to main-repo auto-commit at line 616, add error handling (deps: 1)
+- [x] Fix `scripts/orch-state.sh` — add `--no-verify` to main-repo auto-commit at line 616, add error handling (deps: 1)
 - [ ] Run shellcheck on both modified files (deps: 1, 2, 3)
 
 ## Decision log
