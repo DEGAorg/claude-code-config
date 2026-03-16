@@ -74,6 +74,6 @@ hooks on the merge commit. Running hooks in the worktree is:
 
 ## Completion criteria
 
-- [ ] All `git commit` calls in orch-state.sh and orch-engine.sh use `--no-verify`
-- [ ] All `git commit` calls have error handling (no silent stalls)
-- [ ] `shellcheck` passes on both files
+- [x] All `git commit` calls in orch-state.sh and orch-engine.sh use `--no-verify`
+- [x] All `git commit` calls have error handling (no silent stalls)
+- [x] `shellcheck` passes on both files
