@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix orch worktree commits stalling on pre-commit hooks (`20260315-fix-orch-worktree-hooks`) — 2026-03-16
+
 - Fix orch scripts to work when installed globally (`20260315-fix-orch-global-paths`) — 2026-03-15
 
 - Fix apply-core to include all orchestrator and planner files (`20260315-fix-apply-core-orch-files`) — 2026-03-15
