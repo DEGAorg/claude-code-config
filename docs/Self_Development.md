@@ -1,7 +1,7 @@
 # Self-Development Guide
 
 How to apply fixes and new features to this repo. Covers the full lifecycle
-from plan to ship, using manual workflows, the Ralph Loop, or the orchestrator.
+from plan to ship, using manual workflows, the orchestrator, or the planner loop.
 
 ---
 
@@ -10,7 +10,7 @@ from plan to ship, using manual workflows, the Ralph Loop, or the orchestrator.
 Every change follows three steps:
 
 1. **Plan** — create an exec-plan with `/plan`
-2. **Implement** — work the plan (manually, Ralph Loop, or orchestrator)
+2. **Implement** — work the plan (manually, orchestrator, or planner loop)
 3. **Ship** — review passes, plan archives to `completed/`, commit lands
 
 ```bash
@@ -18,13 +18,13 @@ Every change follows three steps:
 claude "/plan add pre-commit hook for shellcheck"
 
 # 2. Run the plan (pick one)
-bash scripts/ralph-loop.sh 20260315-add-shellcheck-hook   # sequential
-bash scripts/orch-run.sh 20260315-add-shellcheck-hook      # parallel
+bash scripts/orch-run.sh 20260315-add-shellcheck-hook      # parallel workers
+bash scripts/orch-run.sh 20260315-add-shellcheck-hook --max-workers 1  # sequential
 
 # Or let the planner pick work autonomously from focus.yaml
 bash scripts/planner-loop.sh                               # autonomous
 
-# 3. Done — the loop commits and archives on SHIP
+# 3. Done — the orchestrator commits and archives on SHIP
 ```
 
 ---
@@ -91,56 +91,6 @@ mv docs/exec-plans/active/20260315-my-task docs/exec-plans/completed/
 Use manual when: you want full control, the task is exploratory, or you need
 to make decisions that require human judgment at every step.
 
-### Ralph Loop
-
-The Ralph Loop spawns worker and reviewer agents in sequence. The worker
-implements plan items one at a time; the reviewer evaluates each item against
-the plan criteria. The loop repeats until the reviewer outputs SHIP or the
-iteration budget is exhausted.
-
-```bash
-bash scripts/ralph-loop.sh <slug>
-```
-
-**How it works:**
-
-1. Worker reads `plan.md`, finds the next unchecked `[ ]` item, implements it,
-   marks `[x]`, writes a context handoff for the next item
-2. Repeats until all items are checked
-3. Structural checks run (all checkboxes checked? health check passes?)
-4. Per-item reviewer evaluates each completed item
-5. If all pass: SHIP — archive plan, commit, play sound
-6. If any fail: REVISE — write feedback, worker re-runs failed items
-7. If no file changes in 2 consecutive iterations: STAGNATED — stop for human
-
-**Configuration** in `dega-core.yaml` at the repo root:
-
-```yaml
-max_iterations: 3          # budget cap
-budget:
-  warn_at_iteration: 2     # alert when approaching limit
-```
-
-**State files** written during execution:
-
-| File | Purpose |
-|------|---------|
-| `plan.md` | Source of truth — checkboxes track progress |
-| `.ralph-state.json` | Machine-readable loop state |
-| `context-handoff.txt` | Passes context between items within one iteration |
-| `review-feedback.txt` | Reviewer notes for REVISE iterations |
-| `review-result.txt` | SHIP, REVISE, or BLOCKED |
-| `reviews/item-N-review.txt` | Per-item reviewer verdict |
-| `iterations/NNN/` | Archived state from previous iterations |
-
-**Exit codes:**
-
-| Code | Meaning |
-|------|---------|
-| 0 | SHIP — all items passed review |
-| 1 | Exhausted — max iterations reached without SHIP |
-| 2 | Stagnated or blocked — human action required |
-
 ### Orchestrator
 
 The orchestrator runs plan items in parallel using tmux panes, each with its
@@ -167,12 +117,7 @@ bash scripts/orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--backgr
 4. When all items finish, runs a review pass
 5. SHIP: commit and archive. REVISE: re-run failed items with reviewer feedback
 
-**Key differences from Ralph Loop:**
-
-- Workers run in parallel (Ralph is sequential)
-- Each worker gets its own worktree (Ralph works in the main tree)
-- Items can declare dependencies on other items
-- Uses tmux for process management and display
+For sequential execution (one item at a time), use `--max-workers 1`.
 
 ### Planner Loop
 
@@ -241,15 +186,15 @@ budget:
 
 | Scenario | Method | Why |
 |----------|--------|-----|
-| Single focused task, 1-3 items | Ralph Loop | Sequential is simpler, no worktree overhead |
+| Single focused task, 1-3 items | Orchestrator (`--max-workers 1`) | Sequential execution, simple setup |
 | Multi-item plan, items are independent | Orchestrator | Parallel execution, faster wall-clock time |
 | Exploratory work, unclear scope | Manual | You need human judgment at each step |
 | Quick fix, one file | Manual | Overhead of a loop isn't worth it |
-| AFK batch run, single plan | Ralph or Orch | Both run unattended until SHIP or budget exhausted |
+| AFK batch run, single plan | Orchestrator | Runs unattended until SHIP or budget exhausted |
 | AFK batch run, multiple plans | Planner Loop | Autonomously picks work, creates plans, executes them |
 | Items have complex dependencies | Orchestrator | Supports `depends:` declarations |
 | Long unattended session (hours) | Planner Loop | Budget guards handle credit exhaustion and failures |
-| Modifying the orchestrator itself | Ralph or Manual | Orch can't safely modify its own scripts mid-run |
+| Modifying the orchestrator itself | Manual | Orch can't safely modify its own scripts mid-run |
 
 ---
 
@@ -265,8 +210,8 @@ budget:
 ### Fixing a bug
 
 1. `/plan fix: <description of the bug>`
-2. Run `bash scripts/ralph-loop.sh <slug>` — Ralph handles implement + review
-3. The loop commits on SHIP
+2. Run `bash scripts/orch-run.sh <slug>` — orchestrator handles implement + review
+3. The orchestrator commits on SHIP
 
 ### Adding a skill
 
@@ -280,34 +225,15 @@ budget:
 2. Follow the existing command format (description, arguments, steps)
 3. Update `CLAUDE.md` repo map
 
-### Modifying the orchestrator or Ralph Loop
+### Modifying the orchestrator
 
 1. `/plan <description>`
-2. Use Ralph Loop or manual — not the orchestrator (it can't modify itself safely)
+2. Use manual workflow — not the orchestrator (it can't modify itself safely)
 3. Test with a small plan before running on real work
 
 ---
 
 ## Troubleshooting
-
-### Ralph Loop stagnates (exit code 2)
-
-The loop detected no file changes across 2 consecutive iterations. The worker
-is running but not producing output.
-
-**Fix:** Read `review-feedback.txt` and the last `iterations/NNN/` archive to
-understand what the worker is stuck on. Manually unblock the issue, then re-run:
-
-```bash
-bash scripts/ralph-loop.sh <slug>
-```
-
-### Ralph Loop exhausts iterations (exit code 1)
-
-The iteration budget ran out before the reviewer approved.
-
-**Fix:** Check `review-feedback.txt` for the last REVISE reason. Either fix the
-issue manually, increase `max_iterations` in `dega-core.yaml`, or re-run.
 
 ### Orchestrator worker fails
 
@@ -323,8 +249,8 @@ Read the worker output in the tmux pane or the iteration archive.
 
 ### Health check failures
 
-The Ralph Loop runs `ralph-check.sh` before SHIP. Health checks are defined in
-`dega-core.yaml` under `success_criteria`. Common failures:
+Health checks are defined in `dega-core.yaml` under `success_criteria`.
+Common failures:
 
 | Check | Fix |
 |-------|-----|
@@ -335,6 +261,70 @@ The Ralph Loop runs `ralph-check.sh` before SHIP. Health checks are defined in
 
 ### Resuming after interruption
 
-Both Ralph and the orchestrator are resume-safe. The plan file tracks progress
-via checkboxes. Re-running the same command picks up where it left off — already
-checked items are skipped.
+The orchestrator is resume-safe. The plan file tracks progress via checkboxes.
+Re-running the same command picks up where it left off — already checked items
+are skipped.
+
+---
+
+## Appendix: Legacy — Ralph Loop
+
+> **Note:** The Ralph Loop is superseded by the orchestrator. It still works
+> but is no longer recommended. Use the orchestrator for all new work.
+
+The Ralph Loop spawns worker and reviewer agents in sequence. The worker
+implements plan items one at a time; the reviewer evaluates each item against
+the plan criteria. The loop repeats until the reviewer outputs SHIP or the
+iteration budget is exhausted.
+
+```bash
+bash scripts/ralph-loop.sh <slug>
+```
+
+**How it works:**
+
+1. Worker reads `plan.md`, finds the next unchecked `[ ]` item, implements it,
+   marks `[x]`, writes a context handoff for the next item
+2. Repeats until all items are checked
+3. Structural checks run (all checkboxes checked? health check passes?)
+4. Per-item reviewer evaluates each completed item
+5. If all pass: SHIP — archive plan, commit, play sound
+6. If any fail: REVISE — write feedback, worker re-runs failed items
+7. If no file changes in 2 consecutive iterations: STAGNATED — stop for human
+
+**Configuration** in `dega-core.yaml` at the repo root:
+
+```yaml
+max_iterations: 3          # budget cap
+budget:
+  warn_at_iteration: 2     # alert when approaching limit
+```
+
+**State files** written during execution:
+
+| File | Purpose |
+|------|---------|
+| `plan.md` | Source of truth — checkboxes track progress |
+| `.ralph-state.json` | Machine-readable loop state |
+| `context-handoff.txt` | Passes context between items within one iteration |
+| `review-feedback.txt` | Reviewer notes for REVISE iterations |
+| `review-result.txt` | SHIP, REVISE, or BLOCKED |
+| `reviews/item-N-review.txt` | Per-item reviewer verdict |
+| `iterations/NNN/` | Archived state from previous iterations |
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| 0 | SHIP — all items passed review |
+| 1 | Exhausted — max iterations reached without SHIP |
+| 2 | Stagnated or blocked — human action required |
+
+**Troubleshooting:**
+
+- **Stagnates (exit code 2):** No file changes across 2 consecutive iterations.
+  Read `review-feedback.txt` and the last `iterations/NNN/` archive to understand
+  the blocker. Manually unblock, then re-run.
+- **Exhausts iterations (exit code 1):** Budget ran out before reviewer approved.
+  Check `review-feedback.txt` for the last REVISE reason. Fix manually, increase
+  `max_iterations` in `dega-core.yaml`, or re-run.

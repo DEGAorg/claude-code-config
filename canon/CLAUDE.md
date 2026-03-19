@@ -11,9 +11,9 @@ specific to prediction market development. Generic patterns belong in the parent
 canon/
 ├── CLAUDE.md          ← You are here
 ├── AGENTS.md          ← Agent personas, skills, and workflow reference
-├── commands/          ← Slash commands (canon-start, develop, discover, register, ralph-cycle, quick-dev)
+├── commands/          ← Slash commands (canon-start, develop, discover, register, quick-dev)
 ├── hooks/             ← Canon-specific lifecycle hooks (empty — future use)
-├── skills/            ← Skills (prediction-markets, polymarket, strategy-patterns, risk-management, backtesting, arena-tracking, canon-conventions, ralph-loop)
+├── skills/            ← Skills (prediction-markets, polymarket, strategy-patterns, risk-management, backtesting, arena-tracking, canon-conventions)
 ├── agents/            ← Agent personas (dev, market-analyst, strategy-architect, risk-analyst, qa, deployment-ops)
 ├── rules/             ← Domain layering enforcement (ast-grep)
 ├── templates/         ← Strategy templates (client-polymarket.ts, client-sportsbook.ts, nba-momentum/)
@@ -78,8 +78,8 @@ for how to write and extend these rules.
 ## Active Work
 
 The Canon layer is shipped. Commands, skills, agents, rules, and templates are
-all in place. The live runner with terminal dashboard and Ralph Loop convergence
-are operational.
+all in place. The live runner with terminal dashboard and orchestrator are
+operational.
 
 Current focus areas:
 - Strategy template expansion (new market types beyond NBA/sports)

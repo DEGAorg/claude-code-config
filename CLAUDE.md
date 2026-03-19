@@ -277,25 +277,25 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 Each plan is a directory — read `active/<slug>/plan.md`, find the first unchecked
 `[ ]` in the Progress log, and continue from there.
 
-### Ralph Loop
+### Orchestrator
 
-**Automated / AFK sessions:** Use the outer loop to drive worker and reviewer agents
-until the reviewer outputs SHIP and the health check passes:
+**Automated / AFK sessions:** Use the orchestrator to drive parallel worker agents
+with per-item review, completion criteria gates, and automatic SHIP/merge/archive:
 
 ```bash
-bash ~/.claude/scripts/ralph-loop.sh 20260302-add-auth-endpoint
+bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
 ```
 
-The task-slug must match a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`). The loop spawns
-fresh `claude -p` instances for each iteration — worker reads the plan and does work,
-reviewer reads the plan and work-summary, decides SHIP or REVISE.
+The plan path must point to a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`).
+The orchestrator creates a tmux session, spawns worker agents in isolated worktrees,
+reviews each item, and iterates until all items pass review and completion criteria are met.
 
 **Per-project config:** Each project provides a `dega-core.yaml` at its root with
 `max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project
 scripts are needed — `/apply-core` installs all engine scripts globally to
 `~/.claude/scripts/`.
 
-**Exec-plan state files** (written by agents, read by the loop):
+**Exec-plan state files** (written by agents, read by the orchestrator):
 
 | File | Writer | Reader | Purpose |
 |---|---|---|---|
