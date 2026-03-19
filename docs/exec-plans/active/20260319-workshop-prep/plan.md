@@ -62,7 +62,7 @@ Two workstreams:
 - [x] Update `docs/Self_Development.md` — orchestrator primary, ralph loop to legacy appendix (deps: 1)
 - [x] Update `CLAUDE.md` — rename Ralph Loop section to Orchestrator, update description (deps: 1)
 - [x] Update `README.md` and `dega-core.yaml` — minor ref cleanups (deps: 1)
-- [ ] Merge `ace-work` into `develop` (deps: 2, 3, 4, 5, 6, 7, 8, 9, 10)
+- [x] Merge `ace-work` into `develop` (deps: 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
 ## Decision log
 
