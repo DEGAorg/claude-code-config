@@ -64,11 +64,11 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
 | `scripts/` | Shell scripts and tooling (see below) |
-| `scripts/ralph-loop.sh` | Ralph Loop orchestrator — drives worker/reviewer agents to convergence |
-| `scripts/ralph-worker-prompt.md` | Worker agent system prompt for Ralph iterations |
-| `scripts/ralph-reviewer-prompt.md` | Reviewer agent system prompt for Ralph iterations |
-| `scripts/plan-advance.sh` | Advances Ralph state to next task item |
-| `scripts/ralph-check.sh` | Health check for Ralph Loop state |
+| `scripts/ralph-loop.sh` | Legacy — single-item worker/reviewer loop (use orchestrator instead) |
+| `scripts/ralph-worker-prompt.md` | Legacy — worker prompt for Ralph iterations |
+| `scripts/ralph-reviewer-prompt.md` | Legacy — reviewer prompt for Ralph iterations |
+| `scripts/plan-advance.sh` | Legacy — advances Ralph state to next task item |
+| `scripts/ralph-check.sh` | Legacy — health check for Ralph Loop state |
 | `scripts/create-exec-plan.sh` | Scaffolds a new exec-plan directory |
 | `scripts/task-complete.sh` | Marks task done and plays completion sound |
 | `scripts/statusline.sh` | Two-line terminal status bar for zsh |
@@ -84,8 +84,8 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/orch-review.sh` | Per-item reviewer — spawns reviewer agents, collects SHIP/REVISE decisions |
 | `scripts/orch-verify.sh` | Completion criteria verifier — checks unchecked criteria after review |
 | `scripts/orch-display.sh` | Opens tmux dashboard in a terminal window (macOS .command / Linux terminal) |
-| `scripts/ralph-worktree.sh` | Worktree management for parallel Ralph Loop isolation |
-| `scripts/review-advance.sh` | Per-item reviewer loop for Ralph iterations |
+| `scripts/ralph-worktree.sh` | Legacy — worktree management for Ralph Loop |
+| `scripts/review-advance.sh` | Legacy — per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
 | `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted |
@@ -94,7 +94,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
-| `docs/Self_Development.md` | How to apply fixes and features — manual, Ralph Loop, and orchestrator workflows |
+| `docs/Self_Development.md` | How to apply fixes and features — manual and orchestrator workflows |
 | `agents/` | Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
@@ -115,7 +115,7 @@ claude-code-config/             ← Core (this repo root)
 ├── commands/                   ← Global commands (apply-core, canon-init, core-init, fix-issue, review-pr, plan, cleanup, doc-garden)
 ├── hooks/                      ← Lifecycle hooks (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
-├── scripts/                    ← Orchestrator engine, Ralph Loop, terminal-ui, logging, Canon scripts
+├── scripts/                    ← Orchestrator engine, terminal-ui, logging, Canon scripts
 ├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)

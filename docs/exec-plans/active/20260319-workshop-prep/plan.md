@@ -59,7 +59,7 @@ Two workstreams:
 - [x] Update `scripts/canon-scaffold.sh` — `BRANCH="ace-work"` → `BRANCH="develop"` (deps: 1)
 - [x] Update skills: `plan-registry.md`, `changelog.md`, `sound-notifications.md` — replace ralph refs with orchestrator (deps: 1)
 - [x] Delete `canon/skills/ralph-loop.md`, update `canon/CLAUDE.md` to remove ralph references (deps: 1)
-- [ ] Update `docs/Self_Development.md` — orchestrator primary, ralph loop to legacy appendix (deps: 1)
+- [x] Update `docs/Self_Development.md` — orchestrator primary, ralph loop to legacy appendix (deps: 1)
 - [ ] Update `CLAUDE.md` — rename Ralph Loop section to Orchestrator, update description (deps: 1)
 - [ ] Update `README.md` and `dega-core.yaml` — minor ref cleanups (deps: 1)
 - [ ] Merge `ace-work` into `develop` (deps: 2, 3, 4, 5, 6, 7, 8, 9, 10)
