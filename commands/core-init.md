@@ -138,7 +138,7 @@ success_criteria:
 **If it does not exist:** fetch the minimal template from GitHub:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/docs/core-init-claude-template.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-claude-template.md
 ```
 
 Write the fetched content to `CLAUDE.md` in the current directory.
