@@ -52,7 +52,7 @@ Two workstreams:
 
 ## Progress log
 
-- [ ] Update `commands/apply-core.md` — branch `ace-work` → `develop`, demote Ralph Loop section to "Legacy Scripts"
+- [x] Update `commands/apply-core.md` — branch `ace-work` → `develop`, demote Ralph Loop section to "Legacy Scripts"
 - [ ] Update `commands/core-init.md` — branch URL `ace-work` → `develop` (deps: 1)
 - [ ] Update `commands/canon-init.md` — branch URL `ace-work` → `develop` (deps: 1)
 - [ ] Update `commands/plan.md` — remove ralph loop from hand-off, orchestrator only (deps: 1)
