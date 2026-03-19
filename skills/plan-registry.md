@@ -27,15 +27,15 @@ Each row is one plan. Fields:
 | Slug | Plan directory name, linked to `completed/<slug>/plan.md` |
 | Status | Always `completed` (only completed plans are registered) |
 | Iterations | How many worker/reviewer cycles before SHIP (0 = first pass, `-` = manual) |
-| Method | `orch` (orchestrator), `ralph` (Ralph Loop), or `manual` |
+| Method | `orch` (orchestrator), `ralph` (legacy — Ralph Loop), or `manual` |
 
 ---
 
 ## Automatic updates
 
-The orchestrator and Ralph Loop both call `orch_registry_append()` on SHIP.
-This function appends a row to the registry table and commits it. No manual
-entry is needed for automated work.
+The orchestrator calls `orch_registry_append()` on SHIP. This function
+appends a row to the registry table and commits it. No manual entry is
+needed for orchestrator-driven work.
 
 ## Manual updates
 

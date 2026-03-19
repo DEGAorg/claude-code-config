@@ -34,8 +34,8 @@ entries move from Unreleased to the new section.
 
 ## Automatic updates
 
-The orchestrator (`orch-engine.sh`) and Ralph Loop (`ralph-loop.sh`) both
-call `orch_changelog_append()` on SHIP. This function:
+The orchestrator (`orch-engine.sh`) calls `orch_changelog_append()` on
+SHIP. This function:
 
 1. Extracts the plan title from `# Plan: <title>` in `plan.md`
 2. Appends a `- <title> (\`slug\`)` line under `### Changed` in the
