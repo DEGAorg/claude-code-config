@@ -2,15 +2,14 @@
 
 Opinionated defaults, documentation, and workflows for Claude Code at Trail of Bits. Covers sandboxing, permissions, hooks, skills, MCP servers, and usage patterns we've found effective across security audits, development, and research.
 
-**First-time setup:**
+**Quick start:** See **[INSTALL.md](INSTALL.md)** for setup instructions.
 
 ```bash
-git clone https://github.com/trailofbits/claude-code-config.git
+git clone https://github.com/DEGAorg/claude-code-config.git
 cd claude-code-config
 claude
+# then run: /apply-core
 ```
-
-Then inside the session, run `/trailofbits:config`. It walks you through installing each component, detects what you already have, and self-installs the command so future runs work from any directory. Run `/trailofbits:config` again after updates.
 
 ## Contents
 
