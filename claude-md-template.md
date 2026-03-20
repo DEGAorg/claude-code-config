@@ -106,3 +106,28 @@ When adding dependencies, CI actions, or tool versions, always look up the curre
 Describe what the code does now — not discarded approaches, prior iterations, or alternatives. Only describe what's in the diff.
 
 Use plain, factual language. A bug fix is a bug fix, not a "critical stability improvement." Avoid: critical, crucial, essential, significant, comprehensive, robust, elegant.
+
+## Execution Plans
+
+Plans are versioned task definitions stored in `docs/exec-plans/active/`.
+Use `/plan` to create one from a task description. The plan includes
+requirements, approach, progress log with dependency annotations, and
+completion criteria.
+
+**Run a plan with the orchestrator:**
+
+```bash
+bash ~/.claude/scripts/orch-run.sh <dated-slug>
+```
+
+The orchestrator spawns parallel worker agents in tmux (each in its own
+git worktree), reviews each item, and iterates until all items pass review
+(SHIP) or the budget is exhausted. Configuration lives in `dega-core.yaml`
+at the project root.
+
+| Command | What it does |
+|---------|--------------|
+| `/plan <task>` | Create an execution plan |
+| `orch-run.sh <slug>` | Run plan with parallel workers |
+| `orch-run.sh <slug> --max-workers 1` | Run plan sequentially |
+| `planner-loop.sh` | Autonomous: pick work from `focus.yaml`, plan, execute, repeat |
