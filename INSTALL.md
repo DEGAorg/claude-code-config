@@ -62,35 +62,27 @@ This creates:
 
 ### Create and run a plan
 
-```bash
-# 1. Start Claude in your project
-cd your-project
-claude
-
-# 2. Create a plan (Claude writes it, then stops)
+```
+# 1. Inside Claude, create a plan
 /plan add input validation to the health endpoint
 
-# 3. Exit Claude, run the plan with the orchestrator
-bash ~/.claude/scripts/orch-run.sh 20260319-add-input-validation
+# 2. Claude writes the plan and stops. Ask it to run:
+run this plan
+
+# Claude knows to use the orchestrator (from the global CLAUDE.md).
+# It launches orch-run.sh, opens a tmux dashboard, and runs the plan.
 ```
 
-The orchestrator opens a tmux session with a dashboard, spawns parallel
-workers, reviews each item, and iterates until everything passes (SHIP).
+The orchestrator spawns parallel workers, reviews each item, and iterates
+until everything passes (SHIP).
 
-### Orchestrator options
+You can also run the orchestrator directly from the terminal:
 
 ```bash
-# Parallel (default: 4 workers)
-bash ~/.claude/scripts/orch-run.sh <slug>
-
-# Sequential (1 worker at a time)
-bash ~/.claude/scripts/orch-run.sh <slug> --max-workers 1
-
-# Headless (no dashboard window)
-bash ~/.claude/scripts/orch-run.sh <slug> --background
-
-# Autonomous planner (picks work from focus.yaml, loops)
-bash ~/.claude/scripts/planner-loop.sh
+bash ~/.claude/scripts/orch-run.sh <slug>                  # parallel
+bash ~/.claude/scripts/orch-run.sh <slug> --max-workers 1  # sequential
+bash ~/.claude/scripts/orch-run.sh <slug> --background     # headless
+bash ~/.claude/scripts/planner-loop.sh                     # autonomous
 ```
 
 ### Other commands

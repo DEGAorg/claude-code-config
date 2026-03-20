@@ -5,11 +5,11 @@ set -euo pipefail
 # Runs asynchronously so it never blocks.
 #
 # Environment variables:
-#   CLAUDE_SOUND         Sound name (default: unstoppable). Set to "none" to disable.
+#   CLAUDE_SOUND         Sound name (default: super-mario-bros). Set to "none" to disable.
 #   CLAUDE_SOUND_VOLUME  Playback volume 0–100 (default: 50).
 #   RALPH_LOOP           Set to "1" by ralph-loop.sh — plays tick at 15% volume.
 
-sound_name="${CLAUDE_SOUND:-unstoppable}"
+sound_name="${CLAUDE_SOUND:-super-mario-bros}"
 
 # Empty string or "none" disables sound
 [[ -z "$sound_name" || "$sound_name" == "none" ]] && exit 0

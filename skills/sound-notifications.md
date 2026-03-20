@@ -16,7 +16,7 @@ Two environment variables control sound behavior. Both are set in
 
 | Variable | Values | Default |
 |----------|--------|---------|
-| `CLAUDE_SOUND` | Sound name, or `none` to disable | `unstoppable` |
+| `CLAUDE_SOUND` | Sound name, or `none` to disable | `super-mario-bros` |
 | `CLAUDE_SOUND_VOLUME` | `0`–`100` (percentage) | `50` |
 
 Setting `CLAUDE_SOUND` to `none` or an empty string disables playback

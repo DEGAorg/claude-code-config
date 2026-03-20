@@ -197,7 +197,7 @@ Components:
   `paplay` (PulseAudio/PipeWire). Installs MP3 and OGG files to
   `~/.claude/dega/sounds/` and the `play-sound.sh` hook to `~/.claude/hooks/`.
   Configured via `CLAUDE_SOUND` env var in `settings.json`
-  (default: `unstoppable`). Available values: `unstoppable`,
+  (default: `super-mario-bros`). Available values: `unstoppable`,
   `super-mario-bros`, `yeahoo`, `warzone-level-up`, `none`. Set to `none`
   to disable. Volume controlled via `CLAUDE_SOUND_VOLUME` (0–100, default 50).
   (recommended when `~/.claude/dega/sounds/` is missing)
