@@ -5,8 +5,8 @@ Get the DEGA Core AI development harness installed and running.
 ## Prerequisites
 
 The orchestrator needs `tmux` and `jq`. The terminal UI dashboard needs
-`node` and `pnpm`. If any are missing, `/apply-core` will offer to install
-them via Homebrew during setup.
+`node` and `pnpm`. If any are missing, `/apply-core` detects your platform
+and offers to install them (Homebrew on macOS, apt/dnf/pacman on Linux).
 
 ## Install
 

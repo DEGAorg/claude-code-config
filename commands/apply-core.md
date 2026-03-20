@@ -97,9 +97,7 @@ Files available:
 
 ### 0. Check prerequisites
 
-Check if these tools are available. For each missing tool, offer to install
-it via Homebrew (`brew install <tool>`). If Homebrew itself is not available,
-print the manual install instructions and stop.
+Check if these tools are available:
 
 | Tool | Required by | Check command |
 |------|-------------|---------------|
@@ -111,9 +109,19 @@ print the manual install instructions and stop.
 If all are present, continue. If any are missing:
 
 1. List which tools are missing
-2. Ask: "Install missing prerequisites via Homebrew? (y/n)"
-3. If yes, run `brew install <missing tools>` in a single command
-4. If no, warn that Orchestrator and Terminal UI will not work without them,
+2. Detect the platform and package manager:
+   - **macOS**: `brew install <missing tools>`
+   - **Debian/Ubuntu**: `sudo apt-get install -y <missing tools>`
+     (`node` → install via `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs`;
+      `pnpm` → `npm install -g pnpm`)
+   - **Fedora/RHEL**: `sudo dnf install -y <missing tools>`
+     (`node` → `sudo dnf module install -y nodejs:22`;
+      `pnpm` → `npm install -g pnpm`)
+   - **Arch**: `sudo pacman -S --noconfirm <missing tools>`
+     (`pnpm` → `npm install -g pnpm`)
+3. Ask: "Install missing prerequisites? (y/n)" and show the exact command
+4. If yes, run it
+5. If no, warn that Orchestrator and Terminal UI will not work without them,
    but allow the rest of the install to continue
 
 ---
