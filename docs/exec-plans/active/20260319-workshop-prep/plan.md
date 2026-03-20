@@ -75,9 +75,9 @@ Two workstreams:
 
 ## Completion criteria
 
-- [ ] No file in `commands/` or `scripts/` references `ace-work` branch
-- [ ] `commands/plan.md` hand-off section mentions only the orchestrator
-- [ ] `docs/Self_Development.md` Quick Start shows orchestrator as the primary method
-- [ ] No skill file recommends Ralph Loop as a method to use
-- [ ] `canon/skills/ralph-loop.md` does not exist
-- [ ] `develop` branch contains all commits from `ace-work`
+- [x] No file in `commands/` or `scripts/` references `ace-work` branch
+- [x] `commands/plan.md` hand-off section mentions only the orchestrator
+- [x] `docs/Self_Development.md` Quick Start shows orchestrator as the primary method
+- [x] No skill file recommends Ralph Loop as a method to use
+- [x] `canon/skills/ralph-loop.md` does not exist
+- [x] `develop` branch contains all commits from `ace-work`
