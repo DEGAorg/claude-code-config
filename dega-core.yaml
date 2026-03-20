@@ -7,7 +7,7 @@ budget:
 check_command: bash scripts/ralph-check.sh
 poll_interval_seconds: 30
 
-# Worker and reviewer prompt templates (used by scripts/ralph-loop.sh)
+# Legacy worker and reviewer prompt templates (used by scripts/ralph-loop.sh — use orchestrator instead)
 worker_prompt: scripts/ralph-worker-prompt.md
 reviewer_prompt: scripts/ralph-reviewer-prompt.md
 

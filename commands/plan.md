@@ -108,10 +108,6 @@ Output the following to the user as part of the hand-off:
 To run with the orchestrator (parallel workers, review, SHIP):
 
     bash ~/.claude/scripts/orch-run.sh <dated-slug>
-
-To run with the ralph loop (sequential worker/reviewer convergence):
-
-    bash ~/.claude/scripts/ralph-loop.sh <dated-slug>
 ```
 
 Replace `<dated-slug>` with the `YYYYMMDD-slug` derived in Step 2

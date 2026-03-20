@@ -1,9 +1,9 @@
 # Apply Core
 
-@description Install DEGA Core AI development artifacts globally to ~/.claude/. Ralph Loop engine scripts install globally; only dega-core.yaml is per-project.
+@description Install DEGA Core AI development artifacts globally to ~/.claude/. Orchestrator and legacy scripts install globally; only dega-core.yaml is per-project.
 
 Install Core harness artifacts from GitHub into `~/.claude/`. Works from any
-directory — no need to clone the repo. Ralph Loop engine scripts install
+directory — no need to clone the repo. Orchestrator and engine scripts install
 globally to `~/.claude/scripts/`; only `dega-core.yaml` is per-project.
 
 ## Source
@@ -11,7 +11,7 @@ globally to `~/.claude/scripts/`; only `dega-core.yaml` is per-project.
 All files are fetched from:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/
 ```
 
 Files available:
@@ -154,14 +154,13 @@ Components:
   `structured-log.sh` (records every tool call) as global hooks.
   GCP Cloud Logging is zero-config: drop `~/.claude/gcp-sa.json` and it auto-enables.
   (recommended when `~/.claude/scripts/log-server.py` is missing)
-- **Ralph Loop** — engine scripts install globally to `~/.claude/scripts/`
+- **Legacy Scripts (Ralph Loop)** — legacy engine scripts that still work but
+  are superseded by the Orchestrator. Installs globally to `~/.claude/scripts/`
   (`ralph-loop.sh`, `ralph-worktree.sh`, `ralph-check.sh`,
   `ralph-worker-prompt.md`, `ralph-reviewer-prompt.md`, `log-client.sh`,
   `plan-advance.sh`, `task-complete.sh`); only `dega-core.yaml` is per-project
-  (written to cwd). Invoke from any project:
-  `~/.claude/scripts/ralph-loop.sh <dated-slug>` (single loop) or
-  `~/.claude/scripts/ralph-worktree.sh <dated-slug>` (parallel via worktree)
-  (opt-in; recommended when `~/.claude/scripts/ralph-loop.sh` is missing)
+  (written to cwd). Use the Orchestrator instead for new work.
+  (opt-in; not recommended — use Orchestrator)
 - **Sounds** — notification sounds that play when Claude finishes a task.
   Works on macOS, Linux, and WSL2. Linux needs one of: `mpv`, `ffplay`, or
   `paplay` (PulseAudio/PipeWire). Installs MP3 and OGG files to
@@ -276,7 +275,7 @@ Safe to overwrite. These hooks reference `${HOME}/.claude/scripts/log-server.py`
 so they work from any project directory. The reviewer stop hook is scoped
 via `RALPH_ROLE` env var — it's a no-op outside ralph loop sessions.
 
-#### Ralph Loop — Global scripts
+#### Legacy Scripts (Ralph Loop) — Global scripts
 
 Create `~/.claude/scripts/` if it doesn't exist.
 
@@ -294,7 +293,7 @@ Write each engine script to `~/.claude/scripts/`:
 Run `chmod +x ~/.claude/scripts/ralph-loop.sh ~/.claude/scripts/ralph-worktree.sh ~/.claude/scripts/ralph-check.sh ~/.claude/scripts/log-client.sh ~/.claude/scripts/plan-advance.sh ~/.claude/scripts/task-complete.sh ~/.claude/scripts/canon-runner.sh` after writing.
 Safe to overwrite — these are engine scripts with no user customization.
 
-#### Ralph Loop — Per-project config
+#### Legacy Scripts (Ralph Loop) — Per-project config
 
 - If `dega-core.yaml` does **not** exist in the cwd: write it directly.
 - If it **does** exist: tell the user it exists and ask whether to
@@ -434,7 +433,7 @@ After completing the user's selections, also install this command itself to
 `~/.claude/commands/apply-core.md` by fetching:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/ace-work/commands/apply-core.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/commands/apply-core.md
 ```
 
 This makes `/apply-core` available from any directory in future without
@@ -494,7 +493,7 @@ Installed:
 ✓ Hooks — enforce-package-manager, log-gam
 ✓ Skills — custom-linter-authoring, app-legibility, sound-notifications
 ✓ Logging — local-only (add ~/.claude/gcp-sa.json to enable GCP)
-✓ Ralph Loop — scripts → ~/.claude/scripts/, dega-core.yaml → cwd
+✓ Legacy Scripts (Ralph Loop) — scripts → ~/.claude/scripts/, dega-core.yaml → cwd
 ✓ Sounds — MP3 + OGG → ~/.claude/dega/sounds/, play-sound.sh → ~/.claude/hooks/
 ✓ Terminal UI — dashboard + scripts → ~/.claude/scripts/, built with pnpm
 ✓ Orchestrator — orch-*.sh → ~/.claude/scripts/, Ink components + agent persona
