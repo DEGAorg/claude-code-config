@@ -77,3 +77,4 @@
 | 2026-03-15 | [20260315-fix-orch-global-paths](completed/20260315-fix-orch-global-paths/plan.md) | completed | 0 | orch |
 | 2026-03-15 | [20260315-fix-orch-ship-completion](completed/20260315-fix-orch-ship-completion/plan.md) | completed | 0 | orch |
 | 2026-03-16 | [20260315-fix-orch-worktree-hooks](completed/20260315-fix-orch-worktree-hooks/plan.md) | completed | 0 | orch |
+| 2026-03-20 | [20260319-workshop-prep](completed/20260319-workshop-prep/plan.md) | completed | 0 | orch |
