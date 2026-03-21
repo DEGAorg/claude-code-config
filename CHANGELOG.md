@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
 - Conductor TUI — Toad Fork + GitHub Project State (`20260320-project-state-tui`) — 2026-03-21
