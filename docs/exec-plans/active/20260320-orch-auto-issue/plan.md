@@ -36,7 +36,7 @@ The lifecycle hooks (`01-gh-plan-sync.sh`) already handle all the label/comment 
 
 - [x] Add auto-issue creation to `scripts/orch-run.sh` — read dega-core.yaml, create issue via plan-create.sh if sync enabled and no meta exists, write plan-meta.json
 - [x] Fix `scripts/gh-plan-sync.sh` to search both `.orchestrator/plans/<slug>/` and worktree for plan-meta.json (deps: 1)
-- [ ] Test: run orchestrator on a local plan with `github.sync: true`, verify issue created, labels updated through lifecycle, issue closed on SHIP (deps: 1, 2)
+- [x] Test: run orchestrator on a local plan with `github.sync: true`, verify issue created, labels updated through lifecycle, issue closed on SHIP (deps: 1, 2)
 
 ## Completion criteria
 
