@@ -47,7 +47,7 @@ For Claude to send these, it needs a tool (MCP or slash command) that emits the 
 
 - [x] Add `--conductor` CLI flag to skip store and launch Claude directly with project-dir context
 - [ ] Add pinned "Conductor" shortcut card on the store/home screen that does the same as --conductor (deps: 1)
-- [ ] Add `OpenPanel` and `ClosePanel` message types in `acp/messages.py` (deps: 1)
+- [x] Add `OpenPanel` and `ClosePanel` message types in `acp/messages.py` (deps: 1)
 - [ ] Handle `open_panel`/`close_panel` sessionUpdate events in `acp/agent.py` — translate to Textual messages (deps: 3)
 - [ ] Handle OpenPanel/ClosePanel in `screens/main.py` — dynamically mount/unmount sidebar panels with context (deps: 4)
 - [ ] Test: launch with `toad --conductor --project-dir ~/dega/aidd/claude-code-config`, ask agent "show project state", verify GitHub panel opens (deps: 1, 5)
