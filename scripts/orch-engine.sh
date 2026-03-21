@@ -277,7 +277,7 @@ while true; do
 				"${ORCH_STATE_FILE}")
 			while IFS= read -r line; do
 				echo "orch-engine:   FAILED — item ${line}"
-			done <<< "${failed_ids}"
+			done <<<"${failed_ids}"
 		else
 			echo "orch-engine: all ${TOTAL_COUNT} items complete"
 		fi
@@ -439,7 +439,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
 	if [[ -f "${WT_PLAN}" ]]; then
 		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
-			echo "orch-engine: [SHIP 1/8] synced plan.md from worktree"
+			echo "orch-engine: [SHIP 1/9] synced plan.md from worktree"
 		else
 			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -450,7 +450,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 2: Merge worktree branch into main ---
 	if orch_merge_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 2/8] worktree merged"
+		echo "orch-engine: [SHIP 2/9] worktree merged"
 	else
 		echo "orch-engine: ERROR — worktree merge failed" >&2
 		SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -458,7 +458,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
-	echo "orch-engine: [SHIP 3/8] deregistered from master state"
+	echo "orch-engine: [SHIP 3/9] deregistered from master state"
 
 	# --- Step 4: Move plan from active/ to completed/ ---
 	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
@@ -466,7 +466,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
 		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
 		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
-			echo "orch-engine: [SHIP 4/8] moved plan to completed/"
+			echo "orch-engine: [SHIP 4/9] moved plan to completed/"
 		else
 			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -488,7 +488,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 	else
 		if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
-			echo "orch-engine: [SHIP 5/8] committed plan move"
+			echo "orch-engine: [SHIP 5/9] committed plan move"
 		else
 			echo "orch-engine: ERROR — git commit failed for plan move" >&2
 			SHIP_ERRORS=$((SHIP_ERRORS + 1))
@@ -506,7 +506,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 				SHIP_ERRORS=$((SHIP_ERRORS + 1))
 			fi
 		fi
-		echo "orch-engine: [SHIP 6/8] appended to plan registry"
+		echo "orch-engine: [SHIP 6/9] appended to plan registry"
 	else
 		echo "orch-engine: WARN — registry append failed (non-fatal)"
 	fi
@@ -522,7 +522,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					SHIP_ERRORS=$((SHIP_ERRORS + 1))
 				fi
 			fi
-			echo "orch-engine: [SHIP 7/8] appended to changelog"
+			echo "orch-engine: [SHIP 7/9] appended to changelog"
 		else
 			echo "orch-engine: WARN — changelog append failed (non-fatal)"
 		fi
@@ -530,9 +530,89 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — could not extract plan title for changelog"
 	fi
 
-	# --- Step 8: Clean up worktree ---
+	# --- Compute elapsed time (needed by PR body and final summary) ---
+	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
+	if [[ -n "${STARTED_AT}" ]]; then
+		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null ||
+			date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
+		if [[ -n "${START_EPOCH}" ]]; then
+			NOW_EPOCH=$(date +%s)
+			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
+			ELAPSED_MIN=$((ELAPSED_SECS / 60))
+			ELAPSED_SEC=$((ELAPSED_SECS % 60))
+			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
+		else
+			ELAPSED_STR="unknown"
+		fi
+	else
+		ELAPSED_STR="unknown"
+	fi
+
+	# --- Step 8: Push branch and create PR ---
+	CURRENT_BRANCH=$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD)
+	PR_TARGET=$(grep 'pr_target:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
+		awk '{print $2}' | tr -d ' ' || true)
+	PR_TARGET="${PR_TARGET:-main}"
+
+	if [[ "${CURRENT_BRANCH}" != "${PR_TARGET}" ]]; then
+		# Push the branch
+		if git -C "${REPO_ROOT}" push -u origin "${CURRENT_BRANCH}" 2>&1; then
+			echo "orch-engine: [SHIP 8/9] pushed branch ${CURRENT_BRANCH}"
+
+			# Build PR body
+			PR_BODY="## SHIP Summary"$'\n\n'
+			PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
+			PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
+			if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+				PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
+			fi
+			PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
+			PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
+
+			# Add Closes #N if issue is linked
+			ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
+			if [[ -n "${ISSUE_NUMBER}" ]]; then
+				PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
+			fi
+
+			# Determine repo for gh pr create
+			GH_REPO=$(grep 'repo:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
+				head -1 | awk '{print $2}' | tr -d ' ' || true)
+
+			PR_TITLE="plan: ${SLUG}"
+			GH_ARGS=(pr create
+				--title "${PR_TITLE}"
+				--base "${PR_TARGET}"
+				--head "${CURRENT_BRANCH}"
+			)
+			if [[ -n "${GH_REPO}" ]]; then
+				GH_ARGS+=(--repo "${GH_REPO}")
+			fi
+
+			if PR_URL=$(gh "${GH_ARGS[@]}" --body "${PR_BODY}" 2>&1); then
+				echo "orch-engine: PR created: ${PR_URL}"
+
+				# Post PR link as comment on the linked issue
+				if [[ -n "${ISSUE_NUMBER}" && -n "${GH_REPO}" ]]; then
+					gh issue comment "${ISSUE_NUMBER}" \
+						--repo "${GH_REPO}" \
+						--body "PR created: ${PR_URL}" 2>&1 || {
+						echo "orch-engine: WARN — failed to post PR link on issue #${ISSUE_NUMBER}" >&2
+					}
+				fi
+			else
+				echo "orch-engine: WARN — PR creation failed (non-fatal): ${PR_URL}" >&2
+			fi
+		else
+			echo "orch-engine: WARN — git push failed, skipping PR creation" >&2
+		fi
+	else
+		echo "orch-engine: [SHIP 8/9] skipped PR — already on target branch ${PR_TARGET}"
+	fi
+
+	# --- Step 9: Clean up worktree ---
 	if orch_cleanup_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 8/8] worktree cleaned up"
+		echo "orch-engine: [SHIP 9/9] worktree cleaned up"
 	else
 		echo "orch-engine: WARN — worktree cleanup failed (non-fatal)"
 	fi
@@ -566,24 +646,6 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		VALIDATION_OK=false
 	fi
 
-	# --- SHIP summary with elapsed time ---
-	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
-	if [[ -n "${STARTED_AT}" ]]; then
-		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null \
-			|| date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
-		if [[ -n "${START_EPOCH}" ]]; then
-			NOW_EPOCH=$(date +%s)
-			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
-			ELAPSED_MIN=$((ELAPSED_SECS / 60))
-			ELAPSED_SEC=$((ELAPSED_SECS % 60))
-			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
-		else
-			ELAPSED_STR="unknown"
-		fi
-	else
-		ELAPSED_STR="unknown"
-	fi
-
 	echo ""
 	echo "========================================"
 	echo "  SHIP COMPLETE"
@@ -596,7 +658,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo "  Errors:   ${SHIP_ERRORS}"
 	echo "  Elapsed:  ${ELAPSED_STR}"
 	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
-		echo "  Status:   all 8 steps passed, validation OK"
+		echo "  Status:   all 9 steps passed, validation OK"
 	else
 		echo "  Status:   completed with issues (${SHIP_ERRORS} error(s), validation=${VALIDATION_OK})" >&2
 		echo "  Details:  .orchestrator/plans/${SLUG}/logs/engine.log" >&2

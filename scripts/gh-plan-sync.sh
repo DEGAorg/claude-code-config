@@ -9,6 +9,7 @@ set -euo pipefail
 #   start   — plan execution started (label → plan:active, post start comment)
 #   review  — per-item review result (post item review comment)
 #   ship    — plan completed successfully (label → plan:completed, close issue)
+#   pr      — PR created for plan (post PR URL comment on linked issue)
 #   revise  — plan failed after max iterations (label → plan:failed, post failure comment)
 #
 # Options:
@@ -27,6 +28,7 @@ set -euo pipefail
 #   --rework-count <n>        Items that required rework (for ship)
 #   --total-reviews <n>       Total review iterations (for ship)
 #   --elapsed <duration>      Elapsed time string (for ship/revise)
+#   --pr-url <url>            Pull request URL (for pr event)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -54,6 +56,7 @@ FAILED_DETAILS=""
 REWORK_COUNT=""
 TOTAL_REVIEWS=""
 ELAPSED=""
+PR_URL=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -117,6 +120,10 @@ while [[ $# -gt 0 ]]; do
 		ELAPSED="${2:?--elapsed requires a value}"
 		shift 2
 		;;
+	--pr-url)
+		PR_URL="${2:?--pr-url requires a value}"
+		shift 2
+		;;
 	-*)
 		echo "error: unknown option: $1" >&2
 		exit 1
@@ -138,7 +145,7 @@ done
 # --- Validate ---
 
 if [[ -z "${EVENT}" ]]; then
-	echo "error: event type required (start, review, ship, revise)" >&2
+	echo "error: event type required (start, review, ship, revise, pr)" >&2
 	exit 1
 fi
 
@@ -173,10 +180,10 @@ if [[ -z "${ISSUE}" ]]; then
 fi
 
 case "${EVENT}" in
-start | review | ship | revise) ;;
+start | review | ship | revise | pr) ;;
 *)
 	echo "error: unknown event type: ${EVENT}" >&2
-	echo "  Valid events: start, review, ship, revise" >&2
+	echo "  Valid events: start, review, ship, revise, pr" >&2
 	exit 1
 	;;
 esac
@@ -445,6 +452,17 @@ handle_revise() {
 	echo "Posted REVISE comment on issue #${ISSUE}." >&2
 }
 
+handle_pr() {
+	if [[ -z "${PR_URL}" ]]; then
+		echo "error: pr event requires --pr-url" >&2
+		exit 1
+	fi
+
+	local body="**Pull Request created** for \`${SLUG}\`: ${PR_URL}"
+	post_comment "${body}"
+	echo "Posted PR link on issue #${ISSUE}." >&2
+}
+
 # --- Dispatch ---
 
 case "${EVENT}" in
@@ -452,4 +470,5 @@ start) handle_start ;;
 review) handle_review ;;
 ship) handle_ship ;;
 revise) handle_revise ;;
+pr) handle_pr ;;
 esac
