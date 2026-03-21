@@ -173,13 +173,13 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 
 ## Completion criteria
 
-- [ ] `ensure-gh.sh` installs gh via brew on macOS and Linux; fails with instructions when brew unavailable
-- [ ] `/plan <task>` creates a GitHub Issue with plan content and `plan:draft` label
-- [ ] Orchestrator fetches plan from GitHub Issue, parses items, runs workers
-- [ ] Lifecycle hooks fire at milestones (start, review, ship, revise)
-- [ ] SHIP comment includes per-item iteration counts and elapsed time
-- [ ] SHIP updates label to `plan:completed` and closes the issue
-- [ ] `/sync` fetches open plan issues and flags drift
-- [ ] `skills/github-plans.md` exists and documents the system for Claude
-- [ ] All tests pass
-- [ ] shellcheck and shfmt clean on all new scripts
+- [x] `ensure-gh.sh` installs gh via brew on macOS and Linux; fails with instructions when brew unavailable
+- [x] `/plan <task>` creates a GitHub Issue with plan content and `plan:draft` label
+- [x] Orchestrator fetches plan from GitHub Issue, parses items, runs workers
+- [x] Lifecycle hooks fire at milestones (start, review, ship, revise)
+- [x] SHIP comment includes per-item iteration counts and elapsed time
+- [x] SHIP updates label to `plan:completed` and closes the issue
+- [x] `/sync` fetches open plan issues and flags drift
+- [x] `skills/github-plans.md` exists and documents the system for Claude
+- [x] All tests pass
+- [x] shellcheck and shfmt clean on all new scripts
