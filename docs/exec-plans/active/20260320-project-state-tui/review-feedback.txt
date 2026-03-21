@@ -1,0 +1,5 @@
+REWORK_ITEMS: 4
+
+--- item 4 (review failed) ---
+FINDING: timeline.py:40 — `except ValueError, AttributeError:` is Python 2 syntax and a SyntaxError in Python 3. Must be `except (ValueError, AttributeError):` with parentheses.
+ACTION: Change line 40 from `except ValueError, AttributeError:` to `except (ValueError, AttributeError):`.
