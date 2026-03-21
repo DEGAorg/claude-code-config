@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Verify issue body sync works end-to-end (`20260320-verify-body-sync`) — 2026-03-21
+
 - Sync issue body — check off progress log and completion criteria (`20260320-issue-body-sync`) — 2026-03-21
 
 - Conductor TUI — Toad Fork + GitHub Project State (`20260320-project-state-tui`) — 2026-03-21
