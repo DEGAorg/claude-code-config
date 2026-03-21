@@ -44,8 +44,8 @@ Update the verifier prompt (`agents/orch-verifier.md`) to check that done-files 
 
 ## Completion criteria
 
-- [ ] Reviewer prompt includes clause decomposition step
-- [ ] Review files contain per-clause verification results
-- [ ] Worker prompt requires done-file to address every clause
-- [ ] Verifier prompt checks for partial completions
-- [ ] A test item with a deliberately partial completion gets FAIL'd by the reviewer
+- [x] Reviewer prompt includes clause decomposition step
+- [x] Review files contain per-clause verification results
+- [x] Worker prompt requires done-file to address every clause
+- [x] Verifier prompt checks for partial completions
+- [x] A test item with a deliberately partial completion gets FAIL'd by the reviewer
