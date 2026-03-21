@@ -44,7 +44,7 @@ Each pattern is stripped of Canon/prediction-market terminology and generalized 
 - [ ] Create `skills/development-patterns.md` — core skill indexing all extensions (deps: 2)
 - [ ] Update `CLAUDE.md` — add `development-patterns` to skills table and tree diagram (deps: 3)
 - [ ] Update `claude-md-template.md` — add patterns reference for third-party users (deps: 3)
-- [ ] Delete `skills/patterns/_research.md` working doc (deps: 2)
+- [x] Delete `skills/patterns/_research.md` working doc (deps: 2)
 
 ## Decision log
 
