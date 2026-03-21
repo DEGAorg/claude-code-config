@@ -36,8 +36,8 @@ Both use `gh issue edit --body "new body"` to write the updated markdown.
 
 ## Completion criteria
 
-- [ ] Progress log checkboxes in the issue body update as items complete
-- [ ] Status field changes to `**Status:** Completed` on SHIP
-- [ ] All Completion criteria checkboxes get checked on SHIP
-- [ ] If body parsing fails, warning is logged but orchestrator continues
-- [ ] shellcheck and shfmt clean
+- [x] Progress log checkboxes in the issue body update as items complete
+- [x] Status field changes to `**Status:** Completed` on SHIP
+- [x] All Completion criteria checkboxes get checked on SHIP
+- [x] If body parsing fails, warning is logged but orchestrator continues
+- [x] shellcheck and shfmt clean
