@@ -34,15 +34,15 @@ The lifecycle hooks (`01-gh-plan-sync.sh`) already handle all the label/comment 
 
 ## Progress log
 
-- [ ] Add auto-issue creation to `scripts/orch-run.sh` — read dega-core.yaml, create issue via plan-create.sh if sync enabled and no meta exists, write plan-meta.json
-- [ ] Fix `scripts/gh-plan-sync.sh` to search both `.orchestrator/plans/<slug>/` and worktree for plan-meta.json (deps: 1)
-- [ ] Test: run orchestrator on a local plan with `github.sync: true`, verify issue created, labels updated through lifecycle, issue closed on SHIP (deps: 1, 2)
+- [x] Add auto-issue creation to `scripts/orch-run.sh` — read dega-core.yaml, create issue via plan-create.sh if sync enabled and no meta exists, write plan-meta.json
+- [x] Fix `scripts/gh-plan-sync.sh` to search both `.orchestrator/plans/<slug>/` and worktree for plan-meta.json (deps: 1)
+- [x] Test: run orchestrator on a local plan with `github.sync: true`, verify issue created, labels updated through lifecycle, issue closed on SHIP (deps: 1, 2)
 
 ## Completion criteria
 
-- [ ] Running `orch-run.sh <slug>` with `github.sync: true` creates a GitHub Issue automatically
-- [ ] Issue gets `plan:draft` label at creation, `plan:active` at start
-- [ ] SHIP updates label to `plan:completed`, posts summary comment, closes issue
-- [ ] Without `github.sync`, no issue is created (backward compatible)
-- [ ] If `gh` auth fails, orchestrator continues without sync (warning only)
-- [ ] shellcheck and shfmt clean
+- [x] Running `orch-run.sh <slug>` with `github.sync: true` creates a GitHub Issue automatically
+- [x] Issue gets `plan:draft` label at creation, `plan:active` at start
+- [x] SHIP updates label to `plan:completed`, posts summary comment, closes issue
+- [x] Without `github.sync`, no issue is created (backward compatible)
+- [x] If `gh` auth fails, orchestrator continues without sync (warning only)
+- [x] shellcheck and shfmt clean
