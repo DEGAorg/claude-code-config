@@ -52,7 +52,6 @@ check_not_contains() {
 }
 
 SYNC_SCRIPT="${REPO_ROOT}/scripts/gh-plan-sync.sh"
-ENGINE_SCRIPT="${REPO_ROOT}/scripts/orch-engine.sh"
 
 # ============================================================
 printf 'gh-plan-sync pr event — validation\n'
