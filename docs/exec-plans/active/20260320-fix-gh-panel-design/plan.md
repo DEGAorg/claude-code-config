@@ -44,16 +44,16 @@ Toad's ACP message system lets the agent send `sessionUpdate` events. Add a new 
 
 ## Progress log
 
-- [ ] Update `fetch.py` — add `detect_repo_from_path(path)` that reads dega-core.yaml github.repo or git remote from a specified project directory
-- [ ] Update `github_state.py` — accept `project_path` parameter, use `detect_repo_from_path` instead of `detect_repo` (deps: 1)
-- [ ] Update `screens/main.py` — remove GitHub panel from compose(), make `action_toggle_github` dynamically mount it on first toggle with project_path (deps: 2)
-- [ ] Update `cli.py` — add `--project-dir` argument, pass through to MainScreen so the panel knows which project to show (deps: 3)
-- [ ] Test: launch toad with `--project-dir ~/dega/aidd/claude-code-config`, press ctrl+g, verify it shows claude-code-config issues not conductor-view issues (deps: 4)
+- [x] Update `fetch.py` — add `detect_repo_from_path(path)` that reads dega-core.yaml github.repo or git remote from a specified project directory
+- [x] Update `github_state.py` — accept `project_path` parameter, use `detect_repo_from_path` instead of `detect_repo` (deps: 1)
+- [x] Update `screens/main.py` — remove GitHub panel from compose(), make `action_toggle_github` dynamically mount it on first toggle with project_path (deps: 2)
+- [x] Update `cli.py` — add `--project-dir` argument, pass through to MainScreen so the panel knows which project to show (deps: 3)
+- [x] Test: launch toad with `--project-dir ~/dega/aidd/claude-code-config`, press ctrl+g, verify it shows claude-code-config issues not conductor-view issues (deps: 4)
 
 ## Completion criteria
 
-- [ ] GitHub panel is NOT visible on initial load
-- [ ] ctrl+g opens the panel dynamically
-- [ ] Panel shows issues from the specified project repo, not conductor-view
-- [ ] `toad --project-dir /path/to/project` controls which repo the panel shows
-- [ ] Without --project-dir, falls back to dega-core.yaml or git remote of cwd
+- [x] GitHub panel is NOT visible on initial load
+- [x] ctrl+g opens the panel dynamically
+- [x] Panel shows issues from the specified project repo, not conductor-view
+- [x] `toad --project-dir /path/to/project` controls which repo the panel shows
+- [x] Without --project-dir, falls back to dega-core.yaml or git remote of cwd
