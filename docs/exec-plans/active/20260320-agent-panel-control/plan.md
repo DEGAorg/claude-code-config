@@ -54,8 +54,8 @@ For Claude to send these, it needs a tool (MCP or slash command) that emits the 
 
 ## Completion criteria
 
-- [ ] `toad --conductor` skips home screen and opens Claude session directly
-- [ ] Home screen has a pinned Conductor shortcut
-- [ ] Agent can send open_panel/close_panel via ACP sessionUpdate
-- [ ] "show project state" in chat opens the GitHub panel
-- [ ] ctrl+g still works as manual toggle
+- [x] `toad --conductor` skips home screen and opens Claude session directly
+- [x] Home screen has a pinned Conductor shortcut
+- [x] Agent can send open_panel/close_panel via ACP sessionUpdate
+- [x] "show project state" in chat opens the GitHub panel
+- [x] ctrl+g still works as manual toggle
