@@ -17,6 +17,7 @@ github:
   labels: true
   comments: true
   close_on_ship: true
+  pr_target: main
 
 success_criteria:
   # Repo health — shell scripts pass shellcheck
