@@ -40,9 +40,9 @@ The lifecycle hooks (`01-gh-plan-sync.sh`) already handle all the label/comment 
 
 ## Completion criteria
 
-- [ ] Running `orch-run.sh <slug>` with `github.sync: true` creates a GitHub Issue automatically
-- [ ] Issue gets `plan:draft` label at creation, `plan:active` at start
-- [ ] SHIP updates label to `plan:completed`, posts summary comment, closes issue
-- [ ] Without `github.sync`, no issue is created (backward compatible)
-- [ ] If `gh` auth fails, orchestrator continues without sync (warning only)
-- [ ] shellcheck and shfmt clean
+- [x] Running `orch-run.sh <slug>` with `github.sync: true` creates a GitHub Issue automatically
+- [x] Issue gets `plan:draft` label at creation, `plan:active` at start
+- [x] SHIP updates label to `plan:completed`, posts summary comment, closes issue
+- [x] Without `github.sync`, no issue is created (backward compatible)
+- [x] If `gh` auth fails, orchestrator continues without sync (warning only)
+- [x] shellcheck and shfmt clean
