@@ -163,9 +163,7 @@ if [[ -z "${ISSUE_NUMBER}" ]] && gh_config_bool sync; then
 		fi
 
 		# Ensure gh is available and authenticated
-		# shellcheck source=ensure-gh.sh
-		source "${SCRIPT_DIR}/ensure-gh.sh"
-		if ensure_gh && gh auth status &>/dev/null; then
+		if "${SCRIPT_DIR}/ensure-gh.sh" --quiet; then
 			echo "orch: creating GitHub Issue for plan '${SLUG}'..."
 			if issue_num=$("${SCRIPT_DIR}/plan-create.sh" \
 				--title "${plan_title}" \
