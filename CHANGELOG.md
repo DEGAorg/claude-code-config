@@ -31,6 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix orchestrator review quality — reject partial completions (`20260320-orch-review-quality`) — 2026-03-21
+
 - Fix SHIP flow — don't close issue until PR merges (`20260320-fix-ship-close-flow`) — 2026-03-21
 
 - Workshop Prep — Install Fixes, Ralph Cleanup, Merge to Develop (`20260319-workshop-prep`) — 2026-03-20
