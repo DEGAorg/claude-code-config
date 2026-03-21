@@ -6,14 +6,16 @@
 # The poll loop, worker spawning, review, and cleanup all run inside
 # orch-engine.sh in a tmux window named "engine".
 #
-# Usage: scripts/orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]
+# Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
 #
 # Options:
+#   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
 #   --background         Headless mode — tmux only, no display windows
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
+# Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --background
 
 set -euo pipefail
@@ -45,12 +47,21 @@ check_deps
 # --- Parse args ---
 
 SLUG=""
+ISSUE_NUMBER=""
 MAX_WORKERS=4
 MAX_ITERATIONS=3
 BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
+	--issue)
+		ISSUE_NUMBER="${2:-}"
+		if [[ -z "${ISSUE_NUMBER}" ]]; then
+			echo "error: --issue requires an issue number" >&2
+			exit 1
+		fi
+		shift 2
+		;;
 	--max-workers)
 		MAX_WORKERS="${2:-4}"
 		shift 2
@@ -65,7 +76,7 @@ while [[ $# -gt 0 ]]; do
 		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
+		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
 		exit 1
 		;;
 	*)
@@ -76,25 +87,63 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
+	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
 	exit 1
 fi
 
 PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+
+# --- Fetch plan from GitHub Issue if --issue is set ---
+
+FROM_ISSUE=false
+if [[ -n "${ISSUE_NUMBER}" ]]; then
+	# Validate issue number format
+	if ! [[ "${ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
+		echo "error: issue number must be a positive integer, got: ${ISSUE_NUMBER}" >&2
+		exit 1
+	fi
+
+	# Validate gh auth before launch (fail fast — auth is interactive)
+	# shellcheck source=ensure-gh.sh
+	source "${SCRIPT_DIR}/ensure-gh.sh"
+	ensure_gh
+	if ! gh auth status &>/dev/null; then
+		echo "error: gh is not authenticated. Run: gh auth login" >&2
+		echo "Then re-run this command." >&2
+		exit 2
+	fi
+
+	echo "orch: fetching plan from issue #${ISSUE_NUMBER}..."
+	"${SCRIPT_DIR}/gh-plan-fetch.sh" "${ISSUE_NUMBER}" "${SLUG}" >&2
+
+	# Copy fetched plan to where orch-parse-items.sh expects it
+	FETCHED_PLAN=".orchestrator/plans/${SLUG}/plan.md"
+	if [[ ! -f "${FETCHED_PLAN}" ]]; then
+		echo "error: gh-plan-fetch.sh did not produce ${FETCHED_PLAN}" >&2
+		exit 1
+	fi
+	mkdir -p "${PLAN_DIR}"
+	cp "${FETCHED_PLAN}" "${PLAN_DIR}/plan.md"
+	FROM_ISSUE=true
+fi
+
 if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
+	echo "  hint: pass --issue N to fetch from a GitHub Issue" >&2
 	exit 1
 fi
 
-# --- Uncommitted plan guard ---
-plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
-if [[ -n "${plan_dirty}" ]]; then
-	echo "error: plan has uncommitted changes — commit before running orch" >&2
-	echo "  dirty files:" >&2
-	while IFS= read -r line; do
-		echo "    ${line}" >&2
-	done <<< "${plan_dirty}"
-	exit 1
+# --- Uncommitted plan guard (skip for issue-sourced plans) ---
+if [[ "${FROM_ISSUE}" == false ]]; then
+	plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
+	if [[ -n "${plan_dirty}" ]]; then
+		echo "error: plan has uncommitted changes — commit before running orch" >&2
+		echo "  dirty files:" >&2
+		while IFS= read -r line; do
+			echo "    ${line}" >&2
+		done <<<"${plan_dirty}"
+		exit 1
+	fi
 fi
 
 # --- Already-running detection ---
@@ -156,9 +205,16 @@ init_state() {
 	  }
 	]')
 
+	# Build issue number as JSON value (number or null)
+	local issue_json="null"
+	if [[ -n "${ISSUE_NUMBER}" ]]; then
+		issue_json="${ISSUE_NUMBER}"
+	fi
+
 	STATE_JSON=$(jq -n \
 		--argjson version 1 \
 		--arg plan "${SLUG}" \
+		--argjson issueNumber "${issue_json}" \
 		--argjson maxWorkers "${MAX_WORKERS}" \
 		--argjson items "${ITEMS_JSON}" \
 		--arg mode "foreground" \
@@ -167,6 +223,7 @@ init_state() {
 		'{
 	    version: $version,
 	    plan: $plan,
+	    issueNumber: $issueNumber,
 	    maxParallelWorkers: $maxWorkers,
 	    mode: $mode,
 	    items: $items,

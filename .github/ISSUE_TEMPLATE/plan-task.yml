@@ -1,0 +1,96 @@
+name: Plan Task
+description: Create an execution plan for the orchestrator
+labels: ["plan:draft"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template creates a structured plan that the orchestrator can parse and execute.
+        Fill in each section below. The progress log format is critical — each item must be
+        a markdown checkbox (`- [ ] Description`) for the parser to recognize it.
+
+  - type: input
+    id: plan-title
+    attributes:
+      label: Plan title
+      description: Short name for this plan (used as the slug)
+      placeholder: "e.g., add-auth-endpoint"
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: What must be true when this plan is complete
+      placeholder: |
+        - Requirement 1
+        - Requirement 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Approach
+      description: How the work will be done — architecture, data flow, key decisions
+      placeholder: |
+        Describe the technical approach, architecture decisions,
+        and any relevant data flow diagrams.
+    validations:
+      required: true
+
+  - type: textarea
+    id: progress-log
+    attributes:
+      label: Progress log
+      description: >
+        Ordered list of work items as markdown checkboxes. Each item after the first
+        must have a `(deps: N)` annotation. The orchestrator parses these to determine
+        execution order and parallelism.
+      placeholder: |
+        - [ ] Step 1 — setup
+        - [ ] Step 2 — implement feature (deps: 1)
+        - [ ] Step 3 — add tests (deps: 2)
+        - [ ] Step 4 — integration test (deps: 3)
+      value: |
+        - [ ] Step 1
+    validations:
+      required: true
+
+  - type: textarea
+    id: files-to-touch
+    attributes:
+      label: Files to touch
+      description: Which files will be created or modified
+      placeholder: |
+        | File | Change |
+        |------|--------|
+        | `src/foo.ts` | New — implements feature X |
+    validations:
+      required: false
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and open questions
+      description: Anything that could block or complicate execution
+      placeholder: |
+        - Risk 1
+        - Open question 1
+    validations:
+      required: false
+
+  - type: textarea
+    id: completion-criteria
+    attributes:
+      label: Completion criteria
+      description: >
+        Checkboxes that must all pass for the plan to SHIP. The orchestrator verifier
+        checks these after all progress log items are done.
+      placeholder: |
+        - [ ] All tests pass
+        - [ ] Linters clean
+        - [ ] Feature works end-to-end
+    validations:
+      required: true
