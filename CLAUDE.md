@@ -60,7 +60,8 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `mcp-template.json` | MCP server configuration template |
 | `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 | `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
-| `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
+| `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `development-patterns`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
+| `skills/patterns/` | Development pattern extensions grouped by topic — loaded by `development-patterns` skill |
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
 | `scripts/` | Shell scripts and tooling (see below) |
@@ -119,7 +120,8 @@ claude-code-config/             ← Core (this repo root)
 ├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
-├── skills/                     ← Core skills (app-legibility, custom-linter-authoring, sound-notifications)
+├── skills/                     ← Core skills (app-legibility, development-patterns, sound-notifications)
+│   └── patterns/               ← Development pattern extensions (topic-grouped)
 ├── tests/                      ← Test scripts for hooks and infrastructure
 │
 └── canon/                      ← Canon layer (prediction markets)
