@@ -16,7 +16,7 @@ Simple 2-item plan that does trivial work. The real test is whether the GitHub I
 ## Progress log
 
 - [x] Create a test file at `/tmp/verify-body-sync-step1.txt` with contents "step 1 done"
-- [ ] Create a test file at `/tmp/verify-body-sync-step2.txt` with contents "step 2 done" (deps: 1)
+- [x] Create a test file at `/tmp/verify-body-sync-step2.txt` with contents "step 2 done" (deps: 1)
 
 ## Completion criteria
 
