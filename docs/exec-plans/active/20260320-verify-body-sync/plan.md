@@ -20,6 +20,6 @@ Simple 2-item plan that does trivial work. The real test is whether the GitHub I
 
 ## Completion criteria
 
-- [ ] Both test files exist
-- [ ] This issue's progress log checkboxes are checked
-- [ ] This issue's Status field says Completed
+- [x] Both test files exist
+- [x] This issue's progress log checkboxes are checked
+- [x] This issue's Status field says Completed
