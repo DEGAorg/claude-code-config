@@ -82,3 +82,4 @@
 | 2026-03-21 | [20260320-project-state-tui](completed/20260320-project-state-tui/plan.md) | completed | 1 | orch |
 | 2026-03-21 | [20260320-orch-auto-issue](completed/20260320-orch-auto-issue/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-issue-body-sync](completed/20260320-issue-body-sync/plan.md) | completed | 0 | orch |
+| 2026-03-21 | [20260320-orch-ship-pr](completed/20260320-orch-ship-pr/plan.md) | completed | 1 | orch |
