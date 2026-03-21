@@ -40,7 +40,7 @@ Update the verifier prompt (`agents/orch-verifier.md`) to check that done-files 
 - [x] Rewrite reviewer prompt — add clause decomposition step: split item into clauses, verify each, list results, FAIL if any clause unverified
 - [x] Update worker prompt — add done-file self-check: "list every requirement from your item description and confirm each one is addressed" (deps: 1)
 - [x] Update verifier prompt — add check that done-files and reviews cover all clauses (deps: 1)
-- [ ] Test: create a 2-clause item, have worker complete only one clause, verify reviewer catches the gap (deps: 1, 2, 3)
+- [x] Test: create a 2-clause item, have worker complete only one clause, verify reviewer catches the gap (deps: 1, 2, 3)
 
 ## Completion criteria
 
