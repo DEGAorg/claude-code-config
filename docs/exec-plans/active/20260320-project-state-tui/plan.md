@@ -89,7 +89,7 @@ gh issue list --label "plan:active" --json number,title,body --limit 20
 
 - [x] Fork `batrachianai/toad` to DEGAorg/conductor-view, clone, install with uv, verify imports (DONE)
 - [x] Install `claude-code-acp` adapter (`npm install -g @zed-industries/claude-code-acp`) and verify Toad launches with Claude at `/Users/cerratoa/dega/conductor-view` (deps: 1)
-- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/fetch.py` — gh CLI wrapper: auth check, issue/PR/event fetching, returns parsed JSON (deps: 2)
+- [x] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/fetch.py` — gh CLI wrapper: auth check, issue/PR/event fetching, returns parsed JSON (deps: 2)
 - [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/timeline.py` — timeline DataTable from repo events (deps: 3)
 - [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/issues.py` — issues DataTable grouped by label (deps: 3)
 - [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/plans.py` — plan issues with progress from body checkboxes (deps: 3)
