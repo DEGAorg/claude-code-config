@@ -45,7 +45,7 @@ For Claude to send these, it needs a tool (MCP or slash command) that emits the 
 
 ## Progress log
 
-- [ ] Add `--conductor` CLI flag to skip store and launch Claude directly with project-dir context
+- [x] Add `--conductor` CLI flag to skip store and launch Claude directly with project-dir context
 - [ ] Add pinned "Conductor" shortcut card on the store/home screen that does the same as --conductor (deps: 1)
 - [ ] Add `OpenPanel` and `ClosePanel` message types in `acp/messages.py` (deps: 1)
 - [ ] Handle `open_panel`/`close_panel` sessionUpdate events in `acp/agent.py` — translate to Textual messages (deps: 3)
