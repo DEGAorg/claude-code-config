@@ -60,10 +60,10 @@ Each pattern is stripped of Canon/prediction-market terminology and generalized 
 
 ## Completion criteria
 
-- [ ] `skills/development-patterns.md` exists and is ≤100 lines
-- [ ] `skills/patterns/` contains extension files (≥1), each ≤80 lines
-- [ ] Every extension file has a comment header citing its canon-docs source(s)
-- [ ] Zero domain content — grep for "prediction market", "Polymarket", "Canon Arena", "strategy" returns no matches in any created file
-- [ ] `CLAUDE.md` skills table includes `development-patterns`
-- [ ] `claude-md-template.md` references the patterns skill
-- [ ] `skills/patterns/_research.md` does not exist (cleaned up)
+- [x] `skills/development-patterns.md` exists and is ≤100 lines
+- [x] `skills/patterns/` contains extension files (≥1), each ≤80 lines
+- [x] Every extension file has a comment header citing its canon-docs source(s)
+- [x] Zero domain content — grep for "prediction market", "Polymarket", "Canon Arena", "strategy" returns no matches in any created file
+- [x] `CLAUDE.md` skills table includes `development-patterns`
+- [x] `claude-md-template.md` references the patterns skill
+- [x] `skills/patterns/_research.md` does not exist (cleaned up)
