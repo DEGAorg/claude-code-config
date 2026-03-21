@@ -55,8 +55,8 @@ Update the Claude agent config (`data/agents/claude.com.toml`) or add a conducto
 
 ## Completion criteria
 
-- [ ] `/panel github` opens the GitHub panel in Toad
-- [ ] `/panel github close` closes it
-- [ ] Claude knows about the panel system and uses it when asked for project state
-- [ ] Panel opens without user pressing ctrl+g
-- [ ] Works end-to-end: user asks → Claude responds → panel opens
+- [x] `/panel github` opens the GitHub panel in Toad
+- [x] `/panel github close` closes it
+- [x] Claude knows about the panel system and uses it when asked for project state
+- [x] Panel opens without user pressing ctrl+g
+- [x] Works end-to-end: user asks → Claude responds → panel opens
