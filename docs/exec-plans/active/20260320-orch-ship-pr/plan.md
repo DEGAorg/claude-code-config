@@ -39,7 +39,7 @@ Also update `gh-plan-sync.sh` to handle a new `pr` event that posts the PR link.
 
 - [x] Add `github.pr_target` to `dega-core.yaml` (default: `main`)
 - [x] Add PR creation to `scripts/orch-engine.sh` SHIP handling — push branch, create PR via `gh pr create`, include SHIP summary and `Closes #N` (deps: 1)
-- [ ] Update `scripts/gh-plan-sync.sh` — add `pr` event that posts PR URL as comment on linked issue (deps: 2)
+- [x] Update `scripts/gh-plan-sync.sh` — add `pr` event that posts PR URL as comment on linked issue (deps: 2)
 - [ ] Test: run a plan through SHIP, verify PR is created targeting the configured branch, issue gets PR link comment (deps: 2, 3)
 
 ## Completion criteria
