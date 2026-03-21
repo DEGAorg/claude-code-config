@@ -37,15 +37,15 @@ Update the verifier prompt (`agents/orch-verifier.md`) to check that done-files 
 
 ## Progress log
 
-- [ ] Rewrite reviewer prompt — add clause decomposition step: split item into clauses, verify each, list results, FAIL if any clause unverified
-- [ ] Update worker prompt — add done-file self-check: "list every requirement from your item description and confirm each one is addressed" (deps: 1)
-- [ ] Update verifier prompt — add check that done-files and reviews cover all clauses (deps: 1)
-- [ ] Test: create a 2-clause item, have worker complete only one clause, verify reviewer catches the gap (deps: 1, 2, 3)
+- [x] Rewrite reviewer prompt — add clause decomposition step: split item into clauses, verify each, list results, FAIL if any clause unverified
+- [x] Update worker prompt — add done-file self-check: "list every requirement from your item description and confirm each one is addressed" (deps: 1)
+- [x] Update verifier prompt — add check that done-files and reviews cover all clauses (deps: 1)
+- [x] Test: create a 2-clause item, have worker complete only one clause, verify reviewer catches the gap (deps: 1, 2, 3)
 
 ## Completion criteria
 
-- [ ] Reviewer prompt includes clause decomposition step
-- [ ] Review files contain per-clause verification results
-- [ ] Worker prompt requires done-file to address every clause
-- [ ] Verifier prompt checks for partial completions
-- [ ] A test item with a deliberately partial completion gets FAIL'd by the reviewer
+- [x] Reviewer prompt includes clause decomposition step
+- [x] Review files contain per-clause verification results
+- [x] Worker prompt requires done-file to address every clause
+- [x] Verifier prompt checks for partial completions
+- [x] A test item with a deliberately partial completion gets FAIL'd by the reviewer
