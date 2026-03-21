@@ -145,7 +145,7 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 ## Progress log
 
 - [x] Create `scripts/ensure-gh.sh` — detect gh, install via brew, fail with instructions if no brew
-- [ ] Create `scripts/plan-create.sh` — create GitHub Issue from plan content, apply `plan:draft` label, return issue number (deps: 1)
+- [x] Create `scripts/plan-create.sh` — create GitHub Issue from plan content, apply `plan:draft` label, return issue number (deps: 1)
 - [ ] Create `scripts/gh-plan-fetch.sh` — fetch issue body by number, write to `.orchestrator/plans/<slug>/plan.md` (deps: 1)
 - [ ] Create `scripts/gh-plan-sync.sh` — post formatted milestone comments, update labels; accepts event type (start, review, ship, revise) and slug as args (deps: 1)
 - [ ] Add orchestrator lifecycle hooks system — `hooks/orch-lifecycle/` directory, engine calls scripts at milestones with (event, slug) args (deps: 4)
@@ -155,7 +155,7 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 - [ ] Create `commands/sync.md` — fetch open plan issues, flag drift, reconcile state (deps: 3, 4)
 - [ ] Create `skills/github-plans.md` — teaches Claude about the system: data flow, scripts, how to use them (deps: 2, 3, 4)
 - [ ] Add `github:` config block to `dega-core.yaml` and teach all scripts to read it (deps: 2, 3, 4)
-- [ ] Create `.github/ISSUE_TEMPLATE/plan-task.yml` — structured issue template (deps: 1)
+- [x] Create `.github/ISSUE_TEMPLATE/plan-task.yml` — structured issue template (deps: 1)
 - [ ] Create `tests/test-ensure-gh.sh` and `tests/test-gh-plan-sync.sh` (deps: 1, 4)
 - [ ] End-to-end test — `/plan` creates issue, orch runs from it, comments posted at milestones, labels updated, SHIP closes issue (deps: 6, 7, 8, 9, 11)
 
