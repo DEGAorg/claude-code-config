@@ -25,7 +25,28 @@ You receive these from the orchestrator via your prompt:
 Read the plan at `{PLAN_PATH}` to understand the full context. Focus on
 the `## Completion criteria` section — those are your acceptance tests.
 
-### 2. Verify each criterion
+### 2. Clause-coverage check
+
+Before verifying completion criteria, check that every plan item was
+fully addressed — not just partially completed.
+
+For each checked `[x]` item in the `## Progress log`:
+
+1. **Decompose** the item description into individual clauses (each
+   distinct action, output, or constraint is a separate clause).
+2. **Read the done-file** for that item. Check that every clause is
+   addressed in the summary. A done-file that mentions only some
+   clauses is a gap.
+3. **Read the review file** for that item (if available). Check that the
+   CLAUSES section lists every clause with a VERIFIED result. A review
+   that skips clauses or marks any UNVERIFIED is a gap.
+
+If any item has clauses not covered by its done-file or review, report
+FAIL immediately — do not proceed to completion criteria. Include which
+item, which clauses were missing, and from which file (done-file or
+review).
+
+### 3. Verify each criterion
 
 For each unchecked criterion above:
 
@@ -37,7 +58,7 @@ For each unchecked criterion above:
 
 Work through criteria in order. Some may depend on earlier ones passing.
 
-### 3. Write the result file
+### 4. Write the result file
 
 Write `{RESULT_FILE}` with your verdict. The first line must be exactly
 `PASS` or `FAIL`. Nothing else on that line.
@@ -48,7 +69,14 @@ PASS
 All completion criteria verified.
 ```
 
-If FAIL (one or more criteria could not be verified):
+If FAIL due to clause-coverage gap (from step 2):
+```
+FAIL
+CLAUSE-GAP: item <N> — "<clause text>" not covered in <done-file|review>
+ACTION: <worker must address the missing clause>
+```
+
+If FAIL due to criterion failure (from step 3):
 ```
 FAIL
 CRITERION: <the criterion text that failed>
@@ -56,7 +84,7 @@ OUTPUT: <relevant command output or error>
 ACTION: <what needs to change for this to pass>
 ```
 
-### 4. Stop
+### 5. Stop
 
 Do not fix failures yourself. The orchestrator will trigger a REVISE
 cycle if you report FAIL. Your job is to verify, not to implement.
@@ -66,5 +94,6 @@ cycle if you report FAIL. Your job is to verify, not to implement.
 - **Verify, don't fix** — run checks and report results, do not modify source code
 - **Checkbox updates only** — the only file edits you make are `[ ]` to `[x]` in plan.md
 - **Result file required** — you MUST write `{RESULT_FILE}` before stopping
-- **Fail fast** — stop at the first criterion that fails
+- **Clause coverage first** — check done-files and reviews for full clause coverage before verifying criteria
+- **Fail fast** — stop at the first clause gap or criterion failure
 - **Be precise** — include actual command output in failure reports so workers know what to fix
