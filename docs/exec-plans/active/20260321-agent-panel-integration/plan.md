@@ -49,7 +49,7 @@ Update the Claude agent config (`data/agents/claude.com.toml`) or add a conducto
 
 - [x] Register `/panel` slash command in Toad — parse args (panel_id, open/close), emit OpenPanel/ClosePanel ACP messages
 - [ ] Handle `/panel` in conversation widget — intercept before sending to agent, translate to panel messages (deps: 1)
-- [ ] Create `skills/conductor-panels.md` in claude-code-config — teaches Claude about available panels and the `/panel` command (deps: 1)
+- [x] Create `skills/conductor-panels.md` in claude-code-config — teaches Claude about available panels and the `/panel` command (deps: 1)
 - [ ] Update Claude agent config in conductor-view — add panel awareness to agent description or help text (deps: 1)
 - [ ] Test: launch toad --conductor, type "show me the project state", verify Claude responds with /panel github and panel opens (deps: 1, 2, 3, 4)
 
