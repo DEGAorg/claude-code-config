@@ -47,16 +47,16 @@ Update the Claude agent config (`data/agents/claude.com.toml`) or add a conducto
 
 ## Progress log
 
-- [ ] Register `/panel` slash command in Toad — parse args (panel_id, open/close), emit OpenPanel/ClosePanel ACP messages
-- [ ] Handle `/panel` in conversation widget — intercept before sending to agent, translate to panel messages (deps: 1)
-- [ ] Create `skills/conductor-panels.md` in claude-code-config — teaches Claude about available panels and the `/panel` command (deps: 1)
-- [ ] Update Claude agent config in conductor-view — add panel awareness to agent description or help text (deps: 1)
-- [ ] Test: launch toad --conductor, type "show me the project state", verify Claude responds with /panel github and panel opens (deps: 1, 2, 3, 4)
+- [x] Register `/panel` slash command in Toad — parse args (panel_id, open/close), emit OpenPanel/ClosePanel ACP messages
+- [x] Handle `/panel` in conversation widget — intercept before sending to agent, translate to panel messages (deps: 1)
+- [x] Create `skills/conductor-panels.md` in claude-code-config — teaches Claude about available panels and the `/panel` command (deps: 1)
+- [x] Update Claude agent config in conductor-view — add panel awareness to agent description or help text (deps: 1)
+- [x] Test: launch toad --conductor, type "show me the project state", verify Claude responds with /panel github and panel opens (deps: 1, 2, 3, 4)
 
 ## Completion criteria
 
-- [ ] `/panel github` opens the GitHub panel in Toad
-- [ ] `/panel github close` closes it
-- [ ] Claude knows about the panel system and uses it when asked for project state
-- [ ] Panel opens without user pressing ctrl+g
-- [ ] Works end-to-end: user asks → Claude responds → panel opens
+- [x] `/panel github` opens the GitHub panel in Toad
+- [x] `/panel github close` closes it
+- [x] Claude knows about the panel system and uses it when asked for project state
+- [x] Panel opens without user pressing ctrl+g
+- [x] Works end-to-end: user asks → Claude responds → panel opens
