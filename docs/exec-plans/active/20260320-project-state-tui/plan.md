@@ -87,16 +87,17 @@ gh issue list --label "plan:active" --json number,title,body --limit 20
 
 ## Progress log
 
-- [ ] Fork `batrachianai/toad` to DEGAorg, clone, install with uv, verify it runs (HUMAN: Alberto)
-- [ ] Create `src/toad/widgets/github_views/fetch.py` — gh CLI wrapper: auth check, issue/PR/event fetching (deps: 1)
-- [ ] Create `src/toad/widgets/github_views/timeline.py` — timeline DataTable from repo events (deps: 2)
-- [ ] Create `src/toad/widgets/github_views/issues.py` — issues DataTable grouped by label (deps: 2)
-- [ ] Create `src/toad/widgets/github_views/plans.py` — plan issues with progress from body checkboxes (deps: 2)
-- [ ] Create `src/toad/widgets/github_views/prs.py` — PRs DataTable with review decision and CI status (deps: 2)
-- [ ] Create `src/toad/widgets/github_state.py` — GitHubStateWidget wrapping 4 views in TabbedContent (deps: 3, 4, 5, 6)
-- [ ] Mount GitHub panel in `src/toad/screens/main.py` SideBar (deps: 7)
-- [ ] Test end-to-end — launch conductor, open GitHub panel, verify all 4 views render (deps: 8)
-- [ ] Add keybinding to toggle GitHub panel (ctrl+g or similar) and refresh (r key within panel) (deps: 8)
+- [x] Fork `batrachianai/toad` to DEGAorg/conductor-view, clone, install with uv, verify imports (DONE)
+- [ ] Install `claude-code-acp` adapter (`npm install -g @zed-industries/claude-code-acp`) and verify Toad launches with Claude at `/Users/cerratoa/dega/conductor-view` (deps: 1)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/fetch.py` — gh CLI wrapper: auth check, issue/PR/event fetching, returns parsed JSON (deps: 2)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/timeline.py` — timeline DataTable from repo events (deps: 3)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/issues.py` — issues DataTable grouped by label (deps: 3)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/plans.py` — plan issues with progress from body checkboxes (deps: 3)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/prs.py` — PRs DataTable with review decision and CI status (deps: 3)
+- [ ] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_state.py` — GitHubStateWidget wrapping 4 views in TabbedContent (deps: 4, 5, 6, 7)
+- [ ] Mount GitHub panel in `/Users/cerratoa/dega/conductor-view/src/toad/screens/main.py` SideBar (deps: 8)
+- [ ] Test end-to-end — launch conductor from `/Users/cerratoa/dega/conductor-view`, open GitHub panel, verify all 4 views render (deps: 9)
+- [ ] Add keybinding to toggle GitHub panel (ctrl+g or similar) and refresh (r key within panel) (deps: 9)
 
 ## Decision log
 
