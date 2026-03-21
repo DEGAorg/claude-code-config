@@ -28,7 +28,7 @@
 
 ## Progress log
 
-- [ ] Update `handle_ship` in `scripts/gh-plan-sync.sh` — label `plan:pr-review`, body status "PR Review", remove `gh issue close`
+- [x] Update `handle_ship` in `scripts/gh-plan-sync.sh` — label `plan:pr-review`, body status "PR Review", remove `gh issue close`
 - [ ] Update `update_body_on_ship` — rename to `update_body_on_pr` and set status to "PR Review" instead of "Completed" (deps: 1)
 - [ ] Add `pr_merged` event handler to `scripts/gh-plan-sync.sh` — sets `plan:completed`, body status "Completed", verifies issue is closed (deps: 1)
 - [ ] Test: run a plan through SHIP, verify issue stays open with `plan:pr-review` label and "PR Review" status (deps: 1, 2, 3)
