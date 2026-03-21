@@ -96,7 +96,7 @@ gh issue list --label "plan:active" --json number,title,body --limit 20
 - [x] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_views/prs.py` — PRs DataTable with review decision and CI status (deps: 3)
 - [x] Create `/Users/cerratoa/dega/conductor-view/src/toad/widgets/github_state.py` — GitHubStateWidget wrapping 4 views in TabbedContent (deps: 4, 5, 6, 7)
 - [x] Mount GitHub panel in `/Users/cerratoa/dega/conductor-view/src/toad/screens/main.py` SideBar (deps: 8)
-- [ ] Test end-to-end — launch conductor from `/Users/cerratoa/dega/conductor-view`, open GitHub panel, verify all 4 views render (deps: 9)
+- [x] Test end-to-end — launch conductor from `/Users/cerratoa/dega/conductor-view`, open GitHub panel, verify all 4 views render (deps: 9)
 - [x] Add keybinding to toggle GitHub panel (ctrl+g or similar) and refresh (r key within panel) (deps: 9)
 
 ## Decision log
