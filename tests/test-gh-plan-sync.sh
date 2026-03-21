@@ -147,7 +147,7 @@ else
 	printf '  skip shfmt: not installed\n'
 fi
 
-# --- Body update tests (update_progress_checkbox, update_body_on_ship) ---
+# --- Body update tests (update_progress_checkbox, update_body_on_pr) ---
 
 # These tests use a mock gh that stores/returns issue body content.
 # The mock captures --body edits to a temp file so we can verify transforms.
@@ -337,7 +337,7 @@ else
 fi
 rm -f "${MOCK_EDITED_BODY}"
 
-# --- Test: update_body_on_ship sets Status and checks Completion criteria ---
+# --- Test: update_body_on_pr sets Status and checks Completion criteria ---
 
 cat >"${MOCK_BODY_FILE}" <<'BODY'
 # Plan: Test plan
@@ -389,7 +389,7 @@ else
 fi
 rm -f "${MOCK_EDITED_BODY}"
 
-# --- Test: update_body_on_ship is idempotent ---
+# --- Test: update_body_on_pr is idempotent ---
 
 cat >"${MOCK_BODY_FILE}" <<'BODY'
 # Plan: Test plan
