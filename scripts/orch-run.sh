@@ -205,6 +205,14 @@ init_state() {
 	  }
 	]')
 
+	# Include issue number in state if plan was fetched from GitHub
+	local issue_arg=""
+	if [[ -n "${ISSUE_NUMBER}" ]]; then
+		issue_arg="--argjson issueNumber ${ISSUE_NUMBER}"
+	else
+		issue_arg="--argjson issueNumber null"
+	fi
+
 	STATE_JSON=$(jq -n \
 		--argjson version 1 \
 		--arg plan "${SLUG}" \
@@ -213,9 +221,11 @@ init_state() {
 		--arg mode "foreground" \
 		--arg startedAt "${NOW}" \
 		--arg updatedAt "${NOW}" \
+		${issue_arg} \
 		'{
 	    version: $version,
 	    plan: $plan,
+	    issueNumber: $issueNumber,
 	    maxParallelWorkers: $maxWorkers,
 	    mode: $mode,
 	    items: $items,
