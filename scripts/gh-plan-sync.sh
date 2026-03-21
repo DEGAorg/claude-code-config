@@ -288,6 +288,57 @@ update_progress_checkbox() {
 	echo "Checked off progress item '${desc}' in issue #${ISSUE}." >&2
 }
 
+# Update issue body on plan completion: set Status to Completed and
+# check all Completion criteria checkboxes.
+# Idempotent: already-completed items are left as-is.
+# Logs a warning and returns 0 if parsing fails.
+update_body_on_ship() {
+	local body
+	body="$(fetch_issue_body)" || {
+		echo "warn: failed to fetch issue body for #${ISSUE}, skipping ship update" >&2
+		return 0
+	}
+
+	if [[ -z "${body}" ]]; then
+		echo "warn: issue #${ISSUE} has empty body, skipping ship update" >&2
+		return 0
+	fi
+
+	local updated_body="${body}"
+
+	# Update Status field to Completed (matches any current status value)
+	updated_body="$(printf '%s' "${updated_body}" | sed 's/^\*\*Status:\*\* .*/\*\*Status:\*\* Completed/')" || {
+		echo "warn: failed to update Status field in issue #${ISSUE}" >&2
+		return 0
+	}
+
+	# Check all unchecked items in the Completion criteria section.
+	# Strategy: find the "## Completion criteria" header, then replace
+	# all "- [ ]" with "- [x]" until the next "## " header or end of body.
+	updated_body="$(printf '%s' "${updated_body}" | awk '
+		/^## Completion criteria/ { in_section = 1 }
+		in_section && /^## / && !/^## Completion criteria/ { in_section = 0 }
+		in_section { gsub(/^- \[ \]/, "- [x]") }
+		{ print }
+	')" || {
+		echo "warn: failed to update Completion criteria in issue #${ISSUE}" >&2
+		return 0
+	}
+
+	# If nothing changed, everything was already updated
+	if [[ "${updated_body}" == "${body}" ]]; then
+		echo "info: issue #${ISSUE} body already up to date for ship" >&2
+		return 0
+	fi
+
+	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
+		return 0
+	}
+
+	echo "Updated Status and Completion criteria in issue #${ISSUE}." >&2
+}
+
 # --- Event handlers ---
 
 handle_start() {
@@ -360,6 +411,9 @@ handle_ship() {
 	fi
 
 	post_comment "${body}"
+
+	# Update issue body: Status → Completed, check all Completion criteria
+	update_body_on_ship
 
 	# Close the issue on SHIP unless close_on_ship is disabled
 	if [[ "$(gh_config_value close_on_ship)" != "false" ]]; then
