@@ -233,6 +233,61 @@ post_comment() {
 	gh issue comment "${ISSUE}" --repo "${REPO}" --body "${body}"
 }
 
+# --- Issue body helpers ---
+
+# Fetch the issue body as raw markdown.
+fetch_issue_body() {
+	gh issue view "${ISSUE}" --repo "${REPO}" --json body -q '.body'
+}
+
+# Check off a progress-log checkbox matching the item description.
+# Usage: update_progress_checkbox <item_desc>
+# Idempotent: already-checked items are left as-is.
+# Logs a warning and returns 0 if parsing fails.
+update_progress_checkbox() {
+	local desc="$1"
+	if [[ -z "${desc}" ]]; then
+		echo "warn: update_progress_checkbox called with empty description, skipping" >&2
+		return 0
+	fi
+
+	local body
+	body="$(fetch_issue_body)" || {
+		echo "warn: failed to fetch issue body for #${ISSUE}, skipping checkbox update" >&2
+		return 0
+	}
+
+	if [[ -z "${body}" ]]; then
+		echo "warn: issue #${ISSUE} has empty body, skipping checkbox update" >&2
+		return 0
+	fi
+
+	# Escape special regex chars in description for safe matching
+	local escaped_desc
+	escaped_desc="$(printf '%s' "${desc}" | sed 's/[[\.*^$()+?{|]/\\&/g')"
+
+	# Find and check off the matching line in the Progress log section.
+	# We look for "- [ ]" lines containing the description substring.
+	local updated_body
+	updated_body="$(printf '%s' "${body}" | sed "s/^- \[ \] \(.*${escaped_desc}\)/- [x] \1/")" || {
+		echo "warn: failed to update checkbox for '${desc}' in issue #${ISSUE}" >&2
+		return 0
+	}
+
+	# If nothing changed, the item was already checked or not found
+	if [[ "${updated_body}" == "${body}" ]]; then
+		echo "info: checkbox for '${desc}' already checked or not found in issue #${ISSUE}" >&2
+		return 0
+	fi
+
+	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
+		return 0
+	}
+
+	echo "Checked off progress item '${desc}' in issue #${ISSUE}." >&2
+}
+
 # --- Event handlers ---
 
 handle_start() {
@@ -277,6 +332,12 @@ handle_review() {
 	fi
 
 	post_comment "${body}"
+
+	# Check off the progress-log checkbox when item passes review
+	if [[ "${ITEM_RESULT}" == "SHIP" && -n "${ITEM_DESC}" ]]; then
+		update_progress_checkbox "${ITEM_DESC}"
+	fi
+
 	echo "Posted review comment for item ${ITEM_ID} on issue #${ISSUE}." >&2
 }
 
