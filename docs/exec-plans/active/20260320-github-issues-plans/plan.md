@@ -151,7 +151,7 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 - [ ] Add orchestrator lifecycle hooks system — `hooks/orch-lifecycle/` directory, engine calls scripts at milestones with (event, slug) args (deps: 4)
 - [ ] Wire `orch-run.sh` to fetch plan from issue — call `gh-plan-fetch.sh` before `orch-parse-items.sh`; validate auth before launch (deps: 3, 5)
 - [ ] Create lifecycle hook `hooks/orch-lifecycle/01-gh-plan-sync.sh` — wrapper that calls `gh-plan-sync.sh` with milestone data including per-item iteration counts (deps: 4, 5)
-- [ ] Rewrite `commands/plan.md` — Claude generates plan content, calls `plan-create.sh`; supports `--from-issue #N` for existing issues (deps: 2)
+- [x] Rewrite `commands/plan.md` — Claude generates plan content, calls `plan-create.sh`; supports `--from-issue #N` for existing issues (deps: 2)
 - [ ] Create `commands/sync.md` — fetch open plan issues, flag drift, reconcile state (deps: 3, 4)
 - [ ] Create `skills/github-plans.md` — teaches Claude about the system: data flow, scripts, how to use them (deps: 2, 3, 4)
 - [ ] Add `github:` config block to `dega-core.yaml` and teach all scripts to read it (deps: 2, 3, 4)
