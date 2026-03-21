@@ -98,7 +98,9 @@ elif [[ -x "${HOME}/.claude/scripts/terminal-ui-write.sh" ]]; then
 	TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
 fi
 tui_write() {
-	[[ -n "${TUI_WRITE}" ]] && bash "${TUI_WRITE}" "${TUI_STATE}" "$@" || true
+	if [[ -n "${TUI_WRITE}" ]]; then
+		bash "${TUI_WRITE}" "${TUI_STATE}" "$@" || true
+	fi
 }
 
 # Start log server if not already running (supports AFK runs with no prior session hook).

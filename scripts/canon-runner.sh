@@ -45,7 +45,9 @@ fi
 
 # ── Dashboard helper ─────────────────────────────────────────────────────────
 tui() {
-	[[ -f "${TUI_WRITE}" ]] && bash "${TUI_WRITE}" "${STATE}" "$@" || true
+	if [[ -f "${TUI_WRITE}" ]]; then
+		bash "${TUI_WRITE}" "${STATE}" "$@" || true
+	fi
 }
 
 # ── Flags ────────────────────────────────────────────────────────────────────
