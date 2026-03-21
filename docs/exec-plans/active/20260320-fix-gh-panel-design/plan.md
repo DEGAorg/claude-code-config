@@ -52,8 +52,8 @@ Toad's ACP message system lets the agent send `sessionUpdate` events. Add a new 
 
 ## Completion criteria
 
-- [ ] GitHub panel is NOT visible on initial load
-- [ ] ctrl+g opens the panel dynamically
-- [ ] Panel shows issues from the specified project repo, not conductor-view
-- [ ] `toad --project-dir /path/to/project` controls which repo the panel shows
-- [ ] Without --project-dir, falls back to dega-core.yaml or git remote of cwd
+- [x] GitHub panel is NOT visible on initial load
+- [x] ctrl+g opens the panel dynamically
+- [x] Panel shows issues from the specified project repo, not conductor-view
+- [x] `toad --project-dir /path/to/project` controls which repo the panel shows
+- [x] Without --project-dir, falls back to dega-core.yaml or git remote of cwd
