@@ -79,23 +79,7 @@ fi
 
 # --- Resolve repo ---
 
-if [[ -z "${repo}" ]]; then
-	# Try dega-core.yaml first
-	if [[ -f "dega-core.yaml" ]]; then
-		yaml_repo="$(grep -E '^\s+repo:' dega-core.yaml | head -1 | sed 's/.*repo:\s*//' | tr -d ' ')" || true
-		if [[ -n "${yaml_repo}" ]]; then
-			repo="${yaml_repo}"
-		fi
-	fi
-
-	# Fall back to git remote
-	if [[ -z "${repo}" ]]; then
-		repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)" || {
-			echo "error: could not detect repo. Pass --repo OWNER/REPO or set github.repo in dega-core.yaml" >&2
-			exit 1
-		}
-	fi
-fi
+repo="$(gh_resolve_repo "${repo}")"
 
 echo "Fetching issue #${issue_number} from ${repo}..." >&2
 

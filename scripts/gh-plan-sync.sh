@@ -32,6 +32,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=ensure-gh.sh
 source "${SCRIPT_DIR}/ensure-gh.sh"
+# shellcheck source=read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 # --- Parse args ---
 
@@ -171,12 +173,7 @@ fi
 
 # --- Resolve repo ---
 
-if [[ -z "${REPO}" ]]; then
-	REPO="$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null)" || {
-		echo "error: could not detect repo. Use --repo owner/repo." >&2
-		exit 1
-	}
-fi
+REPO="$(gh_resolve_repo "${REPO}")"
 
 # --- Label helpers ---
 
@@ -196,6 +193,10 @@ remove_plan_labels() {
 
 set_label() {
 	local target_label="$1"
+	# Skip label management if labels disabled in config
+	if [[ "$(gh_config_value labels)" == "false" ]]; then
+		return 0
+	fi
 	remove_plan_labels
 	gh issue edit "${ISSUE}" --repo "${REPO}" \
 		--add-label "${target_label}" >/dev/null
@@ -205,6 +206,10 @@ set_label() {
 
 post_comment() {
 	local body="$1"
+	# Skip comments if disabled in config
+	if [[ "$(gh_config_value comments)" == "false" ]]; then
+		return 0
+	fi
 	gh issue comment "${ISSUE}" --repo "${REPO}" --body "${body}"
 }
 
@@ -275,9 +280,13 @@ handle_ship() {
 
 	post_comment "${body}"
 
-	# Close the issue on SHIP
-	gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null
-	echo "Posted SHIP comment and closed issue #${ISSUE}." >&2
+	# Close the issue on SHIP unless close_on_ship is disabled
+	if [[ "$(gh_config_value close_on_ship)" != "false" ]]; then
+		gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null
+		echo "Posted SHIP comment and closed issue #${ISSUE}." >&2
+	else
+		echo "Posted SHIP comment on issue #${ISSUE}." >&2
+	fi
 }
 
 handle_revise() {

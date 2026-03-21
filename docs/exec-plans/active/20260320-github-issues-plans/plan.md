@@ -154,9 +154,9 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 - [x] Rewrite `commands/plan.md` — Claude generates plan content, calls `plan-create.sh`; supports `--from-issue #N` for existing issues (deps: 2)
 - [x] Create `commands/sync.md` — fetch open plan issues, flag drift, reconcile state (deps: 3, 4)
 - [x] Create `skills/github-plans.md` — teaches Claude about the system: data flow, scripts, how to use them (deps: 2, 3, 4)
-- [ ] Add `github:` config block to `dega-core.yaml` and teach all scripts to read it (deps: 2, 3, 4)
+- [x] Add `github:` config block to `dega-core.yaml` and teach all scripts to read it (deps: 2, 3, 4)
 - [x] Create `.github/ISSUE_TEMPLATE/plan-task.yml` — structured issue template (deps: 1)
-- [ ] Create `tests/test-ensure-gh.sh` and `tests/test-gh-plan-sync.sh` (deps: 1, 4)
+- [x] Create `tests/test-ensure-gh.sh` and `tests/test-gh-plan-sync.sh` (deps: 1, 4)
 - [ ] End-to-end test — `/plan` creates issue, orch runs from it, comments posted at milestones, labels updated, SHIP closes issue (deps: 6, 7, 8, 9, 11)
 
 ## Decision log
