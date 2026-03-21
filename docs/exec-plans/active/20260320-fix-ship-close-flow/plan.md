@@ -35,8 +35,8 @@
 
 ## Completion criteria
 
-- [ ] SHIP sets label to `plan:pr-review` (not `plan:completed`)
-- [ ] SHIP sets body status to "PR Review" (not "Completed")
-- [ ] SHIP does NOT close the issue
-- [ ] `pr_merged` event sets `plan:completed` and "Completed"
-- [ ] shellcheck and shfmt clean
+- [x] SHIP sets label to `plan:pr-review` (not `plan:completed`)
+- [x] SHIP sets body status to "PR Review" (not "Completed")
+- [x] SHIP does NOT close the issue
+- [x] `pr_merged` event sets `plan:completed` and "Completed"
+- [x] shellcheck and shfmt clean
