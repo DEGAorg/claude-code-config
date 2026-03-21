@@ -269,19 +269,17 @@ update_progress_checkbox() {
 		return 0
 	fi
 
-	# Escape special regex chars in description for safe matching
-	local escaped_desc
-	escaped_desc="$(printf '%s' "${desc}" | sed 's/[[\.*^$()+?{|]/\\&/g')"
-
-	# Find and check off the matching line in the Progress log section.
-	# We look for "- [ ]" lines containing the description substring.
+	# Use awk for safe string matching (no regex escaping issues).
+	# Find the first "- [ ]" line containing the description and replace with "- [x]".
 	local updated_body
-	updated_body="$(printf '%s' "${body}" | sed "s/^- \[ \] \(.*${escaped_desc}\)/- [x] \1/")" || {
-		echo "warn: failed to update checkbox for '${desc}' in issue #${ISSUE}" >&2
-		return 0
-	}
+	updated_body="$(echo "${body}" | awk -v desc="${desc}" '
+		!done && index($0, "- [ ]") == 1 && index($0, desc) > 0 {
+			sub(/- \[ \]/, "- [x]")
+			done = 1
+		}
+		{ print }
+	')"
 
-	# If nothing changed, the item was already checked or not found
 	if [[ "${updated_body}" == "${body}" ]]; then
 		echo "info: checkbox for '${desc}' already checked or not found in issue #${ISSUE}" >&2
 		return 0
@@ -292,7 +290,7 @@ update_progress_checkbox() {
 		return 0
 	}
 
-	echo "Checked off progress item '${desc}' in issue #${ISSUE}." >&2
+	echo "Checked off progress item in issue #${ISSUE}." >&2
 }
 
 # Update issue body on plan completion: set Status to Completed and
@@ -313,24 +311,15 @@ update_body_on_ship() {
 
 	local updated_body="${body}"
 
-	# Update Status field to Completed (matches any current status value)
-	updated_body="$(printf '%s' "${updated_body}" | sed 's/^\*\*Status:\*\* .*/\*\*Status:\*\* Completed/')" || {
-		echo "warn: failed to update Status field in issue #${ISSUE}" >&2
-		return 0
-	}
-
-	# Check all unchecked items in the Completion criteria section.
-	# Strategy: find the "## Completion criteria" header, then replace
-	# all "- [ ]" with "- [x]" until the next "## " header or end of body.
-	updated_body="$(printf '%s' "${updated_body}" | awk '
-		/^## Completion criteria/ { in_section = 1 }
-		in_section && /^## / && !/^## Completion criteria/ { in_section = 0 }
-		in_section { gsub(/^- \[ \]/, "- [x]") }
+	# Update Status field to Completed and check all Completion criteria.
+	# Use awk for the entire transformation in one pass to preserve newlines.
+	updated_body="$(echo "${updated_body}" | awk '
+		/^\*\*Status:\*\*/ { $0 = "**Status:** Completed" }
+		/^## Completion criteria/ { in_cc = 1 }
+		in_cc && /^## / && !/^## Completion criteria/ { in_cc = 0 }
+		in_cc { gsub(/- \[ \]/, "- [x]") }
 		{ print }
-	')" || {
-		echo "warn: failed to update Completion criteria in issue #${ISSUE}" >&2
-		return 0
-	}
+	')"
 
 	# If nothing changed, everything was already updated
 	if [[ "${updated_body}" == "${body}" ]]; then
