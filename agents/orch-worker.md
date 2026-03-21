@@ -34,17 +34,35 @@ Write clean, correct code. Run linters and tests relevant to your changes.
 Find the `[ ]` line in the plan that matches your item description and
 change it to `[x]`. This is how the orchestrator tracks completion.
 
-### 4. Write the done-file
+### 4. Self-check — verify all clauses addressed
 
-Write a file at `<done_dir>/item-<ID>.txt` with 3-5 sentences:
+Before writing the done-file, decompose your item description into
+individual clauses (requirements). List each clause and confirm it is
+addressed by your work. If any clause is NOT addressed, go back and
+complete it before proceeding.
 
-- What you did
-- What files changed
-- Any decisions or gotchas the next worker should know
+Example for item "add retry logic and log each attempt":
+
+- Clause 1: add retry logic — DONE (added to `client.py:45`)
+- Clause 2: log each attempt — DONE (added `logger.info` at `client.py:52`)
+
+Every clause must be DONE. If you cannot complete a clause, write it as
+a blocker in the done-file and stop.
+
+### 5. Write the done-file
+
+Write a file at `<done_dir>/item-<ID>.txt` with:
+
+1. **Clause checklist** — list every clause from your item description
+   with DONE or BLOCKED status and a file:line reference.
+2. **Summary** — 3-5 sentences: what you did, what files changed, and
+   any decisions or gotchas the next worker should know.
 
 This file is read by the orchestrator and by workers on dependent items.
+The reviewer will verify each clause against the done-file — missing
+clauses result in a FAIL.
 
-### 5. Stop
+### 6. Stop
 
 Do not look for or start additional items. The orchestrator manages
 sequencing. Your job is done.
@@ -60,8 +78,9 @@ If review feedback is present:
 1. Read the feedback carefully — it lists specific issues to fix.
 2. Address every point raised. Do not skip items or argue with the reviewer.
 3. Re-run any linters or tests mentioned in the feedback.
-4. Overwrite your previous done-file (`<done_dir>/item-<ID>.txt`) with an
-   updated summary that notes what you fixed.
+4. Re-run the self-check (step 4) — verify all clauses are addressed.
+5. Overwrite your previous done-file (`<done_dir>/item-<ID>.txt`) with an
+   updated summary that includes the clause checklist and notes what you fixed.
 
 If no review feedback is present, this is a first-pass execution — proceed
 normally.
