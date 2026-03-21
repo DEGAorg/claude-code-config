@@ -82,6 +82,30 @@ TOTAL_COUNT=$(jq '.items | length' "${ORCH_STATE_FILE}")
 POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
 
+# --- Lifecycle hooks ---
+# Runs all executable scripts in hooks/orch-lifecycle/ with (event, slug, ...extra args).
+# Hooks are sorted alphabetically so numeric prefixes control ordering (01-*, 02-*, ...).
+# Failures are logged but never block the orchestrator.
+
+LIFECYCLE_HOOKS_DIR="${SCRIPT_DIR}/../hooks/orch-lifecycle"
+
+run_lifecycle_hooks() {
+	local event="$1"
+	shift
+	if [[ ! -d "${LIFECYCLE_HOOKS_DIR}" ]]; then
+		return 0
+	fi
+	local hook
+	while IFS= read -r -d '' hook; do
+		if [[ -x "${hook}" ]]; then
+			echo "orch-engine: lifecycle hook: $(basename "${hook}") ${event} ${SLUG}"
+			"${hook}" "${event}" "${SLUG}" "$@" 2>&1 || {
+				echo "orch-engine: WARN — lifecycle hook failed: $(basename "${hook}") (exit $?)" >&2
+			}
+		fi
+	done < <(find "${LIFECYCLE_HOOKS_DIR}" -maxdepth 1 -type f -print0 | sort -z)
+}
+
 # --- Worker prompt template ---
 
 WORKER_PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-worker.md"
@@ -216,6 +240,14 @@ echo "  worktree: ${WORKTREE_DIR}"
 echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
+# Fire start lifecycle hooks (only on first execution, not rework re-execs)
+ITERATION_SUM=$(jq '[.items[].iteration // 0] | add // 0' "${ORCH_STATE_FILE}")
+if [[ "${ITERATION_SUM}" -eq 0 ]]; then
+	run_lifecycle_hooks "start" \
+		--items "${TOTAL_COUNT}" \
+		--max-workers "${MAX_WORKERS}"
+fi
+
 while true; do
 	# Sync done-files, detect stale workers, promote
 	# Worker windows stay alive until SHIP/REVISE so capture-pane output is visible
@@ -294,6 +326,9 @@ done
 
 echo "orch-engine: running per-item review via orch-review.sh"
 "${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+
+# Fire review lifecycle hooks
+run_lifecycle_hooks "review"
 
 # Read review result from state
 REVIEW_RESULT=$(jq -r '.finalReview.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
@@ -570,6 +605,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
 
+	# Fire ship lifecycle hooks with summary data
+	run_lifecycle_hooks "ship" \
+		--items "${TOTAL_COUNT}" \
+		--passed "${DONE_COUNT}" \
+		--failed "${FAILED_COUNT}" \
+		--elapsed "${ELAPSED_STR}"
+
 	# Engine exits — dashboard stays open showing DONE screen
 	exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
@@ -577,6 +619,14 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo "orch-engine: REVISE — some items need rework"
 	echo "  Re-running wave execution for rework items..."
 	echo ""
+
+	# Fire revise lifecycle hooks
+	REVISE_FAILED=$(orch_count_by_status "${SLUG}" "failed")
+	REVISE_DONE=$(orch_count_by_status "${SLUG}" "done")
+	run_lifecycle_hooks "revise" \
+		--items "${TOTAL_COUNT}" \
+		--passed "${REVISE_DONE}" \
+		--failed "${REVISE_FAILED}"
 
 	# Kill worker windows before re-exec
 	orch_kill_done_workers "${SLUG}"
