@@ -8,8 +8,9 @@ set -euo pipefail
 # Events:
 #   start   — plan execution started (label → plan:active, post start comment)
 #   review  — per-item review result (post item review comment)
-#   ship    — plan completed successfully (label → plan:completed, close issue)
+#   ship    — plan completed successfully (label → plan:pr-review, issue stays open)
 #   pr      — PR created for plan (post PR URL comment on linked issue)
+#   pr_merged — PR merged, plan completed (label → plan:completed, body status "Completed")
 #   revise  — plan failed after max iterations (label → plan:failed, post failure comment)
 #
 # Options:
@@ -145,7 +146,7 @@ done
 # --- Validate ---
 
 if [[ -z "${EVENT}" ]]; then
-	echo "error: event type required (start, review, ship, revise, pr)" >&2
+	echo "error: event type required (start, review, ship, pr_merged, revise, pr)" >&2
 	exit 1
 fi
 
@@ -180,10 +181,10 @@ if [[ -z "${ISSUE}" ]]; then
 fi
 
 case "${EVENT}" in
-start | review | ship | revise | pr) ;;
+start | review | ship | pr_merged | revise | pr) ;;
 *)
 	echo "error: unknown event type: ${EVENT}" >&2
-	echo "  Valid events: start, review, ship, revise, pr" >&2
+	echo "  Valid events: start, review, ship, pr_merged, revise, pr" >&2
 	exit 1
 	;;
 esac
@@ -204,7 +205,7 @@ REPO="$(gh_resolve_repo "${REPO}")"
 
 # --- Label helpers ---
 
-PLAN_LABELS=("plan:draft" "plan:active" "plan:review" "plan:completed" "plan:failed")
+PLAN_LABELS=("plan:draft" "plan:active" "plan:review" "plan:pr-review" "plan:completed" "plan:failed")
 
 remove_plan_labels() {
 	local current_labels
@@ -293,11 +294,11 @@ update_progress_checkbox() {
 	echo "Checked off progress item in issue #${ISSUE}." >&2
 }
 
-# Update issue body on plan completion: set Status to Completed and
-# check all Completion criteria checkboxes.
-# Idempotent: already-completed items are left as-is.
+# Update issue body on SHIP: set Status to "PR Review".
+# Completion criteria and final status are set when the PR merges.
+# Idempotent: already-updated items are left as-is.
 # Logs a warning and returns 0 if parsing fails.
-update_body_on_ship() {
+update_body_on_pr() {
 	local body
 	body="$(fetch_issue_body)" || {
 		echo "warn: failed to fetch issue body for #${ISSUE}, skipping ship update" >&2
@@ -311,19 +312,15 @@ update_body_on_ship() {
 
 	local updated_body="${body}"
 
-	# Update Status field to Completed and check all Completion criteria.
-	# Use awk for the entire transformation in one pass to preserve newlines.
+	# Update Status field to PR Review (completion happens at PR merge).
 	updated_body="$(echo "${updated_body}" | awk '
-		/^\*\*Status:\*\*/ { $0 = "**Status:** Completed" }
-		/^## Completion criteria/ { in_cc = 1 }
-		in_cc && /^## / && !/^## Completion criteria/ { in_cc = 0 }
-		in_cc { gsub(/- \[ \]/, "- [x]") }
+		/^\*\*Status:\*\*/ { $0 = "**Status:** PR Review" }
 		{ print }
 	')"
 
 	# If nothing changed, everything was already updated
 	if [[ "${updated_body}" == "${body}" ]]; then
-		echo "info: issue #${ISSUE} body already up to date for ship" >&2
+		echo "info: issue #${ISSUE} body already up to date for PR review" >&2
 		return 0
 	fi
 
@@ -332,7 +329,51 @@ update_body_on_ship() {
 		return 0
 	}
 
-	echo "Updated Status and Completion criteria in issue #${ISSUE}." >&2
+	echo "Updated Status to PR Review in issue #${ISSUE}." >&2
+}
+
+# Update issue body on PR merge: set Status to "Completed" and check
+# off all completion-criteria checkboxes.
+# Idempotent: already-updated items are left as-is.
+update_body_on_merge() {
+	local body
+	body="$(fetch_issue_body)" || {
+		echo "warn: failed to fetch issue body for #${ISSUE}, skipping merge update" >&2
+		return 0
+	}
+
+	if [[ -z "${body}" ]]; then
+		echo "warn: issue #${ISSUE} has empty body, skipping merge update" >&2
+		return 0
+	fi
+
+	local updated_body="${body}"
+
+	# Update Status field to Completed.
+	updated_body="$(echo "${updated_body}" | awk '
+		/^\*\*Status:\*\*/ { $0 = "**Status:** Completed" }
+		{ print }
+	')"
+
+	# Check off all completion-criteria checkboxes.
+	updated_body="$(echo "${updated_body}" | awk '
+		in_criteria && /^- \[ \]/ { sub(/- \[ \]/, "- [x]") }
+		/^## Completion criteria/ { in_criteria = 1 }
+		/^## / && !/^## Completion criteria/ { in_criteria = 0 }
+		{ print }
+	')"
+
+	if [[ "${updated_body}" == "${body}" ]]; then
+		echo "info: issue #${ISSUE} body already up to date for merge" >&2
+		return 0
+	fi
+
+	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
+		return 0
+	}
+
+	echo "Updated Status to Completed in issue #${ISSUE}." >&2
 }
 
 # --- Event handlers ---
@@ -389,7 +430,7 @@ handle_review() {
 }
 
 handle_ship() {
-	set_label "plan:completed"
+	set_label "plan:pr-review"
 
 	local body="**Plan SHIP.** "
 	if [[ -n "${PASSED}" && -n "${ITEMS}" ]]; then
@@ -408,16 +449,32 @@ handle_ship() {
 
 	post_comment "${body}"
 
-	# Update issue body: Status → Completed, check all Completion criteria
-	update_body_on_ship
+	# Update issue body: Status → PR Review (issue stays open until PR merges)
+	update_body_on_pr
 
-	# Close the issue on SHIP unless close_on_ship is disabled
-	if [[ "$(gh_config_value close_on_ship)" != "false" ]]; then
-		gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null
-		echo "Posted SHIP comment and closed issue #${ISSUE}." >&2
-	else
-		echo "Posted SHIP comment on issue #${ISSUE}." >&2
+	echo "Posted SHIP comment on issue #${ISSUE} (awaiting PR merge to close)." >&2
+}
+
+handle_pr_merged() {
+	set_label "plan:completed"
+
+	# Update issue body: Status → Completed, check completion criteria
+	update_body_on_merge
+
+	# Verify the issue is closed (GitHub auto-closes via "Closes #N" in PR body).
+	# If not closed, close it explicitly.
+	local state
+	state="$(gh issue view "${ISSUE}" --repo "${REPO}" --json state -q '.state')"
+	if [[ "${state}" != "CLOSED" ]]; then
+		echo "warn: issue #${ISSUE} not auto-closed by PR merge, closing explicitly" >&2
+		gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null || {
+			echo "warn: failed to close issue #${ISSUE}" >&2
+		}
 	fi
+
+	local body="**Plan completed.** PR merged and issue closed."
+	post_comment "${body}"
+	echo "Posted merge comment on issue #${ISSUE}." >&2
 }
 
 handle_revise() {
@@ -458,6 +515,7 @@ case "${EVENT}" in
 start) handle_start ;;
 review) handle_review ;;
 ship) handle_ship ;;
+pr_merged) handle_pr_merged ;;
 revise) handle_revise ;;
 pr) handle_pr ;;
 esac

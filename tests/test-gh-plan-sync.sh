@@ -97,7 +97,7 @@ check_contains bad-option-msg \
 # Test: valid events are accepted (start, review, ship, revise)
 # These will fail at the auth check (not at validation), proving they
 # pass argument parsing. Auth failure exits with code 1.
-for event in start review ship revise; do
+for event in start review ship pr_merged revise; do
 	exit_code=0
 	# Use a fake PATH that has gh (stub returning auth failure) but blocks real API
 	STUB_DIR="$(mktemp -d)"
@@ -147,7 +147,7 @@ else
 	printf '  skip shfmt: not installed\n'
 fi
 
-# --- Body update tests (update_progress_checkbox, update_body_on_ship) ---
+# --- Body update tests (update_progress_checkbox, update_body_on_pr) ---
 
 # These tests use a mock gh that stores/returns issue body content.
 # The mock captures --body edits to a temp file so we can verify transforms.
@@ -191,6 +191,15 @@ case "${1:-}" in
           cat "${MOCK_DIR}/body.md"
           exit 0
         fi
+        # Return issue state (default OPEN, or CLOSED if close-called exists)
+        if [[ " $* " == *"--json state"* ]]; then
+          if [[ -f "${MOCK_DIR}/close-called" ]]; then
+            echo "CLOSED"
+          else
+            echo "OPEN"
+          fi
+          exit 0
+        fi
         # Return empty labels
         if [[ " $* " == *"--json labels"* ]]; then
           echo ""
@@ -212,6 +221,7 @@ case "${1:-}" in
         exit 0
         ;;
       close)
+        touch "${MOCK_DIR}/close-called"
         exit 0
         ;;
     esac
@@ -337,7 +347,7 @@ else
 fi
 rm -f "${MOCK_EDITED_BODY}"
 
-# --- Test: update_body_on_ship sets Status and checks Completion criteria ---
+# --- Test: update_body_on_pr sets Status to "PR Review" (not "Completed") ---
 
 cat >"${MOCK_BODY_FILE}" <<'BODY'
 # Plan: Test plan
@@ -368,18 +378,19 @@ check ship-exit \
 if [[ -f "${MOCK_EDITED_BODY}" ]]; then
 	edited="$(cat "${MOCK_EDITED_BODY}")"
 	check_contains ship-status \
-		"Status updated to Completed" \
-		'**Status:** Completed' "${edited}"
-	check_contains ship-criteria-1 \
-		"first completion criterion checked" \
-		"- [x] All items pass" "${edited}"
-	check_contains ship-criteria-2 \
-		"second completion criterion checked" \
-		"- [x] Tests pass" "${edited}"
-	check_contains ship-criteria-3 \
-		"third completion criterion checked" \
-		"- [x] Linting clean" "${edited}"
-	# Progress log items should remain checked (not double-modified)
+		"Status updated to PR Review" \
+		'**Status:** PR Review' "${edited}"
+	# Completion criteria should NOT be checked on SHIP (deferred to PR merge)
+	check_contains ship-criteria-unchecked-1 \
+		"first completion criterion still unchecked on ship" \
+		"- [ ] All items pass" "${edited}"
+	check_contains ship-criteria-unchecked-2 \
+		"second completion criterion still unchecked on ship" \
+		"- [ ] Tests pass" "${edited}"
+	check_contains ship-criteria-unchecked-3 \
+		"third completion criterion still unchecked on ship" \
+		"- [ ] Linting clean" "${edited}"
+	# Progress log items should remain checked (not modified)
 	check_contains ship-progress-preserved \
 		"progress log checkboxes preserved" \
 		"- [x] First item" "${edited}"
@@ -389,7 +400,134 @@ else
 fi
 rm -f "${MOCK_EDITED_BODY}"
 
-# --- Test: update_body_on_ship is idempotent ---
+# --- Test: ship does NOT close the issue ---
+
+# Reset the mock to track close calls
+MOCK_CLOSE_FILE="${MOCK_DIR}/close-called"
+rm -f "${MOCK_CLOSE_FILE}"
+
+cat >"${MOCK_BODY_FILE}" <<'BODY'
+# Plan: Test plan
+
+**Status:** In progress
+
+## Completion criteria
+
+- [ ] All items pass
+BODY
+
+exit_code=0
+OLDPWD="$(pwd)" run_sync ship test-slug \
+	--issue 99 --items 1 --passed 1 || exit_code=$?
+
+check ship-no-close-exit \
+	"ship succeeds without closing issue" \
+	0 "${exit_code}"
+
+if [[ -f "${MOCK_CLOSE_FILE}" ]]; then
+	printf '  FAIL ship-no-close: gh issue close was called on ship\n'
+	FAIL=$((FAIL + 1))
+else
+	printf '  ok  ship-no-close: issue not closed on ship\n'
+	PASS=$((PASS + 1))
+fi
+rm -f "${MOCK_EDITED_BODY}" "${MOCK_CLOSE_FILE}"
+
+# --- Test: update_body_on_pr is idempotent ---
+
+cat >"${MOCK_BODY_FILE}" <<'BODY'
+# Plan: Test plan
+
+**Status:** PR Review
+
+## Completion criteria
+
+- [ ] All items pass
+- [ ] Tests pass
+BODY
+
+exit_code=0
+OLDPWD="$(pwd)" run_sync ship test-slug \
+	--issue 99 --items 2 --passed 2 || exit_code=$?
+
+check ship-idempotent-exit \
+	"ship on already-PR-Review body succeeds" \
+	0 "${exit_code}"
+
+if [[ -f "${MOCK_EDITED_BODY}" ]]; then
+	printf '  FAIL ship-idempotent: body was edited when already PR Review\n'
+	FAIL=$((FAIL + 1))
+else
+	printf '  ok  ship-idempotent: no edit when body already PR Review\n'
+	PASS=$((PASS + 1))
+fi
+rm -f "${MOCK_EDITED_BODY}"
+
+# --- Test: pr_merged sets Status to "Completed" and checks completion criteria ---
+
+printf '\npr_merged\n'
+
+cat >"${MOCK_BODY_FILE}" <<'BODY'
+# Plan: Test plan
+
+**Status:** PR Review
+
+## Progress log
+
+- [x] First item — do something
+- [x] Second item — do another thing
+
+## Completion criteria
+
+- [ ] All items pass
+- [ ] Tests pass
+- [ ] Linting clean
+BODY
+
+rm -f "${MOCK_CLOSE_FILE:-${MOCK_DIR}/close-called}"
+
+exit_code=0
+OLDPWD="$(pwd)" run_sync pr_merged test-slug \
+	--issue 99 || exit_code=$?
+
+check merge-exit \
+	"pr_merged event succeeds" \
+	0 "${exit_code}"
+
+if [[ -f "${MOCK_EDITED_BODY}" ]]; then
+	edited="$(cat "${MOCK_EDITED_BODY}")"
+	check_contains merge-status \
+		"Status updated to Completed on merge" \
+		'**Status:** Completed' "${edited}"
+	check_contains merge-criteria-1 \
+		"first completion criterion checked on merge" \
+		"- [x] All items pass" "${edited}"
+	check_contains merge-criteria-2 \
+		"second completion criterion checked on merge" \
+		"- [x] Tests pass" "${edited}"
+	check_contains merge-criteria-3 \
+		"third completion criterion checked on merge" \
+		"- [x] Linting clean" "${edited}"
+	# Progress log items should remain checked
+	check_contains merge-progress-preserved \
+		"progress log checkboxes preserved on merge" \
+		"- [x] First item" "${edited}"
+else
+	printf '  FAIL merge-body: no edited body file found\n'
+	FAIL=$((FAIL + 1))
+fi
+
+# pr_merged should close the issue if not auto-closed (mock returns OPEN)
+if [[ -f "${MOCK_DIR}/close-called" ]]; then
+	printf '  ok  merge-closes-issue: pr_merged closes issue when not auto-closed\n'
+	PASS=$((PASS + 1))
+else
+	printf '  FAIL merge-closes-issue: pr_merged did not close the issue\n'
+	FAIL=$((FAIL + 1))
+fi
+rm -f "${MOCK_EDITED_BODY}" "${MOCK_DIR}/close-called"
+
+# --- Test: pr_merged is idempotent ---
 
 cat >"${MOCK_BODY_FILE}" <<'BODY'
 # Plan: Test plan
@@ -402,22 +540,26 @@ cat >"${MOCK_BODY_FILE}" <<'BODY'
 - [x] Tests pass
 BODY
 
-exit_code=0
-OLDPWD="$(pwd)" run_sync ship test-slug \
-	--issue 99 --items 2 --passed 2 || exit_code=$?
+# Simulate already-closed issue
+touch "${MOCK_DIR}/close-called"
 
-check ship-idempotent-exit \
-	"ship on already-completed body succeeds" \
+exit_code=0
+OLDPWD="$(pwd)" run_sync pr_merged test-slug \
+	--issue 99 || exit_code=$?
+
+check merge-idempotent-exit \
+	"pr_merged on already-completed body succeeds" \
 	0 "${exit_code}"
 
+# Body should NOT have been edited (already up to date)
 if [[ -f "${MOCK_EDITED_BODY}" ]]; then
-	printf '  FAIL ship-idempotent: body was edited when already complete\n'
+	printf '  FAIL merge-idempotent: body was edited when already complete\n'
 	FAIL=$((FAIL + 1))
 else
-	printf '  ok  ship-idempotent: no edit when body already complete\n'
+	printf '  ok  merge-idempotent: no edit when body already complete\n'
 	PASS=$((PASS + 1))
 fi
-rm -f "${MOCK_EDITED_BODY}"
+rm -f "${MOCK_EDITED_BODY}" "${MOCK_DIR}/close-called"
 
 # --- Test: body parse failure is graceful ---
 
