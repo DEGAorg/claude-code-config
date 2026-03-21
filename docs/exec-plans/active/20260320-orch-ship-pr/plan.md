@@ -37,16 +37,16 @@ Also update `gh-plan-sync.sh` to handle a new `pr` event that posts the PR link.
 
 ## Progress log
 
-- [ ] Add `github.pr_target` to `dega-core.yaml` (default: `main`)
-- [ ] Add PR creation to `scripts/orch-engine.sh` SHIP handling — push branch, create PR via `gh pr create`, include SHIP summary and `Closes #N` (deps: 1)
-- [ ] Update `scripts/gh-plan-sync.sh` — add `pr` event that posts PR URL as comment on linked issue (deps: 2)
-- [ ] Test: run a plan through SHIP, verify PR is created targeting the configured branch, issue gets PR link comment (deps: 2, 3)
+- [x] Add `github.pr_target` to `dega-core.yaml` (default: `main`)
+- [x] Add PR creation to `scripts/orch-engine.sh` SHIP handling — push branch, create PR via `gh pr create`, include SHIP summary and `Closes #N` (deps: 1)
+- [x] Update `scripts/gh-plan-sync.sh` — add `pr` event that posts PR URL as comment on linked issue (deps: 2)
+- [x] Test: run a plan through SHIP, verify PR is created targeting the configured branch, issue gets PR link comment (deps: 2, 3)
 
 ## Completion criteria
 
-- [ ] SHIP creates a PR from the worktree branch to the target branch
-- [ ] PR body includes SHIP summary and `Closes #N` reference
-- [ ] PR URL is posted as a comment on the linked issue
-- [ ] `github.pr_target` in `dega-core.yaml` controls the base branch
-- [ ] PR creation failure logs warning but doesn't block SHIP
-- [ ] shellcheck and shfmt clean
+- [x] SHIP creates a PR from the worktree branch to the target branch
+- [x] PR body includes SHIP summary and `Closes #N` reference
+- [x] PR URL is posted as a comment on the linked issue
+- [x] `github.pr_target` in `dega-core.yaml` controls the base branch
+- [x] PR creation failure logs warning but doesn't block SHIP
+- [x] shellcheck and shfmt clean
