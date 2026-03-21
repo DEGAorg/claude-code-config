@@ -80,3 +80,4 @@
 | 2026-03-20 | [20260319-workshop-prep](completed/20260319-workshop-prep/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-github-issues-plans](completed/20260320-github-issues-plans/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-project-state-tui](completed/20260320-project-state-tui/plan.md) | completed | 1 | orch |
+| 2026-03-21 | [20260320-orch-auto-issue](completed/20260320-orch-auto-issue/plan.md) | completed | 0 | orch |
