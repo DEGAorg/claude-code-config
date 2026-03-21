@@ -36,7 +36,7 @@ Also audit each SC2015 and SC2317 to determine if they're real issues or false p
 - [x] Update `.github/workflows/ci.yml` — add `-e SC1091 -S warning` to shellcheck step
 - [x] Audit and fix SC2015 in `scripts/canon-runner.sh`, `scripts/canon-scaffold.sh`, `scripts/ralph-loop.sh` — replace `A && B || C` with proper if/then/else where it matters (deps: 1)
 - [x] Audit and fix SC2317 in `scripts/ralph-loop.sh` — unreachable command warning (deps: 1)
-- [ ] Test: run shellcheck locally with the same flags as CI, verify zero exit code (deps: 1, 2, 3)
+- [x] Test: run shellcheck locally with the same flags as CI, verify zero exit code (deps: 1, 2, 3)
 
 ## Completion criteria
 
