@@ -25,6 +25,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 # --- Check dependencies ---
 
@@ -143,6 +145,58 @@ if [[ "${FROM_ISSUE}" == false ]]; then
 			echo "    ${line}" >&2
 		done <<<"${plan_dirty}"
 		exit 1
+	fi
+fi
+
+# --- Auto-create GitHub Issue if sync enabled and no meta exists ---
+
+PLAN_META_DIR="${ORCH_STATE_DIR}/plans/${SLUG}"
+PLAN_META_FILE="${PLAN_META_DIR}/plan-meta.json"
+
+if [[ -z "${ISSUE_NUMBER}" ]] && gh_config_bool sync; then
+	if [[ ! -f "${PLAN_META_FILE}" ]]; then
+		# Extract plan title from the first "# Plan: ..." heading
+		plan_title=$(grep -m1 '^# Plan:' "${PLAN_DIR}/plan.md" 2>/dev/null |
+			sed 's/^# Plan:[[:space:]]*//' || true)
+		if [[ -z "${plan_title}" ]]; then
+			plan_title="${SLUG}"
+		fi
+
+		# Ensure gh is available and authenticated
+		# shellcheck source=ensure-gh.sh
+		source "${SCRIPT_DIR}/ensure-gh.sh"
+		if ensure_gh && gh auth status &>/dev/null; then
+			echo "orch: creating GitHub Issue for plan '${SLUG}'..."
+			if issue_num=$("${SCRIPT_DIR}/plan-create.sh" \
+				--title "${plan_title}" \
+				--body-file "${PLAN_DIR}/plan.md"); then
+				ISSUE_NUMBER="${issue_num}"
+				mkdir -p "${PLAN_META_DIR}"
+				jq -n \
+					--argjson issue "${ISSUE_NUMBER}" \
+					--arg repo "$(gh_resolve_repo "")" \
+					--arg slug "${SLUG}" \
+					--arg createdAt "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+					'{
+						issue_number: $issue,
+						repo: $repo,
+						slug: $slug,
+						created_at: $createdAt
+					}' >"${PLAN_META_FILE}"
+				echo "orch: created issue #${ISSUE_NUMBER}, wrote ${PLAN_META_FILE}"
+			else
+				echo "orch: WARNING — failed to create GitHub Issue, continuing without sync" >&2
+			fi
+		else
+			echo "orch: WARNING — gh not authenticated, skipping auto-issue creation" >&2
+		fi
+	else
+		# plan-meta.json exists — read the issue number from it
+		existing_issue=$(jq -r '.issue_number // empty' "${PLAN_META_FILE}")
+		if [[ -n "${existing_issue}" ]]; then
+			ISSUE_NUMBER="${existing_issue}"
+			echo "orch: found existing issue #${ISSUE_NUMBER} in plan-meta.json"
+		fi
 	fi
 fi
 
@@ -269,6 +323,14 @@ WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
 mkdir -p "${WORKTREE_PLAN_DIR}"
 cp -r "${PLAN_DIR}/"* "${WORKTREE_PLAN_DIR}/"
 echo "orch: copied plan into worktree at ${WORKTREE_PLAN_DIR}"
+
+# Copy plan-meta.json into worktree so lifecycle hooks can find it
+if [[ -f "${PLAN_META_FILE}" ]]; then
+	WORKTREE_META_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+	mkdir -p "${WORKTREE_META_DIR}"
+	cp "${PLAN_META_FILE}" "${WORKTREE_META_DIR}/plan-meta.json"
+	echo "orch: copied plan-meta.json into worktree"
+fi
 
 # --- Register in master state ---
 
