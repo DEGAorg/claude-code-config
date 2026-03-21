@@ -149,7 +149,7 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 - [x] Create `scripts/gh-plan-fetch.sh` — fetch issue body by number, write to `.orchestrator/plans/<slug>/plan.md` (deps: 1)
 - [x] Create `scripts/gh-plan-sync.sh` — post formatted milestone comments, update labels; accepts event type (start, review, ship, revise) and slug as args (deps: 1)
 - [x] Add orchestrator lifecycle hooks system — `hooks/orch-lifecycle/` directory, engine calls scripts at milestones with (event, slug) args (deps: 4)
-- [ ] Wire `orch-run.sh` to fetch plan from issue — call `gh-plan-fetch.sh` before `orch-parse-items.sh`; validate auth before launch (deps: 3, 5)
+- [x] Wire `orch-run.sh` to fetch plan from issue — call `gh-plan-fetch.sh` before `orch-parse-items.sh`; validate auth before launch (deps: 3, 5)
 - [x] Create lifecycle hook `hooks/orch-lifecycle/01-gh-plan-sync.sh` — wrapper that calls `gh-plan-sync.sh` with milestone data including per-item iteration counts (deps: 4, 5)
 - [x] Rewrite `commands/plan.md` — Claude generates plan content, calls `plan-create.sh`; supports `--from-issue #N` for existing issues (deps: 2)
 - [x] Create `commands/sync.md` — fetch open plan issues, flag drift, reconcile state (deps: 3, 4)

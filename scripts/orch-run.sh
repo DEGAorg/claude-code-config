@@ -141,7 +141,7 @@ if [[ "${FROM_ISSUE}" == false ]]; then
 		echo "  dirty files:" >&2
 		while IFS= read -r line; do
 			echo "    ${line}" >&2
-		done <<< "${plan_dirty}"
+		done <<<"${plan_dirty}"
 		exit 1
 	fi
 fi
@@ -205,23 +205,21 @@ init_state() {
 	  }
 	]')
 
-	# Include issue number in state if plan was fetched from GitHub
-	local issue_arg=""
+	# Build issue number as JSON value (number or null)
+	local issue_json="null"
 	if [[ -n "${ISSUE_NUMBER}" ]]; then
-		issue_arg="--argjson issueNumber ${ISSUE_NUMBER}"
-	else
-		issue_arg="--argjson issueNumber null"
+		issue_json="${ISSUE_NUMBER}"
 	fi
 
 	STATE_JSON=$(jq -n \
 		--argjson version 1 \
 		--arg plan "${SLUG}" \
+		--argjson issueNumber "${issue_json}" \
 		--argjson maxWorkers "${MAX_WORKERS}" \
 		--argjson items "${ITEMS_JSON}" \
 		--arg mode "foreground" \
 		--arg startedAt "${NOW}" \
 		--arg updatedAt "${NOW}" \
-		${issue_arg} \
 		'{
 	    version: $version,
 	    plan: $plan,
