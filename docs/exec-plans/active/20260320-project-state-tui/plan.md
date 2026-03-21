@@ -110,12 +110,12 @@ gh issue list --label "plan:active" --json number,title,body --limit 20
 
 ## Completion criteria
 
-- [ ] Toad fork runs and launches the conductor with Claude via ACP
-- [ ] GitHub panel appears in the SideBar with 4 tabs
-- [ ] Timeline shows recent repo activity
-- [ ] Issues view groups by label and shows plan status
-- [ ] Plans view parses progress from issue body (e.g., "3/7 done")
-- [ ] PRs view shows review decision and CI status
-- [ ] Keybinding toggles the GitHub panel
-- [ ] Auth failure shows a clear message, not a crash
-- [ ] Works on macOS
+- [x] Toad fork runs and launches the conductor with Claude via ACP
+- [x] GitHub panel appears in the SideBar with 4 tabs
+- [x] Timeline shows recent repo activity
+- [x] Issues view groups by label and shows plan status
+- [x] Plans view parses progress from issue body (e.g., "3/7 done")
+- [x] PRs view shows review decision and CI status
+- [x] Keybinding toggles the GitHub panel
+- [x] Auth failure shows a clear message, not a crash
+- [x] Works on macOS
