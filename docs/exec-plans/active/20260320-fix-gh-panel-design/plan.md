@@ -46,7 +46,7 @@ Toad's ACP message system lets the agent send `sessionUpdate` events. Add a new 
 
 - [x] Update `fetch.py` — add `detect_repo_from_path(path)` that reads dega-core.yaml github.repo or git remote from a specified project directory
 - [x] Update `github_state.py` — accept `project_path` parameter, use `detect_repo_from_path` instead of `detect_repo` (deps: 1)
-- [ ] Update `screens/main.py` — remove GitHub panel from compose(), make `action_toggle_github` dynamically mount it on first toggle with project_path (deps: 2)
+- [x] Update `screens/main.py` — remove GitHub panel from compose(), make `action_toggle_github` dynamically mount it on first toggle with project_path (deps: 2)
 - [ ] Update `cli.py` — add `--project-dir` argument, pass through to MainScreen so the panel knows which project to show (deps: 3)
 - [ ] Test: launch toad with `--project-dir ~/dega/aidd/claude-code-config`, press ctrl+g, verify it shows claude-code-config issues not conductor-view issues (deps: 4)
 
