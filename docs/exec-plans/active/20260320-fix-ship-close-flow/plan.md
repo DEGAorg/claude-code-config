@@ -28,15 +28,15 @@
 
 ## Progress log
 
-- [ ] Update `handle_ship` in `scripts/gh-plan-sync.sh` — label `plan:pr-review`, body status "PR Review", remove `gh issue close`
-- [ ] Update `update_body_on_ship` — rename to `update_body_on_pr` and set status to "PR Review" instead of "Completed" (deps: 1)
-- [ ] Add `pr_merged` event handler to `scripts/gh-plan-sync.sh` — sets `plan:completed`, body status "Completed", verifies issue is closed (deps: 1)
-- [ ] Test: run a plan through SHIP, verify issue stays open with `plan:pr-review` label and "PR Review" status (deps: 1, 2, 3)
+- [x] Update `handle_ship` in `scripts/gh-plan-sync.sh` — label `plan:pr-review`, body status "PR Review", remove `gh issue close`
+- [x] Update `update_body_on_ship` — rename to `update_body_on_pr` and set status to "PR Review" instead of "Completed" (deps: 1)
+- [x] Add `pr_merged` event handler to `scripts/gh-plan-sync.sh` — sets `plan:completed`, body status "Completed", verifies issue is closed (deps: 1)
+- [x] Test: run a plan through SHIP, verify issue stays open with `plan:pr-review` label and "PR Review" status (deps: 1, 2, 3)
 
 ## Completion criteria
 
-- [ ] SHIP sets label to `plan:pr-review` (not `plan:completed`)
-- [ ] SHIP sets body status to "PR Review" (not "Completed")
-- [ ] SHIP does NOT close the issue
-- [ ] `pr_merged` event sets `plan:completed` and "Completed"
-- [ ] shellcheck and shfmt clean
+- [x] SHIP sets label to `plan:pr-review` (not `plan:completed`)
+- [x] SHIP sets body status to "PR Review" (not "Completed")
+- [x] SHIP does NOT close the issue
+- [x] `pr_merged` event sets `plan:completed` and "Completed"
+- [x] shellcheck and shfmt clean
