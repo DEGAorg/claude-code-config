@@ -530,6 +530,24 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — could not extract plan title for changelog"
 	fi
 
+	# --- Compute elapsed time (needed by PR body and final summary) ---
+	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
+	if [[ -n "${STARTED_AT}" ]]; then
+		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null ||
+			date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
+		if [[ -n "${START_EPOCH}" ]]; then
+			NOW_EPOCH=$(date +%s)
+			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
+			ELAPSED_MIN=$((ELAPSED_SECS / 60))
+			ELAPSED_SEC=$((ELAPSED_SECS % 60))
+			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
+		else
+			ELAPSED_STR="unknown"
+		fi
+	else
+		ELAPSED_STR="unknown"
+	fi
+
 	# --- Step 8: Push branch and create PR ---
 	CURRENT_BRANCH=$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD)
 	PR_TARGET=$(grep 'pr_target:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
@@ -626,24 +644,6 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
 		echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
 		VALIDATION_OK=false
-	fi
-
-	# --- SHIP summary with elapsed time ---
-	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
-	if [[ -n "${STARTED_AT}" ]]; then
-		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null ||
-			date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
-		if [[ -n "${START_EPOCH}" ]]; then
-			NOW_EPOCH=$(date +%s)
-			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
-			ELAPSED_MIN=$((ELAPSED_SECS / 60))
-			ELAPSED_SEC=$((ELAPSED_SECS % 60))
-			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
-		else
-			ELAPSED_STR="unknown"
-		fi
-	else
-		ELAPSED_STR="unknown"
 	fi
 
 	echo ""

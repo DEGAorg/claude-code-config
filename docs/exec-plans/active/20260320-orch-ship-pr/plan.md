@@ -44,9 +44,9 @@ Also update `gh-plan-sync.sh` to handle a new `pr` event that posts the PR link.
 
 ## Completion criteria
 
-- [ ] SHIP creates a PR from the worktree branch to the target branch
-- [ ] PR body includes SHIP summary and `Closes #N` reference
-- [ ] PR URL is posted as a comment on the linked issue
-- [ ] `github.pr_target` in `dega-core.yaml` controls the base branch
-- [ ] PR creation failure logs warning but doesn't block SHIP
-- [ ] shellcheck and shfmt clean
+- [x] SHIP creates a PR from the worktree branch to the target branch
+- [x] PR body includes SHIP summary and `Closes #N` reference
+- [x] PR URL is posted as a comment on the linked issue
+- [x] `github.pr_target` in `dega-core.yaml` controls the base branch
+- [x] PR creation failure logs warning but doesn't block SHIP
+- [x] shellcheck and shfmt clean
