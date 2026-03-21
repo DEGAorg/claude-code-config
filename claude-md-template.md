@@ -131,3 +131,13 @@ at the project root.
 | `orch-run.sh <slug>` | Run plan with parallel workers |
 | `orch-run.sh <slug> --max-workers 1` | Run plan sequentially |
 | `planner-loop.sh` | Autonomous: pick work from `focus.yaml`, plan, execute, repeat |
+
+## Skills
+
+| Skill | Path | Use when |
+|-------|------|----------|
+| Development Patterns | `~/.claude/skills/development-patterns.md` | Designing agent workflows, orchestration, harness infrastructure |
+
+Skills are installed by `/apply-core`. Read `development-patterns.md` for a pattern
+index covering agent artifacts, context management, convergence loops, quality gates,
+task orchestration, and more — each linking to detailed extension files.
