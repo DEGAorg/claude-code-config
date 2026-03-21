@@ -30,14 +30,14 @@ Both use `gh issue edit --body "new body"` to write the updated markdown.
 
 ## Progress log
 
-- [ ] Add `update_progress_checkbox` function to `gh-plan-sync.sh` — fetch body, find matching item in Progress log, check it off, write back via `gh issue edit`
-- [ ] Add `update_body_on_ship` function to `gh-plan-sync.sh` — update Status field to Completed, check all Completion criteria items (deps: 1)
-- [ ] Test: run an orchestrated plan, verify progress log items get checked as each item ships, verify Status and Completion criteria update on final SHIP (deps: 1, 2)
+- [x] Add `update_progress_checkbox` function to `gh-plan-sync.sh` — fetch body, find matching item in Progress log, check it off, write back via `gh issue edit`
+- [x] Add `update_body_on_ship` function to `gh-plan-sync.sh` — update Status field to Completed, check all Completion criteria items (deps: 1)
+- [x] Test: run an orchestrated plan, verify progress log items get checked as each item ships, verify Status and Completion criteria update on final SHIP (deps: 1, 2)
 
 ## Completion criteria
 
-- [ ] Progress log checkboxes in the issue body update as items complete
-- [ ] Status field changes to `**Status:** Completed` on SHIP
-- [ ] All Completion criteria checkboxes get checked on SHIP
-- [ ] If body parsing fails, warning is logged but orchestrator continues
-- [ ] shellcheck and shfmt clean
+- [x] Progress log checkboxes in the issue body update as items complete
+- [x] Status field changes to `**Status:** Completed` on SHIP
+- [x] All Completion criteria checkboxes get checked on SHIP
+- [x] If body parsing fails, warning is logged but orchestrator continues
+- [x] shellcheck and shfmt clean
