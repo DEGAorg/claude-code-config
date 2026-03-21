@@ -56,8 +56,8 @@
 ## Progress log
 
 - [x] Add `fetch_all_plan_issues` to `fetch.py` — fetch issues across all plan:* labels (draft, active, pr-review, completed, failed) for status counts
-- [ ] Create `status_overview.py` — status cards widget: colored count boxes for each plan state, plus open issues and PRs counts (deps: 1)
-- [ ] Rewrite `timeline.py` — chronological list of plan lifecycle events with colored label badges (plan:active=green, plan:pr-review=blue, plan:completed=purple, plan:failed=red) (deps: 1)
+- [x] Create `status_overview.py` — status cards widget: colored count boxes for each plan state, plus open issues and PRs counts (deps: 1)
+- [x] Rewrite `timeline.py` — chronological list of plan lifecycle events with colored label badges (plan:active=green, plan:pr-review=blue, plan:completed=purple, plan:failed=red) (deps: 1)
 - [ ] Rewrite `github_state.py` — new layout: status overview on top, timeline in middle, detail tabs collapsed at bottom (deps: 2, 3)
 - [ ] Test: open GitHub panel, verify status cards show correct counts, timeline shows recent plan events with colors, detail tabs expand on click (deps: 4)
 
