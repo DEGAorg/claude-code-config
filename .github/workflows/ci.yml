@@ -26,7 +26,7 @@ jobs:
             -o /usr/local/bin/shfmt
           chmod +x /usr/local/bin/shfmt
       - name: Check shell script formatting
-        run: shfmt -i 2 -d hooks/*.sh scripts/*.sh tests/*.sh
+        run: shfmt -d hooks/*.sh scripts/*.sh tests/*.sh
 
   test-hooks:
     name: Test hooks

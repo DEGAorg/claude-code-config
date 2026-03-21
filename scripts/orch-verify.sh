@@ -142,7 +142,7 @@ echo "orch-verify: spawned verifier in tmux window '${WINDOW_NAME}'"
 
 # --- Poll for verify-result.txt ---
 
-MAX_POLLS=120  # 120 * 10s = 20 minutes default timeout
+MAX_POLLS=120 # 120 * 10s = 20 minutes default timeout
 poll_count=0
 
 while true; do

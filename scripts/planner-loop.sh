@@ -535,7 +535,7 @@ while true; do
 				log "stopping — max consecutive failures during existing plans"
 				break 2
 			fi
-		done <<< "${existing_plans}"
+		done <<<"${existing_plans}"
 	fi
 
 	# If we ran existing plans this cycle, loop back to check for more

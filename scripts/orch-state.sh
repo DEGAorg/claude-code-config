@@ -174,7 +174,7 @@ orch_sync_done_files() {
 			# Warn on done-files smaller than 20 bytes but accept them —
 			# the reviewer will catch garbage content
 			local file_size
-			file_size=$(wc -c < "${done_file}")
+			file_size=$(wc -c <"${done_file}")
 			if ((file_size < 20)); then
 				echo "orch-state: WARNING — item ${item_id} done-file small (${file_size} bytes < 20), accepting for review"
 			fi

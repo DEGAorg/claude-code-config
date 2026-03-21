@@ -99,9 +99,9 @@ github:
 YAML
 
 exit_code=0
-output="$(cd "${MOCK_CWD}" && \
+output="$(cd "${MOCK_CWD}" &&
 	PATH="${STUB_DIR}:${PATH}" bash "${SYNC_SCRIPT}" pr my-plan \
-	--issue 42 2>&1)" || exit_code=$?
+		--issue 42 2>&1)" || exit_code=$?
 
 check pr-missing-url \
 	"pr event fails without --pr-url" \
