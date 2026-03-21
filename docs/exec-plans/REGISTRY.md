@@ -84,3 +84,4 @@
 | 2026-03-21 | [20260320-issue-body-sync](completed/20260320-issue-body-sync/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-orch-ship-pr](completed/20260320-orch-ship-pr/plan.md) | completed | 1 | orch |
 | 2026-03-21 | [20260320-verify-body-sync](completed/20260320-verify-body-sync/plan.md) | completed | 0 | orch |
+| 2026-03-21 | [20260320-fix-ship-close-flow](completed/20260320-fix-ship-close-flow/plan.md) | completed | 0 | orch |
