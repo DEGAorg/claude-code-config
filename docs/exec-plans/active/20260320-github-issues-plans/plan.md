@@ -144,7 +144,7 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 
 ## Progress log
 
-- [ ] Create `scripts/ensure-gh.sh` — detect gh, install via brew, fail with instructions if no brew
+- [x] Create `scripts/ensure-gh.sh` — detect gh, install via brew, fail with instructions if no brew
 - [ ] Create `scripts/plan-create.sh` — create GitHub Issue from plan content, apply `plan:draft` label, return issue number (deps: 1)
 - [ ] Create `scripts/gh-plan-fetch.sh` — fetch issue body by number, write to `.orchestrator/plans/<slug>/plan.md` (deps: 1)
 - [ ] Create `scripts/gh-plan-sync.sh` — post formatted milestone comments, update labels; accepts event type (start, review, ship, revise) and slug as args (deps: 1)
