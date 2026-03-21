@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 ### Changed
+- Conductor TUI — Toad Fork + GitHub Project State (`20260320-project-state-tui`) — 2026-03-21
+
 - GitHub Issues as Plan System (`20260320-github-issues-plans`) — 2026-03-21
 
 - Clear SHIP completion — state, dashboard, and session cleanup (`20260315-fix-orch-ship-completion`) — 2026-03-15
