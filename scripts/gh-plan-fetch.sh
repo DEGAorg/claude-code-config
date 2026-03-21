@@ -11,6 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=scripts/ensure-gh.sh
 source "${SCRIPT_DIR}/ensure-gh.sh"
+# shellcheck source=scripts/read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 usage() {
 	echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2

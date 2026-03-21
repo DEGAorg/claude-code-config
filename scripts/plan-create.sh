@@ -17,6 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=scripts/ensure-gh.sh
 source "${SCRIPT_DIR}/ensure-gh.sh"
+# shellcheck source=scripts/read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 usage() {
 	echo "usage: plan-create.sh --title TITLE (--body BODY | --body-file FILE) [--repo OWNER/REPO] [--label LABEL]..." >&2
@@ -90,16 +92,22 @@ if ! gh auth status &>/dev/null; then
 	exit 2
 fi
 
+# Resolve repo via fallback chain: --repo flag > dega-core.yaml > git remote
+repo="$(gh_resolve_repo "${repo}")"
+
 # Build gh issue create command
-gh_args=(issue create --title "${title}" --body "${body}" --label "plan:draft")
+gh_args=(issue create --title "${title}" --body "${body}")
+
+# Apply plan:draft label unless labels explicitly disabled in config
+if [[ "$(gh_config_value labels)" != "false" ]]; then
+	gh_args+=(--label "plan:draft")
+fi
 
 for label in "${extra_labels[@]+"${extra_labels[@]}"}"; do
 	gh_args+=(--label "${label}")
 done
 
-if [[ -n "${repo}" ]]; then
-	gh_args+=(--repo "${repo}")
-fi
+gh_args+=(--repo "${repo}")
 
 # Create the issue and capture the URL
 issue_url="$(gh "${gh_args[@]}")"
