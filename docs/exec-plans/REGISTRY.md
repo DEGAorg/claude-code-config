@@ -87,3 +87,4 @@
 | 2026-03-21 | [20260320-fix-ship-close-flow](completed/20260320-fix-ship-close-flow/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-orch-review-quality](completed/20260320-orch-review-quality/plan.md) | completed | 0 | orch |
 | 2026-03-21 | [20260320-fix-gh-panel-design](completed/20260320-fix-gh-panel-design/plan.md) | completed | 0 | orch |
+| 2026-03-21 | [20260320-agent-panel-control](completed/20260320-agent-panel-control/plan.md) | completed | 0 | orch |
