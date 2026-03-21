@@ -63,8 +63,8 @@
 
 ## Completion criteria
 
-- [ ] Status overview shows count cards for Active, PR Review, Completed, Failed, Open Issues, Open PRs
-- [ ] Timeline shows chronological plan events with colored state badges
-- [ ] Detail tables are collapsed by default, expandable
-- [ ] Status counts match actual GitHub issue label counts
-- [ ] Looks like a PM dashboard, not a raw data dump
+- [x] Status overview shows count cards for Active, PR Review, Completed, Failed, Open Issues, Open PRs
+- [x] Timeline shows chronological plan events with colored state badges
+- [x] Detail tables are collapsed by default, expandable
+- [x] Status counts match actual GitHub issue label counts
+- [x] Looks like a PM dashboard, not a raw data dump
