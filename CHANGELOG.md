@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Redesign GitHub panel — PM dashboard with status and timeline (`20260320-gh-panel-redesign`) — 2026-03-21
+
 - Agent-controlled panels + direct conductor launch (`20260320-agent-panel-control`) — 2026-03-21
 
 - Verify issue body sync works end-to-end (`20260320-verify-body-sync`) — 2026-03-21
