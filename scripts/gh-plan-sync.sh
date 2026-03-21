@@ -515,6 +515,7 @@ case "${EVENT}" in
 start) handle_start ;;
 review) handle_review ;;
 ship) handle_ship ;;
+pr_merged) handle_pr_merged ;;
 revise) handle_revise ;;
 pr) handle_pr ;;
 esac
