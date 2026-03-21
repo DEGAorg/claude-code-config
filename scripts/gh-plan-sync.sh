@@ -147,9 +147,29 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
+# Auto-discover issue number from plan-meta.json if --issue not provided
 if [[ -z "${ISSUE}" ]]; then
-	echo "error: --issue <number> required" >&2
-	exit 1
+	REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+	ORCH_DIR="${REPO_ROOT}/.orchestrator"
+
+	# Search .orchestrator/plans/<slug>/plan-meta.json (main repo)
+	META_FILE="${ORCH_DIR}/plans/${SLUG}/plan-meta.json"
+	if [[ -f "${META_FILE}" ]]; then
+		ISSUE=$(jq -r '.issue_number // empty' "${META_FILE}")
+	fi
+
+	# Fallback: worktree copy of plan-meta.json
+	if [[ -z "${ISSUE}" ]]; then
+		WT_META="${ORCH_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/plan-meta.json"
+		if [[ -f "${WT_META}" ]]; then
+			ISSUE=$(jq -r '.issue_number // empty' "${WT_META}")
+		fi
+	fi
+
+	if [[ -z "${ISSUE}" ]]; then
+		echo "error: --issue <number> required (no plan-meta.json found for slug '${SLUG}')" >&2
+		exit 1
+	fi
 fi
 
 case "${EVENT}" in

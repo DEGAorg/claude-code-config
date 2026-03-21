@@ -42,8 +42,25 @@ if [[ ! -f "${STATE_FILE}" ]]; then
 	exit 0
 fi
 
-ISSUE=$(jq -r '.issue // empty' "${STATE_FILE}")
-if [[ -z "${ISSUE}" ]]; then
+ISSUE=$(jq -r '.issueNumber // empty' "${STATE_FILE}")
+
+# Fallback: read from plan-meta.json if state.json has no issue number
+if [[ -z "${ISSUE}" || "${ISSUE}" == "null" ]]; then
+	PLAN_META="${ORCH_STATE_DIR}/plans/${SLUG}/plan-meta.json"
+	if [[ -f "${PLAN_META}" ]]; then
+		ISSUE=$(jq -r '.issue_number // empty' "${PLAN_META}")
+	fi
+fi
+
+# Last resort: check worktree copy of plan-meta.json
+if [[ -z "${ISSUE}" || "${ISSUE}" == "null" ]]; then
+	WT_META="${ORCH_STATE_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/plan-meta.json"
+	if [[ -f "${WT_META}" ]]; then
+		ISSUE=$(jq -r '.issue_number // empty' "${WT_META}")
+	fi
+fi
+
+if [[ -z "${ISSUE}" || "${ISSUE}" == "null" ]]; then
 	exit 0
 fi
 
