@@ -146,8 +146,8 @@ Orchestrator lifecycle hooks check this exit code. Current behavior: log error, 
 
 - [x] Create `scripts/ensure-gh.sh` — detect gh, install via brew, fail with instructions if no brew
 - [x] Create `scripts/plan-create.sh` — create GitHub Issue from plan content, apply `plan:draft` label, return issue number (deps: 1)
-- [ ] Create `scripts/gh-plan-fetch.sh` — fetch issue body by number, write to `.orchestrator/plans/<slug>/plan.md` (deps: 1)
-- [ ] Create `scripts/gh-plan-sync.sh` — post formatted milestone comments, update labels; accepts event type (start, review, ship, revise) and slug as args (deps: 1)
+- [x] Create `scripts/gh-plan-fetch.sh` — fetch issue body by number, write to `.orchestrator/plans/<slug>/plan.md` (deps: 1)
+- [x] Create `scripts/gh-plan-sync.sh` — post formatted milestone comments, update labels; accepts event type (start, review, ship, revise) and slug as args (deps: 1)
 - [ ] Add orchestrator lifecycle hooks system — `hooks/orch-lifecycle/` directory, engine calls scripts at milestones with (event, slug) args (deps: 4)
 - [ ] Wire `orch-run.sh` to fetch plan from issue — call `gh-plan-fetch.sh` before `orch-parse-items.sh`; validate auth before launch (deps: 3, 5)
 - [ ] Create lifecycle hook `hooks/orch-lifecycle/01-gh-plan-sync.sh` — wrapper that calls `gh-plan-sync.sh` with milestone data including per-item iteration counts (deps: 4, 5)
