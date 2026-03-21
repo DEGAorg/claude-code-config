@@ -15,11 +15,11 @@ Simple 2-item plan that does trivial work. The real test is whether the GitHub I
 
 ## Progress log
 
-- [ ] Create a test file at `/tmp/verify-body-sync-step1.txt` with contents "step 1 done"
-- [ ] Create a test file at `/tmp/verify-body-sync-step2.txt` with contents "step 2 done" (deps: 1)
+- [x] Create a test file at `/tmp/verify-body-sync-step1.txt` with contents "step 1 done"
+- [x] Create a test file at `/tmp/verify-body-sync-step2.txt` with contents "step 2 done" (deps: 1)
 
 ## Completion criteria
 
-- [ ] Both test files exist
-- [ ] This issue's progress log checkboxes are checked
-- [ ] This issue's Status field says Completed
+- [x] Both test files exist
+- [x] This issue's progress log checkboxes are checked
+- [x] This issue's Status field says Completed
