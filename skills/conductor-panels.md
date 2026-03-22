@@ -1,84 +1,65 @@
 # Conductor Panels
 
-How to control Toad/Conductor sidebar panels from within a conversation.
-Use this skill when the user asks to see project state, GitHub info,
-or wants to open/close UI panels programmatically.
+When running inside Conductor (the terminal TUI), you can control panels
+by outputting `/panel` lines as **plain text** in your response. Conductor
+scans your response text and intercepts matching lines. These are NOT tool
+calls — they are literal text you write in your reply.
 
----
+## Available panels
 
-## The `/panel` command
+| Panel ID | What it shows |
+|----------|---------------|
+| `github` | GitHub sidebar panel (issues, PRs, plans) |
+| `project_state` | Split-screen right pane (project state overview) |
 
-Toad registers a `/panel` slash command that the agent can use in responses.
-When the agent outputs `/panel <id>`, Toad intercepts it and emits the
-corresponding ACP message — the panel opens or closes without the user
-pressing any keybinding.
+## Commands
 
-### Syntax
+Output these lines exactly as shown, on their own line:
 
 ```
-/panel <panel_id>          Open a panel
-/panel <panel_id> close    Close a panel
-/panel list                List available panels
+/panel project_state
 ```
+Opens the Project State split-screen right pane.
 
-### Available panels
+```
+/panel project_state close
+```
+Closes the Project State pane.
 
-| Panel ID | Description | Keybinding equivalent |
-|----------|-------------|-----------------------|
-| `github` | GitHub sidebar — repo info, issues, PRs, actions | `ctrl+g` |
+```
+/panel github
+```
+Opens the GitHub sidebar panel.
 
-More panels may be added in the future. Use `/panel list` to discover
-what is available at runtime.
+```
+/panel github close
+```
+Closes the GitHub sidebar panel.
 
----
+## When to use
 
-## When to use panels
+Output `/panel project_state` when the user asks to:
+- See project state, status, or overview
+- View plans, timeline, or progress
+- Show the project dashboard
 
-Open the GitHub panel when the user:
-- Asks to "show project state" or "show me the repo"
-- Wants to see open issues, pull requests, or CI status
-- Says "open GitHub" or "show GitHub panel"
-- Needs context about the current repository
+Output `/panel github` when the user asks to:
+- See GitHub issues, PRs, or plan labels
+- View repository-level status
 
-Close the panel when the user:
-- Says "close the panel", "hide GitHub", or "I'm done looking"
-- Asks to focus on the conversation
-
-Do not open panels unprompted — only when the user's intent clearly
-calls for visual context.
-
----
-
-## How it works (ACP protocol)
-
-The `/panel` command translates to ACP `sessionUpdate` messages:
-
-| Command | ACP message |
-|---------|-------------|
-| `/panel github` | `{"sessionUpdate": "open_panel", "panelId": "github"}` |
-| `/panel github close` | `{"sessionUpdate": "close_panel", "panelId": "github"}` |
-
-These messages flow: conversation widget -> ACP agent -> main screen,
-where `_open_github_panel()` / `_close_github_panel()` handle the
-mount/unmount in the sidebar.
-
----
-
-## Example interaction
+## Example
 
 **User:** Show me the project state.
 
-**Agent response:**
+**Your response should include this line:**
 ```
-/panel github
-Here's your project — the GitHub panel is now open in the sidebar.
-You can see open issues, recent PRs, and CI status there.
+/panel project_state
 ```
+The pane opens automatically. Add a brief message like
+"I've opened the Project State panel for you."
 
-**User:** Thanks, close it.
+## Important
 
-**Agent response:**
-```
-/panel github close
-Panel closed.
-```
+- Output `/panel <id>` as a line of text — do NOT invoke it as a Skill tool
+- The line must be on its own line to be intercepted
+- You can also use the socket controller for programmatic control (see `tui-control` skill)
