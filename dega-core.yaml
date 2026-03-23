@@ -11,6 +11,19 @@ poll_interval_seconds: 30
 worker_prompt: scripts/ralph-worker-prompt.md
 reviewer_prompt: scripts/ralph-reviewer-prompt.md
 
+github:
+  sync: true
+  repo: DEGAorg/claude-code-config
+  labels: true
+  comments: true
+  close_on_ship: true
+  pr_target: main
+
+timeline:
+  repo: DEGAorg/claude-code-config
+  branch: develop
+  path: data/timeline.json
+
 success_criteria:
   # Repo health — shell scripts pass shellcheck
   - id: shellcheck

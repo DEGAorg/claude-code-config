@@ -7,20 +7,34 @@ Update the project timeline based on the user's instructions in $UPDATE.
 
 ## Source of truth
 
-- **File**: `data/timeline.json` in `DEGAorg/claude-code-config` on `develop` branch
-- **Raw URL**: `https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/data/timeline.json`
+Read `timeline` config from `dega-core.yaml` in the project root:
+
+```yaml
+timeline:
+  repo: DEGAorg/claude-code-config   # GitHub repo
+  branch: develop                     # branch where timeline lives
+  path: data/timeline.json            # file path in repo
+```
+
+If `dega-core.yaml` is missing or has no `timeline` block, abort with an
+error telling the user to add the config.
 
 ## Steps
 
-### 1. Fetch current timeline
+### 1. Read config
+
+Parse `dega-core.yaml` from the project root. Extract `timeline.repo`,
+`timeline.branch`, and `timeline.path`.
+
+### 2. Fetch current timeline
 
 ```bash
-gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json?ref=develop --jq '.content' | base64 -d > /tmp/timeline.json
+gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.content' | base64 -d > /tmp/timeline.json
 ```
 
 Read the JSON to understand the current state.
 
-### 2. Apply status updates
+### 3. Apply status updates
 
 Parse $UPDATE and modify the `status` field on matching items in both
 `components` and `ganttBars` arrays. Valid statuses:
@@ -35,37 +49,24 @@ Match items by name/label (fuzzy — "Conductor" matches "Conductor + TUI",
 "TOAD TUI + Conductor", etc.). Update both `components` (by `name`) and
 `ganttBars` (by `label`) when they refer to the same item.
 
-### 3. Update metadata
+### 4. Update metadata
 
 Set `meta.generated` to today's date (YYYY-MM-DD format).
 
-### 4. Write and push
-
-If you are in the claude-code-config repo:
+### 5. Push update
 
 ```bash
-cp /tmp/timeline.json data/timeline.json
-git add data/timeline.json
-git commit -m "timeline: update statuses"
-git push origin develop
-```
+SHA=$(gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.sha')
 
-If you are in a different repo, use the GitHub API:
-
-```bash
-# Get current SHA for the file
-SHA=$(gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json?ref=develop --jq '.sha')
-
-# Push updated content
-gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json \
+gh api "repos/${REPO}/contents/${PATH}" \
   -X PUT \
   -f message="timeline: update statuses" \
-  -f branch=develop \
+  -f branch="${BRANCH}" \
   -f sha="$SHA" \
   -f content="$(base64 < /tmp/timeline.json)"
 ```
 
-### 5. Confirm
+### 6. Confirm
 
 Report what changed:
 - Which items were updated and to what status
