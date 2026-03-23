@@ -1,21 +1,21 @@
 # Update Timeline
 
-@description Update project timeline statuses in the shared gist.
+@description Update project timeline statuses in the shared repo file.
 @arguments $UPDATE: Status changes to apply (e.g. "mark Conductor as done, MCP Server is active")
 
-Update the project timeline gist based on the user's instructions in $UPDATE.
+Update the project timeline based on the user's instructions in $UPDATE.
 
-## Gist
+## Source of truth
 
-- **Gist ID**: `a11220a561b98d07b4538049c3b13770`
-- **Raw URL**: `https://gist.githubusercontent.com/CerratoA/a11220a561b98d07b4538049c3b13770/raw/timeline.json`
+- **File**: `data/timeline.json` in `DEGAorg/claude-code-config` on `develop` branch
+- **Raw URL**: `https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/data/timeline.json`
 
 ## Steps
 
 ### 1. Fetch current timeline
 
 ```bash
-gh gist view a11220a561b98d07b4538049c3b13770 -f timeline.json > /tmp/timeline.json
+gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json?ref=develop --jq '.content' | base64 -d > /tmp/timeline.json
 ```
 
 Read the JSON to understand the current state.
@@ -39,18 +39,33 @@ Match items by name/label (fuzzy — "Conductor" matches "Conductor + TUI",
 
 Set `meta.generated` to today's date (YYYY-MM-DD format).
 
-### 4. Write the updated JSON
+### 4. Write and push
 
-Write the modified JSON back to `/tmp/timeline.json` (pretty-printed,
-2-space indent).
-
-### 5. Push to gist
+If you are in the claude-code-config repo:
 
 ```bash
-gh gist edit a11220a561b98d07b4538049c3b13770 -f timeline.json /tmp/timeline.json
+cp /tmp/timeline.json data/timeline.json
+git add data/timeline.json
+git commit -m "timeline: update statuses"
+git push origin develop
 ```
 
-### 6. Confirm
+If you are in a different repo, use the GitHub API:
+
+```bash
+# Get current SHA for the file
+SHA=$(gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json?ref=develop --jq '.sha')
+
+# Push updated content
+gh api repos/DEGAorg/claude-code-config/contents/data/timeline.json \
+  -X PUT \
+  -f message="timeline: update statuses" \
+  -f branch=develop \
+  -f sha="$SHA" \
+  -f content="$(base64 < /tmp/timeline.json)"
+```
+
+### 5. Confirm
 
 Report what changed:
 - Which items were updated and to what status
