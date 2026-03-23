@@ -89,7 +89,10 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/review-advance.sh` | Legacy — per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
-| `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted |
+| `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted. `--plan-only` creates plans for review without executing. |
+| `scripts/plan-upload.sh` | Commits and pushes reviewed plans to GitHub. Supports `--push`, `--issues`, `--all` flags. |
+| `focus.yaml.example` | Template for focus.yaml — planner loop configuration with areas, budget, and instructions file |
+| `focus-instructions.md.example` | Template for plan creation instructions — conventions and constraints for the plan writer agent |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
 | `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
 | `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |

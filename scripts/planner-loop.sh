@@ -6,16 +6,20 @@
 # Each Claude invocation is a fresh `claude -p` call. The bash script is
 # the long-lived process; Claude instances are short-lived tools.
 #
-# Usage: scripts/planner-loop.sh [--dry-run] [--background] [--create-plans]
+# Usage: scripts/planner-loop.sh [--dry-run] [--background] [--create-plans] [--plan-only]
 #
 # Options:
 #   --dry-run        Run ASSESS phase only, print decision, do not execute
 #   --background     Pass --background to orch-run.sh (headless tmux)
 #   --create-plans   Enable plan creation (experimental). Without this flag,
 #                    the planner only executes existing active plans.
+#   --plan-only      Create plans locally without committing or executing.
+#                    Generates a review file with consolidated questions.
+#                    Implies --create-plans.
 #
 # Example: scripts/planner-loop.sh                    # execute existing plans only
 # Example: scripts/planner-loop.sh --create-plans     # also create new plans
+# Example: scripts/planner-loop.sh --plan-only        # create plans for review only
 # Example: scripts/planner-loop.sh --dry-run          # assess only, no execution
 
 set -euo pipefail
@@ -44,6 +48,7 @@ PREFIX="planner"
 DRY_RUN=false
 BACKGROUND=false
 CREATE_PLANS=false
+PLAN_ONLY=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -59,9 +64,14 @@ while [[ $# -gt 0 ]]; do
 		CREATE_PLANS=true
 		shift
 		;;
+	--plan-only)
+		PLAN_ONLY=true
+		CREATE_PLANS=true
+		shift
+		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: planner-loop.sh [--dry-run] [--background] [--create-plans]" >&2
+		echo "usage: planner-loop.sh [--dry-run] [--background] [--create-plans] [--plan-only]" >&2
 		exit 1
 		;;
 	*)
@@ -114,6 +124,14 @@ focus_budget_field() {
 		awk '{print $2}' | tr -d ' ' || true
 }
 
+# Read a top-level scalar from focus.yaml.
+# Usage: val=$(focus_field "instructions")
+focus_field() {
+	local key="$1"
+	grep "^${key}:" "${FOCUS_FILE}" 2>/dev/null |
+		sed "s/^${key}:[[:space:]]*//" | tr -d ' ' || true
+}
+
 # --- Read focus config ---
 
 read_focus() {
@@ -122,6 +140,8 @@ read_focus() {
 		MAX_PLANS=3
 		MAX_CONSECUTIVE_FAILURES=2
 		COOLDOWN_SECONDS=30
+		INSTRUCTIONS_FILE=""
+		INSTRUCTIONS_CONTENT=""
 		return 0
 	fi
 
@@ -131,6 +151,19 @@ read_focus() {
 	MAX_CONSECUTIVE_FAILURES="${MAX_CONSECUTIVE_FAILURES:-2}"
 	COOLDOWN_SECONDS=$(focus_budget_field "cooldown_seconds")
 	COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-30}"
+
+	# Read instructions file path
+	INSTRUCTIONS_FILE=$(focus_field "instructions")
+	INSTRUCTIONS_CONTENT=""
+	if [[ -n "${INSTRUCTIONS_FILE}" ]]; then
+		local instructions_path="${REPO_ROOT}/${INSTRUCTIONS_FILE}"
+		if [[ -f "${instructions_path}" ]]; then
+			INSTRUCTIONS_CONTENT=$(cat "${instructions_path}")
+			log "instructions loaded from ${INSTRUCTIONS_FILE}"
+		else
+			log "warning: instructions file not found: ${INSTRUCTIONS_FILE}"
+		fi
+	fi
 
 	log "focus loaded: max_plans=${MAX_PLANS} max_failures=${MAX_CONSECUTIVE_FAILURES} cooldown=${COOLDOWN_SECONDS}s"
 }
@@ -289,8 +322,29 @@ run_plan() {
 	local writer_base
 	writer_base=$(cat "${WRITER_PROMPT}")
 
+	# Include instructions if available
+	local instructions_block=""
+	if [[ -n "${INSTRUCTIONS_CONTENT}" ]]; then
+		instructions_block="
+---
+
+## Project Instructions
+
+The following instructions define project-specific conventions and constraints.
+Follow them when writing the plan.
+
+${INSTRUCTIONS_CONTENT}"
+	fi
+
+	# Set status hint based on mode
+	local status_hint="In progress"
+	if [[ "${PLAN_ONLY}" == true ]]; then
+		status_hint="Draft"
+	fi
+
 	local writer_prompt
 	writer_prompt="${writer_base}
+${instructions_block}
 
 ---
 
@@ -301,7 +355,8 @@ run_plan() {
 - **Rationale**: ${rationale}
 - **Focus area context**: ${area_context:-"(no additional context)"}
 - **Repo root**: ${REPO_ROOT}
-- **Plan file**: ${REPO_ROOT}/${plan_dir}/plan.md"
+- **Plan file**: ${REPO_ROOT}/${plan_dir}/plan.md
+- **Plan status**: ${status_hint}"
 
 	local plan_exit=0
 	claude -p --dangerously-skip-permissions \
@@ -330,6 +385,103 @@ run_plan() {
 	PLAN_DIR_REL="${plan_dir}"
 	log "PLAN complete — ${plan_dir}/plan.md written"
 	return 0
+}
+
+# --- Extract questions from a plan ---
+
+extract_questions() {
+	local plan_file="$1"
+	local slug="$2"
+
+	if [[ ! -f "${plan_file}" ]]; then
+		return
+	fi
+
+	# Extract "Questions for reviewer" section
+	local questions=""
+	questions=$(awk '/^## Questions for reviewer/,/^## [^Q]/' "${plan_file}" |
+		head -n -1 | tail -n +2 | sed '/^$/d' || true)
+
+	# Extract "Risks and open questions" section
+	local risks=""
+	risks=$(awk '/^## Risks and open questions/,/^## [^R]/' "${plan_file}" |
+		head -n -1 | tail -n +2 | sed '/^$/d' || true)
+
+	# Build output
+	local output=""
+	if [[ -n "${questions}" ]] && ! echo "${questions}" | grep -qi "no blocking questions"; then
+		output="${output}### Questions
+
+${questions}
+"
+	fi
+
+	if [[ -n "${risks}" ]]; then
+		output="${output}### Risks
+
+${risks}
+"
+	fi
+
+	if [[ -n "${output}" ]]; then
+		printf '## %s\n\nPlan: `%s`\n\n%s\n' "${slug}" \
+			"docs/exec-plans/active/${slug}/plan.md" "${output}"
+	fi
+}
+
+# --- Build review file ---
+
+build_review_file() {
+	local review_file="$1"
+	shift
+	local slugs=("$@")
+
+	{
+		cat <<-'HEADER'
+			# Plan Review
+
+			Plans created by the planner loop in **plan-only** mode.
+			Review each plan, answer questions, then run `plan-upload.sh` to
+			commit and push to GitHub.
+
+			## How to use
+
+			1. Read each plan in `docs/exec-plans/active/<slug>/plan.md`
+			2. Answer the questions below (edit the plan directly)
+			3. Change plan status from `Draft` to `In progress` when ready
+			4. Run: `bash scripts/plan-upload.sh` to commit and push all draft plans
+
+			---
+
+		HEADER
+
+		local has_questions=false
+		for slug in "${slugs[@]}"; do
+			local plan_file="${REPO_ROOT}/docs/exec-plans/active/${slug}/plan.md"
+			local section
+			section=$(extract_questions "${plan_file}" "${slug}")
+			if [[ -n "${section}" ]]; then
+				echo "${section}"
+				echo "---"
+				echo ""
+				has_questions=true
+			fi
+		done
+
+		if [[ "${has_questions}" == false ]]; then
+			echo "No blocking questions found. All plans are ready for execution."
+			echo ""
+		fi
+
+		echo "## Plans created"
+		echo ""
+		for slug in "${slugs[@]}"; do
+			echo "- \`docs/exec-plans/active/${slug}/plan.md\`"
+		done
+		echo ""
+		echo "---"
+		echo "Generated: $(date +%Y-%m-%d\ %H:%M:%S)"
+	} >"${review_file}"
 }
 
 # --- COMMIT phase ---
@@ -437,6 +589,7 @@ log "  repo: ${REPO_ROOT}"
 log "  log: ${LOGFILE}"
 log "  dry-run: ${DRY_RUN}"
 log "  create-plans: ${CREATE_PLANS}"
+log "  plan-only: ${PLAN_ONLY}"
 
 # --- Find existing active plans ---
 
@@ -457,93 +610,101 @@ find_existing_plans() {
 plans_completed=0
 consecutive_failures=0
 
+# Track plans created in plan-only mode for the review file
+plan_only_slugs=()
+
 while true; do
 	# Re-read focus config each iteration (allows mid-run edits)
 	read_focus
 
-	# --- EXECUTE EXISTING PLANS FIRST ---
-	# Before creating new plans, execute any active plans that aren't
-	# currently running in an orch session.
-	existing_plans=$(find_existing_plans)
-	ran_existing=false
+	# --- In plan-only mode, skip existing plan execution ---
+	if [[ "${PLAN_ONLY}" != true ]]; then
 
-	if [[ -n "${existing_plans}" ]]; then
-		while IFS= read -r slug; do
-			[[ -z "${slug}" ]] && continue
+		# --- EXECUTE EXISTING PLANS FIRST ---
+		# Before creating new plans, execute any active plans that aren't
+		# currently running in an orch session.
+		existing_plans=$(find_existing_plans)
+		ran_existing=false
 
-			# Skip if already running in a tmux session
-			if tmux has-session -t "orch-${slug}" 2>/dev/null; then
-				log "existing plan ${slug} already running — skipping"
-				continue
-			fi
+		if [[ -n "${existing_plans}" ]]; then
+			while IFS= read -r slug; do
+				[[ -z "${slug}" ]] && continue
 
-			# Skip if already completed or failed (check top-level status first,
-			# then fall back to item-level check for backwards compatibility)
-			state_file=$(orch_plan_state_file "${slug}")
-			if [[ -f "${state_file}" ]]; then
-				top_status=$(jq -r '.status // "running"' "${state_file}" 2>/dev/null || echo "running")
-				if [[ "${top_status}" == "completed" ]] || [[ "${top_status}" == "failed" ]]; then
-					log "existing plan ${slug} already ${top_status} — skipping"
+				# Skip if already running in a tmux session
+				if tmux has-session -t "orch-${slug}" 2>/dev/null; then
+					log "existing plan ${slug} already running — skipping"
 					continue
 				fi
-				remaining=$(jq '[.items[] | select(.status != "done")] | length' "${state_file}" 2>/dev/null || echo "1")
-				if [[ "${remaining}" -eq 0 ]]; then
-					log "existing plan ${slug} already complete — skipping"
+
+				# Skip if already completed or failed (check top-level status first,
+				# then fall back to item-level check for backwards compatibility)
+				state_file=$(orch_plan_state_file "${slug}")
+				if [[ -f "${state_file}" ]]; then
+					top_status=$(jq -r '.status // "running"' "${state_file}" 2>/dev/null || echo "running")
+					if [[ "${top_status}" == "completed" ]] || [[ "${top_status}" == "failed" ]]; then
+						log "existing plan ${slug} already ${top_status} — skipping"
+						continue
+					fi
+					remaining=$(jq '[.items[] | select(.status != "done")] | length' "${state_file}" 2>/dev/null || echo "1")
+					if [[ "${remaining}" -eq 0 ]]; then
+						log "existing plan ${slug} already complete — skipping"
+						continue
+					fi
+				fi
+
+				log "found existing active plan: ${slug}"
+
+				if [[ "${DRY_RUN}" == true ]]; then
+					log "dry-run — would execute existing plan: ${slug}"
 					continue
 				fi
-			fi
 
-			log "found existing active plan: ${slug}"
+				# Execute it
+				execute_exit=0
+				run_execute "${slug}" || execute_exit=$?
 
-			if [[ "${DRY_RUN}" == true ]]; then
-				log "dry-run — would execute existing plan: ${slug}"
-				continue
-			fi
+				if [[ ${execute_exit} -ne 0 ]]; then
+					consecutive_failures=$((consecutive_failures + 1))
+					log "execute failed for existing plan ${slug}"
+					continue
+				fi
 
-			# Execute it
-			execute_exit=0
-			run_execute "${slug}" || execute_exit=$?
+				# Monitor it
+				monitor_exit=0
+				run_monitor "${slug}" || monitor_exit=$?
 
-			if [[ ${execute_exit} -ne 0 ]]; then
-				consecutive_failures=$((consecutive_failures + 1))
-				log "execute failed for existing plan ${slug}"
-				continue
-			fi
+				if [[ ${monitor_exit} -ne 0 ]]; then
+					consecutive_failures=$((consecutive_failures + 1))
+					log "existing plan ${slug} failed execution"
+				else
+					consecutive_failures=0
+					plans_completed=$((plans_completed + 1))
+					log "existing plan ${slug} completed (${plans_completed}/${MAX_PLANS})"
+				fi
 
-			# Monitor it
-			monitor_exit=0
-			run_monitor "${slug}" || monitor_exit=$?
+				ran_existing=true
 
-			if [[ ${monitor_exit} -ne 0 ]]; then
-				consecutive_failures=$((consecutive_failures + 1))
-				log "existing plan ${slug} failed execution"
-			else
-				consecutive_failures=0
-				plans_completed=$((plans_completed + 1))
-				log "existing plan ${slug} completed (${plans_completed}/${MAX_PLANS})"
-			fi
+				# Budget check after each plan
+				if [[ ${plans_completed} -ge ${MAX_PLANS} ]]; then
+					log "budget exhausted after existing plans"
+					break 2
+				fi
 
-			ran_existing=true
+				if [[ ${consecutive_failures} -ge ${MAX_CONSECUTIVE_FAILURES} ]]; then
+					log "stopping — max consecutive failures during existing plans"
+					break 2
+				fi
+			done <<<"${existing_plans}"
+		fi
 
-			# Budget check after each plan
-			if [[ ${plans_completed} -ge ${MAX_PLANS} ]]; then
-				log "budget exhausted after existing plans"
-				break 2
-			fi
+		# If we ran existing plans this cycle, loop back to check for more
+		if [[ "${ran_existing}" == true ]]; then
+			log "cooling down ${COOLDOWN_SECONDS}s after existing plan execution"
+			sleep "${COOLDOWN_SECONDS}"
+			continue
+		fi
 
-			if [[ ${consecutive_failures} -ge ${MAX_CONSECUTIVE_FAILURES} ]]; then
-				log "stopping — max consecutive failures during existing plans"
-				break 2
-			fi
-		done <<<"${existing_plans}"
-	fi
-
-	# If we ran existing plans this cycle, loop back to check for more
-	if [[ "${ran_existing}" == true ]]; then
-		log "cooling down ${COOLDOWN_SECONDS}s after existing plan execution"
-		sleep "${COOLDOWN_SECONDS}"
-		continue
-	fi
+	fi # end: skip existing plan execution in plan-only mode
 
 	# --- CREATE NEW PLANS (requires --create-plans flag) ---
 	if [[ "${CREATE_PLANS}" != true ]]; then
@@ -627,6 +788,24 @@ while true; do
 		continue
 	fi
 
+	# Reset failures on successful plan creation
+	consecutive_failures=0
+
+	# --- PLAN-ONLY mode: skip commit and execute ---
+	if [[ "${PLAN_ONLY}" == true ]]; then
+		plan_only_slugs+=("${ASSESS_SLUG}")
+		plans_completed=$((plans_completed + 1))
+		log "plan-only — ${ASSESS_SLUG} created locally (${plans_completed}/${MAX_PLANS})"
+
+		if [[ ${plans_completed} -ge ${MAX_PLANS} ]]; then
+			log "budget exhausted — created ${plans_completed} plans"
+			break
+		fi
+
+		sleep "${COOLDOWN_SECONDS}"
+		continue
+	fi
+
 	# --- COMMIT ---
 	run_commit "${ASSESS_SLUG}" "${PLAN_DIR_REL}" || {
 		log "commit failed — continuing anyway"
@@ -675,6 +854,26 @@ while true; do
 	log "cooling down ${COOLDOWN_SECONDS}s before next cycle"
 	sleep "${COOLDOWN_SECONDS}"
 done
+
+# --- Plan-only: build review file ---
+
+if [[ "${PLAN_ONLY}" == true ]] && [[ ${#plan_only_slugs[@]} -gt 0 ]]; then
+	REVIEW_FILE="${REPO_ROOT}/docs/exec-plans/plan-review.md"
+	build_review_file "${REVIEW_FILE}" "${plan_only_slugs[@]}"
+	log ""
+	log "========================================="
+	log "  PLAN-ONLY COMPLETE"
+	log "========================================="
+	log "  Plans created: ${#plan_only_slugs[@]}"
+	log "  Review file:   docs/exec-plans/plan-review.md"
+	log ""
+	log "  Next steps:"
+	log "  1. Review each plan in docs/exec-plans/active/"
+	log "  2. Answer questions in docs/exec-plans/plan-review.md"
+	log "  3. Edit plans as needed"
+	log "  4. Run: bash scripts/plan-upload.sh"
+	log "========================================="
+fi
 
 # --- Summary ---
 
