@@ -19,6 +19,11 @@ github:
   close_on_ship: true
   pr_target: main
 
+timeline:
+  repo: DEGAorg/claude-code-config
+  branch: develop
+  path: data/timeline.json
+
 success_criteria:
   # Repo health — shell scripts pass shellcheck
   - id: shellcheck
