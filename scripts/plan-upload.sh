@@ -117,31 +117,16 @@ if [[ "${PUSH}" == true ]]; then
 	echo "pushed"
 fi
 
-# Create GitHub issues
+# Create GitHub issues via plan-issue.sh (idempotent)
 if [[ "${CREATE_ISSUES}" == true ]]; then
-	if ! command -v gh >/dev/null 2>&1; then
-		echo "warning: gh CLI not found — skipping issue creation"
-		exit 0
-	fi
-
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	for slug in "${uploaded[@]}"; do
-		plan_file="${ACTIVE_DIR}/${slug}/plan.md"
-		title=$(head -1 "${plan_file}" | sed 's/^# Plan: //')
-
-		# Extract requirements section for the issue body
-		body=$(awk '/^## Requirements/,/^## [^R]/' "${plan_file}" |
-			head -n -1 || true)
-
 		echo "creating issue for ${slug}"
-		gh issue create \
-			--title "Plan: ${title}" \
-			--body "${body}
-
----
-Plan file: \`docs/exec-plans/active/${slug}/plan.md\`" \
-			--label "plan:active" || {
-			echo "warning: failed to create issue for ${slug}"
+		issue_num=$("${SCRIPT_DIR}/plan-issue.sh" "${slug}") || {
+			echo "warning: failed to create issue for ${slug}" >&2
+			continue
 		}
+		echo "  issue #${issue_num}"
 	done
 fi
 
