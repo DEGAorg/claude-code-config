@@ -34,7 +34,7 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Replace `#!/bin/bash` with `#!/usr/bin/env bash` in all 6 files and verify with `rg '#!/bin/bash' scripts/ hooks/`
+- [x] Replace `#!/bin/bash` with `#!/usr/bin/env bash` in all 6 files and verify with `rg '#!/bin/bash' scripts/ hooks/`
 
 ## Decision log
 
@@ -44,5 +44,5 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `rg '#!/bin/bash' scripts/ hooks/` returns no matches
-- [ ] `shellcheck -e SC1091 -S warning hooks/enforce-package-manager.sh hooks/play-sound.sh hooks/log-gam.sh scripts/statusline.sh scripts/orch-display.sh` passes
+- [x] `rg '#!/bin/bash' scripts/ hooks/` returns no matches
+- [x] `shellcheck -e SC1091 -S warning hooks/enforce-package-manager.sh hooks/play-sound.sh hooks/log-gam.sh scripts/statusline.sh scripts/orch-display.sh` passes

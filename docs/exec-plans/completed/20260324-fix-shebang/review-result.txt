@@ -1,0 +1,2 @@
+REVISE
+scripts/orch-display.sh:63 still contains `#!/bin/bash` inside a heredoc. Replace with `#!/usr/bin/env bash` so that `rg '#!/bin/bash' scripts/ hooks/` returns zero matches as required.
