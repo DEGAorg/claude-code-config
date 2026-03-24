@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # Quick test: play the configured sound at a given volume.
 # Usage: bash scripts/test-sound.sh [volume 0-100] [sound-name]

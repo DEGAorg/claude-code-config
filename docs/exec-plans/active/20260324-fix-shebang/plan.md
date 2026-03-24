@@ -34,7 +34,7 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Replace `#!/bin/bash` with `#!/usr/bin/env bash` in all 6 files and verify with `rg '#!/bin/bash' scripts/ hooks/`
+- [x] Replace `#!/bin/bash` with `#!/usr/bin/env bash` in all 6 files and verify with `rg '#!/bin/bash' scripts/ hooks/`
 
 ## Decision log
 

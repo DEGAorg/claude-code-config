@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # Stop hook — plays a sound when Claude finishes a response.
 # Cross-platform: macOS (afplay), Linux (mpv/ffplay/paplay), WSL2 (PowerShell).
