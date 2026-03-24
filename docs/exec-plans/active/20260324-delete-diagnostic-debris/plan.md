@@ -44,5 +44,5 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `ls scripts/dev-test/ 2>/dev/null` returns "No such file or directory"
-- [ ] `git worktree list` shows only the main worktree (no stale entries)
+- [x] `ls scripts/dev-test/ 2>/dev/null` returns "No such file or directory"
+- [x] `git worktree list` shows only the main worktree (no stale entries)
