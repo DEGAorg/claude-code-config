@@ -31,7 +31,7 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Fix the `play-sound.sh` invocation in `orch-engine.sh` to pass sound name via `CLAUDE_SOUND` env var
+- [x] Fix the `play-sound.sh` invocation in `orch-engine.sh` to pass sound name via `CLAUDE_SOUND` env var
 
 ## Decision log
 

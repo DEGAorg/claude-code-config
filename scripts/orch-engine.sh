@@ -428,7 +428,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# Play completion sound if available
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
-		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
+		CLAUDE_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
 	fi
 
 	# Kill worker/reviewer windows now that we're done
