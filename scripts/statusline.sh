@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Two-line statusline with visual context progress bar
 #
 # Line 1: Model, folder, branch

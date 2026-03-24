@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # EXAMPLE: PreToolUse hook — blocks npm in projects that use pnpm.
 # Adapt for any "use X not Y" convention (e.g., yarn vs npm, uv vs pip).
