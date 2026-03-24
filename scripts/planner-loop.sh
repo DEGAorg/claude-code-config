@@ -29,6 +29,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 # --- Constants ---
 
@@ -804,6 +806,17 @@ while true; do
 
 		sleep "${COOLDOWN_SECONDS}"
 		continue
+	fi
+
+	# --- CREATE ISSUE (if github.sync enabled) ---
+	if gh_config_bool sync; then
+		issue_num=$("${SCRIPT_DIR}/plan-issue.sh" "${ASSESS_SLUG}") || {
+			log "issue creation failed for ${ASSESS_SLUG} — continuing"
+			issue_num=""
+		}
+		if [[ -n "${issue_num}" ]]; then
+			log "created issue #${issue_num} for ${ASSESS_SLUG}"
+		fi
 	fi
 
 	# --- COMMIT ---
