@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "plan": "20260324-apply-core-gh-scripts",
+  "issueNumber": 21,
+  "maxParallelWorkers": 1,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Add the 7 gh-plan scripts and orch-lifecycle hook to the Source file list in `commands/apply-core.md`",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Add install instructions for these scripts in the Orchestrator section",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Verify the updated file references match actual repo paths",
+      "deps": [
+        2
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-24T21:25:05Z",
+  "updatedAt": "2026-03-24T21:33:36Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

@@ -44,9 +44,9 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Add the 7 gh-plan scripts and orch-lifecycle hook to the Source file list in `commands/apply-core.md`
-- [ ] Add install instructions for these scripts in the Orchestrator section (deps: 1)
-- [ ] Verify the updated file references match actual repo paths (deps: 2)
+- [x] Add the 7 gh-plan scripts and orch-lifecycle hook to the Source file list in `commands/apply-core.md`
+- [x] Add install instructions for these scripts in the Orchestrator section (deps: 1)
+- [x] Verify the updated file references match actual repo paths (deps: 2)
 
 ## Decision log
 
@@ -56,5 +56,5 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `rg 'ensure-gh\|gh-plan-fetch\|gh-plan-sync\|plan-create\|plan-upload\|read-github-config\|create-exec-plan' commands/apply-core.md | wc -l` returns at least 14 (each script appears in Source list + install section)
-- [ ] `rg 'orch-lifecycle' commands/apply-core.md | wc -l` returns at least 2
+- [x] `rg 'ensure-gh\|gh-plan-fetch\|gh-plan-sync\|plan-create\|plan-upload\|read-github-config\|create-exec-plan' commands/apply-core.md | wc -l` returns at least 14 (each script appears in Source list + install section)
+- [x] `rg 'orch-lifecycle' commands/apply-core.md | wc -l` returns at least 2
