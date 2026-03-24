@@ -33,7 +33,7 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Verify no references to `dev-test/` exist, delete the directory, and prune stale git worktrees
+- [x] Verify no references to `dev-test/` exist, delete the directory, and prune stale git worktrees
 
 ## Decision log
 

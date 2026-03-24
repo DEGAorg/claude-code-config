@@ -80,7 +80,7 @@ registry, changelog). Extract into a helper function.
 
 ---
 
-## 5 scripts use #!/bin/bash instead of #!/usr/bin/env bash
+## 4 scripts use #!/bin/bash instead of #!/usr/bin/env bash
 
 **Severity:** P2
 **Area:** hooks/, scripts/
@@ -88,7 +88,7 @@ registry, changelog). Extract into a helper function.
 **Context:** /cleanup scan
 
 `hooks/enforce-package-manager.sh`, `hooks/play-sound.sh`, `hooks/log-gam.sh`,
-`scripts/statusline.sh`, `scripts/dev-test/test-sound.sh`. The `env` shebang is
+`scripts/statusline.sh`. The `env` shebang is
 more portable and matches all other 30+ scripts.
 
 ---
