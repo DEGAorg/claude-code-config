@@ -56,5 +56,5 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `rg 'ensure-gh\|gh-plan-fetch\|gh-plan-sync\|plan-create\|plan-upload\|read-github-config\|create-exec-plan' commands/apply-core.md | wc -l` returns at least 14 (each script appears in Source list + install section)
-- [ ] `rg 'orch-lifecycle' commands/apply-core.md | wc -l` returns at least 2
+- [x] `rg 'ensure-gh\|gh-plan-fetch\|gh-plan-sync\|plan-create\|plan-upload\|read-github-config\|create-exec-plan' commands/apply-core.md | wc -l` returns at least 14 (each script appears in Source list + install section)
+- [x] `rg 'orch-lifecycle' commands/apply-core.md | wc -l` returns at least 2
