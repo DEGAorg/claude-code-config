@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Create GitHub Issue when plan is written, not when orch starts (`20260324-issue-on-plan-create`) — 2026-03-24
+
 - Orchestrator creates PR on SHIP with linked branch (`20260320-orch-ship-pr`) — 2026-03-21
 
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
