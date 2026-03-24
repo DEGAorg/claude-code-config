@@ -559,6 +559,7 @@ orch_master_update_progress() {
 
 orch_create_worktree() {
 	local slug="$1"
+	local issue_number="${2:-}"
 	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
 
 	if [[ -d "${worktree_dir}" ]]; then
@@ -566,7 +567,14 @@ orch_create_worktree() {
 		return 0
 	fi
 
-	local branch="orch/${slug}"
+	# Branch name includes issue number when available (e.g., orch/13-dashboard-view)
+	local branch
+	if [[ -n "${issue_number}" ]]; then
+		branch="orch/${issue_number}-${slug}"
+	else
+		branch="orch/${slug}"
+	fi
+
 	mkdir -p "${ORCH_STATE_DIR}/worktrees"
 	git -C "${ORCH_REPO_ROOT}" worktree add "${worktree_dir}" -b "${branch}" HEAD
 	echo "orch-state: created worktree at ${worktree_dir} on branch ${branch}"
@@ -604,7 +612,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"; then
 orch_merge_worktree() {
 	local slug="$1"
 	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
-	local branch="orch/${slug}"
+	local branch
+	branch=$(git -C "${worktree_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${slug}")
 
 	if [[ ! -d "${worktree_dir}" ]]; then
 		echo "orch-state: no worktree to merge"
@@ -673,10 +682,13 @@ orch_cleanup_worktree() {
 		return 0
 	fi
 
+	# Read actual branch name before removing the worktree
+	local branch
+	branch=$(git -C "${worktree_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${slug}")
+
 	git -C "${ORCH_REPO_ROOT}" worktree remove "${worktree_dir}" --force
 	echo "orch-state: removed worktree at ${worktree_dir}"
 
-	local branch="orch/${slug}"
 	if git -C "${ORCH_REPO_ROOT}" rev-parse --verify "${branch}" >/dev/null 2>&1; then
 		git -C "${ORCH_REPO_ROOT}" branch -D "${branch}"
 		echo "orch-state: deleted branch ${branch}"

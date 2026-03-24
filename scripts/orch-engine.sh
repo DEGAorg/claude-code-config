@@ -551,9 +551,11 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	fi
 
 	# --- Step 8: Push worktree branch and create PR ---
-	# Each plan pushes its own orch/<slug> branch so multiple concurrent
+	# Each plan pushes its own orch/ branch so multiple concurrent
 	# plans produce separate PRs instead of sharing the working branch.
-	ORCH_BRANCH="orch/${SLUG}"
+	# Read actual branch name from the worktree (includes issue number if set).
+	ORCH_BRANCH=$(git -C "${ORCH_STATE_DIR}/worktrees/${SLUG}" \
+		rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${SLUG}")
 	PR_TARGET=$(grep 'pr_target:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
 		awk '{print $2}' | tr -d ' ' || true)
 	PR_TARGET="${PR_TARGET:-main}"

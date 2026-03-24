@@ -312,7 +312,7 @@ fi
 
 # --- Create worktree for file isolation ---
 
-orch_create_worktree "${SLUG}"
+orch_create_worktree "${SLUG}" "${ISSUE_NUMBER}"
 
 # --- Copy plan directory into worktree ---
 
