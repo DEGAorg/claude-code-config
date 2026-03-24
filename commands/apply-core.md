@@ -90,6 +90,14 @@ Files available:
 - `sounds/tick.mp3`
 - `sounds/tick.ogg`
 - `hooks/play-sound.sh`
+- `scripts/ensure-gh.sh`
+- `scripts/gh-plan-fetch.sh`
+- `scripts/gh-plan-sync.sh`
+- `scripts/plan-create.sh`
+- `scripts/plan-upload.sh`
+- `scripts/read-github-config.sh`
+- `scripts/create-exec-plan.sh`
+- `hooks/orch-lifecycle/01-gh-plan-sync.sh`
 
 ---
 
