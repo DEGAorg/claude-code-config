@@ -41,6 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix shebang inconsistency across scripts and hooks (`20260324-fix-shebang`) — 2026-03-24
+
 - Fix GitHub panel — agent-summoned and repo-aware (`20260320-fix-gh-panel-design`) — 2026-03-21
 
 - Fix orchestrator review quality — reject partial completions (`20260320-orch-review-quality`) — 2026-03-21
