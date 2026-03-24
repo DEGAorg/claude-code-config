@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "plan": "20260324-issue-on-plan-create",
+  "issueNumber": 13,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Extract issue creation from `orch-run.sh` into `scripts/plan-issue.sh` (idempotent, reads plan.md, writes plan-meta.json)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Call `plan-issue.sh` from `planner-loop.sh` after PLAN phase when `github.sync` is enabled",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Call `plan-issue.sh` from `plan-upload.sh` after committing each plan",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-24T20:17:38Z",
+  "updatedAt": "2026-03-24T20:26:06Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

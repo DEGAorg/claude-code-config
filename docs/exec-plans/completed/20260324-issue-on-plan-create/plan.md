@@ -46,9 +46,9 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Extract issue creation from `orch-run.sh` into `scripts/plan-issue.sh` (idempotent, reads plan.md, writes plan-meta.json)
-- [ ] Call `plan-issue.sh` from `planner-loop.sh` after PLAN phase when `github.sync` is enabled (deps: 1)
-- [ ] Call `plan-issue.sh` from `plan-upload.sh` after committing each plan (deps: 1)
+- [x] Extract issue creation from `orch-run.sh` into `scripts/plan-issue.sh` (idempotent, reads plan.md, writes plan-meta.json)
+- [x] Call `plan-issue.sh` from `planner-loop.sh` after PLAN phase when `github.sync` is enabled (deps: 1)
+- [x] Call `plan-issue.sh` from `plan-upload.sh` after committing each plan (deps: 1)
 
 ## Decision log
 
@@ -59,7 +59,7 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `shellcheck -e SC1091 -S warning scripts/plan-issue.sh` passes
-- [ ] `shfmt -d scripts/plan-issue.sh` passes
-- [ ] Running `bash scripts/plan-issue.sh <slug>` on a plan without plan-meta.json creates the issue
-- [ ] Running it again on the same plan prints the existing issue number without creating a duplicate
+- [x] `shellcheck -e SC1091 -S warning scripts/plan-issue.sh` passes
+- [x] `shfmt -d scripts/plan-issue.sh` passes
+- [x] Running `bash scripts/plan-issue.sh <slug>` on a plan without plan-meta.json creates the issue
+- [x] Running it again on the same plan prints the existing issue number without creating a duplicate
