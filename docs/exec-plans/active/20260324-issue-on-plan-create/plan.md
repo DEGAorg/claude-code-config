@@ -59,7 +59,7 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `shellcheck -e SC1091 -S warning scripts/plan-issue.sh` passes
-- [ ] `shfmt -d scripts/plan-issue.sh` passes
-- [ ] Running `bash scripts/plan-issue.sh <slug>` on a plan without plan-meta.json creates the issue
-- [ ] Running it again on the same plan prints the existing issue number without creating a duplicate
+- [x] `shellcheck -e SC1091 -S warning scripts/plan-issue.sh` passes
+- [x] `shfmt -d scripts/plan-issue.sh` passes
+- [x] Running `bash scripts/plan-issue.sh <slug>` on a plan without plan-meta.json creates the issue
+- [x] Running it again on the same plan prints the existing issue number without creating a duplicate
