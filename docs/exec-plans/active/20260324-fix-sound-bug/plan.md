@@ -41,6 +41,6 @@ No blocking questions.
 
 ## Completion criteria
 
-- [ ] `rg 'play-sound.sh' scripts/orch-engine.sh` shows `CLAUDE_SOUND=` prefix
-- [ ] `shellcheck -e SC1091 -S warning scripts/orch-engine.sh` passes
-- [ ] `shfmt -d scripts/orch-engine.sh` passes
+- [x] `rg 'play-sound.sh' scripts/orch-engine.sh` shows `CLAUDE_SOUND=` prefix
+- [x] `shellcheck -e SC1091 -S warning scripts/orch-engine.sh` passes
+- [x] `shfmt -d scripts/orch-engine.sh` passes
