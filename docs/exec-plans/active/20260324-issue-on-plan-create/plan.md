@@ -46,7 +46,7 @@ No blocking questions.
 
 ## Progress log
 
-- [ ] Extract issue creation from `orch-run.sh` into `scripts/plan-issue.sh` (idempotent, reads plan.md, writes plan-meta.json)
+- [x] Extract issue creation from `orch-run.sh` into `scripts/plan-issue.sh` (idempotent, reads plan.md, writes plan-meta.json)
 - [ ] Call `plan-issue.sh` from `planner-loop.sh` after PLAN phase when `github.sync` is enabled (deps: 1)
 - [ ] Call `plan-issue.sh` from `plan-upload.sh` after committing each plan (deps: 1)
 
