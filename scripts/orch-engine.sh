@@ -448,12 +448,14 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
 	fi
 
-	# --- Step 2: Merge worktree branch into main ---
-	if orch_merge_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 2/9] worktree merged"
+	# --- Step 2: Commit worktree changes (stay on worktree branch) ---
+	# Workers commit to orch/<slug> branch. We push that branch directly
+	# for the PR instead of merging into the working branch. This gives
+	# each plan its own PR even when multiple plans run concurrently.
+	if orch_commit_worktree "${SLUG}"; then
+		echo "orch-engine: [SHIP 2/9] worktree changes committed"
 	else
-		echo "orch-engine: ERROR — worktree merge failed" >&2
-		SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		echo "orch-engine: WARN — worktree commit returned non-zero (may have no changes)"
 	fi
 
 	# --- Step 3: Deregister from master state ---
@@ -548,16 +550,19 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		ELAPSED_STR="unknown"
 	fi
 
-	# --- Step 8: Push branch and create PR ---
-	CURRENT_BRANCH=$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD)
+	# --- Step 8: Push worktree branch and create PR ---
+	# Each plan pushes its own orch/<slug> branch so multiple concurrent
+	# plans produce separate PRs instead of sharing the working branch.
+	ORCH_BRANCH="orch/${SLUG}"
 	PR_TARGET=$(grep 'pr_target:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
 		awk '{print $2}' | tr -d ' ' || true)
 	PR_TARGET="${PR_TARGET:-main}"
 
-	if [[ "${CURRENT_BRANCH}" != "${PR_TARGET}" ]]; then
-		# Push the branch
-		if git -C "${REPO_ROOT}" push -u origin "${CURRENT_BRANCH}" 2>&1; then
-			echo "orch-engine: [SHIP 8/9] pushed branch ${CURRENT_BRANCH}"
+	WORKTREE_DIR_PUSH="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+	if [[ -d "${WORKTREE_DIR_PUSH}" ]]; then
+		# Push the worktree branch directly
+		if git -C "${WORKTREE_DIR_PUSH}" push -u origin "${ORCH_BRANCH}" 2>&1; then
+			echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
 
 			# Build PR body
 			PR_BODY="## SHIP Summary"$'\n\n'
@@ -583,7 +588,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			GH_ARGS=(pr create
 				--title "${PR_TITLE}"
 				--base "${PR_TARGET}"
-				--head "${CURRENT_BRANCH}"
+				--head "${ORCH_BRANCH}"
 			)
 			if [[ -n "${GH_REPO}" ]]; then
 				GH_ARGS+=(--repo "${GH_REPO}")
@@ -607,7 +612,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			echo "orch-engine: WARN — git push failed, skipping PR creation" >&2
 		fi
 	else
-		echo "orch-engine: [SHIP 8/9] skipped PR — already on target branch ${PR_TARGET}"
+		echo "orch-engine: [SHIP 8/9] skipped PR — no worktree (changes on working branch)"
 	fi
 
 	# --- Step 9: Clean up worktree ---
