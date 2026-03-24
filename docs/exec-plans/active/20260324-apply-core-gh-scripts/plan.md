@@ -45,7 +45,7 @@ No blocking questions.
 ## Progress log
 
 - [x] Add the 7 gh-plan scripts and orch-lifecycle hook to the Source file list in `commands/apply-core.md`
-- [ ] Add install instructions for these scripts in the Orchestrator section (deps: 1)
+- [x] Add install instructions for these scripts in the Orchestrator section (deps: 1)
 - [ ] Verify the updated file references match actual repo paths (deps: 2)
 
 ## Decision log
