@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Add missing gh-plan scripts to /apply-core install manifest (`20260324-apply-core-gh-scripts`) — 2026-03-24
+
 - Create GitHub Issue when plan is written, not when orch starts (`20260324-issue-on-plan-create`) — 2026-03-24
 
 - Orchestrator creates PR on SHIP with linked branch (`20260320-orch-ship-pr`) — 2026-03-21
@@ -41,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix sound interface bug in orch-engine.sh (`20260324-fix-sound-bug`) — 2026-03-24
+
 - Fix shebang inconsistency across scripts and hooks (`20260324-fix-shebang`) — 2026-03-24
 
 - Fix GitHub panel — agent-summoned and repo-aware (`20260320-fix-gh-panel-design`) — 2026-03-21
@@ -56,6 +60,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fix orch scripts to work when installed globally (`20260315-fix-orch-global-paths`) — 2026-03-15
 
 - Fix apply-core to include all orchestrator and planner files (`20260315-fix-apply-core-orch-files`) — 2026-03-15
+
+
+### Removed
+- Delete diagnostic debris and stale worktrees (`20260324-delete-diagnostic-debris`) — 2026-03-24
 
 ## 2026-03-15
 

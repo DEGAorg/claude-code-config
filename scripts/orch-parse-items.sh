@@ -22,7 +22,14 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="docs/exec-plans/active/${SLUG}"
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
+
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR=".orchestrator/plans/${SLUG}"
+else
+	PLAN_DIR="docs/exec-plans/active/${SLUG}"
+fi
 PLAN_FILE="${PLAN_DIR}/plan.md"
 
 if [[ ! -f "${PLAN_FILE}" ]]; then

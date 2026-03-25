@@ -30,13 +30,18 @@ fi
 
 PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-verifier.md"
 
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
+
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
-# Use worktree plan path if worktree exists (matches orch-engine.sh)
-if [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
+# Use worktree plan path; in GH mode resolve from .orchestrator/
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+elif [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
 	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
 else
 	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"

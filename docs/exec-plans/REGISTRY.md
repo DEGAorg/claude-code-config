@@ -93,3 +93,6 @@
 | 2026-03-21 | [20260321-development-patterns-skill](completed/20260321-development-patterns-skill/plan.md) | completed | 0 | orch |
 | 2026-03-24 | [20260324-issue-on-plan-create](completed/20260324-issue-on-plan-create/plan.md) | completed | 0 | orch |
 | 2026-03-24 | [20260324-fix-shebang](completed/20260324-fix-shebang/plan.md) | completed | 1 | orch |
+| 2026-03-24 | [20260324-fix-sound-bug](completed/20260324-fix-sound-bug/plan.md) | completed | 0 | orch |
+| 2026-03-24 | [20260324-delete-diagnostic-debris](completed/20260324-delete-diagnostic-debris/plan.md) | completed | 0 | orch |
+| 2026-03-24 | [20260324-apply-core-gh-scripts](completed/20260324-apply-core-gh-scripts/plan.md) | completed | 0 | orch |

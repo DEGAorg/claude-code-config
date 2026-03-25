@@ -54,6 +54,9 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
+
 # Per-plan state paths
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
@@ -62,7 +65,11 @@ LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # Plan dir points to the worktree copy so workers never touch main repo
-PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+else
+	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+fi
 if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
 	exit 1
@@ -435,17 +442,21 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	orch_kill_done_workers "${SLUG}"
 
 	# --- Step 1: Sync worktree plan.md back to main repo ---
-	MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
-	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
-	if [[ -f "${WT_PLAN}" ]]; then
-		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
-			echo "orch-engine: [SHIP 1/9] synced plan.md from worktree"
-		else
-			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
-		fi
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 1/9] skipped — GH mode (no local plan sync)"
 	else
-		echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
+		MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+		WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
+		if [[ -f "${WT_PLAN}" ]]; then
+			if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
+				echo "orch-engine: [SHIP 1/9] synced plan.md from worktree"
+			else
+				echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
+		else
+			echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
+		fi
 	fi
 
 	# --- Step 2: Commit worktree changes (stay on worktree branch) ---
@@ -463,58 +474,74 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo "orch-engine: [SHIP 3/9] deregistered from master state"
 
 	# --- Step 4: Move plan from active/ to completed/ ---
-	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
-	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
-		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
-		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
-			echo "orch-engine: [SHIP 4/9] moved plan to completed/"
-		else
-			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
-		fi
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 4/9] skipped — GH mode (no local plan move)"
 	else
-		echo "orch-engine: WARN — active plan dir not found: ${ACTIVE_PLAN_DIR}"
-	fi
+		ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+		if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
+			mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+			if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
+				echo "orch-engine: [SHIP 4/9] moved plan to completed/"
+			else
+				echo "orch-engine: ERROR — failed to move plan to completed/" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
+		else
+			echo "orch-engine: WARN — active plan dir not found: ${ACTIVE_PLAN_DIR}"
+		fi
 
-	# Save final state.json into completed plan directory
-	if [[ -d "${COMPLETED_DIR}" ]]; then
-		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
+		# Save final state.json into completed plan directory
+		if [[ -d "${COMPLETED_DIR}" ]]; then
+			cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
+		fi
 	fi
 
 	# --- Step 5: Commit the plan move ---
-	git -C "${REPO_ROOT}" add \
-		"docs/exec-plans/active/${SLUG}" \
-		"docs/exec-plans/completed/${SLUG}"
-	if git -C "${REPO_ROOT}" diff --cached --quiet; then
-		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 5/9] skipped — GH mode (no plan move to commit)"
 	else
-		if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
-			echo "orch-engine: [SHIP 5/9] committed plan move"
+		git -C "${REPO_ROOT}" add \
+			"docs/exec-plans/active/${SLUG}" \
+			"docs/exec-plans/completed/${SLUG}"
+		if git -C "${REPO_ROOT}" diff --cached --quiet; then
+			echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 		else
-			echo "orch-engine: ERROR — git commit failed for plan move" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
+				echo "orch-engine: [SHIP 5/9] committed plan move"
+			else
+				echo "orch-engine: ERROR — git commit failed for plan move" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
 		fi
 	fi
 
 	# --- Step 6: Append to plan registry ---
 	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
-	if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
-		# Commit registry update
-		git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
-		if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-			if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
-				echo "orch-engine: ERROR — git commit failed for registry update" >&2
-				SHIP_ERRORS=$((SHIP_ERRORS + 1))
-			fi
-		fi
-		echo "orch-engine: [SHIP 6/9] appended to plan registry"
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 6/9] skipped — GH mode (issues are the registry)"
 	else
-		echo "orch-engine: WARN — registry append failed (non-fatal)"
+		if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+			# Commit registry update
+			git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
+			if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+				if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
+					echo "orch-engine: ERROR — git commit failed for registry update" >&2
+					SHIP_ERRORS=$((SHIP_ERRORS + 1))
+				fi
+			fi
+			echo "orch-engine: [SHIP 6/9] appended to plan registry"
+		else
+			echo "orch-engine: WARN — registry append failed (non-fatal)"
+		fi
 	fi
 
 	# --- Step 7: Append to changelog ---
-	PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
+	if [[ "${GH_SYNC}" == true ]]; then
+		PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${PLAN_DIR}/plan.md" 2>/dev/null || true)
+	else
+		PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
+	fi
 	if [[ -n "${PLAN_TITLE}" ]]; then
 		if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
 			git -C "${REPO_ROOT}" add "CHANGELOG.md"
@@ -634,23 +661,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	# --- Post-SHIP validation ---
 	echo ""
 	VALIDATION_OK=true
-	if [[ -d "${REPO_ROOT}/docs/exec-plans/active/${SLUG}" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan still in active/" >&2
-		VALIDATION_OK=false
-	fi
-	if [[ ! -d "${COMPLETED_DIR}" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan not in completed/" >&2
-		VALIDATION_OK=false
-	fi
-	if [[ ! -f "${COMPLETED_DIR}/plan.md" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan.md missing from completed/" >&2
-		VALIDATION_OK=false
-	fi
-	if git -C "${REPO_ROOT}" status --porcelain \
-		"docs/exec-plans/active/${SLUG}" \
-		"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
-		echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
-		VALIDATION_OK=false
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: post-validation skipped — GH mode (no local plan artifacts)"
+	else
+		if [[ -d "${REPO_ROOT}/docs/exec-plans/active/${SLUG}" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan still in active/" >&2
+			VALIDATION_OK=false
+		fi
+		if [[ ! -d "${COMPLETED_DIR}" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan not in completed/" >&2
+			VALIDATION_OK=false
+		fi
+		if [[ ! -f "${COMPLETED_DIR}/plan.md" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan.md missing from completed/" >&2
+			VALIDATION_OK=false
+		fi
+		if git -C "${REPO_ROOT}" status --porcelain \
+			"docs/exec-plans/active/${SLUG}" \
+			"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
+			echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
+			VALIDATION_OK=false
+		fi
 	fi
 
 	echo ""
