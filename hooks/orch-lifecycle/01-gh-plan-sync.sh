@@ -225,6 +225,45 @@ revise)
 	"${SYNC_SCRIPT}" "${ARGS[@]}"
 	;;
 
+verify)
+	# Read verification status from state.json.
+	VERIFY_STATUS=$(jq -r '.verification.status // empty' "${STATE_FILE}")
+	if [[ -z "${VERIFY_STATUS}" || "${VERIFY_STATUS}" == "null" ]]; then
+		echo "01-gh-plan-sync: no verification status in state.json — skipping" >&2
+		exit 0
+	fi
+
+	VERIFY_RESULT="FAIL"
+	if [[ "${VERIFY_STATUS}" == "passed" ]]; then
+		VERIFY_RESULT="PASS"
+	fi
+
+	# Extract completion criteria from plan.md as details text.
+	VERIFY_DETAILS=""
+	for plan_path in \
+		"${ORCH_STATE_DIR}/worktrees/${SLUG}/docs/exec-plans/active/${SLUG}/plan.md" \
+		"${ORCH_STATE_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/plan.md" \
+		"${REPO_ROOT}/docs/exec-plans/active/${SLUG}/plan.md"; do
+		if [[ -f "${plan_path}" ]]; then
+			VERIFY_DETAILS=$(awk '
+				/^```/ { fence = !fence; next }
+				fence { next }
+				/^## Completion criteria/ { capturing = 1; next }
+				capturing && /^## / { exit }
+				capturing && /^- \[/ { print }
+			' "${plan_path}")
+			break
+		fi
+	done
+
+	ARGS=(verify "${SLUG}" --issue "${ISSUE}")
+	ARGS+=(--verify-result "${VERIFY_RESULT}")
+	if [[ -n "${VERIFY_DETAILS}" ]]; then
+		ARGS+=(--verify-details "${VERIFY_DETAILS}")
+	fi
+	"${SYNC_SCRIPT}" "${ARGS[@]}"
+	;;
+
 *)
 	echo "01-gh-plan-sync: unknown event: ${EVENT} — skipping" >&2
 	;;
