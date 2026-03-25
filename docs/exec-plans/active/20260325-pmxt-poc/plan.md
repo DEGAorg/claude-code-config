@@ -61,7 +61,7 @@ pmxt-core is a substantial dependency (Express server, ethers, @polymarket/clob-
 ## Progress log
 
 - [x] Scaffold project: package.json, tsconfig.json, .env.example, .gitignore update
-- [ ] Validate sidecar: install deps, verify pmxt-core server starts and responds to health check (deps: 1)
+- [x] Validate sidecar: install deps, verify pmxt-core server starts and responds to health check (deps: 1)
 - [ ] Test read-only methods: fetchMarkets, fetchEvents, fetchOHLCV, fetchOrderBook — no auth needed (deps: 2)
 - [ ] Test auth methods: fetchPositions, fetchBalance, fetchMyTrades — requires wallet config (deps: 3)
 - [ ] Test write operations: buildOrder (dry-run), createOrder + cancelOrder if safe (deps: 4)
