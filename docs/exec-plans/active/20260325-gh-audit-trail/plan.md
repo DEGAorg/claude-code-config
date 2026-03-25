@@ -89,7 +89,7 @@ completes. The comment includes pass/fail and the criteria results.
 
 ## Completion criteria
 
-- [ ] With `github.sync: true`, a REVISE item's GH comment includes reviewer feedback text
-- [ ] With `github.sync: true`, a SHIP item's GH comment includes work summary
-- [ ] With `github.sync: true`, a verify pass/fail posts a comment on the issue
-- [ ] `shellcheck -e SC1091 -S warning scripts/gh-plan-sync.sh hooks/orch-lifecycle/01-gh-plan-sync.sh scripts/orch-engine.sh` passes
+- [x] With `github.sync: true`, a REVISE item's GH comment includes reviewer feedback text
+- [x] With `github.sync: true`, a SHIP item's GH comment includes work summary
+- [x] With `github.sync: true`, a verify pass/fail posts a comment on the issue
+- [x] `shellcheck -e SC1091 -S warning scripts/gh-plan-sync.sh hooks/orch-lifecycle/01-gh-plan-sync.sh scripts/orch-engine.sh` passes
