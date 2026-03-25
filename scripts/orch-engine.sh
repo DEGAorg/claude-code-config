@@ -169,6 +169,40 @@ $(cat "${review_file}")
 "
 	fi
 
+	# Pre-hydrate context: file paths, requirements, criteria, check command
+	local approach_section
+	approach_section=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Approach/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_path}")
+
+	local file_paths
+	file_paths=$(printf '%s\n%s\n' "${item_desc}" "${approach_section}" |
+		orch_extract_file_paths)
+
+	local plan_sections
+	plan_sections=$(orch_extract_plan_sections "${plan_path}")
+
+	local task_context=""
+	if [[ -n "${file_paths}" ]]; then
+		task_context="### Relevant file paths
+
+${file_paths}
+"
+	fi
+	if [[ -n "${plan_sections}" ]]; then
+		task_context="${task_context}
+${plan_sections}"
+	fi
+
+	# Cap pre-hydrated context at 200 lines
+	if [[ -n "${task_context}" ]]; then
+		task_context=$(printf '%s\n' "${task_context}" | head -200)
+	fi
+
 	cat <<-PROMPT
 		${WORKER_PROMPT_BASE}
 
@@ -181,6 +215,9 @@ $(cat "${review_file}")
 		- **Plan path**: ${plan_path}
 		- **Done-files directory**: ${done_dir}
 		- **Worktree**: ${WORKTREE_DIR}
+
+		## Task Context (pre-gathered by orchestrator)
+		${task_context:-"(no pre-hydrated context available)"}
 
 		## Completed dependency summaries
 		${dep_context:-"(no dependencies)"}
