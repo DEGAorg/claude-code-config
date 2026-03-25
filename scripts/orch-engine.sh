@@ -411,6 +411,9 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
 		orch_write_state "${SLUG}" "${updated}"
 	fi
+
+	# Fire verify lifecycle hooks — state.json now has verification result
+	run_lifecycle_hooks "verify"
 fi
 
 # --- Actual SHIP / REVISE handling ---

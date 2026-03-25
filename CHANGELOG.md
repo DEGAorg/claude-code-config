@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Skip git-tracked plan artifacts when github.sync is true (`20260325-gh-mode-skip-local-artifacts`) — 2026-03-25
+
 - Development Patterns Skill System (`20260321-development-patterns-skill`) — 2026-03-21
 
 - Agent-to-panel integration — Claude controls the GitHub panel (`20260321-agent-panel-integration`) — 2026-03-21

@@ -72,12 +72,12 @@ completes. The comment includes pass/fail and the criteria results.
 
 ## Progress log
 
-- [ ] Add `--work-summary` flag to `gh-plan-sync.sh` review handler; include in comment body
-- [ ] Read work-summary.txt in lifecycle hook review handler and pass via `--work-summary` (deps: 1)
-- [ ] Read review-feedback.txt in lifecycle hook review handler and pass via `--feedback` (deps: 1)
-- [ ] Add `verify` event to `gh-plan-sync.sh` with pass/fail comment (deps: 1)
-- [ ] Add `verify` event dispatch to lifecycle hook (deps: 4)
-- [ ] Fire `verify` lifecycle hook from `orch-engine.sh` after verifier completes (deps: 5)
+- [x] Add `--work-summary` flag to `gh-plan-sync.sh` review handler; include in comment body
+- [x] Read work-summary.txt in lifecycle hook review handler and pass via `--work-summary` (deps: 1)
+- [x] Read review-feedback.txt in lifecycle hook review handler and pass via `--feedback` (deps: 1)
+- [x] Add `verify` event to `gh-plan-sync.sh` with pass/fail comment (deps: 1)
+- [x] Add `verify` event dispatch to lifecycle hook (deps: 4)
+- [x] Fire `verify` lifecycle hook from `orch-engine.sh` after verifier completes (deps: 5)
 
 ## Decision log
 
@@ -89,7 +89,7 @@ completes. The comment includes pass/fail and the criteria results.
 
 ## Completion criteria
 
-- [ ] With `github.sync: true`, a REVISE item's GH comment includes reviewer feedback text
-- [ ] With `github.sync: true`, a SHIP item's GH comment includes work summary
-- [ ] With `github.sync: true`, a verify pass/fail posts a comment on the issue
-- [ ] `shellcheck -e SC1091 -S warning scripts/gh-plan-sync.sh hooks/orch-lifecycle/01-gh-plan-sync.sh scripts/orch-engine.sh` passes
+- [x] With `github.sync: true`, a REVISE item's GH comment includes reviewer feedback text
+- [x] With `github.sync: true`, a SHIP item's GH comment includes work summary
+- [x] With `github.sync: true`, a verify pass/fail posts a comment on the issue
+- [x] `shellcheck -e SC1091 -S warning scripts/gh-plan-sync.sh hooks/orch-lifecycle/01-gh-plan-sync.sh scripts/orch-engine.sh` passes

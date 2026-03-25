@@ -118,6 +118,12 @@ review)
 	# Post per-item review comments by reading state.json.
 	# Each item with a lastResult gets a comment with its iteration count.
 	ITEM_COUNT=$(jq '.items | length' "${STATE_FILE}")
+	DONE_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/done"
+	REVIEW_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/reviews"
+
+	# Identify items that failed review (rework list from finalReview).
+	REWORK_IDS=$(jq -r '.finalReview.reworkItems // [] | .[]' "${STATE_FILE}")
+
 	for ((i = 0; i < ITEM_COUNT; i++)); do
 		ITEM_RESULT=$(jq -r ".items[${i}].lastResult // empty" "${STATE_FILE}")
 		if [[ -z "${ITEM_RESULT}" || "${ITEM_RESULT}" == "null" ]]; then
@@ -127,11 +133,44 @@ review)
 		ITEM_DESC=$(jq -r ".items[${i}].description" "${STATE_FILE}")
 		ITEM_ITER=$(jq -r ".items[${i}].iteration // 1" "${STATE_FILE}")
 
+		# Read per-item work summary: try done-file first, then
+		# worktree plan-level work-summary.txt as fallback.
+		WORK_SUMMARY=""
+		DONE_FILE="${DONE_DIR}/item-${ITEM_ID}.txt"
+		if [[ -f "${DONE_FILE}" ]]; then
+			WORK_SUMMARY=$(cat "${DONE_FILE}")
+		else
+			for ws_path in \
+				"${ORCH_STATE_DIR}/worktrees/${SLUG}/docs/exec-plans/active/${SLUG}/work-summary.txt" \
+				"${ORCH_STATE_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/work-summary.txt"; do
+				if [[ -f "${ws_path}" ]]; then
+					WORK_SUMMARY=$(cat "${ws_path}")
+					break
+				fi
+			done
+		fi
+
+		# Read review feedback for items that failed review.
+		FEEDBACK=""
+		if echo "${REWORK_IDS}" | grep -qw "${ITEM_ID}"; then
+			ITEM_RESULT="REVISE"
+			REVIEW_FILE="${REVIEW_DIR}/item-${ITEM_ID}-review.txt"
+			if [[ -f "${REVIEW_FILE}" ]]; then
+				FEEDBACK=$(tail -n +2 "${REVIEW_FILE}")
+			fi
+		fi
+
 		ARGS=(review "${SLUG}" --issue "${ISSUE}")
 		ARGS+=(--item-id "${ITEM_ID}")
 		ARGS+=(--item-desc "${ITEM_DESC}")
 		ARGS+=(--item-result "${ITEM_RESULT}")
 		ARGS+=(--iterations "${ITEM_ITER}")
+		if [[ -n "${WORK_SUMMARY}" ]]; then
+			ARGS+=(--work-summary "${WORK_SUMMARY}")
+		fi
+		if [[ -n "${FEEDBACK}" ]]; then
+			ARGS+=(--feedback "${FEEDBACK}")
+		fi
 
 		"${SYNC_SCRIPT}" "${ARGS[@]}" || true
 	done
@@ -182,6 +221,45 @@ revise)
 	fi
 	if [[ -n "${ELAPSED}" ]]; then
 		ARGS+=(--elapsed "${ELAPSED}")
+	fi
+	"${SYNC_SCRIPT}" "${ARGS[@]}"
+	;;
+
+verify)
+	# Read verification status from state.json.
+	VERIFY_STATUS=$(jq -r '.verification.status // empty' "${STATE_FILE}")
+	if [[ -z "${VERIFY_STATUS}" || "${VERIFY_STATUS}" == "null" ]]; then
+		echo "01-gh-plan-sync: no verification status in state.json — skipping" >&2
+		exit 0
+	fi
+
+	VERIFY_RESULT="FAIL"
+	if [[ "${VERIFY_STATUS}" == "passed" ]]; then
+		VERIFY_RESULT="PASS"
+	fi
+
+	# Extract completion criteria from plan.md as details text.
+	VERIFY_DETAILS=""
+	for plan_path in \
+		"${ORCH_STATE_DIR}/worktrees/${SLUG}/docs/exec-plans/active/${SLUG}/plan.md" \
+		"${ORCH_STATE_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/plan.md" \
+		"${REPO_ROOT}/docs/exec-plans/active/${SLUG}/plan.md"; do
+		if [[ -f "${plan_path}" ]]; then
+			VERIFY_DETAILS=$(awk '
+				/^```/ { fence = !fence; next }
+				fence { next }
+				/^## Completion criteria/ { capturing = 1; next }
+				capturing && /^## / { exit }
+				capturing && /^- \[/ { print }
+			' "${plan_path}")
+			break
+		fi
+	done
+
+	ARGS=(verify "${SLUG}" --issue "${ISSUE}")
+	ARGS+=(--verify-result "${VERIFY_RESULT}")
+	if [[ -n "${VERIFY_DETAILS}" ]]; then
+		ARGS+=(--verify-details "${VERIFY_DETAILS}")
 	fi
 	"${SYNC_SCRIPT}" "${ARGS[@]}"
 	;;
