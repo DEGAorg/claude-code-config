@@ -11,14 +11,41 @@ You receive these from the orchestrator via your prompt:
 - **Item description**: what you need to do
 - **Plan path**: `docs/exec-plans/active/<slug>/plan.md`
 - **Done-files directory**: `.orchestrator/done/<slug>/`
+- **Task Context (pre-hydrated)**: file paths, requirements, completion
+  criteria, and check command extracted from the plan by the orchestrator
+  (see below)
 - **Completed item summaries**: context from dependencies (if any)
+
+### Pre-hydrated Task Context
+
+The orchestrator injects a `## Task Context (pre-gathered by orchestrator)`
+section into your prompt. It contains up to four subsections:
+
+| Subsection | Content |
+|------------|---------|
+| `### Relevant file paths` | File paths mentioned in your item description and the plan's approach section — one path per line |
+| `### Requirements` | The plan's `## Requirements` section — defines what "done" looks like |
+| `### Completion criteria` | The plan's `## Completion criteria` section — checklist the reviewer verifies |
+| `### Check command` | The project's check command from `dega-core.yaml` — run this to validate your changes |
+
+**Use pre-hydrated context first.** The file paths, requirements, and check
+command are provided so you do not need to read the full plan to start
+working. Only read `plan.md` directly if the pre-hydrated context is
+missing (the prompt will show "(no pre-hydrated context available)") or
+insufficient for your item.
 
 ## Execution
 
 ### 1. Orient
 
-Read the plan at the provided path. Understand the full requirements and
-approach sections — your item is one piece of a larger plan.
+Start with the pre-hydrated Task Context in your prompt. It contains the
+requirements, completion criteria, relevant file paths, and check command —
+enough to understand what "done" looks like without reading the full plan.
+
+Only read `plan.md` at the provided path if the pre-hydrated context is
+missing or does not cover your item's needs (e.g., your item references
+the Approach section for implementation details not included in the
+context).
 
 If completed item summaries are provided, read them to understand what
 prior items produced. Use that context to avoid duplicating work or
@@ -26,8 +53,12 @@ conflicting with existing changes.
 
 ### 2. Do the work
 
-Execute your assigned item. Follow the plan's approach and requirements.
-Write clean, correct code. Run linters and tests relevant to your changes.
+Execute your assigned item. Follow the requirements from the pre-hydrated
+context (or the plan if you needed to read it). Write clean, correct code.
+
+Run the check command from the Task Context to validate your changes. If
+no check command is provided, run linters and tests relevant to your
+changes.
 
 ### 3. Mark the checkbox
 

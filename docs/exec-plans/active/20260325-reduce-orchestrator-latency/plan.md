@@ -68,7 +68,7 @@ Implement patterns 1 and 4 from `agent-context-patterns.md`:
 - [x] Update `scripts/orch-engine.sh`: change `sleep 5` to `sleep 2` in worker tmux spawn command (deps: 1)
 - [x] Add `orch_extract_file_paths()` and `orch_extract_plan_sections()` helper functions to `scripts/orch-state.sh` (deps: 1)
 - [x] Update `build_worker_prompt()` in `scripts/orch-engine.sh` to call new helpers and inject pre-hydrated context (file paths, requirements, check command, completion criteria) into the worker prompt (deps: 4, 5)
-- [ ] Update `agents/orch-worker.md` to document pre-hydrated context sections and instruct workers to use provided context before discovering on their own (deps: 6)
+- [x] Update `agents/orch-worker.md` to document pre-hydrated context sections and instruct workers to use provided context before discovering on their own (deps: 6)
 - [ ] Run `shellcheck -e SC1091` on all modified scripts (`scripts/orch-engine.sh`, `scripts/orch-review.sh`, `scripts/orch-verify.sh`, `scripts/orch-state.sh`) and fix any issues (deps: 2, 3, 6, 7)
 
 ## Decision log
