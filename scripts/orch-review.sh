@@ -92,7 +92,7 @@ fi
 # --- Read concurrency and poll settings from state ---
 
 MAX_WORKERS=$(jq '.maxParallelWorkers // 4' "${ORCH_STATE_FILE}")
-POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
+POLL_INTERVAL=$(orch_read_config "review_poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
 # --- Mark failed work items as review-skipped ---
@@ -173,7 +173,7 @@ spawn_reviewer() {
 		 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
 		 \"\$(cat '${prompt_file}')\" ; \
 		 echo '--- reviewer ${item_id} exited ---'; \
-		 sleep 5"
+		 sleep 2"
 
 	# Stream reviewer output to log file
 	tmux pipe-pane -t "${TMUX_SESSION}:${window_name}" \

@@ -63,9 +63,9 @@ Implement patterns 1 and 4 from `agent-context-patterns.md`:
 ## Progress log
 
 - [x] Add `review_poll_interval_seconds: 10` and `verify_poll_interval_seconds: 10` to `dega-core.yaml`; reduce `poll_interval_seconds` from 30 to 15
-- [ ] Update `scripts/orch-review.sh`: read `review_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in reviewer tmux spawn (deps: 1)
-- [ ] Update `scripts/orch-verify.sh`: read `verify_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in verifier tmux spawn (deps: 1)
-- [ ] Update `scripts/orch-engine.sh`: change `sleep 5` to `sleep 2` in worker tmux spawn command (deps: 1)
+- [x] Update `scripts/orch-review.sh`: read `review_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in reviewer tmux spawn (deps: 1)
+- [x] Update `scripts/orch-verify.sh`: read `verify_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in verifier tmux spawn (deps: 1)
+- [x] Update `scripts/orch-engine.sh`: change `sleep 5` to `sleep 2` in worker tmux spawn command (deps: 1)
 - [ ] Add `orch_extract_file_paths()` and `orch_extract_plan_sections()` helper functions to `scripts/orch-state.sh` (deps: 1)
 - [ ] Update `build_worker_prompt()` in `scripts/orch-engine.sh` to call new helpers and inject pre-hydrated context (file paths, requirements, check command, completion criteria) into the worker prompt (deps: 4, 5)
 - [ ] Update `agents/orch-worker.md` to document pre-hydrated context sections and instruct workers to use provided context before discovering on their own (deps: 6)

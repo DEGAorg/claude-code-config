@@ -227,7 +227,7 @@ spawn_worker() {
 		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
 		 env -u CLAUDECODE ${claude_cmd} ; \
 		 echo '--- worker ${item_id} exited ---'; \
-		 sleep 5"
+		 sleep 2"
 
 	# Stream worker output to log file for the dashboard
 	tmux pipe-pane -t "${TMUX_SESSION}:${pane_name}" \
