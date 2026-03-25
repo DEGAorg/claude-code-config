@@ -22,6 +22,7 @@ set -euo pipefail
 #   --item-desc <desc>        Item description (for review event)
 #   --item-result <SHIP|REVISE>  Review result (for review event)
 #   --iterations <n>          Iteration count for item (for review event)
+#   --work-summary <text>     Worker's work summary (for review event)
 #   --feedback <text>         Reviewer feedback summary (for review REVISE)
 #   --passed <n>              Items passed (for ship/revise)
 #   --failed <n>              Items failed (for revise)
@@ -50,6 +51,7 @@ ITEM_ID=""
 ITEM_DESC=""
 ITEM_RESULT=""
 ITERATIONS=""
+WORK_SUMMARY=""
 FEEDBACK=""
 PASSED=""
 FAILED=""
@@ -91,6 +93,10 @@ while [[ $# -gt 0 ]]; do
 		;;
 	--iterations)
 		ITERATIONS="${2:?--iterations requires a value}"
+		shift 2
+		;;
+	--work-summary)
+		WORK_SUMMARY="${2:?--work-summary requires a value}"
 		shift 2
 		;;
 	--feedback)
@@ -414,6 +420,10 @@ handle_review() {
 	fi
 
 	local body="**Item ${ITEM_ID}**${desc_part} — **${ITEM_RESULT}**${iter_part}."
+
+	if [[ -n "${WORK_SUMMARY}" ]]; then
+		body="${body}"$'\n\n'"<details><summary>Work summary</summary>"$'\n\n'"${WORK_SUMMARY}"$'\n\n'"</details>"
+	fi
 
 	if [[ "${ITEM_RESULT}" == "REVISE" && -n "${FEEDBACK}" ]]; then
 		body="${body}"$'\n'"Feedback: ${FEEDBACK}"
