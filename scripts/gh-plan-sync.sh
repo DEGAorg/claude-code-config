@@ -12,6 +12,7 @@ set -euo pipefail
 #   pr      — PR created for plan (post PR URL comment on linked issue)
 #   pr_merged — PR merged, plan completed (label → plan:completed, body status "Completed")
 #   revise  — plan failed after max iterations (label → plan:failed, post failure comment)
+#   verify  — completion criteria verification result (post pass/fail comment)
 #
 # Options:
 #   --issue <number>          GitHub Issue number (required)
@@ -31,6 +32,8 @@ set -euo pipefail
 #   --total-reviews <n>       Total review iterations (for ship)
 #   --elapsed <duration>      Elapsed time string (for ship/revise)
 #   --pr-url <url>            Pull request URL (for pr event)
+#   --verify-result <PASS|FAIL>  Verification result (for verify event)
+#   --verify-details <text>   Verification details (for verify event)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -60,6 +63,8 @@ REWORK_COUNT=""
 TOTAL_REVIEWS=""
 ELAPSED=""
 PR_URL=""
+VERIFY_RESULT=""
+VERIFY_DETAILS=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -131,6 +136,14 @@ while [[ $# -gt 0 ]]; do
 		PR_URL="${2:?--pr-url requires a value}"
 		shift 2
 		;;
+	--verify-result)
+		VERIFY_RESULT="${2:?--verify-result requires a value}"
+		shift 2
+		;;
+	--verify-details)
+		VERIFY_DETAILS="${2:?--verify-details requires a value}"
+		shift 2
+		;;
 	-*)
 		echo "error: unknown option: $1" >&2
 		exit 1
@@ -187,10 +200,10 @@ if [[ -z "${ISSUE}" ]]; then
 fi
 
 case "${EVENT}" in
-start | review | ship | pr_merged | revise | pr) ;;
+start | review | ship | pr_merged | revise | pr | verify) ;;
 *)
 	echo "error: unknown event type: ${EVENT}" >&2
-	echo "  Valid events: start, review, ship, pr_merged, revise, pr" >&2
+	echo "  Valid events: start, review, ship, pr_merged, revise, pr, verify" >&2
 	exit 1
 	;;
 esac
@@ -508,6 +521,27 @@ handle_revise() {
 	echo "Posted REVISE comment on issue #${ISSUE}." >&2
 }
 
+handle_verify() {
+	if [[ -z "${VERIFY_RESULT}" ]]; then
+		echo "error: verify event requires --verify-result" >&2
+		exit 1
+	fi
+
+	local emoji="✅"
+	if [[ "${VERIFY_RESULT}" == "FAIL" ]]; then
+		emoji="❌"
+	fi
+
+	local body="${emoji} **Verification — ${VERIFY_RESULT}**"
+
+	if [[ -n "${VERIFY_DETAILS}" ]]; then
+		body="${body}"$'\n\n'"<details><summary>Criteria details</summary>"$'\n\n'"${VERIFY_DETAILS}"$'\n\n'"</details>"
+	fi
+
+	post_comment "${body}"
+	echo "Posted verify comment on issue #${ISSUE}." >&2
+}
+
 handle_pr() {
 	if [[ -z "${PR_URL}" ]]; then
 		echo "error: pr event requires --pr-url" >&2
@@ -528,4 +562,5 @@ ship) handle_ship ;;
 pr_merged) handle_pr_merged ;;
 revise) handle_revise ;;
 pr) handle_pr ;;
+verify) handle_verify ;;
 esac
