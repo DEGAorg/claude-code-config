@@ -90,6 +90,14 @@ Files available:
 - `sounds/tick.mp3`
 - `sounds/tick.ogg`
 - `hooks/play-sound.sh`
+- `scripts/ensure-gh.sh`
+- `scripts/gh-plan-fetch.sh`
+- `scripts/gh-plan-sync.sh`
+- `scripts/plan-create.sh`
+- `scripts/plan-upload.sh`
+- `scripts/read-github-config.sh`
+- `scripts/create-exec-plan.sh`
+- `hooks/orch-lifecycle/01-gh-plan-sync.sh`
 
 ---
 
@@ -160,6 +168,14 @@ Read and note which of these already exist:
 - `~/.claude/scripts/planner-loop.sh`
 - `~/.claude/agents/planner-assess.md`
 - `~/.claude/agents/planner-writer.md`
+- `~/.claude/scripts/ensure-gh.sh`
+- `~/.claude/scripts/gh-plan-fetch.sh`
+- `~/.claude/scripts/gh-plan-sync.sh`
+- `~/.claude/scripts/plan-create.sh`
+- `~/.claude/scripts/plan-upload.sh`
+- `~/.claude/scripts/read-github-config.sh`
+- `~/.claude/scripts/create-exec-plan.sh`
+- `~/.claude/hooks/orch-lifecycle/01-gh-plan-sync.sh`
 
 Also check in the current working directory (target project root):
 - `dega-core.yaml`
@@ -211,9 +227,12 @@ Components:
   parallel execution. Installs launcher (`orch-run.sh`), engine loop
   (`orch-engine.sh`), display opener (`orch-display.sh`), state library
   (`orch-state.sh`), plan parser (`orch-parse-items.sh`), review script
-  (`orch-review.sh`), completion verifier (`orch-verify.sh`) to
-  `~/.claude/scripts/`, done-file sync hook (`orch-done-sync.sh`) to
-  `~/.claude/hooks/`, Ink dashboard components to
+  (`orch-review.sh`), completion verifier (`orch-verify.sh`), GitHub plan
+  scripts (`ensure-gh.sh`, `gh-plan-fetch.sh`, `gh-plan-sync.sh`,
+  `plan-create.sh`, `plan-upload.sh`, `read-github-config.sh`,
+  `create-exec-plan.sh`) to `~/.claude/scripts/`, done-file sync hook
+  (`orch-done-sync.sh`) and lifecycle hook (`orch-lifecycle/01-gh-plan-sync.sh`)
+  to `~/.claude/hooks/`, Ink dashboard components to
   `~/.claude/scripts/terminal-ui/src/`, and agent definitions
   (`orch-worker.md`, `orch-verifier.md`) to `~/.claude/agents/`. Polling
   interval controlled by `poll_interval_seconds` in `dega-core.yaml`
@@ -389,7 +408,8 @@ Safe to overwrite — these are engine scripts and app source with no user custo
 #### Orchestrator
 
 Create `~/.claude/scripts/`, `~/.claude/scripts/terminal-ui/src/`,
-`~/.claude/agents/`, and `~/.claude/hooks/` if they don't exist.
+`~/.claude/agents/`, `~/.claude/hooks/`, and `~/.claude/hooks/orch-lifecycle/`
+if they don't exist.
 
 Write each shell script to `~/.claude/scripts/`:
 - `scripts/orch-run.sh` → `~/.claude/scripts/orch-run.sh`
@@ -402,10 +422,26 @@ Write each shell script to `~/.claude/scripts/`:
 
 Run `chmod +x ~/.claude/scripts/orch-*.sh` after writing.
 
+Write GitHub plan scripts to `~/.claude/scripts/`:
+- `scripts/ensure-gh.sh` → `~/.claude/scripts/ensure-gh.sh`
+- `scripts/gh-plan-fetch.sh` → `~/.claude/scripts/gh-plan-fetch.sh`
+- `scripts/gh-plan-sync.sh` → `~/.claude/scripts/gh-plan-sync.sh`
+- `scripts/plan-create.sh` → `~/.claude/scripts/plan-create.sh`
+- `scripts/plan-upload.sh` → `~/.claude/scripts/plan-upload.sh`
+- `scripts/read-github-config.sh` → `~/.claude/scripts/read-github-config.sh`
+- `scripts/create-exec-plan.sh` → `~/.claude/scripts/create-exec-plan.sh`
+
+Run `chmod +x ~/.claude/scripts/ensure-gh.sh ~/.claude/scripts/gh-plan-fetch.sh ~/.claude/scripts/gh-plan-sync.sh ~/.claude/scripts/plan-create.sh ~/.claude/scripts/plan-upload.sh ~/.claude/scripts/read-github-config.sh ~/.claude/scripts/create-exec-plan.sh` after writing.
+
 Write the done-sync hook to `~/.claude/hooks/`:
 - `hooks/orch-done-sync.sh` → `~/.claude/hooks/orch-done-sync.sh`
 
 Run `chmod +x ~/.claude/hooks/orch-done-sync.sh` after writing.
+
+Write the orchestrator lifecycle hook to `~/.claude/hooks/orch-lifecycle/`:
+- `hooks/orch-lifecycle/01-gh-plan-sync.sh` → `~/.claude/hooks/orch-lifecycle/01-gh-plan-sync.sh`
+
+Run `chmod +x ~/.claude/hooks/orch-lifecycle/01-gh-plan-sync.sh` after writing.
 
 Write each Ink component to `~/.claude/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/orch-types.ts` → `~/.claude/scripts/terminal-ui/src/orch-types.ts`
