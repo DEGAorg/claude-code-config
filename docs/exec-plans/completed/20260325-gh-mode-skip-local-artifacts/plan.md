@@ -111,12 +111,12 @@ In local mode: no changes.
 
 ## Progress log
 
-- [ ] Add `GH_SYNC` flag to `orch-run.sh`; resolve PLAN_DIR from `.orchestrator/` in GH mode; skip copy to `docs/exec-plans/` and uncommitted guard
-- [ ] Add `GH_SYNC` flag to `orch-engine.sh`; resolve PLAN_DIR from `.orchestrator/`; gate SHIP steps 1, 4, 5, 6, and post-validation (deps: 1)
-- [ ] Update `orch-parse-items.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 1)
-- [ ] Update `orch-verify.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
-- [ ] Update `orch-review.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
-- [ ] Test: run a plan with `github.sync: true` and verify PR diff has zero `docs/exec-plans/` files; run with `sync: false` and verify local flow works (deps: 3, 4, 5)
+- [x] Add `GH_SYNC` flag to `orch-run.sh`; resolve PLAN_DIR from `.orchestrator/` in GH mode; skip copy to `docs/exec-plans/` and uncommitted guard
+- [x] Add `GH_SYNC` flag to `orch-engine.sh`; resolve PLAN_DIR from `.orchestrator/`; gate SHIP steps 1, 4, 5, 6, and post-validation (deps: 1)
+- [x] Update `orch-parse-items.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 1)
+- [x] Update `orch-verify.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
+- [x] Update `orch-review.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
+- [x] Test: run a plan with `github.sync: true` and verify PR diff has zero `docs/exec-plans/` files; run with `sync: false` and verify local flow works (deps: 3, 4, 5)
 
 ## Decision log
 
@@ -129,8 +129,8 @@ In local mode: no changes.
 
 ## Completion criteria
 
-- [ ] `rg 'GH_SYNC' scripts/orch-run.sh scripts/orch-engine.sh` shows the flag defined and used in both
-- [ ] With `github.sync: true`, `docs/exec-plans/active/` is never written to during a plan run
-- [ ] With `github.sync: true`, a completed plan's PR diff contains zero files under `docs/exec-plans/`
-- [ ] With `github.sync: false`, `docs/exec-plans/completed/<slug>/plan.md` exists after SHIP
-- [ ] `shellcheck -e SC1091 -S warning scripts/orch-run.sh scripts/orch-engine.sh scripts/orch-parse-items.sh scripts/orch-verify.sh scripts/orch-review.sh` passes
+- [x] `rg 'GH_SYNC' scripts/orch-run.sh scripts/orch-engine.sh` shows the flag defined and used in both
+- [x] With `github.sync: true`, `docs/exec-plans/active/` is never written to during a plan run
+- [x] With `github.sync: true`, a completed plan's PR diff contains zero files under `docs/exec-plans/`
+- [x] With `github.sync: false`, `docs/exec-plans/completed/<slug>/plan.md` exists after SHIP
+- [x] `shellcheck -e SC1091 -S warning scripts/orch-run.sh scripts/orch-engine.sh scripts/orch-parse-items.sh scripts/orch-verify.sh scripts/orch-review.sh` passes
