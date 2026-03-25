@@ -111,7 +111,7 @@ In local mode: no changes.
 
 ## Progress log
 
-- [ ] Add `GH_SYNC` flag to `orch-run.sh`; resolve PLAN_DIR from `.orchestrator/` in GH mode; skip copy to `docs/exec-plans/` and uncommitted guard
+- [x] Add `GH_SYNC` flag to `orch-run.sh`; resolve PLAN_DIR from `.orchestrator/` in GH mode; skip copy to `docs/exec-plans/` and uncommitted guard
 - [ ] Add `GH_SYNC` flag to `orch-engine.sh`; resolve PLAN_DIR from `.orchestrator/`; gate SHIP steps 1, 4, 5, 6, and post-validation (deps: 1)
 - [ ] Update `orch-parse-items.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 1)
 - [ ] Update `orch-verify.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
