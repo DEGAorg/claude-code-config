@@ -24,4 +24,28 @@ timeline:
   branch: develop
   path: data/timeline.json
 
-success_criteria: []
+success_criteria:
+  # Repo health — shell scripts pass shellcheck
+  - id: shellcheck
+    description: no shellcheck errors in scripts/ and hooks/
+    check: shellcheck -e SC1091 scripts/*.sh hooks/*.sh
+
+  # Repo health — shell scripts are shfmt-formatted
+  - id: shfmt
+    description: shell scripts are formatted (shfmt)
+    check: "find scripts/ hooks/ -maxdepth 1 -name '*.sh' -exec shfmt -d {} +"
+
+  # Repo health — CI workflows are valid
+  - id: actionlint
+    description: CI workflows pass actionlint
+    check: actionlint
+
+  # Repo health — no stray TODOs in core artifacts
+  - id: no-todos
+    description: no TODO/FIXME in commands/, skills/, hooks/
+    check: "! rg 'TODO|FIXME' commands/ skills/ hooks/"
+
+  # Exec-plan structure — active plans must be directories
+  - id: exec-plan-dirs
+    description: all entries in docs/exec-plans/active/ are directories (no loose .md files)
+    check: "! find docs/exec-plans/active -maxdepth 1 -name '*.md' | grep -q ."

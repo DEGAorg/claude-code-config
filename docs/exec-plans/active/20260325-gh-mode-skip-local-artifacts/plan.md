@@ -1,6 +1,6 @@
 # Plan: Skip git-tracked plan artifacts when github.sync is true
 
-**Status:** Draft
+**Status:** In progress
 **Created:** 2026-03-25
 
 ## Requirements
