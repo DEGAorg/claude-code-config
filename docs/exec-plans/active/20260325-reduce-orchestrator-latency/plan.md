@@ -82,11 +82,11 @@ Implement patterns 1 and 4 from `agent-context-patterns.md`:
 
 ## Completion criteria
 
-- [ ] `shellcheck -e SC1091 scripts/orch-engine.sh scripts/orch-review.sh scripts/orch-verify.sh scripts/orch-state.sh` passes with no errors
-- [ ] `shfmt -d scripts/orch-engine.sh scripts/orch-review.sh scripts/orch-verify.sh scripts/orch-state.sh` shows no formatting diff
-- [ ] `dega-core.yaml` contains `review_poll_interval_seconds` and `verify_poll_interval_seconds` keys
-- [ ] `orch-review.sh` reads `review_poll_interval_seconds` (grep confirms the string appears in the script)
-- [ ] `orch-verify.sh` reads `verify_poll_interval_seconds` (grep confirms the string appears in the script)
-- [ ] No `sleep 5` remains in `scripts/orch-engine.sh`, `scripts/orch-review.sh`, or `scripts/orch-verify.sh`
-- [ ] `build_worker_prompt()` output includes a `## Task Context` section with file paths, check command, and completion criteria
-- [ ] `agents/orch-worker.md` contains instructions for using pre-hydrated context
+- [x] `shellcheck -e SC1091 scripts/orch-engine.sh scripts/orch-review.sh scripts/orch-verify.sh scripts/orch-state.sh` passes with no errors
+- [x] `shfmt -d scripts/orch-engine.sh scripts/orch-review.sh scripts/orch-verify.sh scripts/orch-state.sh` shows no formatting diff
+- [x] `dega-core.yaml` contains `review_poll_interval_seconds` and `verify_poll_interval_seconds` keys
+- [x] `orch-review.sh` reads `review_poll_interval_seconds` (grep confirms the string appears in the script)
+- [x] `orch-verify.sh` reads `verify_poll_interval_seconds` (grep confirms the string appears in the script)
+- [x] No `sleep 5` remains in `scripts/orch-engine.sh`, `scripts/orch-review.sh`, or `scripts/orch-verify.sh`
+- [x] `build_worker_prompt()` output includes a `## Task Context` section with file paths, check command, and completion criteria
+- [x] `agents/orch-worker.md` contains instructions for using pre-hydrated context
