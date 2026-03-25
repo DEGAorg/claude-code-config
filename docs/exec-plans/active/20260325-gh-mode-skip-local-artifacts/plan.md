@@ -129,8 +129,8 @@ In local mode: no changes.
 
 ## Completion criteria
 
-- [ ] `rg 'GH_SYNC' scripts/orch-run.sh scripts/orch-engine.sh` shows the flag defined and used in both
-- [ ] With `github.sync: true`, `docs/exec-plans/active/` is never written to during a plan run
-- [ ] With `github.sync: true`, a completed plan's PR diff contains zero files under `docs/exec-plans/`
-- [ ] With `github.sync: false`, `docs/exec-plans/completed/<slug>/plan.md` exists after SHIP
-- [ ] `shellcheck -e SC1091 -S warning scripts/orch-run.sh scripts/orch-engine.sh scripts/orch-parse-items.sh scripts/orch-verify.sh scripts/orch-review.sh` passes
+- [x] `rg 'GH_SYNC' scripts/orch-run.sh scripts/orch-engine.sh` shows the flag defined and used in both
+- [x] With `github.sync: true`, `docs/exec-plans/active/` is never written to during a plan run
+- [x] With `github.sync: true`, a completed plan's PR diff contains zero files under `docs/exec-plans/`
+- [x] With `github.sync: false`, `docs/exec-plans/completed/<slug>/plan.md` exists after SHIP
+- [x] `shellcheck -e SC1091 -S warning scripts/orch-run.sh scripts/orch-engine.sh scripts/orch-parse-items.sh scripts/orch-verify.sh scripts/orch-review.sh` passes
