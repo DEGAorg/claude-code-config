@@ -15,6 +15,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@nevuamarkets/poly-websockets": "^1.0.2",
     "pmxtjs": "2.22.1"
   },
   "devDependencies": {
