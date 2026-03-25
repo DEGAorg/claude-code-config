@@ -22,8 +22,10 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 PROMPT_TEMPLATE="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
+
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
 
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
@@ -31,6 +33,15 @@ DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+
+# Use worktree plan path; in GH mode resolve from .orchestrator/
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+elif [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+else
+	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+fi
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2

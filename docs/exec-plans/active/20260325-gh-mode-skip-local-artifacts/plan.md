@@ -115,7 +115,7 @@ In local mode: no changes.
 - [x] Add `GH_SYNC` flag to `orch-engine.sh`; resolve PLAN_DIR from `.orchestrator/`; gate SHIP steps 1, 4, 5, 6, and post-validation (deps: 1)
 - [x] Update `orch-parse-items.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 1)
 - [x] Update `orch-verify.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
-- [ ] Update `orch-review.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
+- [x] Update `orch-review.sh` to resolve plan path from `.orchestrator/` in GH mode (deps: 2)
 - [ ] Test: run a plan with `github.sync: true` and verify PR diff has zero `docs/exec-plans/` files; run with `sync: false` and verify local flow works (deps: 3, 4, 5)
 
 ## Decision log
