@@ -1,0 +1,24 @@
+{
+  "name": "pmxt-poc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "POC: Validate pmxtjs SDK against Polymarket for Canon MCP Server",
+  "scripts": {
+    "test:read-only": "tsx src/test-read-only.ts",
+    "test:auth": "tsx src/test-auth.ts",
+    "test:orders": "tsx src/test-orders.ts",
+    "test:websocket": "tsx src/test-websocket.ts",
+    "test:all": "tsx src/run-all.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "pmxtjs": "2.22.1"
+  },
+  "devDependencies": {
+    "tsx": "4.21.0",
+    "typescript": "5.8.2"
+  }
+}

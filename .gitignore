@@ -21,3 +21,8 @@ focus.yaml
 # Test artifacts (exec-plan lifecycle smoke test)
 /hello-world.md
 /tests/scratch/
+
+# POC artifacts
+poc/*/node_modules/
+poc/*/dist/
+poc/*/.env
