@@ -119,6 +119,11 @@ review)
 	# Each item with a lastResult gets a comment with its iteration count.
 	ITEM_COUNT=$(jq '.items | length' "${STATE_FILE}")
 	DONE_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/done"
+	REVIEW_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/reviews"
+
+	# Identify items that failed review (rework list from finalReview).
+	REWORK_IDS=$(jq -r '.finalReview.reworkItems // [] | .[]' "${STATE_FILE}")
+
 	for ((i = 0; i < ITEM_COUNT; i++)); do
 		ITEM_RESULT=$(jq -r ".items[${i}].lastResult // empty" "${STATE_FILE}")
 		if [[ -z "${ITEM_RESULT}" || "${ITEM_RESULT}" == "null" ]]; then
@@ -145,6 +150,16 @@ review)
 			done
 		fi
 
+		# Read review feedback for items that failed review.
+		FEEDBACK=""
+		if echo "${REWORK_IDS}" | grep -qw "${ITEM_ID}"; then
+			ITEM_RESULT="REVISE"
+			REVIEW_FILE="${REVIEW_DIR}/item-${ITEM_ID}-review.txt"
+			if [[ -f "${REVIEW_FILE}" ]]; then
+				FEEDBACK=$(tail -n +2 "${REVIEW_FILE}")
+			fi
+		fi
+
 		ARGS=(review "${SLUG}" --issue "${ISSUE}")
 		ARGS+=(--item-id "${ITEM_ID}")
 		ARGS+=(--item-desc "${ITEM_DESC}")
@@ -152,6 +167,9 @@ review)
 		ARGS+=(--iterations "${ITEM_ITER}")
 		if [[ -n "${WORK_SUMMARY}" ]]; then
 			ARGS+=(--work-summary "${WORK_SUMMARY}")
+		fi
+		if [[ -n "${FEEDBACK}" ]]; then
+			ARGS+=(--feedback "${FEEDBACK}")
 		fi
 
 		"${SYNC_SCRIPT}" "${ARGS[@]}" || true
