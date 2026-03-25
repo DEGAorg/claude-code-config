@@ -93,7 +93,20 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+# --- GH sync mode ---
+# When github.sync is true, plans live in .orchestrator/ instead of
+# docs/exec-plans/. This keeps PRs free of plan artifacts.
+GH_SYNC=false
+if gh_config_bool sync; then
+	GH_SYNC=true
+fi
+export GH_SYNC
+
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${REPO_ROOT}/.orchestrator/plans/${SLUG}"
+else
+	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+fi
 
 # --- Fetch plan from GitHub Issue if --issue is set ---
 
@@ -118,14 +131,21 @@ if [[ -n "${ISSUE_NUMBER}" ]]; then
 	echo "orch: fetching plan from issue #${ISSUE_NUMBER}..."
 	"${SCRIPT_DIR}/gh-plan-fetch.sh" "${ISSUE_NUMBER}" "${SLUG}" >&2
 
-	# Copy fetched plan to where orch-parse-items.sh expects it
+	# Verify fetched plan exists in .orchestrator/
 	FETCHED_PLAN=".orchestrator/plans/${SLUG}/plan.md"
 	if [[ ! -f "${FETCHED_PLAN}" ]]; then
 		echo "error: gh-plan-fetch.sh did not produce ${FETCHED_PLAN}" >&2
 		exit 1
 	fi
-	mkdir -p "${PLAN_DIR}"
-	cp "${FETCHED_PLAN}" "${PLAN_DIR}/plan.md"
+
+	if [[ "${GH_SYNC}" == true ]]; then
+		# GH mode: PLAN_DIR already points to .orchestrator/, no copy needed
+		echo "orch: GH mode — plan stays in .orchestrator/plans/${SLUG}/"
+	else
+		# Local mode: copy fetched plan into docs/exec-plans/active/
+		mkdir -p "${PLAN_DIR}"
+		cp "${FETCHED_PLAN}" "${PLAN_DIR}/plan.md"
+	fi
 	FROM_ISSUE=true
 fi
 
@@ -135,8 +155,8 @@ if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	exit 1
 fi
 
-# --- Uncommitted plan guard (skip for issue-sourced plans) ---
-if [[ "${FROM_ISSUE}" == false ]]; then
+# --- Uncommitted plan guard (skip for issue-sourced plans and GH mode) ---
+if [[ "${FROM_ISSUE}" == false ]] && [[ "${GH_SYNC}" == false ]]; then
 	plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
 	if [[ -n "${plan_dirty}" ]]; then
 		echo "error: plan has uncommitted changes — commit before running orch" >&2
@@ -317,7 +337,11 @@ orch_create_worktree "${SLUG}" "${ISSUE_NUMBER}"
 # --- Copy plan directory into worktree ---
 
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
-WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+if [[ "${GH_SYNC}" == true ]]; then
+	WORKTREE_PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+else
+	WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+fi
 mkdir -p "${WORKTREE_PLAN_DIR}"
 cp -r "${PLAN_DIR}/"* "${WORKTREE_PLAN_DIR}/"
 echo "orch: copied plan into worktree at ${WORKTREE_PLAN_DIR}"
