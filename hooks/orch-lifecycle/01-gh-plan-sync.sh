@@ -118,6 +118,7 @@ review)
 	# Post per-item review comments by reading state.json.
 	# Each item with a lastResult gets a comment with its iteration count.
 	ITEM_COUNT=$(jq '.items | length' "${STATE_FILE}")
+	DONE_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/done"
 	for ((i = 0; i < ITEM_COUNT; i++)); do
 		ITEM_RESULT=$(jq -r ".items[${i}].lastResult // empty" "${STATE_FILE}")
 		if [[ -z "${ITEM_RESULT}" || "${ITEM_RESULT}" == "null" ]]; then
@@ -127,11 +128,31 @@ review)
 		ITEM_DESC=$(jq -r ".items[${i}].description" "${STATE_FILE}")
 		ITEM_ITER=$(jq -r ".items[${i}].iteration // 1" "${STATE_FILE}")
 
+		# Read per-item work summary: try done-file first, then
+		# worktree plan-level work-summary.txt as fallback.
+		WORK_SUMMARY=""
+		DONE_FILE="${DONE_DIR}/item-${ITEM_ID}.txt"
+		if [[ -f "${DONE_FILE}" ]]; then
+			WORK_SUMMARY=$(cat "${DONE_FILE}")
+		else
+			for ws_path in \
+				"${ORCH_STATE_DIR}/worktrees/${SLUG}/docs/exec-plans/active/${SLUG}/work-summary.txt" \
+				"${ORCH_STATE_DIR}/worktrees/${SLUG}/.orchestrator/plans/${SLUG}/work-summary.txt"; do
+				if [[ -f "${ws_path}" ]]; then
+					WORK_SUMMARY=$(cat "${ws_path}")
+					break
+				fi
+			done
+		fi
+
 		ARGS=(review "${SLUG}" --issue "${ISSUE}")
 		ARGS+=(--item-id "${ITEM_ID}")
 		ARGS+=(--item-desc "${ITEM_DESC}")
 		ARGS+=(--item-result "${ITEM_RESULT}")
 		ARGS+=(--iterations "${ITEM_ITER}")
+		if [[ -n "${WORK_SUMMARY}" ]]; then
+			ARGS+=(--work-summary "${WORK_SUMMARY}")
+		fi
 
 		"${SYNC_SCRIPT}" "${ARGS[@]}" || true
 	done

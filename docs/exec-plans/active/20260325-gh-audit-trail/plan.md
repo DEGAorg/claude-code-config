@@ -73,7 +73,7 @@ completes. The comment includes pass/fail and the criteria results.
 ## Progress log
 
 - [x] Add `--work-summary` flag to `gh-plan-sync.sh` review handler; include in comment body
-- [ ] Read work-summary.txt in lifecycle hook review handler and pass via `--work-summary` (deps: 1)
+- [x] Read work-summary.txt in lifecycle hook review handler and pass via `--work-summary` (deps: 1)
 - [ ] Read review-feedback.txt in lifecycle hook review handler and pass via `--feedback` (deps: 1)
 - [ ] Add `verify` event to `gh-plan-sync.sh` with pass/fail comment (deps: 1)
 - [ ] Add `verify` event dispatch to lifecycle hook (deps: 4)
