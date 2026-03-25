@@ -77,7 +77,7 @@ completes. The comment includes pass/fail and the criteria results.
 - [x] Read review-feedback.txt in lifecycle hook review handler and pass via `--feedback` (deps: 1)
 - [x] Add `verify` event to `gh-plan-sync.sh` with pass/fail comment (deps: 1)
 - [x] Add `verify` event dispatch to lifecycle hook (deps: 4)
-- [ ] Fire `verify` lifecycle hook from `orch-engine.sh` after verifier completes (deps: 5)
+- [x] Fire `verify` lifecycle hook from `orch-engine.sh` after verifier completes (deps: 5)
 
 ## Decision log
 
