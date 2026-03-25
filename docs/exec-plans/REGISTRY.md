@@ -97,3 +97,4 @@
 | 2026-03-24 | [20260324-delete-diagnostic-debris](completed/20260324-delete-diagnostic-debris/plan.md) | completed | 0 | orch |
 | 2026-03-24 | [20260324-apply-core-gh-scripts](completed/20260324-apply-core-gh-scripts/plan.md) | completed | 0 | orch |
 | 2026-03-25 | [20260325-gh-mode-skip-local-artifacts](completed/20260325-gh-mode-skip-local-artifacts/plan.md) | completed | 0 | orch |
+| 2026-03-25 | [20260325-gh-audit-trail](completed/20260325-gh-audit-trail/plan.md) | completed | 0 | orch |
