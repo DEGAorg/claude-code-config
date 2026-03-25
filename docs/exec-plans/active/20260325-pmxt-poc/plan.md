@@ -80,8 +80,8 @@ pmxt-core is a substantial dependency (Express server, ethers, @polymarket/clob-
 
 ## Completion criteria
 
-- [ ] All P0 read-only methods tested with documented response shapes
-- [ ] Auth requirements documented (which methods need private key vs public address vs nothing)
-- [ ] createOrder tested or explicitly documented why it was skipped (no testnet / safety)
-- [ ] RESULTS.md contains go/no-go decision with method-by-method pass/fail table
-- [ ] All code runs with `npx tsx src/run-all.ts` from poc/pmxt-poc/
+- [x] All P0 read-only methods tested with documented response shapes
+- [x] Auth requirements documented (which methods need private key vs public address vs nothing)
+- [x] createOrder tested or explicitly documented why it was skipped (no testnet / safety)
+- [x] RESULTS.md contains go/no-go decision with method-by-method pass/fail table
+- [x] All code runs with `npx tsx src/run-all.ts` from poc/pmxt-poc/
