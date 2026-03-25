@@ -22,6 +22,7 @@
       "Bash(git push --force*)",
       "Bash(git push *--force*)",
       "Bash(git reset --hard*)",
+      "Bash(gh pr merge*)",
 
       "Edit(~/.bashrc)",
       "Edit(~/.zshrc)",
