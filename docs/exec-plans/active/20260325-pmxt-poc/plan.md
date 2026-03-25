@@ -67,7 +67,7 @@ pmxt-core is a substantial dependency (Express server, ethers, @polymarket/clob-
 - [x] Test write operations: buildOrder (dry-run), createOrder + cancelOrder if safe (deps: 4)
 - [x] Test WebSocket methods: watchOrderBook, watchTrades with 10s timeout (deps: 3)
 - [x] Write run-all.ts runner with structured pass/fail output (deps: 3, 4, 5, 6)
-- [ ] Write RESULTS.md with go/no-go decision, response shapes, auth requirements, quirks (deps: 7)
+- [x] Write RESULTS.md with go/no-go decision, response shapes, auth requirements, quirks (deps: 7)
 
 ## Decision log
 
