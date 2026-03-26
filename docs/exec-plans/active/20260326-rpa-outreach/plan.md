@@ -100,8 +100,8 @@ rpa-outreach/
 
 - [x] 1. Scaffold project — create rpa-outreach/ directory in repo root, package.json, tsconfig, deps (playwright, better-sqlite3, commander, vitest), directory structure, .gitignore
 - [x] 2. Shared types + config loading — TypeScript interfaces (Prospect, Config, Status), config reader for selectors/defaults/hackathons (deps: 1)
-- [ ] 3. Database layer — SQLite schema (prospects table per spec), connection module, CRUD operations (insert, upsert, query by status, update status, dedup check) (deps: 1)
-- [ ] 4. Auth module — Playwright browser context persistence, headed-mode login flow (user logs in once, session saved to auth/), context reload for subsequent runs (deps: 2)
+- [x] 3. Database layer — SQLite schema (prospects table per spec), connection module, CRUD operations (insert, upsert, query by status, update status, dedup check) (deps: 1)
+- [x] 4. Auth module — Playwright browser context persistence, headed-mode login flow (user logs in once, session saved to auth/), context reload for subsequent runs (deps: 2)
 - [ ] 5. DOM recon: scraper pages — Playwright script navigates 2-3 DoraHacks hackathon participant/BUIDLer pages, saves full-page HTML + screenshots to recon/ directory. Agent analyzes saved HTML to identify selectors for: profile list container, individual profile cards, username, profile URL, bio, tags. Writes scraper selectors to config/selectors.json. (deps: 4)
 - [ ] 6. DOM recon: DM pages — Navigate to a DoraHacks profile page and DM/message page (requires auth session). Save HTML + screenshots. Identify selectors for: DM button/link on profile, message input field, send button, confirmation indicator. Add DM selectors to config/selectors.json. (deps: 5)
 - [ ] 7. Scraper: single hackathon page — navigate DoraHacks participant page using discovered selectors, extract profiles (username, profile_url, display_name, bio, tags, source_hackathon), store in DB (deps: 3, 5)

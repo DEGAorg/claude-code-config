@@ -1,0 +1,7 @@
+Hi {name},
+
+Your profile on {hackathon_name} stood out — especially your interest in sports tech. We're building prediction markets at Canon, and sports is one of our core verticals.
+
+Take a look at our hackathon: {listing_url}
+
+If sports and data are your thing, this could be a great fit. Let me know!

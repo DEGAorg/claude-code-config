@@ -1,0 +1,7 @@
+Hi {name},
+
+Saw your work on {hackathon_name} — your blockchain/crypto experience caught my eye. We're running a hackathon at Canon focused on prediction markets and decentralized protocols.
+
+Check it out here: {listing_url}
+
+If you're into crypto and DeFi, this is right up your alley. Let me know if you're interested!
