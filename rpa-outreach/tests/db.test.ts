@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Database from "better-sqlite3";
+import { describe, it, expect, afterEach } from "vitest";
 import type { Database as DatabaseType } from "better-sqlite3";
 import {
   getDb,

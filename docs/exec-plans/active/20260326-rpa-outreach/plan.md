@@ -111,7 +111,7 @@ rpa-outreach/
 - [x] 11. DM sender — navigate DoraHacks DM page per profile using discovered selectors, auto-fill message from selected template, send via DoraHacks messaging. Safety controls: randomized delays (30-90s), rate cap (20-30/hr), batch limit (100-150/session), resume from last position, dry-run mode as default (--live flag to send), stop-on-error (captcha/block/rate limit detection -> pause + alert), mark messaged in DB with timestamp (deps: 6, 9, 10)
 - [x] 12. Status report — aggregate counts by pipeline stage (scraped/filtered/messaged/replied), formatted CLI output (deps: 3, 2)
 - [x] 13. CLI entry point — unified commander CLI wiring all subcommands: recon, scrape, filter, send (--live/--dry-run), status (deps: 8, 11, 12)
-- [ ] 14. Tests — unit tests for db operations, filter scoring, template rendering + variant selection (deps: 13)
+- [x] 14. Tests — unit tests for db operations, filter scoring, template rendering + variant selection (deps: 13)
 - [ ] 15. README + documentation — setup instructions, usage examples for each subcommand, config file reference, selector update guide (re-run recon), troubleshooting (deps: 14)
 
 ## Decision log

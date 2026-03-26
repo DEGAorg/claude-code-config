@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
 import { scoreProspect, filterProspects } from "../src/filter.js";
-import type { InterestCategory } from "../src/filter.js";
 import { insertProspect, getProspectById } from "../src/db.js";
 
 // Inline schema for test isolation (no singleton side effects)

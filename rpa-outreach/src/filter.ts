@@ -1,5 +1,4 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import type { Prospect } from "./db.js";
 import { queryByStatus } from "./db.js";
 
 // ---------- Category keywords ----------
