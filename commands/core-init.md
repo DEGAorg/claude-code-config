@@ -186,7 +186,25 @@ github:
 
 ---
 
-## 5. Write CLAUDE.md
+## 5. CRITICAL: github block must NEVER be omitted
+
+**The `github:` block is MANDATORY in every `dega-core.yaml` produced by this
+command. There is NO scenario where it may be left out.**
+
+- If `gh` is installed and the repo is detected → write `sync: true` with full config.
+- If `gh` is NOT installed, not authenticated, or detection fails → write `sync: false` with a comment.
+- **Never skip the `github:` block.** Even if every detection step fails, the block must be present with `sync: false`.
+
+A missing `github:` block breaks the orchestrator's `GH_SYNC` detection and
+cascades into plan-path failures. This is the single most common failure mode
+on fresh Linux installs.
+
+After writing `dega-core.yaml`, visually confirm the `github:` key is present
+before proceeding to the next step.
+
+---
+
+## 6. Write CLAUDE.md
 
 **If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
 
@@ -229,7 +247,7 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 
 ---
 
-## 6. Print completion message
+## 7. Print completion message
 
 Summarize what was created. Use a checklist format:
 
