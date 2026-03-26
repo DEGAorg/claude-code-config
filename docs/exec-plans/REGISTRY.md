@@ -99,3 +99,4 @@
 | 2026-03-25 | [20260325-gh-mode-skip-local-artifacts](completed/20260325-gh-mode-skip-local-artifacts/plan.md) | completed | 0 | orch |
 | 2026-03-25 | [20260325-gh-audit-trail](completed/20260325-gh-audit-trail/plan.md) | completed | 0 | orch |
 | 2026-03-26 | [20260326-harden-core-init-github](completed/20260326-harden-core-init-github/plan.md) | completed | 1 | orch |
+| 2026-03-26 | [20260326-fix-tmux-env-propagation](completed/20260326-fix-tmux-env-propagation/plan.md) | completed | 0 | orch |
