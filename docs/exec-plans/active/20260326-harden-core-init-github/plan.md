@@ -32,14 +32,14 @@ block cascades into orchestrator plan-path failures (issues 2-4).
 
 ## Progress log
 
-- [ ] Update `commands/core-init.md` step 4: add fallback when `gh` not installed — write `sync: false` with comment
-- [ ] Update `commands/core-init.md` step 5: add bold instruction that github block must NEVER be omitted (deps: 1)
+- [x] Update `commands/core-init.md` step 4: add fallback when `gh` not installed — write `sync: false` with comment
+- [x] Update `commands/core-init.md` step 5: add bold instruction that github block must NEVER be omitted (deps: 1)
 - [x] Add validation gate after write: re-read `dega-core.yaml`, check `github:` key exists, error if missing (deps: 2)
 - [x] Add test case: run core-init logic against a repo with no `gh` CLI — verify github block is present with `sync: false` (deps: 3)
 
 ## Completion criteria
 
-- [ ] core-init command always produces a `github:` block in `dega-core.yaml`
-- [ ] Missing `gh` CLI results in `sync: false` with explanatory comment
-- [ ] Validation gate catches missing block and reports error
-- [ ] shellcheck passes on any new scripts
+- [x] core-init command always produces a `github:` block in `dega-core.yaml`
+- [x] Missing `gh` CLI results in `sync: false` with explanatory comment
+- [x] Validation gate catches missing block and reports error
+- [x] shellcheck passes on any new scripts
