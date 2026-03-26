@@ -3,20 +3,34 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { loadSession } from "./auth.js";
-import { getDb, upsertProspect } from "./db.js";
+import { getDb, upsertProspect, isDuplicate } from "./db.js";
 import type { ProspectInsert } from "./db.js";
-import type { SelectorsConfig, ScraperSelectors } from "./types.js";
+import type {
+  SelectorsConfig,
+  ScraperSelectors,
+  HackathonEntry,
+  DefaultsConfig,
+} from "./types.js";
 
 const PROJECT_ROOT = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "..",
 );
 
-const SELECTORS_PATH = resolve(PROJECT_ROOT, "config", "selectors.json");
-const DEFAULTS_PATH = resolve(PROJECT_ROOT, "config", "defaults.json");
+const SELECTORS_PATH = resolve(
+  PROJECT_ROOT, "config", "selectors.json",
+);
+const DEFAULTS_PATH = resolve(
+  PROJECT_ROOT, "config", "defaults.json",
+);
+const HACKATHONS_PATH = resolve(
+  PROJECT_ROOT, "config", "hackathons.json",
+);
 
-/** Milliseconds to wait for SPA content after navigation. */
 const SPA_SETTLE_MS = 5000;
+const SCROLL_PAUSE_MS = 2000;
+const MAX_SCROLL_ATTEMPTS = 50;
+const DEFAULT_PAGE_DELAY_MS = 3000;
 
 interface ScrapeResult {
   total: number;
@@ -25,10 +39,18 @@ interface ScrapeResult {
   skipped: number;
 }
 
-/**
- * Load scraper selectors from config/selectors.json.
- * Throws if selectors are missing or empty.
- */
+interface MultiScrapeResult {
+  hackathons: number;
+  totalProfiles: number;
+  totalInserted: number;
+  totalSkipped: number;
+  perHackathon: Array<{
+    url: string;
+    name: string;
+    result: ScrapeResult;
+  }>;
+}
+
 function loadSelectors(): ScraperSelectors {
   const raw = readFileSync(SELECTORS_PATH, "utf-8");
   const config = JSON.parse(raw) as SelectorsConfig;
@@ -36,29 +58,47 @@ function loadSelectors(): ScraperSelectors {
 
   if (!s.profile_list_container || !s.profile_card) {
     throw new Error(
-      "Scraper selectors not configured. Run recon first: rpa-outreach recon",
+      "Scraper selectors not configured. Run recon first: "
+      + "rpa-outreach recon",
     );
   }
 
   return s;
 }
 
-/**
- * Load scrape delay from config/defaults.json.
- */
-function loadScrapeDelay(): number {
-  try {
-    const raw = readFileSync(DEFAULTS_PATH, "utf-8");
-    const defaults = JSON.parse(raw) as { scrape_delay_ms?: number };
-    return defaults.scrape_delay_ms ?? 2000;
-  } catch {
-    return 2000;
+function loadDefaults(): DefaultsConfig {
+  const raw = readFileSync(DEFAULTS_PATH, "utf-8");
+  return JSON.parse(raw) as DefaultsConfig;
+}
+
+function loadHackathons(): HackathonEntry[] {
+  const raw = readFileSync(HACKATHONS_PATH, "utf-8");
+  const entries = JSON.parse(raw) as HackathonEntry[];
+
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error(
+      "No hackathons configured in config/hackathons.json",
+    );
   }
+
+  return entries;
+}
+
+function randomDelay(minMs: number, maxMs: number): number {
+  return Math.floor(
+    Math.random() * (maxMs - minMs + 1),
+  ) + minMs;
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 /**
- * Extract profile data from a single card element using the configured
- * selectors. Runs inside the browser via page.evaluate.
+ * Extract profile data from the page using configured selectors.
+ * Runs inside the browser via page.evaluate.
  */
 async function extractProfiles(
   page: Page,
@@ -67,7 +107,9 @@ async function extractProfiles(
 ): Promise<ProspectInsert[]> {
   return page.evaluate(
     ({ sel, sourceUrl }) => {
-      const container = document.querySelector(sel.profile_list_container);
+      const container = document.querySelector(
+        sel.profile_list_container,
+      );
       if (!container) return [];
 
       const cards = container.querySelectorAll(sel.profile_card);
@@ -83,11 +125,9 @@ async function extractProfiles(
       for (const card of cards) {
         let username = "";
         let profileUrl = "";
-        let displayName = "";
         let bio = "";
         let tags = "";
 
-        // Extract profile URL
         if (sel.profile_url) {
           const linkEl = card.querySelector(sel.profile_url);
           if (linkEl) {
@@ -98,7 +138,6 @@ async function extractProfiles(
           }
         }
 
-        // Extract username
         if (sel.username) {
           const usernameEl = card.querySelector(sel.username);
           if (usernameEl) {
@@ -106,16 +145,11 @@ async function extractProfiles(
           }
         }
 
-        // If no dedicated username selector, derive from profile URL
         if (!username && profileUrl) {
           const segments = profileUrl.split("/").filter(Boolean);
           username = segments[segments.length - 1] ?? "";
         }
 
-        // Display name defaults to username
-        displayName = username;
-
-        // Extract bio
         if (sel.bio) {
           const bioEl = card.querySelector(sel.bio);
           if (bioEl) {
@@ -123,7 +157,6 @@ async function extractProfiles(
           }
         }
 
-        // Extract tags
         if (sel.tags) {
           const tagEls = card.querySelectorAll(sel.tags);
           const tagList: string[] = [];
@@ -134,12 +167,11 @@ async function extractProfiles(
           tags = tagList.join(",");
         }
 
-        // Only include profiles with a username
         if (username) {
           profiles.push({
             username,
             profile_url: profileUrl,
-            display_name: displayName,
+            display_name: username,
             bio,
             tags,
             source_hackathon: sourceUrl,
@@ -154,18 +186,71 @@ async function extractProfiles(
 }
 
 /**
+ * Scroll to the bottom of the page repeatedly to load all
+ * profiles from infinite-scroll / lazy-load pages.
+ *
+ * Stops when no new content appears after scrolling or when
+ * MAX_SCROLL_ATTEMPTS is reached.
+ */
+async function scrollToLoadAll(
+  page: Page,
+  selectors: ScraperSelectors,
+  label: string,
+): Promise<void> {
+  let previousCardCount = 0;
+  let noChangeRounds = 0;
+
+  for (let i = 0; i < MAX_SCROLL_ATTEMPTS; i++) {
+    const currentCount = await page.evaluate(
+      (sel) => {
+        const container = document.querySelector(
+          sel.profile_list_container,
+        );
+        if (!container) return 0;
+        return container.querySelectorAll(sel.profile_card).length;
+      },
+      selectors,
+    );
+
+    if (currentCount === previousCardCount) {
+      noChangeRounds++;
+      if (noChangeRounds >= 3) {
+        console.log(
+          `${label} Scroll complete — no new profiles after `
+          + `${noChangeRounds} scrolls (${currentCount} total)`,
+        );
+        break;
+      }
+    } else {
+      noChangeRounds = 0;
+      console.log(
+        `${label} Scroll ${i + 1}: ${currentCount} profiles loaded`,
+      );
+    }
+
+    previousCardCount = currentCount;
+
+    await page.evaluate(() => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    await page.waitForTimeout(SCROLL_PAUSE_MS);
+  }
+}
+
+/**
  * Scrape a single DoraHacks hackathon participant page.
  *
- * Navigates to the URL, waits for SPA rendering, extracts profiles
- * using selectors from config/selectors.json, and upserts each
- * profile into the SQLite database.
+ * Handles infinite scroll to load all profiles, extracts them
+ * using selectors from config/selectors.json, deduplicates by
+ * username, and upserts into the SQLite database.
  */
 export async function scrapeSinglePage(
   hackathonUrl: string,
   dbPath?: string,
 ): Promise<ScrapeResult> {
   const selectors = loadSelectors();
-  const scrapeDelay = loadScrapeDelay();
+  const defaults = loadDefaults();
 
   let browser: Browser | undefined;
   let context: BrowserContext | undefined;
@@ -186,36 +271,43 @@ export async function scrapeSinglePage(
         timeout: 30_000,
       });
     } catch {
-      console.log(`${label} networkidle timeout — waiting for SPA settle`);
+      console.log(
+        `${label} networkidle timeout — waiting for SPA settle`,
+      );
       await page.waitForTimeout(SPA_SETTLE_MS);
     }
 
-    // Extra settle for SPA rendering
     await page.waitForTimeout(SPA_SETTLE_MS);
 
-    // Wait for profile cards to appear
     try {
-      await page.waitForSelector(selectors.profile_card, { timeout: 10_000 });
+      await page.waitForSelector(
+        selectors.profile_card, { timeout: 10_000 },
+      );
     } catch {
       console.log(
-        `${label} Profile cards not found with selector: ${selectors.profile_card}`,
+        `${label} Profile cards not found: `
+        + `${selectors.profile_card}`,
       );
     }
 
-    // Brief delay for any remaining async rendering
-    await page.waitForTimeout(scrapeDelay);
+    await page.waitForTimeout(defaults.scrape_delay_ms);
+
+    await scrollToLoadAll(page, selectors, label);
 
     console.log(`${label} Extracting profiles...`);
-    const profiles = await extractProfiles(page, selectors, hackathonUrl);
-    console.log(`${label} Found ${profiles.length} profiles on page`);
+    const profiles = await extractProfiles(
+      page, selectors, hackathonUrl,
+    );
+    console.log(
+      `${label} Found ${profiles.length} profiles on page`,
+    );
 
     await page.close();
 
-    // Store in DB
     const db = getDb(dbPath);
     let inserted = 0;
-    let updated = 0;
     let skipped = 0;
+    const seenUsernames = new Set<string>();
 
     for (const profile of profiles) {
       if (!profile.username) {
@@ -223,28 +315,31 @@ export async function scrapeSinglePage(
         continue;
       }
 
-      const rowId = upsertProspect(db, profile);
-      if (rowId > 0) {
-        // upsert always returns a rowid; check if it was a new row
-        // by comparing with the profile count before
-        inserted++;
-      } else {
-        updated++;
+      if (seenUsernames.has(profile.username)) {
+        skipped++;
+        continue;
       }
+      seenUsernames.add(profile.username);
+
+      if (isDuplicate(db, profile.username)) {
+        skipped++;
+        continue;
+      }
+
+      upsertProspect(db, profile);
+      inserted++;
     }
 
-    // Since upsert doesn't distinguish insert vs update by rowid alone,
-    // report total processed minus skipped
     const result: ScrapeResult = {
       total: profiles.length,
-      inserted: profiles.length - skipped,
+      inserted,
       updated: 0,
       skipped,
     };
 
     console.log(
-      `${label} Done — ${result.total} profiles found, ` +
-      `${result.inserted} stored, ${result.skipped} skipped`,
+      `${label} Done — ${result.total} found, `
+      + `${result.inserted} inserted, ${result.skipped} skipped`,
     );
 
     return result;
@@ -252,4 +347,180 @@ export async function scrapeSinglePage(
     if (context) await context.close();
     if (browser) await browser.close();
   }
+}
+
+/**
+ * Scrape all hackathons from config/hackathons.json.
+ *
+ * Iterates each configured hackathon URL, handles pagination
+ * via infinite scroll, deduplicates by username across all
+ * hackathons, and applies rate-limited delays between pages.
+ */
+export async function scrapeAll(
+  dbPath?: string,
+): Promise<MultiScrapeResult> {
+  const hackathons = loadHackathons();
+  const selectors = loadSelectors();
+  const defaults = loadDefaults();
+  const label = "[scrape]";
+
+  const pageDelayMin = defaults.scrape_delay_ms;
+  const pageDelayMax = Math.max(
+    pageDelayMin * 2,
+    DEFAULT_PAGE_DELAY_MS,
+  );
+
+  console.log(
+    `${label} Starting multi-hackathon scrape `
+    + `(${hackathons.length} hackathons)`,
+  );
+
+  let browser: Browser | undefined;
+  let context: BrowserContext | undefined;
+
+  const perHackathon: MultiScrapeResult["perHackathon"] = [];
+  let totalProfiles = 0;
+  let totalInserted = 0;
+  let totalSkipped = 0;
+
+  try {
+    const session = await loadSession();
+    browser = session.browser;
+    context = session.context;
+
+    const db = getDb(dbPath);
+
+    for (let i = 0; i < hackathons.length; i++) {
+      const hackathon = hackathons[i];
+      if (!hackathon) continue;
+
+      console.log(
+        `\n${label} [${i + 1}/${hackathons.length}] `
+        + `${hackathon.name}: ${hackathon.url}`,
+      );
+
+      const page = await context.newPage();
+
+      try {
+        await page.goto(hackathon.url, {
+          waitUntil: "networkidle",
+          timeout: 30_000,
+        });
+      } catch {
+        console.log(
+          `${label} networkidle timeout — waiting for SPA`,
+        );
+        await page.waitForTimeout(SPA_SETTLE_MS);
+      }
+
+      await page.waitForTimeout(SPA_SETTLE_MS);
+
+      try {
+        await page.waitForSelector(
+          selectors.profile_card, { timeout: 10_000 },
+        );
+      } catch {
+        console.log(
+          `${label} No profile cards found — skipping`,
+        );
+        await page.close();
+        perHackathon.push({
+          url: hackathon.url,
+          name: hackathon.name,
+          result: {
+            total: 0, inserted: 0, updated: 0, skipped: 0,
+          },
+        });
+        continue;
+      }
+
+      await page.waitForTimeout(defaults.scrape_delay_ms);
+
+      await scrollToLoadAll(page, selectors, label);
+
+      console.log(`${label} Extracting profiles...`);
+      const profiles = await extractProfiles(
+        page, selectors, hackathon.url,
+      );
+      console.log(
+        `${label} Found ${profiles.length} profiles`,
+      );
+
+      await page.close();
+
+      let inserted = 0;
+      let skipped = 0;
+      const seenUsernames = new Set<string>();
+
+      for (const profile of profiles) {
+        if (!profile.username) {
+          skipped++;
+          continue;
+        }
+
+        if (seenUsernames.has(profile.username)) {
+          skipped++;
+          continue;
+        }
+        seenUsernames.add(profile.username);
+
+        if (isDuplicate(db, profile.username)) {
+          skipped++;
+          continue;
+        }
+
+        upsertProspect(db, profile);
+        inserted++;
+      }
+
+      const result: ScrapeResult = {
+        total: profiles.length,
+        inserted,
+        updated: 0,
+        skipped,
+      };
+
+      perHackathon.push({
+        url: hackathon.url,
+        name: hackathon.name,
+        result,
+      });
+
+      totalProfiles += result.total;
+      totalInserted += result.inserted;
+      totalSkipped += result.skipped;
+
+      console.log(
+        `${label} ${hackathon.name}: ${result.inserted} inserted, `
+        + `${result.skipped} skipped`,
+      );
+
+      if (i < hackathons.length - 1) {
+        const delay = randomDelay(pageDelayMin, pageDelayMax);
+        console.log(
+          `${label} Rate limit pause: ${delay}ms`,
+        );
+        await sleep(delay);
+      }
+    }
+  } finally {
+    if (context) await context.close();
+    if (browser) await browser.close();
+  }
+
+  console.log(
+    `\n${label} Multi-scrape complete — `
+    + `${hackathons.length} hackathons, `
+    + `${totalProfiles} profiles found, `
+    + `${totalInserted} inserted, `
+    + `${totalSkipped} skipped`,
+  );
+
+  return {
+    hackathons: hackathons.length,
+    totalProfiles,
+    totalInserted,
+    totalSkipped,
+    perHackathon,
+  };
 }
