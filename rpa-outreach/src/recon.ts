@@ -3,7 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page, BrowserContext, Browser } from "playwright";
 import { loadSession } from "./auth.js";
-import type { ScraperSelectors } from "./types.js";
+import type { DmSelectors, ScraperSelectors } from "./types.js";
 
 const PROJECT_ROOT = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -112,6 +112,510 @@ export async function reconScraperPages(
     if (context) await context.close();
     if (browser) await browser.close();
   }
+}
+
+/** Profile page URLs to inspect for DM button/messaging elements. */
+const DM_RECON_URLS = [
+  "https://dorahacks.io/user/1",
+  "https://dorahacks.io/user/2",
+];
+
+/**
+ * Navigate to DoraHacks profile page(s) and the DM/message page.
+ * Saves HTML + screenshots, discovers CSS selectors for DM elements,
+ * and writes them to `config/selectors.json`.
+ *
+ * Requires an authenticated session (the DM page is behind login).
+ */
+export async function reconDmPages(
+  profileUrls?: string[],
+): Promise<DmSelectors> {
+  mkdirSync(RECON_DIR, { recursive: true });
+
+  const targetUrls = profileUrls ?? DM_RECON_URLS;
+  let browser: Browser | undefined;
+  let context: BrowserContext | undefined;
+
+  try {
+    const session = await loadSession();
+    browser = session.browser;
+    context = session.context;
+
+    let discoveredSelectors: DmSelectors | undefined;
+
+    for (const [index, url] of targetUrls.entries()) {
+      const slug = `dm-${slugFromUrl(url)}`;
+      const label = `[recon-dm ${index + 1}/${targetUrls.length}]`;
+
+      // --- Step 1: Navigate to the profile page ---
+      console.log(`${label} Navigating to profile ${url}`);
+      const page = await context.newPage();
+
+      try {
+        await page.goto(url, {
+          waitUntil: "networkidle",
+          timeout: 30_000,
+        });
+      } catch {
+        console.log(
+          `${label} networkidle timeout — waiting for SPA settle`,
+        );
+        await page.waitForTimeout(SPA_SETTLE_MS);
+      }
+
+      await page.waitForTimeout(SPA_SETTLE_MS);
+
+      // Save profile page HTML + screenshot
+      const profileHtml = await page.content();
+      const profileHtmlPath = resolve(RECON_DIR, `${slug}-profile.html`);
+      writeFileSync(profileHtmlPath, profileHtml, "utf-8");
+      console.log(`${label} Saved profile HTML → ${profileHtmlPath}`);
+
+      const profileScreenshotPath = resolve(
+        RECON_DIR,
+        `${slug}-profile.png`,
+      );
+      await page.screenshot({
+        path: profileScreenshotPath,
+        fullPage: true,
+      });
+      console.log(
+        `${label} Saved profile screenshot → ${profileScreenshotPath}`,
+      );
+
+      // --- Step 2: Find the DM button on the profile page ---
+      const dmButtonSelector = await findDmButton(page);
+      if (!dmButtonSelector) {
+        console.log(
+          `${label} No DM button found on profile — trying next`,
+        );
+        await page.close();
+        continue;
+      }
+      console.log(
+        `${label} Found DM button: ${dmButtonSelector}`,
+      );
+
+      // --- Step 3: Click DM button to open message page ---
+      try {
+        await page.click(dmButtonSelector, { timeout: 5000 });
+      } catch {
+        console.log(
+          `${label} Could not click DM button — trying next profile`,
+        );
+        await page.close();
+        continue;
+      }
+
+      // Wait for DM page / modal to load
+      await page.waitForTimeout(SPA_SETTLE_MS);
+
+      // Save DM page HTML + screenshot
+      const dmHtml = await page.content();
+      const dmHtmlPath = resolve(RECON_DIR, `${slug}-dm.html`);
+      writeFileSync(dmHtmlPath, dmHtml, "utf-8");
+      console.log(`${label} Saved DM page HTML → ${dmHtmlPath}`);
+
+      const dmScreenshotPath = resolve(RECON_DIR, `${slug}-dm.png`);
+      await page.screenshot({
+        path: dmScreenshotPath,
+        fullPage: true,
+      });
+      console.log(
+        `${label} Saved DM screenshot → ${dmScreenshotPath}`,
+      );
+
+      // --- Step 4: Analyze the DM page for selectors ---
+      console.log(`${label} Analyzing DM page for selectors...`);
+      discoveredSelectors = await analyzeDmPage(page, dmButtonSelector);
+
+      await page.close();
+
+      if (discoveredSelectors.message_input) {
+        console.log(`${label} DM selectors discovered successfully`);
+        break;
+      }
+
+      console.log(
+        `${label} Incomplete DM selectors — trying next profile`,
+      );
+      discoveredSelectors = undefined;
+    }
+
+    if (!discoveredSelectors) {
+      console.log(
+        "[recon-dm] WARNING: Could not auto-discover DM selectors. " +
+          "HTML snapshots saved — inspect manually and update " +
+          "config/selectors.json.",
+      );
+      return emptyDmSelectors();
+    }
+
+    writeDmSelectorsConfig(discoveredSelectors);
+    return discoveredSelectors;
+  } finally {
+    if (context) await context.close();
+    if (browser) await browser.close();
+  }
+}
+
+/**
+ * Find the DM/message button on a DoraHacks profile page.
+ * Returns the CSS selector string or null if not found.
+ */
+async function findDmButton(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    // Strategy 1: Look for buttons/links with messaging-related text
+    const messagingKeywords = [
+      "message",
+      "dm",
+      "direct message",
+      "send message",
+      "chat",
+      "contact",
+    ];
+
+    const clickables = document.querySelectorAll(
+      "a, button, [role='button']",
+    );
+    for (const el of clickables) {
+      const text = (el.textContent ?? "").trim().toLowerCase();
+      const ariaLabel = (
+        el.getAttribute("aria-label") ?? ""
+      ).toLowerCase();
+      const title = (el.getAttribute("title") ?? "").toLowerCase();
+
+      const combined = `${text} ${ariaLabel} ${title}`;
+      const isMatch = messagingKeywords.some((kw) =>
+        combined.includes(kw),
+      );
+
+      if (!isMatch) continue;
+
+      // Build a selector for this element
+      const id = el.id;
+      if (id) return `#${id}`;
+
+      const classes = Array.from(el.classList);
+      if (classes.length > 0) {
+        return `${el.tagName.toLowerCase()}.${classes.join(".")}`;
+      }
+
+      // Fallback: use data attributes
+      const dataAttrs = Array.from(el.attributes).filter((a) =>
+        a.name.startsWith("data-"),
+      );
+      for (const attr of dataAttrs) {
+        return `[${attr.name}="${attr.value}"]`;
+      }
+    }
+
+    // Strategy 2: Look for elements with messaging-related class names
+    const classPatterns = [
+      "[class*='message']",
+      "[class*='dm']",
+      "[class*='chat']",
+      "[class*='contact']",
+      "[class*='inbox']",
+    ];
+
+    for (const pattern of classPatterns) {
+      const els = document.querySelectorAll(pattern);
+      for (const el of els) {
+        const tag = el.tagName.toLowerCase();
+        if (
+          tag === "a" ||
+          tag === "button" ||
+          el.getAttribute("role") === "button"
+        ) {
+          const classes = Array.from(el.classList);
+          if (classes.length > 0) {
+            return `${tag}.${classes.join(".")}`;
+          }
+        }
+      }
+    }
+
+    // Strategy 3: Look for mail/envelope icons near clickable elements
+    const iconPatterns = [
+      "svg[class*='mail']",
+      "svg[class*='message']",
+      "i[class*='mail']",
+      "i[class*='message']",
+      "i[class*='envelope']",
+      "img[alt*='message']",
+      "[data-icon*='message']",
+      "[data-icon*='mail']",
+    ];
+
+    for (const pattern of iconPatterns) {
+      const icon = document.querySelector(pattern);
+      if (!icon) continue;
+
+      // Walk up to find the clickable parent
+      let parent: Element | null = icon.parentElement;
+      for (let i = 0; i < 4 && parent; i++) {
+        const tag = parent.tagName.toLowerCase();
+        if (
+          tag === "a" ||
+          tag === "button" ||
+          parent.getAttribute("role") === "button"
+        ) {
+          const classes = Array.from(parent.classList);
+          if (classes.length > 0) {
+            return `${tag}.${classes.join(".")}`;
+          }
+          if (parent.id) return `#${parent.id}`;
+        }
+        parent = parent.parentElement;
+      }
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Analyze the DM/message page (or modal) to discover selectors
+ * for the message input, send button, and confirmation indicator.
+ */
+async function analyzeDmPage(
+  page: Page,
+  dmButtonSelector: string,
+): Promise<DmSelectors> {
+  const pageSelectors = await page.evaluate(() => {
+    const selectors: Record<string, string> = {
+      message_input: "",
+      send_button: "",
+      confirmation_indicator: "",
+    };
+
+    // --- Message input field ---
+    // Look for textarea first (most likely for message composition)
+    const textareaPatterns = [
+      "textarea[placeholder*='message' i]",
+      "textarea[placeholder*='type' i]",
+      "textarea[placeholder*='write' i]",
+      "textarea[name*='message' i]",
+      "textarea[class*='message' i]",
+      "textarea[class*='input' i]",
+      "textarea",
+    ];
+
+    for (const pattern of textareaPatterns) {
+      const el = document.querySelector(pattern);
+      if (el) {
+        const id = el.id;
+        if (id) {
+          selectors["message_input"] = `#${id}`;
+          break;
+        }
+        const classes = Array.from(el.classList);
+        if (classes.length > 0) {
+          selectors["message_input"] =
+            `textarea.${classes.join(".")}`;
+          break;
+        }
+        selectors["message_input"] = pattern;
+        break;
+      }
+    }
+
+    // Fallback: contenteditable div (used in rich-text editors)
+    if (!selectors["message_input"]) {
+      const editablePatterns = [
+        "[contenteditable='true'][class*='message' i]",
+        "[contenteditable='true'][class*='editor' i]",
+        "[contenteditable='true'][class*='input' i]",
+        "[contenteditable='true'][role='textbox']",
+        "[contenteditable='true']",
+      ];
+
+      for (const pattern of editablePatterns) {
+        const el = document.querySelector(pattern);
+        if (el) {
+          const classes = Array.from(el.classList);
+          if (classes.length > 0) {
+            selectors["message_input"] =
+              `[contenteditable='true'].${classes.join(".")}`;
+          } else {
+            selectors["message_input"] = pattern;
+          }
+          break;
+        }
+      }
+    }
+
+    // Fallback: regular input field
+    if (!selectors["message_input"]) {
+      const inputPatterns = [
+        "input[placeholder*='message' i]",
+        "input[placeholder*='type' i]",
+        "input[name*='message' i]",
+        "input[type='text'][class*='message' i]",
+      ];
+
+      for (const pattern of inputPatterns) {
+        const el = document.querySelector(pattern);
+        if (el) {
+          const classes = Array.from(el.classList);
+          if (classes.length > 0) {
+            selectors["message_input"] =
+              `input.${classes.join(".")}`;
+          } else {
+            selectors["message_input"] = pattern;
+          }
+          break;
+        }
+      }
+    }
+
+    // --- Send button ---
+    const sendKeywords = ["send", "submit"];
+    const buttons = document.querySelectorAll(
+      "button, [role='button'], input[type='submit']",
+    );
+
+    for (const btn of buttons) {
+      const text = (btn.textContent ?? "").trim().toLowerCase();
+      const ariaLabel = (
+        btn.getAttribute("aria-label") ?? ""
+      ).toLowerCase();
+      const title = (btn.getAttribute("title") ?? "").toLowerCase();
+      const combined = `${text} ${ariaLabel} ${title}`;
+
+      const isMatch = sendKeywords.some((kw) =>
+        combined.includes(kw),
+      );
+      if (!isMatch) continue;
+
+      const id = btn.id;
+      if (id) {
+        selectors["send_button"] = `#${id}`;
+        break;
+      }
+      const classes = Array.from(btn.classList);
+      if (classes.length > 0) {
+        selectors["send_button"] =
+          `${btn.tagName.toLowerCase()}.${classes.join(".")}`;
+        break;
+      }
+    }
+
+    // Fallback: button with send icon
+    if (!selectors["send_button"]) {
+      const iconButtonPatterns = [
+        "button svg[class*='send']",
+        "button i[class*='send']",
+        "[role='button'] svg[class*='send']",
+      ];
+
+      for (const pattern of iconButtonPatterns) {
+        const icon = document.querySelector(pattern);
+        if (!icon) continue;
+        let parent: Element | null = icon.parentElement;
+        for (let i = 0; i < 3 && parent; i++) {
+          const tag = parent.tagName.toLowerCase();
+          if (
+            tag === "button" ||
+            parent.getAttribute("role") === "button"
+          ) {
+            const classes = Array.from(parent.classList);
+            if (classes.length > 0) {
+              selectors["send_button"] =
+                `${tag}.${classes.join(".")}`;
+            } else if (parent.id) {
+              selectors["send_button"] = `#${parent.id}`;
+            }
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        if (selectors["send_button"]) break;
+      }
+    }
+
+    // --- Confirmation indicator ---
+    // Look for elements that appear after a message is sent:
+    // success toasts, "sent" badges, checkmarks, timestamp on sent msg
+    const confirmPatterns = [
+      "[class*='success']",
+      "[class*='sent']",
+      "[class*='delivered']",
+      "[class*='toast']",
+      "[class*='notification']",
+      "[class*='confirm']",
+      "[class*='check']",
+      "[role='alert']",
+      "[role='status']",
+    ];
+
+    for (const pattern of confirmPatterns) {
+      const el = document.querySelector(pattern);
+      if (el) {
+        const classes = Array.from(el.classList);
+        if (classes.length > 0) {
+          selectors["confirmation_indicator"] =
+            `.${classes.join(".")}`;
+        } else {
+          selectors["confirmation_indicator"] = pattern;
+        }
+        break;
+      }
+    }
+
+    return selectors;
+  });
+
+  return {
+    dm_button: dmButtonSelector,
+    message_input: pageSelectors["message_input"] ?? "",
+    send_button: pageSelectors["send_button"] ?? "",
+    confirmation_indicator:
+      pageSelectors["confirmation_indicator"] ?? "",
+  };
+}
+
+/**
+ * Write discovered DM selectors to `config/selectors.json`,
+ * preserving existing scraper selectors.
+ */
+function writeDmSelectorsConfig(dmSelectors: DmSelectors): void {
+  let existing: Record<string, unknown> = {};
+  try {
+    const raw = readFileSync(SELECTORS_PATH, "utf-8");
+    existing = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    // File missing or invalid — start fresh
+  }
+
+  const config = {
+    scraper: existing["scraper"] ?? {
+      profile_list_container: "",
+      profile_card: "",
+      username: "",
+      profile_url: "",
+      bio: "",
+      tags: "",
+    },
+    dm: dmSelectors,
+  };
+
+  writeFileSync(
+    SELECTORS_PATH,
+    JSON.stringify(config, null, 2) + "\n",
+    "utf-8",
+  );
+  console.log(`[recon-dm] DM selectors written to ${SELECTORS_PATH}`);
+}
+
+function emptyDmSelectors(): DmSelectors {
+  return {
+    dm_button: "",
+    message_input: "",
+    send_button: "",
+    confirmation_indicator: "",
+  };
 }
 
 /**
