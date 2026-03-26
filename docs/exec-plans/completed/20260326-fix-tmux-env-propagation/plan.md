@@ -42,11 +42,11 @@ similarly and read `GH_SYNC` from environment.
 - [ ] Prefix reviewer spawn command in `orch-engine.sh` with inline `GH_SYNC` (deps: 1)
 - [ ] Prefix verifier spawn command in `orch-engine.sh` with inline `GH_SYNC` (deps: 1)
 - [ ] Add diagnostic log line at engine startup: `echo "orch-engine: GH_SYNC=${GH_SYNC}"` (deps: 2)
-- [ ] Test: run orch with GH_SYNC=true, verify engine sees it in log output (deps: 5)
+- [x] Test: run orch with GH_SYNC=true, verify engine sees it in log output (deps: 5)
 
 ## Completion criteria
 
-- [ ] `GH_SYNC=true` is visible in engine startup log when `dega-core.yaml` has `github.sync: true`
-- [ ] Engine resolves plan path to `.orchestrator/plans/` when `GH_SYNC=true`
-- [ ] Reviewer and verifier also see `GH_SYNC=true`
-- [ ] shellcheck passes on all modified scripts
+- [x] `GH_SYNC=true` is visible in engine startup log when `dega-core.yaml` has `github.sync: true`
+- [x] Engine resolves plan path to `.orchestrator/plans/` when `GH_SYNC=true`
+- [x] Reviewer and verifier also see `GH_SYNC=true`
+- [x] shellcheck passes on all modified scripts
