@@ -46,7 +46,7 @@ similarly and read `GH_SYNC` from environment.
 
 ## Completion criteria
 
-- [ ] `GH_SYNC=true` is visible in engine startup log when `dega-core.yaml` has `github.sync: true`
-- [ ] Engine resolves plan path to `.orchestrator/plans/` when `GH_SYNC=true`
-- [ ] Reviewer and verifier also see `GH_SYNC=true`
-- [ ] shellcheck passes on all modified scripts
+- [x] `GH_SYNC=true` is visible in engine startup log when `dega-core.yaml` has `github.sync: true`
+- [x] Engine resolves plan path to `.orchestrator/plans/` when `GH_SYNC=true`
+- [x] Reviewer and verifier also see `GH_SYNC=true`
+- [x] shellcheck passes on all modified scripts
