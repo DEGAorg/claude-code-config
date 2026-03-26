@@ -94,7 +94,7 @@ orch_write_state "${SLUG}" "${UPDATED}"
 
 # --- Read poll interval ---
 
-POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
+POLL_INTERVAL=$(orch_read_config "verify_poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
 # --- Tmux session ---
@@ -137,7 +137,7 @@ tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
 	 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
 	 \"\$(cat '${PROMPT_FILE}')\" ; \
 	 echo '--- verifier exited ---'; \
-	 sleep 5"
+	 sleep 2"
 
 # Stream verifier output to log file
 tmux pipe-pane -t "${TMUX_SESSION}:${WINDOW_NAME}" \

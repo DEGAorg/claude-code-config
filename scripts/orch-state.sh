@@ -876,3 +876,98 @@ orch_count_unchecked_criteria() {
 		END { print count+0 }
 	' "${plan_file}"
 }
+
+# --- Context pre-hydration helpers ---
+
+# Extract file paths from text (stdin). Finds backtick-quoted paths and bare
+# path/file.ext patterns. Only keeps paths containing "/" and a file extension
+# to reduce false positives. Returns one deduplicated path per line.
+#   Usage: echo "some text with \`scripts/foo.sh\`" | orch_extract_file_paths
+orch_extract_file_paths() {
+	local input
+	input=$(cat)
+
+	if [[ -z "${input}" ]]; then
+		return 0
+	fi
+
+	{
+		# Backtick-quoted paths: `path/to/file.ext`
+		# shellcheck disable=SC2016 # backtick pattern is literal regex, not shell expansion
+		printf '%s\n' "${input}" | grep -oE '`[^`]+`' |
+			tr -d '`' |
+			grep -E '/.*\.[a-zA-Z0-9]+$'
+
+		# Bare paths: word boundaries around path/file.ext patterns
+		# Matches sequences like scripts/orch-state.sh or docs/exec-plans/active/foo/plan.md
+		printf '%s\n' "${input}" | grep -oE '[a-zA-Z0-9_./-]+/[a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+' |
+			grep -vE '^\.' |
+			grep -vE '(https?://|www\.)'
+	} | sort -u
+}
+
+# Extract the Requirements and Completion criteria sections from a plan.md,
+# plus the check_command from dega-core.yaml. Outputs a combined text block
+# suitable for injecting into a worker prompt. Caps output at 200 lines.
+#   Usage: orch_extract_plan_sections "/path/to/plan.md"
+orch_extract_plan_sections() {
+	local plan_file="$1"
+
+	if [[ ! -f "${plan_file}" ]]; then
+		echo "orch-state: WARNING — plan file not found: ${plan_file}" >&2
+		return 0
+	fi
+
+	local output=""
+
+	# Extract ## Requirements section
+	local requirements
+	requirements=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Requirements/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_file}")
+
+	if [[ -n "${requirements}" ]]; then
+		output="### Requirements
+
+${requirements}
+"
+	fi
+
+	# Extract ## Completion criteria section
+	local criteria
+	criteria=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Completion criteria/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_file}")
+
+	if [[ -n "${criteria}" ]]; then
+		output="${output}
+### Completion criteria
+
+${criteria}
+"
+	fi
+
+	# Read check_command from dega-core.yaml
+	local check_cmd
+	check_cmd=$(orch_read_config "check_command")
+	if [[ -n "${check_cmd}" ]]; then
+		output="${output}
+### Check command
+
+\`\`\`bash
+${check_cmd}
+\`\`\`
+"
+	fi
+
+	# Cap at 200 lines to avoid context bloat
+	printf '%s\n' "${output}" | head -200
+}

@@ -5,7 +5,9 @@ max_iterations: 3
 budget:
   warn_at_iteration: 2
 check_command: bash scripts/ralph-check.sh
-poll_interval_seconds: 30
+poll_interval_seconds: 15
+review_poll_interval_seconds: 10
+verify_poll_interval_seconds: 10
 
 # Legacy worker and reviewer prompt templates (used by scripts/ralph-loop.sh — use orchestrator instead)
 worker_prompt: scripts/ralph-worker-prompt.md
