@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "plan": "20260326-harden-core-init-github",
+  "issueNumber": null,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Update `commands/core-init.md` step 4: add fallback when `gh` not installed — write `sync: false` with comment",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Update `commands/core-init.md` step 5: add bold instruction that github block must NEVER be omitted",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Add validation gate after write: re-read `dega-core.yaml`, check `github:` key exists, error if missing",
+      "deps": [
+        2
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 1,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Add test case: run core-init logic against a repo with no `gh` CLI — verify github block is present with `sync: false`",
+      "deps": [
+        3
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-26T22:51:41Z",
+  "updatedAt": "2026-03-26T23:40:54Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}
