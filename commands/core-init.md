@@ -104,7 +104,41 @@ Check each line before appending — skip if already in `.gitignore`. Create
 
 **If it does not exist:** write it using the detected language from Step 2.
 
-Template (substitute `<CHECK_COMMAND>` with the detected value):
+### GitHub detection
+
+Before writing the file, detect the GitHub remote and `gh` CLI availability:
+
+1. **Check if `gh` is installed and authenticated:**
+
+   ```bash
+   gh auth status 2>/dev/null
+   ```
+
+2. **If `gh` is available**, detect the GitHub repo from the git remote:
+
+   ```bash
+   gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null
+   ```
+
+   If that succeeds, use the returned `owner/repo` value for the `github.repo`
+   field and set `sync: true`.
+
+3. **If `gh` is NOT installed, not authenticated, or repo detection fails**,
+   write the `github:` block with `sync: false` and a comment explaining why:
+
+   ```yaml
+   github:
+     # gh CLI not available — install gh and run /core-init again to enable sync
+     sync: false
+   ```
+
+**The `github:` block must ALWAYS be present in the output.** There is no
+scenario where it is omitted.
+
+### Template
+
+Substitute `<CHECK_COMMAND>` with the detected value from Step 2, and
+`<GITHUB_BLOCK>` with the result of GitHub detection above:
 
 ```yaml
 # DEGA Core config — edit to match your project
@@ -121,10 +155,33 @@ poll_interval_seconds: 30
 worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
 reviewer_prompt: ~/.claude/scripts/ralph-reviewer-prompt.md
 
+<GITHUB_BLOCK>
+
 success_criteria:
   - "tests pass"
   - "linting clean"
   - "types valid"
+```
+
+Where `<GITHUB_BLOCK>` is one of:
+
+**When `gh` detected the repo successfully:**
+
+```yaml
+github:
+  sync: true
+  repo: <OWNER/REPO>
+  labels: true
+  comments: true
+  close_on_ship: true
+```
+
+**When `gh` is not installed, not authenticated, or detection failed:**
+
+```yaml
+github:
+  # gh CLI not available — install gh and run /core-init again to enable sync
+  sync: false
 ```
 
 ---
