@@ -365,6 +365,13 @@ if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
 	DASH_CMD="while true; do node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null; echo '[dashboard restarting in 3s...]'; sleep 3; done"
 	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
+
+	# Inject env vars into the tmux session so all windows (engine, workers,
+	# reviewers, verifiers) inherit them regardless of how tmux was started.
+	tmux set-environment -t "${TMUX_SESSION}" GH_SYNC "${GH_SYNC}"
+	tmux set-environment -t "${TMUX_SESSION}" REPO_ROOT "${REPO_ROOT}"
+	tmux set-environment -t "${TMUX_SESSION}" SLUG "${SLUG}"
+	tmux set-environment -t "${TMUX_SESSION}" ORCH_STATE_DIR "${ORCH_STATE_DIR}"
 fi
 
 # --- Start engine as a tmux window ---
