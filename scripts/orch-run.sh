@@ -385,7 +385,7 @@ LOG_FILE=$(orch_plan_log_file "${SLUG}")
 orch_ensure_plan_dirs "${SLUG}"
 
 tmux new-window -d -t "${TMUX_SESSION}" -n "engine" \
-	"cd '${REPO_ROOT}' && bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30"
+	"cd '${REPO_ROOT}' && GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30"
 
 # --- Open display windows (foreground mode) ---
 

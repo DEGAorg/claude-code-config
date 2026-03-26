@@ -169,6 +169,7 @@ spawn_reviewer() {
 	# Reviewers always run headless (claude -p) — read-only, no TUI needed
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${window_name}" \
 		"cd '${review_cwd}' && \
+		 GH_SYNC='${GH_SYNC}' \
 		 RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
 		 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
 		 \"\$(cat '${prompt_file}')\" ; \
