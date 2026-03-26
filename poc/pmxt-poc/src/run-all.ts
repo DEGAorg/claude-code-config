@@ -29,6 +29,10 @@ const SUITES = [
   { name: "Auth", file: "test-auth.ts" },
   { name: "Orders", file: "test-orders.ts" },
   { name: "WebSocket", file: "test-websocket.ts" },
+  { name: "DataAPI-Positions", file: "test-data-api-positions.ts" },
+  { name: "DataAPI-Activity", file: "test-data-api-activity.ts" },
+  { name: "DataAPI-Trades", file: "test-data-api-trades.ts" },
+  { name: "DataAPI-Profile", file: "test-data-api-profile.ts" },
 ];
 
 function parseSummaryLine(output: string): {
