@@ -1,0 +1,46 @@
+import type { Database as DatabaseType } from "better-sqlite3";
+import { countByStatus, type ProspectStatus } from "./db.js";
+
+interface StatusRow {
+  label: string;
+  status: ProspectStatus;
+}
+
+const PIPELINE_STAGES: StatusRow[] = [
+  { label: "Scraped", status: "scraped" },
+  { label: "Filtered", status: "filtered" },
+  { label: "Queued", status: "queued" },
+  { label: "Messaged", status: "messaged" },
+  { label: "Replied", status: "replied" },
+  { label: "Skipped", status: "skipped" },
+  { label: "Failed", status: "failed" },
+];
+
+export function printStatusReport(db: DatabaseType): void {
+  const counts = countByStatus(db);
+  let total = 0;
+  for (const stage of PIPELINE_STAGES) {
+    total += counts[stage.status];
+  }
+
+  const separator = "─".repeat(30);
+
+  console.log("");
+  console.log("  Pipeline Status Report");
+  console.log(`  ${separator}`);
+
+  for (const stage of PIPELINE_STAGES) {
+    const count = counts[stage.status];
+    const pct = total > 0 ? ((count / total) * 100).toFixed(1) : "0.0";
+    const bar = "█".repeat(
+      Math.round(total > 0 ? (count / total) * 20 : 0),
+    );
+    console.log(
+      `  ${stage.label.padEnd(10)} ${String(count).padStart(6)}  ${pct.padStart(5)}%  ${bar}`,
+    );
+  }
+
+  console.log(`  ${separator}`);
+  console.log(`  ${"Total".padEnd(10)} ${String(total).padStart(6)}`);
+  console.log("");
+}
