@@ -1,0 +1,16 @@
+{
+  "scraper": {
+    "profile_list_container": "",
+    "profile_card": "",
+    "username": "",
+    "profile_url": "",
+    "bio": "",
+    "tags": ""
+  },
+  "dm": {
+    "dm_button": "",
+    "message_input": "",
+    "send_button": "",
+    "confirmation_indicator": ""
+  }
+}
