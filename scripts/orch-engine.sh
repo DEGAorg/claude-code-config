@@ -276,6 +276,7 @@ spawn_worker() {
 # --- Wave execution loop ---
 
 echo ""
+echo "orch-engine: GH_SYNC=${GH_SYNC}"
 echo "orch-engine: starting wave execution"
 echo "  plan: ${SLUG}"
 echo "  total items: ${TOTAL_COUNT}"
