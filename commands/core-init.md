@@ -199,12 +199,53 @@ A missing `github:` block breaks the orchestrator's `GH_SYNC` detection and
 cascades into plan-path failures. This is the single most common failure mode
 on fresh Linux installs.
 
-After writing `dega-core.yaml`, visually confirm the `github:` key is present
-before proceeding to the next step.
+After writing `dega-core.yaml`, proceed immediately to the validation gate
+(Step 6) before continuing.
 
 ---
 
-## 6. Write CLAUDE.md
+## 6. Validation gate: verify github block exists
+
+After writing `dega-core.yaml`, re-read the file and verify the `github:` key
+is present. This is a programmatic check, not a visual one.
+
+```bash
+grep -q '^github:' dega-core.yaml
+```
+
+**If the check fails** (exit code non-zero):
+
+1. Print an error:
+
+   > **ERROR:** `dega-core.yaml` is missing the `github:` block. Adding fallback.
+
+2. Append the fallback block to the file:
+
+   ```bash
+   cat >> dega-core.yaml << 'EOF'
+
+   github:
+     # ADDED BY VALIDATION GATE — github block was missing after initial write
+     # Install gh and run /core-init again to enable sync
+     sync: false
+   EOF
+   ```
+
+3. Re-run the check to confirm the fix:
+
+   ```bash
+   grep -q '^github:' dega-core.yaml || { echo "FATAL: github block still missing after repair"; exit 1; }
+   ```
+
+**If the check passes**, print:
+
+> `dega-core.yaml` validated — `github:` block present.
+
+**Do not proceed to the next step until this validation passes.**
+
+---
+
+## 7. Write CLAUDE.md
 
 **If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
 
@@ -247,7 +288,7 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 
 ---
 
-## 7. Print completion message
+## 8. Print completion message
 
 Summarize what was created. Use a checklist format:
 

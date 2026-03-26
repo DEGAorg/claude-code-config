@@ -34,7 +34,7 @@ block cascades into orchestrator plan-path failures (issues 2-4).
 
 - [ ] Update `commands/core-init.md` step 4: add fallback when `gh` not installed — write `sync: false` with comment
 - [ ] Update `commands/core-init.md` step 5: add bold instruction that github block must NEVER be omitted (deps: 1)
-- [ ] Add validation gate after write: re-read `dega-core.yaml`, check `github:` key exists, error if missing (deps: 2)
+- [x] Add validation gate after write: re-read `dega-core.yaml`, check `github:` key exists, error if missing (deps: 2)
 - [ ] Add test case: run core-init logic against a repo with no `gh` CLI — verify github block is present with `sync: false` (deps: 3)
 
 ## Completion criteria
