@@ -40,7 +40,7 @@ Potential failure modes:
 
 ## Progress log
 
-- [ ] Audit all hooks in `settings.json` for dependency and path issues — catalog each hook's deps and path strategy
+- [x] Audit all hooks in `settings.json` for dependency and path issues — catalog each hook's deps and path strategy
 - [ ] Add defensive `jq` check to `enforce-loop-mode.sh`: if not found, warn and exit 0 (deps: 1)
 - [ ] Add defensive `jq` check to `enforce-exec-plan-naming.sh`: same pattern (deps: 1)
 - [ ] Add defensive stdin/JSON validation to both hooks: read stdin, check non-empty and valid JSON before parsing (deps: 2, 3)
