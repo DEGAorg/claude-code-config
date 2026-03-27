@@ -33,13 +33,13 @@ Also audit each SC2015 and SC2317 to determine if they're real issues or false p
 
 ## Progress log
 
-- [ ] Update `.github/workflows/ci.yml` — add `-e SC1091 -S warning` to shellcheck step
-- [ ] Audit and fix SC2015 in `scripts/canon-runner.sh`, `scripts/canon-scaffold.sh`, `scripts/ralph-loop.sh` — replace `A && B || C` with proper if/then/else where it matters (deps: 1)
-- [ ] Audit and fix SC2317 in `scripts/ralph-loop.sh` — unreachable command warning (deps: 1)
-- [ ] Test: run shellcheck locally with the same flags as CI, verify zero exit code (deps: 1, 2, 3)
+- [x] Update `.github/workflows/ci.yml` — add `-e SC1091 -S warning` to shellcheck step
+- [x] Audit and fix SC2015 in `scripts/canon-runner.sh`, `scripts/canon-scaffold.sh`, `scripts/ralph-loop.sh` — replace `A && B || C` with proper if/then/else where it matters (deps: 1)
+- [x] Audit and fix SC2317 in `scripts/ralph-loop.sh` — unreachable command warning (deps: 1)
+- [x] Test: run shellcheck locally with the same flags as CI, verify zero exit code (deps: 1, 2, 3)
 
 ## Completion criteria
 
-- [ ] CI shellcheck step passes (exit 0)
-- [ ] No real warnings or errors suppressed — only info-level exclusions
-- [ ] shellcheck and shfmt clean locally with same flags as CI
+- [x] CI shellcheck step passes (exit 0)
+- [x] No real warnings or errors suppressed — only info-level exclusions
+- [x] shellcheck and shfmt clean locally with same flags as CI
