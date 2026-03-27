@@ -40,6 +40,6 @@ Also audit each SC2015 and SC2317 to determine if they're real issues or false p
 
 ## Completion criteria
 
-- [ ] CI shellcheck step passes (exit 0)
-- [ ] No real warnings or errors suppressed — only info-level exclusions
-- [ ] shellcheck and shfmt clean locally with same flags as CI
+- [x] CI shellcheck step passes (exit 0)
+- [x] No real warnings or errors suppressed — only info-level exclusions
+- [x] shellcheck and shfmt clean locally with same flags as CI
