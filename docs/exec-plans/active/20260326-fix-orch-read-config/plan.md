@@ -48,7 +48,7 @@ parser (yq) would be ideal but adds a dependency — anchored grep with
 - [x] Verify `orch-engine.sh`, `orch-review.sh`, `orch-verify.sh` all read correct poll intervals with new keys (deps: 1)
 - [x] Add regression test: call `orch_read_config` for all three poll interval keys against a sample config with prefix collisions (deps: 1)
 - [x] Run shellcheck on modified files (deps: 1, 2, 3)
-- [ ] Run `/apply-core` to propagate fix to `~/.claude/scripts/` (deps: 4)
+- [x] Run `/apply-core` to propagate fix to `~/.claude/scripts/` (deps: 4)
 
 ## Completion criteria
 
