@@ -31,7 +31,7 @@ acceptable — use judgment. Non-trivial work always goes in `exec-plans/`.
 ## 2. Implement
 
 Implement the plan across all necessary files. Follow the
-project's CLAUDE.md standards. Keep changes minimal and focused
+project's AGENTS.md standards. Keep changes minimal and focused
 on the issue requirements -- no speculative features.
 
 ## 3. Build, test, lint
@@ -43,7 +43,7 @@ Run the project's full quality pipeline in this order:
 3. Add new tests for the changed behavior
 4. Run linting, formatting, and type-checking -- fix any issues
 
-Refer to the project's CLAUDE.md or package.json/Makefile/etc.
+Refer to the project's AGENTS.md or package.json/Makefile/etc.
 for the correct commands.
 
 ## 4. Branch, commit, and push

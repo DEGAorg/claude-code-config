@@ -16,10 +16,10 @@ Settled decisions for Core + Canon config layer. Updated as decisions are made.
 
 - `/apply-core` and `/apply-canon` install additive artifacts only: `commands/`, `rules/`, `skills/`, `hooks/`.
 - `~/.claude/CLAUDE.md` is **personal space** — never auto-overwritten. Template install is optional and prompted.
-- If `~/.claude/CLAUDE.md` already exists: skip it, remind user that `claude-md-template.md` is available as a project-level starter.
+- If `~/.claude/CLAUDE.md` already exists: skip it, remind user that `agent-template.md` is available as a project-level starter.
 - `settings.json` is mergeable — show diff, ask: merge / overwrite / skip.
 - `/apply-canon` requires Core to be installed first.
-- `canon/CLAUDE.md` is a **project-level starter**, not a global install. Offered when scaffolding a Canon project.
+- `canon/AGENTS.md` is a **project-level starter**, not a global install. Offered when scaffolding a Canon project.
 
 ## Build order
 

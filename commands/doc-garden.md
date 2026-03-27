@@ -1,6 +1,6 @@
 # Doc Garden
 
-@description Scan docs/ and CLAUDE.md for stale references, broken cross-links, and outdated instructions. Opens a PR with fixes.
+@description Scan docs/ and AGENTS.md for stale references, broken cross-links, and outdated instructions. Opens a PR with fixes.
 
 Perform a documentation health scan against the live codebase. Docs that
 don't reflect code mislead both developers and agents. This command finds
@@ -14,7 +14,7 @@ Collect two inventories:
 
 - **Live files**: every source file currently in the repo (`rg --files`)
 - **Doc references**: every file path, function name, command, and config key
-  mentioned in `docs/`, `CLAUDE.md`, `README.md`, and `canon/CLAUDE.md`
+  mentioned in `docs/`, `AGENTS.md`, `README.md`, and `canon/AGENTS.md`
 
 ## 2. Find stale references
 

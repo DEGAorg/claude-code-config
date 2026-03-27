@@ -46,14 +46,14 @@ Search for hand-rolled helpers that duplicate shared utilities:
 ### 2d. Oversized files
 
 - Files > 400 lines: candidates for splitting
-- Functions > 100 lines: violate hard limits (CLAUDE.md)
+- Functions > 100 lines: violate hard limits (AGENTS.md)
 - Modules with cyclomatic complexity > 8
 
 ### 2e. Docs drift
 
 - References in `docs/` to files, functions, or commands that no longer exist
 - `README` sections describing features not yet implemented (phantom features)
-- `CLAUDE.md` instructions that contradict current code structure
+- `AGENTS.md` instructions that contradict current code structure
 
 ### 2f. Principle violations
 
