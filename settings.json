@@ -45,7 +45,18 @@
       "Read(~/Library/Application Support/**/electrum*/**)",
       "Read(~/Library/Application Support/**/exodus*/**)",
       "Read(~/Library/Application Support/**/phantom*/**)",
-      "Read(~/Library/Application Support/**/solflare*/**)"
+      "Read(~/Library/Application Support/**/solflare*/**)",
+
+      "Read(~/.local/share/keyrings/**)",
+      "Read(~/.config/**/metamask*/**)",
+      "Read(~/.local/share/**/metamask*/**)",
+      "Read(~/.electrum/**)",
+      "Read(~/.config/Exodus/**)",
+      "Read(~/.config/exodus/**)",
+      "Read(~/.config/**/phantom*/**)",
+      "Read(~/.local/share/**/phantom*/**)",
+      "Read(~/.config/**/solflare*/**)",
+      "Read(~/.local/share/**/solflare*/**)"
     ]
   },
   "hooks": {
