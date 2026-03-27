@@ -150,3 +150,136 @@ copy-pasted 3 times. Extract a `useWatchedState<T>(path)` hook.
 **Context:** /cleanup scan
 
 All say "TODO: AI fills in assertions." Tests assert nothing.
+
+---
+
+## Orchestrator credit-exhaustion recovery is manual and error-prone
+
+**Severity:** P1
+**Area:** scripts/orch-*
+**Logged:** 2026-03-26
+**Context:** pmxt POC run (issue #30) — orch ran out of API credits mid-run, items 7-8 hit review-max-retries. Recovery required manual tmux kill, worktree inspection, git merge, conflict resolution, and PR creation. No automated or documented recovery path exists.
+
+Problems:
+1. **No graceful credit/budget exhaustion handling** — orch keeps retrying until max iterations, wasting cycles on review when the worker can't respond
+2. **No `orch recover` command** — after a failed run, resuming requires manual worktree merge, state inspection, and cleanup. Should have a single command: `orch-run.sh --recover <slug>` that merges completed work, marks failed items as resumable, and offers to re-run only remaining items
+3. **Worktree branch merge into working branch is undocumented** — the merge from `orch/<slug>` into the working branch can conflict with concurrent pushes (as happened here with rebase conflicts)
+4. **No partial-success PR flow** — when 6/8 items SHIP but 2 fail, there's no way to ship the completed work and re-queue the rest
+
+---
+
+## Deprecate Ralph Loop in favor of Orchestrator
+
+**Severity:** P2
+**Area:** scripts/, commands/, CLAUDE.md
+**Logged:** 2026-03-26
+**Context:** Core readiness assessment for team sharing
+
+Ralph Loop (`scripts/ralph-loop.sh`, `scripts/ralph-worker-prompt.md`,
+`scripts/ralph-reviewer-prompt.md`, `scripts/plan-advance.sh`,
+`scripts/ralph-check.sh`, `scripts/ralph-worktree.sh`,
+`scripts/review-advance.sh`) is legacy. The orchestrator (`orch-run.sh`)
+replaced it entirely. Agents still see Ralph references in CLAUDE.md,
+`dega-core.yaml` templates (`worker_prompt`, `reviewer_prompt`), and
+inline comments, which causes confusion about which system to use.
+
+Action:
+1. Remove Ralph scripts or move to `scripts/legacy/`
+2. Strip `worker_prompt` / `reviewer_prompt` from `dega-core.yaml` template in `core-init.md`
+3. Remove Ralph references from CLAUDE.md and docs
+4. Update `core-init.md` completion message (step 5 says "Run it: bash ~/.claude/scripts/orch-run.sh")
+
+---
+
+## No troubleshooting guide for team onboarding
+
+**Severity:** P2
+**Area:** docs/
+**Logged:** 2026-03-26
+**Context:** Core readiness assessment for team sharing
+
+No `TROUBLESHOOTING.md` or FAQ section for common setup failures:
+hooks path errors when running outside an initialized project, prerequisite
+install failures (tmux, jq, node), terminal-ui build failures, tmux attach
+problems, settings.json merge conflicts. Teammates hitting these issues
+have no recovery path except reading source code.
+
+---
+
+## No "first plan" quickstart guide
+
+**Severity:** P3
+**Area:** docs/
+**Logged:** 2026-03-26
+**Context:** Core readiness assessment for team sharing
+
+35+ completed exec-plans exist as reference, but no short walkthrough for
+writing a first plan. A teammate new to the system has to reverse-engineer
+the format from completed plans or read the full `/plan` command spec.
+A 30-line "Your First Plan" guide with a minimal example would cut
+onboarding time significantly.
+
+---
+
+## Orchestrator tmux sessions never auto-kill — zombie session accumulation
+
+**Severity:** P1
+**Area:** scripts/orch-run.sh, scripts/orch-engine.sh
+**Logged:** 2026-03-26
+**Context:** Found 56 zombie tmux sessions draining GitHub GraphQL API quota (5000/hr exhausted). First Linux run investigation.
+
+The orchestrator creates a tmux session per plan but **never kills it on
+completion**. After SHIP or FAIL, the engine window exits (with a 30s sleep)
+but the dashboard window runs a `while true` loop that restarts every 3
+seconds forever. Sessions accumulate indefinitely.
+
+**Three fixes needed (resolve together):**
+
+1. **Session auto-kill on completion** — After SHIP/FAIL in `orch-engine.sh`,
+   send `tmux kill-session -t "${TMUX_SESSION}"` (or schedule it after a short
+   delay so the user can read final output). The dashboard's `while true` loop
+   currently prevents the session from ever dying.
+
+2. **Dashboard exit condition** — Replace the unconditional `while true` loop
+   in `orch-run.sh:366` with a loop that checks whether the engine window
+   still exists. When the engine exits, the dashboard should print a final
+   summary and exit (or auto-kill after a configurable timeout, e.g. 5 min).
+
+3. **Stale session garbage collection** — Add an `orch-gc.sh` script (or
+   `orch-run.sh --gc`) that finds `orch-*` tmux sessions where the engine
+   window is dead, prints their slugs and ages, and kills them. The future
+   Conductor agent should call this on startup and expose session state in
+   the TUI.
+
+**Impact of not fixing:** Each zombie session's dashboard polls the state
+file every 3 seconds. Lifecycle hooks on completion fire 2-3 GitHub API
+calls per plan item (comment + checkbox update + issue edit via
+`01-gh-plan-sync.sh`). With 50+ zombie sessions, this drains the 5000/hr
+GraphQL quota and blocks new plan uploads.
+
+**Code locations:**
+- Dashboard while loop: `orch-run.sh:366`
+- Engine exit (no session kill): `orch-engine.sh:756` (SHIP), `:795` (FAIL)
+- Lifecycle hook API calls: `hooks/orch-lifecycle/01-gh-plan-sync.sh:127-176`
+- No trap handlers: `orch-run.sh:21` (only `set -euo pipefail`)
+
+---
+
+## orch_read_config() grep matches partial key names
+
+**Severity:** P1
+**Area:** scripts/orch-state.sh
+**Logged:** 2026-03-26
+**Context:** Both orchestrator engines crashed on startup — `sleep` received `15\n10\n10` instead of `15`. First Linux run investigation.
+
+`orch_read_config()` at `orch-state.sh:60` uses `grep "${key}:"` without
+anchoring. When reading `poll_interval_seconds`, it also matches
+`review_poll_interval_seconds` and `verify_poll_interval_seconds`, producing
+a multiline value that crashes `sleep` and any other consumer expecting a
+single value.
+
+**Hotfix applied** (2026-03-26): changed to `grep -m1 "^${key}:"`. This
+fixes the immediate crash but the function is still fragile — it doesn't
+handle nested YAML, quoted values, or comments. A proper fix would use
+`yq` or a dedicated YAML parser, but the hotfix is sufficient for the
+current flat config format.

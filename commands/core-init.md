@@ -96,15 +96,51 @@ Check each line before appending — skip if already in `.gitignore`. Create
 
 ---
 
-## 4. Write dega-core.yaml
+## 4. Detect GitHub remote
+
+Detect the GitHub repository for the `github:` block in dega-core.yaml.
+
+```bash
+remote_url="$(git remote get-url origin 2>/dev/null || true)"
+```
+
+**Parse `owner/repo` from the remote URL:**
+
+| URL format | Extraction |
+|------------|------------|
+| `git@github.com:OWNER/REPO.git` | Strip prefix `git@github.com:` and suffix `.git` |
+| `https://github.com/OWNER/REPO.git` | Strip prefix `https://github.com/` and suffix `.git` |
+| `https://github.com/OWNER/REPO` | Strip prefix `https://github.com/` |
+
+Store the result as `<GITHUB_REPO>` (e.g. `DEGAorg/my-project`).
+
+**If no remote or not a GitHub URL:** set `<GITHUB_REPO>` to empty. The
+`github:` block will still be written with `sync: false` and a TODO comment.
+
+**If a GitHub remote was found:** verify issues are enabled:
+
+```bash
+gh repo view <GITHUB_REPO> --json hasIssuesEnabled --jq '.hasIssuesEnabled'
+```
+
+If `true`, set `<GITHUB_SYNC>` to `true`. If `false` or the command fails,
+set `<GITHUB_SYNC>` to `false` and add a comment noting issues must be
+enabled for plan sync.
+
+---
+
+## 5. Write dega-core.yaml
 
 **If `dega-core.yaml` already exists:** tell the user it exists and skip. Print:
 
 > `dega-core.yaml` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
 
-**If it does not exist:** write it using the detected language from Step 2.
+**If it does not exist:** write it using the detected language from Step 2
+and the GitHub remote from Step 4.
 
-Template (substitute `<CHECK_COMMAND>` with the detected value):
+**Template when `<GITHUB_REPO>` was detected:**
+
+Substitute `<CHECK_COMMAND>`, `<GITHUB_SYNC>`, and `<GITHUB_REPO>`:
 
 ```yaml
 # DEGA Core config — edit to match your project
@@ -116,6 +152,44 @@ budget:
 check_command: |
   <CHECK_COMMAND>
 poll_interval_seconds: 30
+
+github:
+  sync: <GITHUB_SYNC>
+  repo: <GITHUB_REPO>
+  labels: true
+  comments: true
+  close_on_ship: false
+
+# Worker and reviewer prompts (global, installed by /apply-core)
+worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
+reviewer_prompt: ~/.claude/scripts/ralph-reviewer-prompt.md
+
+success_criteria:
+  - "tests pass"
+  - "linting clean"
+  - "types valid"
+```
+
+**Template when `<GITHUB_REPO>` is empty (no GitHub remote):**
+
+```yaml
+# DEGA Core config — edit to match your project
+version: 1
+max_iterations: 20
+
+budget:
+  warn_at_iteration: 15
+check_command: |
+  <CHECK_COMMAND>
+poll_interval_seconds: 30
+
+github:
+  sync: false
+  # TODO: Set repo to owner/repo and enable sync for GitHub Issues plans
+  # repo: owner/repo
+  labels: true
+  comments: true
+  close_on_ship: false
 
 # Worker and reviewer prompts (global, installed by /apply-core)
 worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
@@ -129,7 +203,7 @@ success_criteria:
 
 ---
 
-## 5. Write CLAUDE.md
+## 6. Write CLAUDE.md
 
 **If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
 
@@ -172,7 +246,7 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 
 ---
 
-## 6. Print completion message
+## 7. Print completion message
 
 Summarize what was created. Use a checklist format:
 
