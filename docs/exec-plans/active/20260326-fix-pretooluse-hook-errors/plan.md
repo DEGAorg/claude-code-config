@@ -46,7 +46,7 @@ Potential failure modes:
 - [x] Add defensive stdin/JSON validation to both hooks: read stdin, check non-empty and valid JSON before parsing (deps: 2, 3)
 - [x] Fix `settings.json` hook paths: use absolute `~/.claude/hooks/` paths or `$PROJECT_ROOT/hooks/` pattern (deps: 1)
 - [x] Audit PostToolUse hooks for same issues — `orch-done-sync.sh`, inline jq in Edit|Write hook (deps: 1)
-- [ ] Test hooks on macOS: verify no errors in normal operation (deps: 4, 5, 6)
+- [x] Test hooks on macOS: verify no errors in normal operation (deps: 4, 5, 6)
 - [x] Add `jq` to documented prerequisites in README or core-init (deps: 2)
 
 ## Completion criteria
