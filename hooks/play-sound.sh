@@ -45,6 +45,25 @@ Darwin)
 	}
 	;;
 Linux)
+	# Headless detection: skip audio when no audio infrastructure exists.
+	# SSH into a headless VPS has no PulseAudio, PipeWire, or ALSA devices.
+	has_audio=false
+	if [[ -n "${PULSE_SERVER:-}" ]]; then
+		has_audio=true
+	elif command -v pactl &>/dev/null && pactl info &>/dev/null 2>&1; then
+		has_audio=true
+	elif [[ -d /dev/snd ]] && ls /dev/snd/pcm* &>/dev/null 2>&1; then
+		has_audio=true
+	elif grep -qi microsoft /proc/version 2>/dev/null; then
+		# WSL can route audio through Windows host
+		has_audio=true
+	fi
+
+	if [[ "${has_audio}" == false ]]; then
+		echo "play-sound: headless environment — no audio output available, skipping" >&2
+		exit 0
+	fi
+
 	# Try players in priority order
 	# mpv and ffplay handle MP3 natively
 	# paplay needs OGG format (Vorbis or Opus)
@@ -75,8 +94,9 @@ Linux)
 				"Add-Type -AssemblyName PresentationCore; \$p = New-Object System.Windows.Media.MediaPlayer; \$p.Open([Uri]'${win_path}'); \$p.Volume = ${ps_vol}; Start-Sleep -Milliseconds 100; \$p.Play(); Start-Sleep -Seconds 5" &
 			disown
 		fi
+	else
+		echo "play-sound: no supported audio player found, skipping" >&2
 	fi
-	# No player found — skip silently
 	;;
 esac
 
