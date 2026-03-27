@@ -52,8 +52,8 @@ parser (yq) would be ideal but adds a dependency — anchored grep with
 
 ## Completion criteria
 
-- [ ] `orch_read_config "poll_interval_seconds"` returns exactly `15` (single value, no newlines)
-- [ ] `orch_read_config "review_poll_interval_seconds"` returns exactly `10`
-- [ ] `orch_read_config "verify_poll_interval_seconds"` returns exactly `10`
-- [ ] Regression test exists and passes
-- [ ] shellcheck clean on all modified files
+- [x] `orch_read_config "poll_interval_seconds"` returns exactly `15` (single value, no newlines)
+- [x] `orch_read_config "review_poll_interval_seconds"` returns exactly `10`
+- [x] `orch_read_config "verify_poll_interval_seconds"` returns exactly `10`
+- [x] Regression test exists and passes
+- [x] shellcheck clean on all modified files
