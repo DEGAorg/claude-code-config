@@ -141,7 +141,7 @@ scrutiny during reviews and where to be cautious when making changes.
 - Dev_Flow.md and AI_Dev_Pipeline.md are well-structured
 - Exec-plans structure is clean with proper active/completed separation
 - All new plans use YYYYMMDD date prefix convention
-- CLAUDE.md repo map now includes orchestrator scripts and agents/
+- AGENTS.md repo map now includes orchestrator scripts and agents/
 
 **Known issues:**
 - README.md still has Trail of Bits branding from upstream fork
