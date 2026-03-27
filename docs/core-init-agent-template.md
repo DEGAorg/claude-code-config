@@ -40,7 +40,7 @@ The task-slug must match a directory in `docs/exec-plans/active/`.
 
 ## Key References
 
-- Global CLAUDE.md: `~/.claude/CLAUDE.md`
+- Global agent config: `~/.claude/CLAUDE.md` (provider-specific install target)
 - Global rules: `~/.claude/rules/` (python, node-typescript, rust, bash, github-actions)
 - Global commands: `~/.claude/commands/` (plan, fix-issue, review-pr, cleanup, doc-garden)
 - Global scripts: `~/.claude/scripts/` (ralph-loop.sh, plan-advance.sh, ralph-check.sh)

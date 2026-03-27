@@ -67,8 +67,8 @@
 ## Progress log
 
 - [x] Create `AGENTS.md` at repo root with full content from current `CLAUDE.md`; replace `CLAUDE.md` with shim; create `GEMINI.md` and `.cursorrules` shims
-- [ ] Migrate `canon/CLAUDE.md` → `canon/AGENTS.md` + shim (deps: 1)
-- [ ] Rename `claude-md-template.md` → `agent-template.md`; rename `docs/core-init-claude-template.md` → `docs/core-init-agent-template.md`; update internal references in both (deps: 1)
+- [x] Migrate `canon/CLAUDE.md` → `canon/AGENTS.md` + shim (deps: 1)
+- [x] Rename `claude-md-template.md` → `agent-template.md`; rename `docs/core-init-claude-template.md` → `docs/core-init-agent-template.md`; update internal references in both (deps: 1)
 - [ ] Update `commands/apply-core.md` — change `claude-md-template.md` refs to `agent-template.md`; install target remains `~/.claude/CLAUDE.md` (global config is provider-specific) (deps: 3)
 - [ ] Update `commands/core-init.md` — Step 6 writes `AGENTS.md` + shims (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) instead of just `CLAUDE.md` (deps: 3)
 - [ ] Update `scripts/canon-scaffold.sh` — generate `CLAUDE.md`, `GEMINI.md`, `.cursorrules` shims alongside the existing `AGENTS.md` write (deps: 2)

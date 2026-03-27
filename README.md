@@ -32,7 +32,7 @@ claude
 
 **[Usage](#usage)**
 - [Continuous Improvement](#continuous-improvement)
-- [Project-level CLAUDE.md](#project-level-claudemd)
+- [Project-level AGENTS.md](#project-level-agentsmd)
 - [Context Management](#context-management)
 - [Web Browsing](#web-browsing)
 - [Fast Mode](#fast-mode)
@@ -55,12 +55,16 @@ claude
 | `tests/` | Test scripts for hooks and infrastructure |
 | `canon/` | Canon layer — prediction market skills, agents, hooks, commands, templates |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
-| `claude-md-template.md` | Global CLAUDE.md template for `~/.claude/CLAUDE.md` |
+| `AGENTS.md` | Project-level agent configuration (single source of truth) |
+| `CLAUDE.md` | Shim — tells Claude Code to read `AGENTS.md` |
+| `GEMINI.md` | Shim — tells Gemini to read `AGENTS.md` |
+| `.cursorrules` | Shim — tells Cursor/Codex to read `AGENTS.md` |
+| `agent-template.md` | Global CLAUDE.md template for `~/.claude/CLAUDE.md` |
 | `settings.json` | Claude Code settings template (hooks, permissions, statusline) |
 | `mcp-template.json` | MCP server configuration template |
 | `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 
-For the full file-level map, see the Repo Map table in [`CLAUDE.md`](CLAUDE.md).
+For the full file-level map, see the Repo Map table in [`AGENTS.md`](AGENTS.md).
 
 ## Getting Started
 
@@ -192,7 +196,7 @@ The global `CLAUDE.md` file at `~/.claude/CLAUDE.md` sets default instructions f
 Copy the template into place:
 
 ```bash
-cp claude-md-template.md ~/.claude/CLAUDE.md
+cp agent-template.md ~/.claude/CLAUDE.md
 ```
 
 Review and customize it for your own preferences. The template is opinionated -- adjust the language sections, tool choices, and hard limits to match your stack. For background on how CLAUDE.md files work (hierarchy, auto memory, modular rules, imports), see [Manage Claude's memory](https://code.claude.com/docs/en/memory).
