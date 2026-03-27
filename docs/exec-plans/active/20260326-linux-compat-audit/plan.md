@@ -39,7 +39,7 @@ A systematic audit is needed to find and fix all platform assumptions.
 
 ## Progress log
 
-- [ ] Create platform detection helper: `orch_platform()` returning `macos|linux|wsl` — add to `orch-state.sh`
+- [x] Create platform detection helper: `orch_platform()` returning `macos|linux|wsl` — add to `orch-state.sh`
 - [x] Audit `orch-display.sh`: add headless detection (no DISPLAY, no TERM_PROGRAM) — skip window opening with log message (deps: 1)
 - [x] Audit `play-sound.sh`: add headless detection — skip audio with log message (deps: 1)
 - [x] Audit `orch-engine.sh`: verify all `date` commands have GNU fallbacks (deps: 1)
@@ -52,8 +52,8 @@ A systematic audit is needed to find and fix all platform assumptions.
 
 ## Completion criteria
 
-- [ ] No macOS-only commands without Linux fallbacks in any orchestrator script
-- [ ] Headless SSH+tmux environment handled gracefully (no crashes, informative logs)
-- [ ] All date/sed/stat commands handle both BSD and GNU variants
-- [ ] shellcheck clean on all modified files
-- [ ] Platform detection helper available for future scripts
+- [x] No macOS-only commands without Linux fallbacks in any orchestrator script
+- [x] Headless SSH+tmux environment handled gracefully (no crashes, informative logs)
+- [x] All date/sed/stat commands handle both BSD and GNU variants
+- [x] shellcheck clean on all modified files
+- [x] Platform detection helper available for future scripts

@@ -62,6 +62,33 @@ orch_read_config() {
 	printf '%s' "${value}"
 }
 
+# --- Platform detection ---
+
+# Detect the current platform. Returns one of: macos, wsl, linux.
+# Uses $OSTYPE for fast detection with uname -s fallback.
+orch_platform() {
+	# WSL check first — WSL reports OSTYPE as linux-gnu but runs on Windows
+	if [[ -f /proc/version ]] && grep -qi microsoft /proc/version; then
+		printf 'wsl'
+		return 0
+	fi
+
+	case "${OSTYPE:-}" in
+	darwin*) printf 'macos' ;;
+	linux*) printf 'linux' ;;
+	*)
+		# Fallback to uname -s
+		local kernel
+		kernel=$(uname -s 2>/dev/null || echo "Unknown")
+		case "${kernel}" in
+		Darwin) printf 'macos' ;;
+		Linux) printf 'linux' ;;
+		*) printf 'linux' ;; # Default to linux for unknown platforms
+		esac
+		;;
+	esac
+}
+
 # --- Per-plan path helpers ---
 
 orch_plan_dir() {
