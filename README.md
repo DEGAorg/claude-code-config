@@ -444,9 +444,9 @@ Most people's use of Claude Code plateaus early. You find a workflow that works,
 
 Run `/insights` once a week. It analyzes your recent sessions and surfaces patterns -- what's working, what's failing, where you're spending time. When it tells you something useful, act on it: add a rule to your CLAUDE.md, write a hook to block a mistake you keep making, extract a repeated workflow into a skill. Each adjustment compounds. After a few weeks your setup is meaningfully different from the defaults, tuned to how you actually work.
 
-## Project-level CLAUDE.md
+## Project-level AGENTS.md
 
-For each project you work on, add a `CLAUDE.md` at the repo root with project-specific context. The [global CLAUDE.md](#global-claudemd) sets defaults; the project file layers on what's unique to this codebase. A good project CLAUDE.md includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions.
+For each project you work on, add an `AGENTS.md` at the repo root with project-specific context. The [global CLAUDE.md](#global-claudemd) sets defaults; the project file layers on what's unique to this codebase. A good project `AGENTS.md` includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions. Provider-specific shim files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) point agents to `AGENTS.md` automatically.
 
 For an example of a well-structured project CLAUDE.md, see [crytic/slither's CLAUDE.md](https://github.com/crytic/slither/blob/master/CLAUDE.md). It layers slither-specific context -- SlithIR internals, detector traversal patterns, type handling pitfalls -- on top of the same global standards from this repo.
 
@@ -482,7 +482,7 @@ Use this deliberately: when a task requires reading a lot of documentation, expl
 
 **For complex features, interview first, implement second.** Have Claude interview you about the feature (requirements, edge cases, tradeoffs), then write a spec to a file. Start a fresh session to implement the spec.
 
-**Put stable context in CLAUDE.md, not the conversation.** Project architecture, coding standards, tool preferences, workflow conventions -- anything reusable goes in CLAUDE.md. It loads automatically every session and survives `/clear`.
+**Put stable context in AGENTS.md, not the conversation.** Project architecture, coding standards, tool preferences, workflow conventions -- anything reusable goes in `AGENTS.md` (project-level) or `~/.claude/CLAUDE.md` (global). It loads automatically every session and survives `/clear`.
 
 If you need to pass context between sessions, commit your work, write a brief plan to a file, `/clear`, and start the next session by pointing Claude at that file. You can also resume previous sessions with `claude --continue` (picks up the last session) or `claude --resume` (lets you choose from recent sessions). But a fresh session with a written handoff is usually better than resuming a stale one -- the context is cleaner and the prompt cache is warm.
 
