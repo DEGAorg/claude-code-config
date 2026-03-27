@@ -16,7 +16,7 @@ https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/
 
 Files available:
 - `settings.json`
-- `claude-md-template.md`
+- `agent-template.md`
 - `commands/fix-issue.md`
 - `commands/review-pr.md`
 - `commands/plan.md`
@@ -275,7 +275,7 @@ Create `~/.claude/` if it doesn't exist.
 #### CLAUDE.md
 
 - If `~/.claude/CLAUDE.md` does **not** exist: write the fetched
-  `claude-md-template.md` content to `~/.claude/CLAUDE.md`.
+  `agent-template.md` content to `~/.claude/CLAUDE.md`.
 - If it **already exists**: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite — it likely has
   personal customizations.
