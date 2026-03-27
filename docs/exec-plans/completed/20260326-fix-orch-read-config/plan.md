@@ -44,16 +44,16 @@ parser (yq) would be ideal but adds a dependency — anchored grep with
 
 ## Progress log
 
-- [ ] Fix `orch_read_config()` in `scripts/orch-state.sh`: anchor grep with `^` and limit to first match with `-m1`
-- [ ] Verify `orch-engine.sh`, `orch-review.sh`, `orch-verify.sh` all read correct poll intervals with new keys (deps: 1)
-- [ ] Add regression test: call `orch_read_config` for all three poll interval keys against a sample config with prefix collisions (deps: 1)
-- [ ] Run shellcheck on modified files (deps: 1, 2, 3)
-- [ ] Run `/apply-core` to propagate fix to `~/.claude/scripts/` (deps: 4)
+- [x] Fix `orch_read_config()` in `scripts/orch-state.sh`: anchor grep with `^` and limit to first match with `-m1`
+- [x] Verify `orch-engine.sh`, `orch-review.sh`, `orch-verify.sh` all read correct poll intervals with new keys (deps: 1)
+- [x] Add regression test: call `orch_read_config` for all three poll interval keys against a sample config with prefix collisions (deps: 1)
+- [x] Run shellcheck on modified files (deps: 1, 2, 3)
+- [x] Run `/apply-core` to propagate fix to `~/.claude/scripts/` (deps: 4)
 
 ## Completion criteria
 
-- [ ] `orch_read_config "poll_interval_seconds"` returns exactly `15` (single value, no newlines)
-- [ ] `orch_read_config "review_poll_interval_seconds"` returns exactly `10`
-- [ ] `orch_read_config "verify_poll_interval_seconds"` returns exactly `10`
-- [ ] Regression test exists and passes
-- [ ] shellcheck clean on all modified files
+- [x] `orch_read_config "poll_interval_seconds"` returns exactly `15` (single value, no newlines)
+- [x] `orch_read_config "review_poll_interval_seconds"` returns exactly `10`
+- [x] `orch_read_config "verify_poll_interval_seconds"` returns exactly `10`
+- [x] Regression test exists and passes
+- [x] shellcheck clean on all modified files
