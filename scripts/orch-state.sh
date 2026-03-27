@@ -57,7 +57,7 @@ orch_read_config() {
 	fi
 
 	local value
-	value=$(grep "${key}:" "${config_file}" 2>/dev/null |
+	value=$(grep -m1 "^${key}:" "${config_file}" 2>/dev/null |
 		awk '{print $2}' | tr -d ' ' || true)
 	printf '%s' "${value}"
 }

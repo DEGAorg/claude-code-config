@@ -44,7 +44,7 @@ parser (yq) would be ideal but adds a dependency — anchored grep with
 
 ## Progress log
 
-- [ ] Fix `orch_read_config()` in `scripts/orch-state.sh`: anchor grep with `^` and limit to first match with `-m1`
+- [x] Fix `orch_read_config()` in `scripts/orch-state.sh`: anchor grep with `^` and limit to first match with `-m1`
 - [ ] Verify `orch-engine.sh`, `orch-review.sh`, `orch-verify.sh` all read correct poll intervals with new keys (deps: 1)
 - [ ] Add regression test: call `orch_read_config` for all three poll interval keys against a sample config with prefix collisions (deps: 1)
 - [ ] Run shellcheck on modified files (deps: 1, 2, 3)
