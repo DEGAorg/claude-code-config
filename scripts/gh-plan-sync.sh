@@ -484,18 +484,20 @@ handle_pr_merged() {
 	# Update issue body: Status → Completed, check completion criteria
 	update_body_on_merge
 
-	# Verify the issue is closed (GitHub auto-closes via "Closes #N" in PR body).
-	# If not closed, close it explicitly.
-	local state
-	state="$(gh issue view "${ISSUE}" --repo "${REPO}" --json state -q '.state')"
-	if [[ "${state}" != "CLOSED" ]]; then
-		echo "warn: issue #${ISSUE} not auto-closed by PR merge, closing explicitly" >&2
-		gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null || {
-			echo "warn: failed to close issue #${ISSUE}" >&2
-		}
+	# Close the issue only if close_on_ship is true in dega-core.yaml.
+	local body
+	if gh_config_bool close_on_ship; then
+		local state
+		state="$(gh issue view "${ISSUE}" --repo "${REPO}" --json state -q '.state')"
+		if [[ "${state}" != "CLOSED" ]]; then
+			gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null || {
+				echo "warn: failed to close issue #${ISSUE}" >&2
+			}
+		fi
+		body="**Plan completed.** PR merged and issue closed."
+	else
+		body="**Plan completed.** PR merged. Issue left open for review."
 	fi
-
-	local body="**Plan completed.** PR merged and issue closed."
 	post_comment "${body}"
 	echo "Posted merge comment on issue #${ISSUE}." >&2
 }
