@@ -101,3 +101,4 @@
 | 2026-03-26 | [20260326-harden-core-init-github](completed/20260326-harden-core-init-github/plan.md) | completed | 1 | orch |
 | 2026-03-26 | [20260326-fix-tmux-env-propagation](completed/20260326-fix-tmux-env-propagation/plan.md) | completed | 0 | orch |
 | 2026-03-27 | [20260326-fix-orch-read-config](completed/20260326-fix-orch-read-config/plan.md) | completed | 0 | orch |
+| 2026-03-27 | [20260326-fix-pretooluse-hook-errors](completed/20260326-fix-pretooluse-hook-errors/plan.md) | completed | 0 | orch |
