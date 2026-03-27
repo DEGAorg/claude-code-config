@@ -51,8 +51,8 @@ Potential failure modes:
 
 ## Completion criteria
 
-- [ ] No "PreToolUse:Bash hook error" when running Claude Code in this repo
-- [ ] Hooks degrade gracefully when `jq` is missing (warn + allow)
-- [ ] Hooks work from any CWD within the repo
-- [ ] All hooks pass shellcheck
-- [ ] PostToolUse hooks also audited and fixed
+- [x] No "PreToolUse:Bash hook error" when running Claude Code in this repo
+- [x] Hooks degrade gracefully when `jq` is missing (warn + allow)
+- [x] Hooks work from any CWD within the repo
+- [x] All hooks pass shellcheck
+- [x] PostToolUse hooks also audited and fixed
