@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/enforce-loop-mode.sh"
+            "command": "bash ~/.claude/hooks/enforce-loop-mode.sh"
           }
         ]
       },
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/enforce-exec-plan-naming.sh"
+            "command": "bash ~/.claude/hooks/enforce-exec-plan-naming.sh"
           }
         ]
       }
@@ -94,7 +94,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/orch-done-sync.sh"
+            "command": "bash ~/.claude/hooks/orch-done-sync.sh"
           }
         ]
       },
