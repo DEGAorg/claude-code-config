@@ -30,11 +30,11 @@ Canon `CLAUDE.md` gets a single new section: a pointer to Core harness and the d
 
 #### Gap 1: CLAUDE.md as Map + `rules/`
 
-**Problem:** `claude-md-template.md` (the global CLAUDE.md template) is a ~10KB monolith. Language toolchains, philosophy, and workflow all in one file. Crowds out task context. Rots because there's no structure to validate or maintain.
+**Problem:** `agent-template.md` (the global CLAUDE.md template) is a ~10KB monolith. Language toolchains, philosophy, and workflow all in one file. Crowds out task context. Rots because there's no structure to validate or maintain.
 
 **Fix:**
 
-1. **Restructure `claude-md-template.md`** → lean ~100-line map:
+1. **Restructure `agent-template.md`** → lean ~100-line map:
    - Keep: core philosophy (short), code quality hard limits (short), CLI tools table, workflow conventions
    - Remove: language-specific sections (Python, Node, Rust, Bash, GitHub Actions) → move to `rules/`
    - Add: golden principles section (from Gap 6, fits naturally here)
@@ -54,7 +54,7 @@ Canon `CLAUDE.md` gets a single new section: a pointer to Core harness and the d
 
 3. **Update root `CLAUDE.md`**: add `rules/` to repo map, update gap 1 status.
 
-**Files modified:** `claude-md-template.md`, `CLAUDE.md` (root)
+**Files modified:** `agent-template.md`, `CLAUDE.md` (root)
 **Files created:** `rules/python.md`, `rules/node-typescript.md`, `rules/rust.md`, `rules/bash.md`, `rules/github-actions.md`
 
 ---
@@ -113,7 +113,7 @@ Round 1 uses the full multi-agent review. Rounds 2+ use lightweight self-review 
 
 **Fix:**
 
-1. **Add golden principles** to `claude-md-template.md` (global template):
+1. **Add golden principles** to `agent-template.md` (global template):
    - Prefer shared utilities over hand-rolled helpers
    - Validate data at boundaries (parse, don't validate)
    - Structured logging everywhere, no ad-hoc console.log
@@ -130,7 +130,7 @@ Round 1 uses the full multi-agent review. Rounds 2+ use lightweight self-review 
    - Agents read this to understand where to focus
 
 **Files created:** `commands/cleanup.md`, `docs/QUALITY.md`
-**Files modified:** `claude-md-template.md` — golden principles section (done as part of Gap 1 restructure)
+**Files modified:** `agent-template.md` — golden principles section (done as part of Gap 1 restructure)
 
 ---
 
@@ -206,7 +206,7 @@ and enforced via ast-grep rules with agent-friendly error messages.
 
 | File | Action | Gap |
 |---|---|---|
-| `claude-md-template.md` | Restructure → lean map + golden principles | 1, 6 |
+| `agent-template.md` | Restructure → lean map + golden principles | 1, 6 |
 | `CLAUDE.md` (root) | Update repo map, gap statuses | 1 |
 | `rules/python.md` | Create | 1 |
 | `rules/node-typescript.md` | Create | 1 |
@@ -231,10 +231,10 @@ and enforced via ast-grep rules with agent-friendly error messages.
 
 ## Verification
 
-1. **Gap 1**: `claude-md-template.md` is ≤ 100 lines, no language-specific toolchain content. `rules/` files exist with correct glob metadata at top.
+1. **Gap 1**: `agent-template.md` is ≤ 100 lines, no language-specific toolchain content. `rules/` files exist with correct glob metadata at top.
 2. **Gap 5**: `/fix-issue` steps show convergence loop section with "up to 3 rounds" language. `/review-pr` matches.
 3. **Gap 2**: `docs/exec-plans/active/` and `completed/` exist. `/fix-issue` writes plans there. `/plan` command creates a plan file in `active/`.
-4. **Gap 6**: `commands/cleanup.md` exists. `docs/QUALITY.md` exists as template. Golden principles appear in `claude-md-template.md`.
+4. **Gap 6**: `commands/cleanup.md` exists. `docs/QUALITY.md` exists as template. Golden principles appear in `agent-template.md`.
 5. **Gap 3**: `commands/doc-garden.md` exists. `settings.json` has a PostToolUse hook entry.
 6. **Gap 4**: `skills/custom-linter-authoring.md` exists. `canon/rules/domain-layering.md` exists with example ast-grep rule and agent-friendly error message.
 7. **Canon**: `canon/CLAUDE.md` has harness section. `canon/rules/` has domain-layering rule. No Core content duplicated.

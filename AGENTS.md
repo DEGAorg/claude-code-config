@@ -58,7 +58,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `CLAUDE.md` | Shim — points agents to `AGENTS.md` (Claude Code auto-discovery) |
 | `GEMINI.md` | Shim — points agents to `AGENTS.md` (Gemini auto-discovery) |
 | `.cursorrules` | Shim — points agents to `AGENTS.md` (Cursor auto-discovery) |
-| `claude-md-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) — lean map, ~120 lines |
+| `agent-template.md` | Global CLAUDE.md template (`~/.claude/CLAUDE.md`) — lean map, ~120 lines |
 | `rules/` | Language-specific standards loaded by file type (python, node-typescript, rust, bash, github-actions) |
 | `settings.json` | Claude Code settings template (hooks, permissions) |
 | `mcp-template.json` | MCP server configuration template |
@@ -172,7 +172,7 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
 | # | Gap | Status | Artifact |
 |---|-----|--------|----------|
-| 1 | AGENTS.md as map + `~/.claude/rules/` for language rules | **Done** | `claude-md-template.md` + `rules/` |
+| 1 | AGENTS.md as map + `~/.claude/rules/` for language rules | **Done** | `agent-template.md` + `rules/` |
 | 2 | Execution plans as first-class artifacts | **Done** | `commands/plan.md` + `docs/exec-plans/` |
 | 3 | Doc-gardening automation | **Done** | `commands/doc-garden.md` + PostToolUse hook |
 | 4 | Custom linters with agent-friendly error messages | **Done** | `skills/custom-linter-authoring.md` + `canon/rules/domain-layering.md` |

@@ -75,7 +75,7 @@
 - [x] Update `README.md` and `INSTALL.md` — update project-level references to AGENTS.md; keep global `~/.claude/CLAUDE.md` references accurate (deps: 1)
 - [x] Update remaining commands (`cleanup.md`, `doc-garden.md`, `fix-issue.md`, `review-pr.md`, `canon-init.md`) — replace project-level CLAUDE.md references with AGENTS.md (deps: 1)
 - [x] Update remaining docs and skills (`DECISIONS.md`, `docs/Self_Development.md`, `docs/QUALITY.md`, `skills/custom-linter-authoring.md`) — replace project-level CLAUDE.md references with AGENTS.md (deps: 1)
-- [ ] Verify: grep entire repo for stale `claude-md-template` references; verify project-level `CLAUDE.md` refs are shim-aware; run `shellcheck` on modified scripts (deps: 4, 5, 6, 7, 8, 9)
+- [x] Verify: grep entire repo for stale `claude-md-template` references; verify project-level `CLAUDE.md` refs are shim-aware; run `shellcheck` on modified scripts (deps: 4, 5, 6, 7, 8, 9)
 
 ## Decision log
 
