@@ -40,7 +40,7 @@ A systematic audit is needed to find and fix all platform assumptions.
 ## Progress log
 
 - [ ] Create platform detection helper: `orch_platform()` returning `macos|linux|wsl` — add to `orch-state.sh`
-- [ ] Audit `orch-display.sh`: add headless detection (no DISPLAY, no TERM_PROGRAM) — skip window opening with log message (deps: 1)
+- [x] Audit `orch-display.sh`: add headless detection (no DISPLAY, no TERM_PROGRAM) — skip window opening with log message (deps: 1)
 - [ ] Audit `play-sound.sh`: add headless detection — skip audio with log message (deps: 1)
 - [ ] Audit `orch-engine.sh`: verify all `date` commands have GNU fallbacks (deps: 1)
 - [ ] Audit `orch-run.sh`: check for macOS assumptions in session creation, worktree setup (deps: 1)
