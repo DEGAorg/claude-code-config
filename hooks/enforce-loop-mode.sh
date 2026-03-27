@@ -12,7 +12,17 @@ if ! command -v jq >/dev/null 2>&1; then
 	exit 0
 fi
 
-CMD=$(jq -r '.tool_input.command // empty')
+# Read stdin and validate JSON before parsing
+INPUT=$(cat)
+if [[ -z "${INPUT}" ]]; then
+	exit 0
+fi
+if ! printf '%s' "${INPUT}" | jq empty 2>/dev/null; then
+	echo "warn: enforce-loop-mode.sh: stdin is not valid JSON — skipping hook" >&2
+	exit 0
+fi
+
+CMD=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty')
 [[ -z "${CMD}" ]] && exit 0
 
 # ── Level 1: always blocked regardless of mode ──────────────────────────────

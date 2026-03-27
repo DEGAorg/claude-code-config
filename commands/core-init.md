@@ -63,7 +63,26 @@ in later steps.
 
 ---
 
-## 3. Create directory structure
+## 3. Check for jq
+
+Hooks installed by `/apply-core` require `jq` to parse tool input from stdin.
+Check if it's available and warn if missing:
+
+```bash
+command -v jq >/dev/null 2>&1
+```
+
+If `jq` is NOT found, print a warning (but continue):
+
+> ⚠ `jq` is not installed. Hooks that guard against `rm -rf` and enforce
+> feature branches will be disabled until `jq` is available.
+> Install it: `brew install jq` (macOS) or `apt install jq` (Linux).
+
+Do not abort — the rest of core-init does not require `jq`.
+
+---
+
+## 4. Create directory structure
 
 Create all directories. These are no-ops if they already exist:
 

@@ -12,7 +12,15 @@ if ! command -v jq >/dev/null 2>&1; then
 	exit 0
 fi
 
+# Read stdin and validate JSON before parsing
 INPUT=$(cat)
+if [[ -z "${INPUT}" ]]; then
+	exit 0
+fi
+if ! printf '%s' "${INPUT}" | jq empty 2>/dev/null; then
+	echo "warn: enforce-exec-plan-naming.sh: stdin is not valid JSON — skipping hook" >&2
+	exit 0
+fi
 
 TOOL_NAME=$(printf '%s' "${INPUT}" | jq -r '.tool_name // empty')
 
