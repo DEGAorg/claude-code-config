@@ -40,19 +40,19 @@ Potential failure modes:
 
 ## Progress log
 
-- [ ] Audit all hooks in `settings.json` for dependency and path issues — catalog each hook's deps and path strategy
-- [ ] Add defensive `jq` check to `enforce-loop-mode.sh`: if not found, warn and exit 0 (deps: 1)
-- [ ] Add defensive `jq` check to `enforce-exec-plan-naming.sh`: same pattern (deps: 1)
-- [ ] Add defensive stdin/JSON validation to both hooks: read stdin, check non-empty and valid JSON before parsing (deps: 2, 3)
-- [ ] Fix `settings.json` hook paths: use absolute `~/.claude/hooks/` paths or `$PROJECT_ROOT/hooks/` pattern (deps: 1)
-- [ ] Audit PostToolUse hooks for same issues — `orch-done-sync.sh`, inline jq in Edit|Write hook (deps: 1)
-- [ ] Test hooks on macOS: verify no errors in normal operation (deps: 4, 5, 6)
-- [ ] Add `jq` to documented prerequisites in README or core-init (deps: 2)
+- [x] Audit all hooks in `settings.json` for dependency and path issues — catalog each hook's deps and path strategy
+- [x] Add defensive `jq` check to `enforce-loop-mode.sh`: if not found, warn and exit 0 (deps: 1)
+- [x] Add defensive `jq` check to `enforce-exec-plan-naming.sh`: same pattern (deps: 1)
+- [x] Add defensive stdin/JSON validation to both hooks: read stdin, check non-empty and valid JSON before parsing (deps: 2, 3)
+- [x] Fix `settings.json` hook paths: use absolute `~/.claude/hooks/` paths or `$PROJECT_ROOT/hooks/` pattern (deps: 1)
+- [x] Audit PostToolUse hooks for same issues — `orch-done-sync.sh`, inline jq in Edit|Write hook (deps: 1)
+- [x] Test hooks on macOS: verify no errors in normal operation (deps: 4, 5, 6)
+- [x] Add `jq` to documented prerequisites in README or core-init (deps: 2)
 
 ## Completion criteria
 
-- [ ] No "PreToolUse:Bash hook error" when running Claude Code in this repo
-- [ ] Hooks degrade gracefully when `jq` is missing (warn + allow)
-- [ ] Hooks work from any CWD within the repo
-- [ ] All hooks pass shellcheck
-- [ ] PostToolUse hooks also audited and fixed
+- [x] No "PreToolUse:Bash hook error" when running Claude Code in this repo
+- [x] Hooks degrade gracefully when `jq` is missing (warn + allow)
+- [x] Hooks work from any CWD within the repo
+- [x] All hooks pass shellcheck
+- [x] PostToolUse hooks also audited and fixed
