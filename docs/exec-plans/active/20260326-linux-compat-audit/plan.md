@@ -47,7 +47,7 @@ A systematic audit is needed to find and fix all platform assumptions.
 - [x] Audit `orch-review.sh` and `orch-verify.sh`: same sweep (deps: 1)
 - [x] Audit `scripts/gh-plan-sync.sh`, `scripts/gh-plan-fetch.sh`: check `sed`, `date`, path assumptions (deps: 1)
 - [x] Audit `settings.json`: document that `~/Library/` deny paths are macOS-only, add Linux equivalents (deps: 1)
-- [ ] Run shellcheck on all modified scripts (deps: 2, 3, 4, 5, 6, 7, 8)
+- [x] Run shellcheck on all modified scripts (deps: 2, 3, 4, 5, 6, 7, 8)
 - [ ] Integration test: dry-run orchestrator startup on Linux (or simulate with OSTYPE=linux-gnu) (deps: 9)
 
 ## Completion criteria
