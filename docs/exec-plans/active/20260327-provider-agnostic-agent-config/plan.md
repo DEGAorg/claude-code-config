@@ -88,12 +88,12 @@
 
 ## Completion criteria
 
-- [ ] `AGENTS.md` exists at repo root with full project configuration
-- [ ] `CLAUDE.md` at repo root is a shim (under 10 lines) pointing to `AGENTS.md`
-- [ ] `GEMINI.md` and `.cursorrules` exist as shims at repo root
-- [ ] `claude-md-template.md` no longer exists; `agent-template.md` exists in its place
-- [ ] `commands/apply-core.md` references `agent-template.md` and installs to `~/.claude/CLAUDE.md` (not AGENTS.md)
-- [ ] `commands/core-init.md` generates project-level `AGENTS.md` + all three shims
-- [ ] Global `~/.claude/CLAUDE.md` remains the full standards file (no shim at global level)
-- [ ] `grep -r "claude-md-template" .` returns zero hits (excluding completed exec plans and git history)
-- [ ] `shellcheck` passes on all modified `.sh` files
+- [x] `AGENTS.md` exists at repo root with full project configuration
+- [x] `CLAUDE.md` at repo root is a shim (under 10 lines) pointing to `AGENTS.md`
+- [x] `GEMINI.md` and `.cursorrules` exist as shims at repo root
+- [x] `claude-md-template.md` no longer exists; `agent-template.md` exists in its place
+- [x] `commands/apply-core.md` references `agent-template.md` and installs to `~/.claude/CLAUDE.md` (not AGENTS.md)
+- [x] `commands/core-init.md` generates project-level `AGENTS.md` + all three shims
+- [x] Global `~/.claude/CLAUDE.md` remains the full standards file (no shim at global level)
+- [x] `grep -r "claude-md-template" .` returns zero hits (excluding completed exec plans and git history)
+- [x] `shellcheck` passes on all modified `.sh` files
