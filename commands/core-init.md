@@ -115,7 +115,7 @@ Check each line before appending — skip if already in `.gitignore`. Create
 
 ---
 
-## 4. Write dega-core.yaml
+## 5. Write dega-core.yaml
 
 **If `dega-core.yaml` already exists:** tell the user it exists and skip. Print:
 
@@ -148,7 +148,7 @@ success_criteria:
 
 ---
 
-## 5. Write CLAUDE.md
+## 6. Write CLAUDE.md
 
 **If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
 
@@ -191,7 +191,7 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 
 ---
 
-## 6. Print completion message
+## 7. Print completion message
 
 Summarize what was created. Use a checklist format:
 
