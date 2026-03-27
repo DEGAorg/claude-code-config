@@ -6,6 +6,12 @@
 
 set -euo pipefail
 
+# Guard: jq is required to parse tool input — degrade gracefully if missing
+if ! command -v jq >/dev/null 2>&1; then
+	echo "warn: enforce-exec-plan-naming.sh: jq not found — skipping hook" >&2
+	exit 0
+fi
+
 INPUT=$(cat)
 
 TOOL_NAME=$(printf '%s' "${INPUT}" | jq -r '.tool_name // empty')

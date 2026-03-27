@@ -6,6 +6,12 @@
 
 set -euo pipefail
 
+# Guard: jq is required to parse tool input — degrade gracefully if missing
+if ! command -v jq >/dev/null 2>&1; then
+	echo "warn: enforce-loop-mode.sh: jq not found — skipping hook" >&2
+	exit 0
+fi
+
 CMD=$(jq -r '.tool_input.command // empty')
 [[ -z "${CMD}" ]] && exit 0
 
