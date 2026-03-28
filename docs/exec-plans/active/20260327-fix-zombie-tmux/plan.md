@@ -62,8 +62,8 @@ The dashboard renders a "Last heartbeat: Xs ago" indicator so the user can see e
 
 - [x] Add heartbeat writes to `orch-engine.sh` — write `date +%s` to `heartbeat` file at poll start, after worker spawn, after review, after each SHIP/FAIL step, and before final exit
 - [ ] Update dashboard loop in `orch-run.sh` — replace `while true; do node ...; sleep 3; done` with a loop that checks heartbeat staleness (>5min) and `tmux has-window` for engine, enters grace period on engine death, then exits; reduce interval to 2s (deps: 1)
-- [ ] Add safety-net session kill to `orch-run.sh` — append `; sleep 30; tmux kill-session -t $SESSION 2>/dev/null` to the engine tmux command (line 357) so the session dies even if dashboard is broken (deps: 1)
-- [ ] Create `scripts/orch-gc.sh` — find stale `orch-*` sessions (no engine window OR heartbeat stale >10min), print age and slug, kill them; support `--dry-run` flag (deps: 1)
+- [x] Add safety-net session kill to `orch-run.sh` — append `; sleep 30; tmux kill-session -t $SESSION 2>/dev/null` to the engine tmux command (line 357) so the session dies even if dashboard is broken (deps: 1)
+- [x] Create `scripts/orch-gc.sh` — find stale `orch-*` sessions (no engine window OR heartbeat stale >10min), print age and slug, kill them; support `--dry-run` flag (deps: 1)
 - [ ] Wire `--gc` flag into `orch-run.sh` arg parser to dispatch to `orch-gc.sh` (deps: 4)
 - [ ] Add heartbeat indicator to dashboard — read heartbeat file in `orchestrator-app.tsx`, display "Last heartbeat: Xs ago" with red/warning styling when stale >5min; add `lastHeartbeat` to `orch-types.ts` (deps: 1)
 - [ ] Update `README.md` — document `orch-gc.sh` (usage, `--dry-run`, when to use), heartbeat mechanism (what it is, 5min threshold, where the file lives), dashboard auto-exit behavior (grace period, indicator), and the safety-net session kill (deps: 2, 3, 4, 6)
