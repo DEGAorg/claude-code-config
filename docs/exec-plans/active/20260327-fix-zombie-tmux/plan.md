@@ -81,13 +81,13 @@ The dashboard renders a "Last heartbeat: Xs ago" indicator so the user can see e
 
 ## Completion criteria
 
-- [ ] After engine exits (SHIP or FAIL), tmux session terminates within ~90s (60s grace + safety net)
-- [ ] Engine writes heartbeat at least once per poll cycle
-- [ ] Dashboard detects engine death within 4s (2s check interval + 2s buffer)
-- [ ] `orch-gc.sh` correctly identifies and kills stale sessions
-- [ ] `orch-gc.sh --dry-run` lists but does not kill
-- [ ] Dashboard displays "Last heartbeat: Xs ago" that updates live
-- [ ] Heartbeat indicator turns red/warning when stale >5min
-- [ ] `README.md` documents `orch-gc.sh`, heartbeat, dashboard auto-exit, and safety-net kill
-- [ ] `shellcheck` passes on all modified/new `.sh` files
-- [ ] No regressions: orchestrator still launches, runs items, reviews, creates PRs correctly
+- [x] After engine exits (SHIP or FAIL), tmux session terminates within ~90s (60s grace + safety net)
+- [x] Engine writes heartbeat at least once per poll cycle
+- [x] Dashboard detects engine death within 4s (2s check interval + 2s buffer)
+- [x] `orch-gc.sh` correctly identifies and kills stale sessions
+- [x] `orch-gc.sh --dry-run` lists but does not kill
+- [x] Dashboard displays "Last heartbeat: Xs ago" that updates live
+- [x] Heartbeat indicator turns red/warning when stale >5min
+- [x] `README.md` documents `orch-gc.sh`, heartbeat, dashboard auto-exit, and safety-net kill
+- [x] `shellcheck` passes on all modified/new `.sh` files
+- [x] No regressions: orchestrator still launches, runs items, reviews, creates PRs correctly
