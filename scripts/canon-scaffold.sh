@@ -23,7 +23,9 @@ TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
 
 # ── Helper: write state to dashboard (no-op if writer not installed) ─────────
 state() {
-	[[ -f "${TUI_WRITE}" ]] && bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
+	if [[ -f "${TUI_WRITE}" ]]; then
+		bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
+	fi
 }
 
 # ── Guard: don't run inside claude-code-config itself ─────────────────────────
