@@ -276,6 +276,7 @@ spawn_worker() {
 # --- Wave execution loop ---
 
 echo ""
+echo "orch-engine: GH_SYNC=${GH_SYNC}"
 echo "orch-engine: starting wave execution"
 echo "  plan: ${SLUG}"
 echo "  total items: ${TOTAL_COUNT}"
@@ -401,7 +402,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
 		orch_write_state "${SLUG}" "${updated}"
 
-		if "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
+		if GH_SYNC="${GH_SYNC}" "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
 			# Verifier succeeded — re-check criteria
 			CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
 			if [[ "${CC_AFTER}" -gt 0 ]]; then
