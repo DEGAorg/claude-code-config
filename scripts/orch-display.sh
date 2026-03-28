@@ -129,7 +129,21 @@ print_fallback() {
 	echo "  Run manually: ${ATTACH_CMD}"
 }
 
+# --- Headless detection ---
+
+# Returns 0 (true) if the environment has no display server or GUI terminal.
+# Checks DISPLAY (X11/Wayland), WAYLAND_DISPLAY, and TERM_PROGRAM (macOS).
+is_headless() {
+	[[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" && -z "${TERM_PROGRAM:-}" ]]
+}
+
 # --- Dispatch ---
+
+if is_headless; then
+	echo "orch-display: headless environment detected (no DISPLAY, no WAYLAND_DISPLAY, no TERM_PROGRAM) — skipping window open"
+	echo "  Run manually: ${ATTACH_CMD}"
+	exit 0
+fi
 
 case "$(uname -s)" in
 Darwin)

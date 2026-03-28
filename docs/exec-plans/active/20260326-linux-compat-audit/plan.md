@@ -39,21 +39,21 @@ A systematic audit is needed to find and fix all platform assumptions.
 
 ## Progress log
 
-- [ ] Create platform detection helper: `orch_platform()` returning `macos|linux|wsl` — add to `orch-state.sh`
-- [ ] Audit `orch-display.sh`: add headless detection (no DISPLAY, no TERM_PROGRAM) — skip window opening with log message (deps: 1)
-- [ ] Audit `play-sound.sh`: add headless detection — skip audio with log message (deps: 1)
-- [ ] Audit `orch-engine.sh`: verify all `date` commands have GNU fallbacks (deps: 1)
-- [ ] Audit `orch-run.sh`: check for macOS assumptions in session creation, worktree setup (deps: 1)
-- [ ] Audit `orch-review.sh` and `orch-verify.sh`: same sweep (deps: 1)
-- [ ] Audit `scripts/gh-plan-sync.sh`, `scripts/gh-plan-fetch.sh`: check `sed`, `date`, path assumptions (deps: 1)
-- [ ] Audit `settings.json`: document that `~/Library/` deny paths are macOS-only, add Linux equivalents (deps: 1)
-- [ ] Run shellcheck on all modified scripts (deps: 2, 3, 4, 5, 6, 7, 8)
-- [ ] Integration test: dry-run orchestrator startup on Linux (or simulate with OSTYPE=linux-gnu) (deps: 9)
+- [x] Create platform detection helper: `orch_platform()` returning `macos|linux|wsl` — add to `orch-state.sh`
+- [x] Audit `orch-display.sh`: add headless detection (no DISPLAY, no TERM_PROGRAM) — skip window opening with log message (deps: 1)
+- [x] Audit `play-sound.sh`: add headless detection — skip audio with log message (deps: 1)
+- [x] Audit `orch-engine.sh`: verify all `date` commands have GNU fallbacks (deps: 1)
+- [x] Audit `orch-run.sh`: check for macOS assumptions in session creation, worktree setup (deps: 1)
+- [x] Audit `orch-review.sh` and `orch-verify.sh`: same sweep (deps: 1)
+- [x] Audit `scripts/gh-plan-sync.sh`, `scripts/gh-plan-fetch.sh`: check `sed`, `date`, path assumptions (deps: 1)
+- [x] Audit `settings.json`: document that `~/Library/` deny paths are macOS-only, add Linux equivalents (deps: 1)
+- [x] Run shellcheck on all modified scripts (deps: 2, 3, 4, 5, 6, 7, 8)
+- [x] Integration test: dry-run orchestrator startup on Linux (or simulate with OSTYPE=linux-gnu) (deps: 9)
 
 ## Completion criteria
 
-- [ ] No macOS-only commands without Linux fallbacks in any orchestrator script
-- [ ] Headless SSH+tmux environment handled gracefully (no crashes, informative logs)
-- [ ] All date/sed/stat commands handle both BSD and GNU variants
-- [ ] shellcheck clean on all modified files
-- [ ] Platform detection helper available for future scripts
+- [x] No macOS-only commands without Linux fallbacks in any orchestrator script
+- [x] Headless SSH+tmux environment handled gracefully (no crashes, informative logs)
+- [x] All date/sed/stat commands handle both BSD and GNU variants
+- [x] shellcheck clean on all modified files
+- [x] Platform detection helper available for future scripts
