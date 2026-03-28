@@ -7,12 +7,14 @@
 # orch-engine.sh in a tmux window named "engine".
 #
 # Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
+#        scripts/orch-run.sh --gc [--dry-run]
 #
 # Options:
 #   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
 #   --background         Headless mode — tmux only, no display windows
+#   --gc [--dry-run]     Run garbage collection on stale orch-* tmux sessions
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
@@ -56,6 +58,10 @@ BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
+	--gc)
+		shift
+		exec bash "${SCRIPT_DIR}/orch-gc.sh" "$@"
+		;;
 	--issue)
 		ISSUE_NUMBER="${2:-}"
 		if [[ -z "${ISSUE_NUMBER}" ]]; then
@@ -78,7 +84,7 @@ while [[ $# -gt 0 ]]; do
 		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
+		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 		exit 1
 		;;
 	*)
@@ -89,7 +95,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
+	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 	exit 1
 fi
 
