@@ -85,6 +85,8 @@ export interface OrchestratorState {
   readonly startedAt: string;
   /** ISO 8601 — last state write. */
   readonly updatedAt: string;
+  /** Unix epoch seconds from the engine heartbeat file (null if unread). */
+  readonly lastHeartbeat: number | null;
 }
 
 /**

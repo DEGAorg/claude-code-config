@@ -3,11 +3,31 @@ import { Box, Text, useApp, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import type { OrchestratorState, MasterState } from "./orch-types.js";
 import { SessionTable } from "./session-table.js";
 import { SessionDetail } from "./session-detail.js";
 import { MasterView } from "./master-view.js";
+
+/** Threshold in seconds after which heartbeat is considered stale. */
+const HEARTBEAT_STALE_THRESHOLD = 300; // 5 minutes
+
+function formatHeartbeatAge(epochSecs: number): {
+  text: string;
+  stale: boolean;
+} {
+  const ageSecs = Math.max(
+    0,
+    Math.floor(Date.now() / 1000) - epochSecs,
+  );
+  const stale = ageSecs > HEARTBEAT_STALE_THRESHOLD;
+  if (ageSecs < 60) {
+    return { text: `${ageSecs}s ago`, stale };
+  }
+  const mins = Math.floor(ageSecs / 60);
+  const secs = ageSecs % 60;
+  return { text: `${mins}m${secs}s ago`, stale };
+}
 
 interface OrchestratorAppProps {
   readonly statePath: string;
