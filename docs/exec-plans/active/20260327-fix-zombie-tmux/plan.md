@@ -67,7 +67,7 @@ The dashboard renders a "Last heartbeat: Xs ago" indicator so the user can see e
 - [x] Wire `--gc` flag into `orch-run.sh` arg parser to dispatch to `orch-gc.sh` (deps: 4)
 - [x] Add heartbeat indicator to dashboard — read heartbeat file in `orchestrator-app.tsx`, display "Last heartbeat: Xs ago" with red/warning styling when stale >5min; add `lastHeartbeat` to `orch-types.ts` (deps: 1)
 - [x] Update `README.md` — document `orch-gc.sh` (usage, `--dry-run`, when to use), heartbeat mechanism (what it is, 5min threshold, where the file lives), dashboard auto-exit behavior (grace period, indicator), and the safety-net session kill (deps: 2, 3, 4, 6)
-- [ ] Update `docs/exec-plans/tech-debt.md` — mark zombie session entry as resolved with date (deps: 1, 2, 3, 4, 5, 6, 7, 8)
+- [x] Update `docs/exec-plans/tech-debt.md` — mark zombie session entry as resolved with date (deps: 1, 2, 3, 4, 5, 6, 7, 8)
 
 ## Decision log
 

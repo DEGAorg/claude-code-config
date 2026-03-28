@@ -221,47 +221,30 @@ onboarding time significantly.
 
 ---
 
-## Orchestrator tmux sessions never auto-kill — zombie session accumulation
+## ~~Orchestrator tmux sessions never auto-kill — zombie session accumulation~~
 
 **Severity:** P1
 **Area:** scripts/orch-run.sh, scripts/orch-engine.sh
 **Logged:** 2026-03-26
+**Resolved:** 2026-03-27
 **Context:** Found 56 zombie tmux sessions draining GitHub GraphQL API quota (5000/hr exhausted). First Linux run investigation.
 
-The orchestrator creates a tmux session per plan but **never kills it on
-completion**. After SHIP or FAIL, the engine window exits (with a 30s sleep)
-but the dashboard window runs a `while true` loop that restarts every 3
-seconds forever. Sessions accumulate indefinitely.
+**Resolution:** Fixed via plan `20260327-fix-zombie-tmux`. Three coordinated fixes:
 
-**Three fixes needed (resolve together):**
+1. **Engine heartbeat** — `orch-engine.sh` writes `date +%s` to
+   `$ORCH_STATE_DIR/plans/$SLUG/heartbeat` at poll start, after worker
+   spawn, after review, after each SHIP/FAIL step, and before exit.
 
-1. **Session auto-kill on completion** — After SHIP/FAIL in `orch-engine.sh`,
-   send `tmux kill-session -t "${TMUX_SESSION}"` (or schedule it after a short
-   delay so the user can read final output). The dashboard's `while true` loop
-   currently prevents the session from ever dying.
+2. **Dashboard exit condition** — `orch-run.sh` dashboard loop checks
+   heartbeat staleness (>5min) and `tmux has-window` for the engine window.
+   On engine death, enters a configurable grace period (default 60s via
+   `ORCH_DASHBOARD_TIMEOUT`), then kills the session. Safety-net
+   `tmux kill-session` appended to engine tmux command fires after 30s
+   sleep even if dashboard is broken.
 
-2. **Dashboard exit condition** — Replace the unconditional `while true` loop
-   in `orch-run.sh:366` with a loop that checks whether the engine window
-   still exists. When the engine exits, the dashboard should print a final
-   summary and exit (or auto-kill after a configurable timeout, e.g. 5 min).
-
-3. **Stale session garbage collection** — Add an `orch-gc.sh` script (or
-   `orch-run.sh --gc`) that finds `orch-*` tmux sessions where the engine
-   window is dead, prints their slugs and ages, and kills them. The future
-   Conductor agent should call this on startup and expose session state in
-   the TUI.
-
-**Impact of not fixing:** Each zombie session's dashboard polls the state
-file every 3 seconds. Lifecycle hooks on completion fire 2-3 GitHub API
-calls per plan item (comment + checkbox update + issue edit via
-`01-gh-plan-sync.sh`). With 50+ zombie sessions, this drains the 5000/hr
-GraphQL quota and blocks new plan uploads.
-
-**Code locations:**
-- Dashboard while loop: `orch-run.sh:366`
-- Engine exit (no session kill): `orch-engine.sh:756` (SHIP), `:795` (FAIL)
-- Lifecycle hook API calls: `hooks/orch-lifecycle/01-gh-plan-sync.sh:127-176`
-- No trap handlers: `orch-run.sh:21` (only `set -euo pipefail`)
+3. **Stale session GC** — `scripts/orch-gc.sh` finds `orch-*` sessions
+   with no engine window or stale heartbeat (>10min), prints age and slug,
+   kills them. Supports `--dry-run`. Accessible via `orch-run.sh --gc`.
 
 ---
 
