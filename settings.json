@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v jq >/dev/null 2>&1 || exit 0; FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); command -v rg >/dev/null 2>&1 || exit 0; REFS=$(rg -l \"$BASENAME\" docs/ CLAUDE.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); command -v rg >/dev/null 2>&1 || exit 0; REFS=$(rg -l \"$BASENAME\" docs/ AGENTS.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
           }
         ]
       },

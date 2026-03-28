@@ -29,7 +29,7 @@ state() {
 }
 
 # ── Guard: don't run inside claude-code-config itself ─────────────────────────
-if [[ -f "CLAUDE.md" ]] && grep -q "claude-code-config" "CLAUDE.md" 2>/dev/null; then
+if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null; then
 	echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
 	exit 1
 fi
@@ -356,6 +356,24 @@ cat >"AGENTS.md" <<'EOF'
 5. "If it's not in the repo, it doesn't exist"
 EOF
 
+# ── 9b. Write provider shims (CLAUDE.md, GEMINI.md, .cursorrules) ────────────
+echo "→ writing provider shims..."
+for shim in CLAUDE.md GEMINI.md; do
+	cat >"${shim}" <<'SHIMEOF'
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+SHIMEOF
+	echo "  wrote: ${shim}"
+done
+
+cat >".cursorrules" <<'SHIMEOF'
+# Agent Configuration
+
+Read and follow all instructions in AGENTS.md.
+SHIMEOF
+echo "  wrote: .cursorrules"
+
 # ── 10. Verify ────────────────────────────────────────────────────────────────
 echo ""
 echo "→ verifying..."
@@ -378,7 +396,10 @@ for f in \
 	src/clients/sportsbook.ts \
 	package.json \
 	tsconfig.json \
-	AGENTS.md; do
+	AGENTS.md \
+	CLAUDE.md \
+	GEMINI.md \
+	.cursorrules; do
 	if [[ ! -f "${f}" ]]; then
 		echo "  MISSING: ${f}" >&2
 		ERRORS=$((ERRORS + 1))
@@ -415,7 +436,11 @@ echo ""
 echo "  src/clients/"
 echo "    polymarket.ts, sportsbook.ts"
 echo ""
-echo "  package.json, tsconfig.json, .env.example, .gitignore, AGENTS.md"
+echo "  AGENTS.md          <- project configuration (source of truth)"
+echo "  CLAUDE.md          <- shim → AGENTS.md"
+echo "  GEMINI.md          <- shim → AGENTS.md"
+echo "  .cursorrules       <- shim → AGENTS.md"
+echo "  package.json, tsconfig.json, .env.example, .gitignore"
 echo ""
 # ── 12. Initial git commit (ralph-loop.sh needs at least one commit) ─────────
 echo "→ creating initial commit..."

@@ -8,9 +8,9 @@ encode it as a lint rule instead of repeating the review comment.
 
 ## The Promote-Rule Pattern
 
-> Correct Claude twice on the same thing → encode it as a lint rule, not a CLAUDE.md instruction.
+> Correct an agent twice on the same thing → encode it as a lint rule, not an AGENTS.md instruction.
 
-CLAUDE.md instructions compete for context space and get forgotten. Lint rules run
+AGENTS.md instructions compete for context space and get forgotten. Lint rules run
 every time, catch violations structurally, and inject the fix directly into the
 failing agent's context.
 
@@ -157,5 +157,5 @@ Run one rule: `ast-grep scan -r rules/no-raw-console-log.yml`
 - The rule would have > 5% false positive rate — noisy rules get suppressed
 - The fix is context-dependent and can't be expressed as a pattern
 
-In these cases, keep the guidance in a skill file or CLAUDE.md section,
+In these cases, keep the guidance in a skill file or AGENTS.md section,
 not a lint rule.

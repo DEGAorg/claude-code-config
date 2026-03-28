@@ -216,14 +216,14 @@ budget:
 ### Adding a skill
 
 1. Write the skill markdown in `skills/<name>.md`
-2. Reference it from `CLAUDE.md` repo map if it's a core skill
+2. Reference it from `AGENTS.md` repo map if it's a core skill
 3. For Canon-specific skills, put it in `canon/skills/` instead
 
 ### Adding a command
 
 1. Write the command markdown in `commands/<name>.md`
 2. Follow the existing command format (description, arguments, steps)
-3. Update `CLAUDE.md` repo map
+3. Update `AGENTS.md` repo map
 
 ### Modifying the orchestrator
 

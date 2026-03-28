@@ -54,6 +54,8 @@ claude
 ```
 
 This creates:
+- `AGENTS.md` — project-level agent configuration (single source of truth)
+- `CLAUDE.md`, `GEMINI.md`, `.cursorrules` — shims pointing to `AGENTS.md`
 - `dega-core.yaml` — orchestrator config (max iterations, success criteria)
 - `docs/exec-plans/active/` and `docs/exec-plans/completed/` — plan directories
 - `.gitignore` entries for orchestrator state files

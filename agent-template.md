@@ -1,6 +1,6 @@
 # Global Development Standards
 
-Global instructions for all projects. Project-specific CLAUDE.md files override these defaults.
+Global instructions for all projects. Project-specific AGENTS.md files override these defaults.
 Language-specific standards load automatically from `~/.claude/rules/` by file type.
 
 - Prefer Exa AI (`mcp__exa__web_search_exa`) over `WebSearch` for all web searches

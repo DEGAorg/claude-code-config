@@ -9,10 +9,10 @@ Run every step below in order. Stop and report if any prerequisite fails.
 ## 1. Guard: wrong directory
 
 Check if the current directory is the `claude-code-config` repo by looking for
-`CLAUDE.md` containing "claude-code-config":
+`AGENTS.md` containing "claude-code-config":
 
 ```bash
-[[ -f "CLAUDE.md" ]] && grep -q "claude-code-config" "CLAUDE.md" 2>/dev/null
+[[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null
 ```
 
 If that succeeds, stop and print:

@@ -122,7 +122,7 @@ scrutiny during reviews and where to be cautious when making changes.
 
 **Known issues:**
 - Package manager inconsistency: quick-dev.md, register.md, arena-tracking.md use `npm`/`npx` instead of `pnpm exec`
-- ~~CLAUDE.md claims apply-canon.md is done but the command file does not exist~~ **Fixed** — removed `/apply-canon` references
+- ~~AGENTS.md claims apply-canon.md is done but the command file does not exist~~ **Fixed** — removed `/apply-canon` references
 - `canon/hooks/` and `canon/docs/` are empty directories (marked as future use)
 - Only 1 of 6 strategy patterns has a bootstrap template
 - 12 TODO stub tests in `canon/templates/nba-momentum` assert nothing
@@ -141,7 +141,7 @@ scrutiny during reviews and where to be cautious when making changes.
 - Dev_Flow.md and AI_Dev_Pipeline.md are well-structured
 - Exec-plans structure is clean with proper active/completed separation
 - All new plans use YYYYMMDD date prefix convention
-- CLAUDE.md repo map now includes orchestrator scripts and agents/
+- AGENTS.md repo map now includes orchestrator scripts and agents/
 
 **Known issues:**
 - README.md still has Trail of Bits branding from upstream fork

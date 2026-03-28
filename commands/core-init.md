@@ -1,6 +1,6 @@
 # Core Init
 
-@description Bootstrap any repo for DEGA Core — creates dega-core.yaml, exec-plans, .gitignore entries, and minimal CLAUDE.md. Enables Ralph Loop and orchestrator.
+@description Bootstrap any repo for DEGA Core — creates dega-core.yaml, exec-plans, .gitignore entries, and AGENTS.md with provider shims. Enables Ralph Loop and orchestrator.
 
 Run every step below in order. This command is idempotent — it skips files
 that already exist and never overwrites user-customized config.
@@ -12,7 +12,7 @@ that already exist and never overwrites user-customized config.
 Check if the current directory is the `claude-code-config` repo:
 
 ```bash
-[[ -f "CLAUDE.md" ]] && grep -q "claude-code-config" "CLAUDE.md" 2>/dev/null
+[[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null
 ```
 
 If that succeeds, stop and print:
@@ -264,19 +264,19 @@ grep -q '^github:' dega-core.yaml
 
 ---
 
-## 7. Write CLAUDE.md
+## 7. Write AGENTS.md + provider shims
 
-**If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
+**If `AGENTS.md` already exists:** tell the user it exists and skip. Print:
 
-> `CLAUDE.md` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
+> `AGENTS.md` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
 
 **If it does not exist:** fetch the minimal template from GitHub:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-claude-template.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-agent-template.md
 ```
 
-Write the fetched content to `CLAUDE.md` in the current directory.
+Write the fetched content to `AGENTS.md` in the current directory.
 
 If the fetch fails, write this fallback directly:
 
@@ -305,6 +305,35 @@ Replace this with a one-line description of your project.
 Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 ```
 
+### Provider shims
+
+After writing `AGENTS.md`, create provider-specific shim files that point
+agents to `AGENTS.md`. Skip any shim that already exists.
+
+**`CLAUDE.md`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+```
+
+**`GEMINI.md`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+```
+
+**`.cursorrules`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in AGENTS.md.
+```
+
 ---
 
 ## 8. Print completion message
@@ -320,13 +349,16 @@ Created:
 ✓ .claude/commands/              — local commands directory
 ✓ .gitignore                     — added .orchestrator/ and focus.yaml entries
 ✓ dega-core.yaml                — core config (<LANGUAGE> detected, <PKG_MGR> if Node)
-✓ CLAUDE.md                     — minimal project context
+✓ AGENTS.md                     — project agent configuration (single source of truth)
+✓ CLAUDE.md                     — shim pointing to AGENTS.md
+✓ GEMINI.md                     — shim pointing to AGENTS.md
+✓ .cursorrules                  — shim pointing to AGENTS.md
 
 Skipped (already existed):
 ⊘ <list any files that were skipped>
 
 Next steps:
-1. Edit CLAUDE.md — add your project's repo map and conventions
+1. Edit AGENTS.md — add your project's repo map and conventions
 2. Edit dega-core.yaml — verify check_command matches your toolchain
 3. Run /apply-core to install global tools (if not already installed)
 4. Create your first exec plan: /plan
