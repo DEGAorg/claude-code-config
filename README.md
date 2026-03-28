@@ -95,6 +95,11 @@ brew install jq ripgrep fd ast-grep shellcheck shfmt \
   actionlint zizmor macos-trash node@22 pnpm uv
 ```
 
+> **`jq` is required.** Several hooks in `settings.json` parse tool input
+> from stdin with `jq`. Without it, hooks degrade gracefully (warn and
+> allow), but hook-based guardrails like blocking `rm -rf` and enforcing
+> feature branches will be disabled.
+
 Python tools (via uv):
 
 ```bash

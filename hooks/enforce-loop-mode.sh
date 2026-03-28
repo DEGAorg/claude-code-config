@@ -6,7 +6,23 @@
 
 set -euo pipefail
 
-CMD=$(jq -r '.tool_input.command // empty')
+# Guard: jq is required to parse tool input — degrade gracefully if missing
+if ! command -v jq >/dev/null 2>&1; then
+	echo "warn: enforce-loop-mode.sh: jq not found — skipping hook" >&2
+	exit 0
+fi
+
+# Read stdin and validate JSON before parsing
+INPUT=$(cat)
+if [[ -z "${INPUT}" ]]; then
+	exit 0
+fi
+if ! printf '%s' "${INPUT}" | jq empty 2>/dev/null; then
+	echo "warn: enforce-loop-mode.sh: stdin is not valid JSON — skipping hook" >&2
+	exit 0
+fi
+
+CMD=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty')
 [[ -z "${CMD}" ]] && exit 0
 
 # ── Level 1: always blocked regardless of mode ──────────────────────────────
