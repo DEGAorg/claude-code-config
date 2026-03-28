@@ -7,12 +7,14 @@
 # orch-engine.sh in a tmux window named "engine".
 #
 # Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
+#        scripts/orch-run.sh --gc [--dry-run]
 #
 # Options:
 #   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
 #   --background         Headless mode — tmux only, no display windows
+#   --gc [--dry-run]     Run garbage collection on stale orch-* tmux sessions
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
@@ -56,6 +58,10 @@ BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
+	--gc)
+		shift
+		exec bash "${SCRIPT_DIR}/orch-gc.sh" "$@"
+		;;
 	--issue)
 		ISSUE_NUMBER="${2:-}"
 		if [[ -z "${ISSUE_NUMBER}" ]]; then
@@ -78,7 +84,7 @@ while [[ $# -gt 0 ]]; do
 		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
+		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 		exit 1
 		;;
 	*)
@@ -89,7 +95,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]" >&2
+	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 	exit 1
 fi
 
@@ -363,15 +369,46 @@ orch_master_update_progress "${SLUG}"
 
 if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
-	DASH_CMD="while true; do node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null; echo '[dashboard restarting in 3s...]'; sleep 3; done"
+	HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+	GRACE_TIMEOUT="${ORCH_DASHBOARD_TIMEOUT:-60}"
+	# Dashboard loop: restart node UI on crash, check engine liveness via
+	# heartbeat file staleness (>5min) and tmux window existence every 2s.
+	# When engine is dead, enter a grace period then kill the session.
+	read -r -d '' DASH_CMD <<-DASHEOF || true
+	grace_start=0
+	while true; do
+	  node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null
+	  engine_alive=true
+	  if ! tmux has-window -t '${TMUX_SESSION}:engine' 2>/dev/null; then
+	    engine_alive=false
+	  fi
+	  if [[ -f '${HEARTBEAT_FILE}' ]]; then
+	    last_hb=\$(cat '${HEARTBEAT_FILE}')
+	    now=\$(date +%s)
+	    age=\$(( now - last_hb ))
+	    if [[ \${age} -gt 300 ]]; then
+	      engine_alive=false
+	    fi
+	  fi
+	  if [[ "\${engine_alive}" == false ]]; then
+	    if [[ \${grace_start} -eq 0 ]]; then
+	      grace_start=\$(date +%s)
+	      echo "[engine exited — dashboard will close in ${GRACE_TIMEOUT}s]"
+	    fi
+	    elapsed=\$(( \$(date +%s) - grace_start ))
+	    if [[ \${elapsed} -ge ${GRACE_TIMEOUT} ]]; then
+	      echo "[grace period expired — killing session]"
+	      tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null || true
+	      break
+	    fi
+	  else
+	    grace_start=0
+	    echo '[dashboard restarting in 2s...]'
+	  fi
+	  sleep 2
+	done
+	DASHEOF
 	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
-
-	# Inject env vars into the tmux session so all windows (engine, workers,
-	# reviewers, verifiers) inherit them regardless of how tmux was started.
-	tmux set-environment -t "${TMUX_SESSION}" GH_SYNC "${GH_SYNC}"
-	tmux set-environment -t "${TMUX_SESSION}" REPO_ROOT "${REPO_ROOT}"
-	tmux set-environment -t "${TMUX_SESSION}" SLUG "${SLUG}"
-	tmux set-environment -t "${TMUX_SESSION}" ORCH_STATE_DIR "${ORCH_STATE_DIR}"
 fi
 
 # --- Start engine as a tmux window ---
@@ -385,7 +422,7 @@ LOG_FILE=$(orch_plan_log_file "${SLUG}")
 orch_ensure_plan_dirs "${SLUG}"
 
 tmux new-window -d -t "${TMUX_SESSION}" -n "engine" \
-	"cd '${REPO_ROOT}' && GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30"
+	"cd '${REPO_ROOT}' && bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30; tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null"
 
 # --- Open display windows (foreground mode) ---
 

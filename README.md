@@ -37,6 +37,7 @@ claude
 - [Web Browsing](#web-browsing)
 - [Fast Mode](#fast-mode)
 - [Commands](#commands)
+- [Orchestrator](#orchestrator)
 - [Writing Skills and Agents](#writing-skills-and-agents)
 - [Recommended Skills](#recommended-skills)
 - [Recommended MCP Servers](#recommended-mcp-servers)
@@ -549,6 +550,54 @@ cp commands/fix-issue.md ~/.claude/commands/
 [`commands/fix-issue.md`](commands/fix-issue.md) -- Takes a GitHub issue and fully autonomously completes it -- plans, implements, tests, creates a PR, self-reviews with parallel agents, fixes its own findings, and comments on the issue when done. Invoke with `/fix-issue 123` where `123` is the issue number.
 
 Once a workflow is a command, it's not just faster for you -- it's something an agent can run too. You can point `/fix-issue` at 50 issues in parallel across worktrees, run `/review-pr` on every open PR in a repo, or schedule either as part of CI. Commands turn manual workflows into scalable operations.
+
+## Orchestrator
+
+The orchestrator runs execution plans with parallel worker agents in tmux. Each worker gets its own git worktree, and a reviewer checks each item before it ships.
+
+```bash
+bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
+```
+
+### Engine heartbeat
+
+The engine writes a Unix timestamp to `$ORCH_STATE_DIR/plans/$SLUG/heartbeat` at regular intervals — every poll cycle and before/after major steps (worker spawn, review, SHIP/FAIL). The dashboard and garbage collector use this file to detect whether the engine is alive or hung.
+
+The heartbeat file is a single `date +%s` epoch. If it hasn't been updated in over 5 minutes (300 seconds), the engine is considered dead.
+
+### Dashboard auto-exit
+
+The dashboard loop checks engine liveness every 2 seconds using two signals:
+
+1. **tmux window existence** — `tmux has-window -t SESSION:engine` returns false when the engine window is gone
+2. **Heartbeat staleness** — the heartbeat file is older than 5 minutes
+
+When both signals indicate the engine is dead, the dashboard enters a **grace period** (default 60 seconds, configurable via `ORCH_DASHBOARD_TIMEOUT` env var) so you can read the final output. After the grace period expires, the dashboard kills the tmux session and exits.
+
+As a safety net, the engine's tmux command appends `sleep 30; tmux kill-session` after the engine exits. This ensures the session is terminated even if the dashboard loop is broken or hung. Timeline: engine exits → 30s sleep → safety-net kill fires at ~60s.
+
+### Garbage collection
+
+Stale orchestrator sessions accumulate when the dashboard or safety net fails to clean up. `orch-gc.sh` finds and kills them.
+
+```bash
+# List stale sessions without killing them
+bash ~/.claude/scripts/orch-gc.sh --dry-run
+
+# Kill stale sessions
+bash ~/.claude/scripts/orch-gc.sh
+
+# Or via orch-run.sh
+bash ~/.claude/scripts/orch-run.sh --gc
+```
+
+A session is stale when it has no `engine` tmux window OR its heartbeat file is older than 10 minutes. For each stale session, `orch-gc.sh` prints the session name, slug, age, and reason before killing it. The `--dry-run` flag lists stale sessions without killing them.
+
+Run `orch-gc.sh` when you notice leftover `orch-*` tmux sessions (check with `tmux list-sessions`), or add it to a cron job for automatic cleanup.
+
+### Heartbeat indicator
+
+The Ink dashboard displays a "Last heartbeat: Xs ago" indicator in the header bar. It updates every second and turns red when the heartbeat is stale (>5 minutes), giving you a visual signal of engine liveness.
 
 ## Writing Skills and Agents
 

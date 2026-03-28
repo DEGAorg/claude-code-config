@@ -3,11 +3,31 @@ import { Box, Text, useApp, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import type { OrchestratorState, MasterState } from "./orch-types.js";
 import { SessionTable } from "./session-table.js";
 import { SessionDetail } from "./session-detail.js";
 import { MasterView } from "./master-view.js";
+
+/** Threshold in seconds after which heartbeat is considered stale. */
+const HEARTBEAT_STALE_THRESHOLD = 300; // 5 minutes
+
+function formatHeartbeatAge(epochSecs: number): {
+  text: string;
+  stale: boolean;
+} {
+  const ageSecs = Math.max(
+    0,
+    Math.floor(Date.now() / 1000) - epochSecs,
+  );
+  const stale = ageSecs > HEARTBEAT_STALE_THRESHOLD;
+  if (ageSecs < 60) {
+    return { text: `${ageSecs}s ago`, stale };
+  }
+  const mins = Math.floor(ageSecs / 60);
+  const secs = ageSecs % 60;
+  return { text: `${mins}m${secs}s ago`, stale };
+}
 
 interface OrchestratorAppProps {
   readonly statePath: string;
@@ -22,6 +42,8 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [outputLines, setOutputLines] = useState<readonly string[]>([]);
+  const [heartbeat, setHeartbeat] = useState<number | null>(null);
+  const [, setHeartbeatTick] = useState(0);
   const lastValidRef = useRef<OrchestratorState | null>(null);
 
   const loadState = useCallback(async () => {
@@ -69,6 +91,45 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
       void watcher.close();
     };
   }, [statePath, loadState]);
+
+  // Read heartbeat file and poll for age updates
+  const heartbeatPath = join(dirname(statePath), "heartbeat");
+
+  const loadHeartbeat = useCallback(async () => {
+    try {
+      const raw = await readFile(heartbeatPath, "utf-8");
+      const epoch = parseInt(raw.trim(), 10);
+      if (!Number.isNaN(epoch)) {
+        setHeartbeat(epoch);
+      }
+    } catch {
+      // Heartbeat file may not exist yet
+    }
+  }, [heartbeatPath]);
+
+  useEffect(() => {
+    void loadHeartbeat();
+
+    const watcher = watch(heartbeatPath, {
+      persistent: true,
+      ignoreInitial: true,
+    });
+
+    watcher.on("change", () => void loadHeartbeat());
+    watcher.on("add", () => void loadHeartbeat());
+
+    return () => {
+      void watcher.close();
+    };
+  }, [heartbeatPath, loadHeartbeat]);
+
+  // Tick every 1s to keep "Xs ago" display fresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeartbeatTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Poll tmux capture-pane for live terminal output
   const planSlug = state?.plan ?? null;
@@ -283,6 +344,16 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
         <Text dimColor>
           {"  "}max {state.maxParallelWorkers}w
         </Text>
+        {heartbeat !== null ? (
+          (() => {
+            const { text, stale } = formatHeartbeatAge(heartbeat);
+            return (
+              <Text color={stale ? "red" : "green"} bold={stale}>
+                {"  "}Last heartbeat: {text}
+              </Text>
+            );
+          })()
+        ) : null}
       </Box>
 
       {warning ? <Text color="yellow">⚠ {warning}</Text> : null}

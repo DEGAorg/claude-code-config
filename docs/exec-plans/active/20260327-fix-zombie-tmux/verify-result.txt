@@ -1,0 +1,24 @@
+PASS
+All completion criteria verified.
+
+Verification details:
+
+1. Session auto-terminate (~90s): Dashboard loop checks every 2s, enters 60s grace on engine death, then kills session. Safety net at engine tmux command appends sleep 30 + kill-session. Both converge at ~60-90s.
+
+2. Engine heartbeat per poll cycle: write_heartbeat() called at line 303 (top of while-true poll loop), plus after worker spawn, review, SHIP/FAIL steps, and before exit.
+
+3. Dashboard detects engine death within 4s: Loop sleeps 2s, checks tmux has-window + heartbeat staleness each iteration. Detection within 2-4s.
+
+4. orch-gc.sh identifies/kills stale sessions: Script lists orch-* sessions, checks for engine window + heartbeat staleness >10min, kills stale ones. Verified with dry-run (found 0/1 stale — 1 active session is healthy).
+
+5. orch-gc.sh --dry-run: Lists without killing. Confirmed output: "found 0/1 stale session(s) (dry-run, nothing killed)".
+
+6. Dashboard heartbeat indicator: orchestrator-app.tsx lines 347-356 render "Last heartbeat: Xs ago" with 1s tick refresh (lines 127-132).
+
+7. Heartbeat stale warning: formatHeartbeatAge() returns stale=true when >300s. Rendered with color={stale ? "red" : "green"} bold={stale}.
+
+8. README documentation: Sections for Engine heartbeat (line 553), Dashboard auto-exit (line 559), orch-gc.sh (line 572), Heartbeat indicator (line 589).
+
+9. shellcheck: Only SC1091 info-level notes (not following sourced files) — no warnings or errors.
+
+10. No regressions: orch-run.sh shows correct usage, --gc dispatch works, orch-parse-items.sh parses plan correctly, TypeScript compiles with zero errors.
