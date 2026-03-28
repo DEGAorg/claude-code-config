@@ -60,7 +60,7 @@ run_with_timeout() {
 open_command_file() {
 	local cmd_file="/tmp/orch-attach-${SESSION}.command"
 	cat >"${cmd_file}" <<-EOF
-		#!/bin/bash
+		#!/usr/bin/env bash
 		printf '\e[9;1t'
 		exec ${ATTACH_CMD}
 	EOF
