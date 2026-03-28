@@ -104,7 +104,41 @@ Check each line before appending — skip if already in `.gitignore`. Create
 
 **If it does not exist:** write it using the detected language from Step 2.
 
-Template (substitute `<CHECK_COMMAND>` with the detected value):
+### GitHub detection
+
+Before writing the file, detect the GitHub remote and `gh` CLI availability:
+
+1. **Check if `gh` is installed and authenticated:**
+
+   ```bash
+   gh auth status 2>/dev/null
+   ```
+
+2. **If `gh` is available**, detect the GitHub repo from the git remote:
+
+   ```bash
+   gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null
+   ```
+
+   If that succeeds, use the returned `owner/repo` value for the `github.repo`
+   field and set `sync: true`.
+
+3. **If `gh` is NOT installed, not authenticated, or repo detection fails**,
+   write the `github:` block with `sync: false` and a comment explaining why:
+
+   ```yaml
+   github:
+     # gh CLI not available — install gh and run /core-init again to enable sync
+     sync: false
+   ```
+
+**The `github:` block must ALWAYS be present in the output.** There is no
+scenario where it is omitted.
+
+### Template
+
+Substitute `<CHECK_COMMAND>` with the detected value from Step 2, and
+`<GITHUB_BLOCK>` with the result of GitHub detection above:
 
 ```yaml
 # DEGA Core config — edit to match your project
@@ -121,15 +155,97 @@ poll_interval_seconds: 30
 worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
 reviewer_prompt: ~/.claude/scripts/ralph-reviewer-prompt.md
 
+<GITHUB_BLOCK>
+
 success_criteria:
   - "tests pass"
   - "linting clean"
   - "types valid"
 ```
 
+Where `<GITHUB_BLOCK>` is one of:
+
+**When `gh` detected the repo successfully:**
+
+```yaml
+github:
+  sync: true
+  repo: <OWNER/REPO>
+  labels: true
+  comments: true
+  close_on_ship: true
+```
+
+**When `gh` is not installed, not authenticated, or detection failed:**
+
+```yaml
+github:
+  # gh CLI not available — install gh and run /core-init again to enable sync
+  sync: false
+```
+
 ---
 
-## 5. Write CLAUDE.md
+## 5. CRITICAL: github block must NEVER be omitted
+
+**The `github:` block is MANDATORY in every `dega-core.yaml` produced by this
+command. There is NO scenario where it may be left out.**
+
+- If `gh` is installed and the repo is detected → write `sync: true` with full config.
+- If `gh` is NOT installed, not authenticated, or detection fails → write `sync: false` with a comment.
+- **Never skip the `github:` block.** Even if every detection step fails, the block must be present with `sync: false`.
+
+A missing `github:` block breaks the orchestrator's `GH_SYNC` detection and
+cascades into plan-path failures. This is the single most common failure mode
+on fresh Linux installs.
+
+After writing `dega-core.yaml`, proceed immediately to the validation gate
+(Step 6) before continuing.
+
+---
+
+## 6. Validation gate: verify github block exists
+
+After writing `dega-core.yaml`, re-read the file and verify the `github:` key
+is present. This is a programmatic check, not a visual one.
+
+```bash
+grep -q '^github:' dega-core.yaml
+```
+
+**If the check fails** (exit code non-zero):
+
+1. Print an error:
+
+   > **ERROR:** `dega-core.yaml` is missing the `github:` block. Adding fallback.
+
+2. Append the fallback block to the file:
+
+   ```bash
+   cat >> dega-core.yaml << 'EOF'
+
+   github:
+     # ADDED BY VALIDATION GATE — github block was missing after initial write
+     # Install gh and run /core-init again to enable sync
+     sync: false
+   EOF
+   ```
+
+3. Re-run the check to confirm the fix:
+
+   ```bash
+   grep -q '^github:' dega-core.yaml || { echo "FATAL: github block still missing after repair"; exit 1; }
+   ```
+
+**If the check passes**, print:
+
+> `dega-core.yaml` validated — `github:` block present.
+
+**Do not proceed to the next step until this validation passes.**
+
+---
+
+## 7. Write CLAUDE.md
 
 **If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
 
@@ -172,7 +288,7 @@ Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 
 ---
 
-## 6. Print completion message
+## 8. Print completion message
 
 Summarize what was created. Use a checklist format:
 
