@@ -63,6 +63,13 @@ DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+
+# Write current epoch to heartbeat file — called at poll start, after
+# worker spawn, after review, after each SHIP/FAIL step, and before exit.
+write_heartbeat() {
+	date +%s >"${HEARTBEAT_FILE}"
+}
 
 # Plan dir points to the worktree copy so workers never touch main repo
 if [[ "${GH_SYNC}" == true ]]; then
@@ -294,6 +301,8 @@ if [[ "${ITERATION_SUM}" -eq 0 ]]; then
 fi
 
 while true; do
+	write_heartbeat
+
 	# Sync done-files, detect stale workers, promote
 	# Worker windows stay alive until SHIP/REVISE so capture-pane output is visible
 	orch_sync_done_files "${SLUG}"
@@ -361,6 +370,7 @@ while true; do
 			spawn_worker "${rid}" "${rdesc}"
 			spawned=$((spawned + 1))
 		done
+		write_heartbeat
 	fi
 
 	# Sleep before next poll
@@ -371,6 +381,7 @@ done
 
 echo "orch-engine: running per-item review via orch-review.sh"
 "${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+write_heartbeat
 
 # Fire review lifecycle hooks
 run_lifecycle_hooks "review"
@@ -500,6 +511,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		fi
 	fi
 
+	write_heartbeat
+
 	# --- Step 2: Commit worktree changes (stay on worktree branch) ---
 	# Workers commit to orch/<slug> branch. We push that branch directly
 	# for the PR instead of merging into the working branch. This gives
@@ -510,9 +523,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — worktree commit returned non-zero (may have no changes)"
 	fi
 
+	write_heartbeat
+
 	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
 	echo "orch-engine: [SHIP 3/9] deregistered from master state"
+
+	write_heartbeat
 
 	# --- Step 4: Move plan from active/ to completed/ ---
 	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
@@ -538,6 +555,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		fi
 	fi
 
+	write_heartbeat
+
 	# --- Step 5: Commit the plan move ---
 	if [[ "${GH_SYNC}" == true ]]; then
 		echo "orch-engine: [SHIP 5/9] skipped — GH mode (no plan move to commit)"
@@ -556,6 +575,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			fi
 		fi
 	fi
+
+	write_heartbeat
 
 	# --- Step 6: Append to plan registry ---
 	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
@@ -576,6 +597,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			echo "orch-engine: WARN — registry append failed (non-fatal)"
 		fi
 	fi
+
+	write_heartbeat
 
 	# --- Step 7: Append to changelog ---
 	if [[ "${GH_SYNC}" == true ]]; then
@@ -600,6 +623,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — could not extract plan title for changelog"
 	fi
 
+	write_heartbeat
+
 	# --- Compute elapsed time (needed by PR body and final summary) ---
 	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
 	if [[ -n "${STARTED_AT}" ]]; then
@@ -617,6 +642,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	else
 		ELAPSED_STR="unknown"
 	fi
+
+	write_heartbeat
 
 	# --- Step 8: Push worktree branch and create PR ---
 	# Each plan pushes its own orch/ branch so multiple concurrent
@@ -684,6 +711,8 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	else
 		echo "orch-engine: [SHIP 8/9] skipped PR — no worktree (changes on working branch)"
 	fi
+
+	write_heartbeat
 
 	# --- Step 9: Clean up worktree ---
 	if orch_cleanup_worktree "${SLUG}"; then
@@ -754,6 +783,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		--elapsed "${ELAPSED_STR}"
 
 	# Engine exits — dashboard stays open showing DONE screen
+	write_heartbeat
 	exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo ""
@@ -775,6 +805,8 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	# Update master progress before re-exec
 	orch_master_update_progress "${SLUG}"
 
+	write_heartbeat
+
 	# Re-exec engine for rework pass (review already reset items to "ready")
 	BACKGROUND_FLAG=""
 	if [[ "${BACKGROUND}" == true ]]; then
@@ -794,5 +826,6 @@ else
 	orch_write_state "${SLUG}" "${updated}"
 
 	# Engine exits — dashboard stays open showing FAILED screen
+	write_heartbeat
 	exit 1
 fi
