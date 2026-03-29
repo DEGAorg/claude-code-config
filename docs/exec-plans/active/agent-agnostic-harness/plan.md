@@ -105,7 +105,7 @@ Agent-specific directories remain where each agent expects them:
 ## Progress log
 
 - [x] Create `scripts/agent-shim.sh` — implement `dega_agent_type`, `dega_agent_command`, `dega_agent_config_dir`, `dega_agent_headless_flags`, `dega_agent_session_var`, `dega_agent_prompt_flag`; set `DEGA_CORE_HOME` default to `~/.degacore`; detection heuristic: `DEGA_PROVIDER` env → parent process → session env vars → fallback `claude`
-- [ ] Update `scripts/orch-engine.sh` — source `agent-shim.sh`; replace all `claude` command invocations with `$(dega_agent_command)` + `$(dega_agent_headless_flags)`; replace `env -u CLAUDECODE` with `env -u $(dega_agent_session_var)`; replace `CLAUDE_SOUND` with `DEGA_SOUND`; replace all `~/.claude/` paths with `$DEGA_CORE_HOME/scripts/` or `$DEGA_CORE_HOME/state/` as appropriate (deps: 1)
+- [x] Update `scripts/orch-engine.sh` — source `agent-shim.sh`; replace all `claude` command invocations with `$(dega_agent_command)` + `$(dega_agent_headless_flags)`; replace `env -u CLAUDECODE` with `env -u $(dega_agent_session_var)`; replace `CLAUDE_SOUND` with `DEGA_SOUND`; replace all `~/.claude/` paths with `$DEGA_CORE_HOME/scripts/` or `$DEGA_CORE_HOME/state/` as appropriate (deps: 1)
 - [x] Update `scripts/orch-run.sh` — source `agent-shim.sh`; replace `~/.claude/scripts/` paths with `$DEGA_CORE_HOME/scripts/` (deps: 1)
 - [x] Update `scripts/orch-review.sh` — source `agent-shim.sh`; replace `claude -p --dangerously-skip-permissions` with shim helpers; replace `env -u CLAUDECODE` with shim; replace `~/.claude/` paths (deps: 1)
 - [x] Update `scripts/orch-verify.sh` — source `agent-shim.sh`; replace `claude -p --dangerously-skip-permissions` with shim helpers; replace `env -u CLAUDECODE` with shim; replace `~/.claude/` paths (deps: 1)
