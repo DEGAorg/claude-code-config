@@ -12,7 +12,7 @@
 #   0 — all criteria verified (PASS)
 #   1 — some criteria remain unchecked (FAIL)
 #
-# Requires: jq, claude CLI, tmux, orch-state.sh
+# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh, agent-shim.sh
 
 set -euo pipefail
 
@@ -21,6 +21,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -134,7 +136,7 @@ tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
 tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
 	"cd '${VERIFY_CWD}' && \
 	 RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-	 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
+	 env -u $(dega_agent_session_var) $(dega_agent_command) $(dega_agent_headless_flags) \
 	 \"\$(cat '${PROMPT_FILE}')\" ; \
 	 echo '--- verifier exited ---'; \
 	 sleep 2"

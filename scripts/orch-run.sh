@@ -25,6 +25,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=read-github-config.sh
