@@ -474,6 +474,20 @@ fi
 
 # --- Actual SHIP / REVISE handling ---
 
+# Safety net: if the engine crashes during the SHIP flow (e.g., unguarded
+# command fails with set -e), mark state as "ship-crashed" so it doesn't
+# stay stuck at "verifying" forever.
+ship_crash_handler() {
+	echo "orch-engine: FATAL — engine crashed during SHIP flow (line $1)" >&2
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+	jq --arg now "${now}" \
+		'.status = "ship-crashed" | .updatedAt = $now' \
+		"${ORCH_STATE_FILE}" >"${ORCH_STATE_FILE}.tmp" &&
+		mv "${ORCH_STATE_FILE}.tmp" "${ORCH_STATE_FILE}"
+	write_heartbeat
+}
+trap 'ship_crash_handler ${LINENO}' ERR
+
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
 
@@ -568,9 +582,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	if [[ "${GH_SYNC}" == true ]]; then
 		echo "orch-engine: [SHIP 5/9] skipped — GH mode (no plan move to commit)"
 	else
-		git -C "${REPO_ROOT}" add \
-			"docs/exec-plans/active/${SLUG}" \
-			"docs/exec-plans/completed/${SLUG}"
+		# Stage the deletion of active/ (already moved by step 4) and new completed/ dir.
+		# Guard each path — step 4 may have partially failed or paths may not exist.
+		git -C "${REPO_ROOT}" rm -r --cached --ignore-unmatch \
+			"docs/exec-plans/active/${SLUG}" 2>/dev/null || true
+		if [[ -d "${REPO_ROOT}/docs/exec-plans/completed/${SLUG}" ]]; then
+			git -C "${REPO_ROOT}" add "docs/exec-plans/completed/${SLUG}"
+		fi
 		if git -C "${REPO_ROOT}" diff --cached --quiet; then
 			echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
 		else
