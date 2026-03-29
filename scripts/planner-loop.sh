@@ -3,8 +3,8 @@
 # work on, creates execution plans, launches the orchestrator, and repeats
 # until budget is exhausted or all focus areas are addressed.
 #
-# Each Claude invocation is a fresh `claude -p` call. The bash script is
-# the long-lived process; Claude instances are short-lived tools.
+# Each agent invocation is a fresh headless call. The bash script is
+# the long-lived process; agent instances are short-lived tools.
 #
 # Usage: scripts/planner-loop.sh [--dry-run] [--background] [--create-plans] [--plan-only]
 #
@@ -31,10 +31,12 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=read-github-config.sh
 source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 # --- Constants ---
 
-LOG_DIR="${HOME}/.claude/planner"
+LOG_DIR="${DEGA_CORE_HOME}/state/planner"
 FOCUS_FILE="${REPO_ROOT}/focus.yaml"
 TECH_DEBT_FILE="${REPO_ROOT}/docs/exec-plans/tech-debt.md"
 QUALITY_FILE="${REPO_ROOT}/docs/QUALITY.md"
@@ -87,7 +89,9 @@ done
 
 check_deps() {
 	local missing=()
-	for cmd in jq claude; do
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	for cmd in jq "${agent_cmd}"; do
 		if ! command -v "${cmd}" >/dev/null 2>&1; then
 			missing+=("${cmd}")
 		fi
@@ -229,9 +233,14 @@ run_assess() {
 	local prompt
 	prompt=$(gather_context)
 
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	local prompt_flag
+	prompt_flag="$(dega_agent_prompt_flag)"
+
 	local assess_output
 	local assess_exit=0
-	assess_output=$(claude -p --output-format json \
+	assess_output=$(${agent_cmd} ${prompt_flag} --output-format json \
 		"${prompt}" 2>"${LOGFILE}.assess-stderr") || assess_exit=$?
 
 	if [[ ${assess_exit} -ne 0 ]]; then
@@ -360,8 +369,13 @@ ${instructions_block}
 - **Plan file**: ${REPO_ROOT}/${plan_dir}/plan.md
 - **Plan status**: ${status_hint}"
 
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	local headless_flags
+	headless_flags="$(dega_agent_headless_flags)"
+
 	local plan_exit=0
-	claude -p --dangerously-skip-permissions \
+	${agent_cmd} ${headless_flags} \
 		"${writer_prompt}" 2>"${LOGFILE}.plan-stderr" || plan_exit=$?
 
 	if [[ ${plan_exit} -ne 0 ]]; then
@@ -896,8 +910,8 @@ log "log saved to ${LOGFILE}"
 # Play sound on completion
 if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
 	if [[ ${plans_completed} -gt 0 ]]; then
-		CLAUDE_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
+		DEGA_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
 	else
-		CLAUDE_SOUND=error bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
+		DEGA_SOUND=error bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
 	fi
 fi

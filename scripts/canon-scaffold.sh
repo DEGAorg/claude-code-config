@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canon Scaffold — scaffolds a Canon prediction-market project.
 #
-# Usage: bash ~/.claude/scripts/canon-scaffold.sh [--force]
+# Usage: bash "$DEGA_CORE_HOME/scripts/canon-scaffold.sh" [--force]
 #
 # Run from inside the target project directory (must be empty or use --force).
 # Fetches agents, skills, and commands from GitHub, generates config and
@@ -19,7 +19,8 @@ FORCE=false
 PROJECT_DIR="$(pwd)"
 PROJECT_NAME="$(basename "${PROJECT_DIR}")"
 STATE_FILE="${PROJECT_DIR}/.canon/state.json"
-TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
+DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
+TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Helper: write state to dashboard (no-op if writer not installed) ─────────
 state() {

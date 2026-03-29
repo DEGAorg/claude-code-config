@@ -17,6 +17,9 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
 
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
+
 # --- Parse args ---
 
 SLUG=""
@@ -253,13 +256,17 @@ spawn_worker() {
 	prompt_file="${prompt_file}.md"
 	printf '%s\n' "${prompt}" >"${prompt_file}"
 
-	# Create tmux window and run claude worker
-	# Foreground: interactive TUI (full claude). Background: headless (claude -p).
-	local claude_cmd
+	# Create tmux window and run agent worker
+	# Foreground: interactive TUI (full agent). Background: headless (agent + headless flags).
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	local session_var
+	session_var="$(dega_agent_session_var)"
+	local agent_cmd_str
 	if [[ "${BACKGROUND}" == true ]]; then
-		claude_cmd="claude -p --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+		agent_cmd_str="${agent_cmd} $(dega_agent_headless_flags) \"\$(cat '${prompt_file}')\""
 	else
-		claude_cmd="claude --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+		agent_cmd_str="${agent_cmd} --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
 	fi
 
 	# Kill stale window from previous iteration if it exists
@@ -269,7 +276,7 @@ spawn_worker() {
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${pane_name}" \
 		"cd '${WORKTREE_DIR}' && \
 		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
-		 env -u CLAUDECODE ${claude_cmd} ; \
+		 env -u ${session_var} ${agent_cmd_str} ; \
 		 echo '--- worker ${item_id} exited ---'; \
 		 sleep 2"
 
@@ -487,7 +494,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# Play completion sound if available
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
-		CLAUDE_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
+		DEGA_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
 	fi
 
 	# Kill worker/reviewer windows now that we're done

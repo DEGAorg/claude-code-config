@@ -5,7 +5,7 @@
 # Proper signal traps ensure the dashboard always reflects actual state.
 #
 # Usage:
-#   bash ~/.claude/scripts/canon-runner.sh [--dry-run]
+#   bash "$DEGA_CORE_HOME/scripts/canon-runner.sh" [--dry-run]
 #
 # Must be run from a Canon project root (where src/runner.ts and
 # .canon/state.json exist).
@@ -22,7 +22,8 @@ STATE=".canon/state.json"
 RUNNER_LOG=".canon/execution/runner.log"
 PID_FILE=".canon/execution/runner.pid"
 TAIL_FIFO=".canon/execution/.tail-fifo"
-TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
+DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
+TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Guard: must be in a Canon project ────────────────────────────────────────
 if [[ ! -f "src/runner.ts" ]]; then

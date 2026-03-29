@@ -8,26 +8,28 @@
 #   Always runs — RALPH_MODE does not skip the server-start path.
 #
 # Session config:
-#   Writes ~/.claude/.session-log-config on the first prompt of a session so
+#   Writes $DEGA_CORE_HOME/state/.session-log-config on the first prompt of a session so
 #   that structured-log.sh knows where to append JSONL entries.
 #   Skipped in RALPH_MODE (ralph manages its own server start via ralph-loop.sh).
 #   Idempotent: one write per session.
 #
 # To override the backend, write the config manually before starting Claude Code:
-#   printf '{"backend":"gcp"}\n' > ~/.claude/.session-log-config
+#   printf '{"backend":"gcp"}\n' > ~/.degacore/state/.session-log-config
 # Supported backends: "local" (default), "gcp" (future; no-op until implemented).
 
 set -euo pipefail
 
 # ── Log server start (always — ralph runs need the server too) ────────────────
 
-SOCK="${HOME}/.claude/logs/log.sock"
+DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
+
+SOCK="${DEGA_CORE_HOME}/state/logs/log.sock"
 
 if [[ ! -S "$SOCK" ]]; then
-	SERVER="${HOME}/.claude/scripts/log-server.py"
+	SERVER="${DEGA_CORE_HOME}/scripts/log-server.py"
 
-	mkdir -p "${HOME}/.claude/logs/ralph"
-	uv run "$SERVER" >>"${HOME}/.claude/logs/log-server.log" 2>&1 &
+	mkdir -p "${DEGA_CORE_HOME}/state/logs/ralph"
+	uv run "$SERVER" >>"${DEGA_CORE_HOME}/state/logs/log-server.log" 2>&1 &
 	disown
 
 	# Wait up to 2 s (20 × 0.1 s) for the socket to appear.
@@ -46,7 +48,7 @@ fi
 
 [[ -n "${RALPH_MODE:-}" ]] && exit 0
 
-CONFIG="${HOME}/.claude/.session-log-config"
+CONFIG="${DEGA_CORE_HOME}/state/.session-log-config"
 [[ -f "$CONFIG" ]] && exit 0
 
 mkdir -p "$(dirname "$CONFIG")"

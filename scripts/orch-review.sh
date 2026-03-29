@@ -6,7 +6,7 @@
 #
 # Usage: scripts/orch-review.sh <slug>
 #
-# Requires: jq, claude CLI, tmux, orch-state.sh
+# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh
 
 set -euo pipefail
 
@@ -15,6 +15,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -166,12 +168,19 @@ spawn_reviewer() {
 	# Kill stale window from previous iteration if it exists
 	tmux kill-window -t "${TMUX_SESSION}:${window_name}" 2>/dev/null || true
 
-	# Reviewers always run headless (claude -p) — read-only, no TUI needed
+	# Reviewers always run headless — read-only, no TUI needed
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	local headless_flags
+	headless_flags="$(dega_agent_headless_flags)"
+	local session_var
+	session_var="$(dega_agent_session_var)"
+
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${window_name}" \
 		"cd '${review_cwd}' && \
 		 GH_SYNC='${GH_SYNC}' \
 		 RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-		 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
+		 env -u '${session_var}' ${agent_cmd} ${headless_flags} \
 		 \"\$(cat '${prompt_file}')\" ; \
 		 echo '--- reviewer ${item_id} exited ---'; \
 		 sleep 2"
