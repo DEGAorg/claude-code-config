@@ -113,10 +113,10 @@ Agent-specific directories remain where each agent expects them:
 - [x] Update `scripts/canon.sh`, `scripts/canon-scaffold.sh`, `scripts/canon-runner.sh` — source `agent-shim.sh` in canon.sh; replace global `~/.claude/scripts/` paths with `$DEGA_CORE_HOME/scripts/`; keep project-local `.claude/commands/` unchanged (those are Claude-specific project config) (deps: 1)
 - [x] Update hooks — `hooks/play-sound.sh`: rename `CLAUDE_SOUND` → `DEGA_SOUND` with fallback `${DEGA_SOUND:-${CLAUDE_SOUND:-super-mario-bros}}`; update sounds dir to `$DEGA_CORE_HOME/sounds/`; `hooks/session-start-logging.sh` and `hooks/structured-log.sh`: replace `~/.claude/` paths with `$DEGA_CORE_HOME/state/` (deps: 1)
 - [x] Update `scripts/log-client.sh` and `scripts/log-server.py` — replace `~/.claude/logs/` with `$DEGA_CORE_HOME/state/logs/`; update Python paths to read `DEGA_CORE_HOME` env var (deps: 1)
-- [ ] Update `settings.json` — replace all `~/.claude/hooks/` paths with `~/.degacore/scripts/hooks/`; rename `CLAUDE_SOUND` → `DEGA_SOUND` and `CLAUDE_SOUND_VOLUME` → `DEGA_SOUND_VOLUME`; update statusline path to `~/.degacore/scripts/statusline.sh` (deps: 2, 3, 4, 5, 6, 7, 8, 9)
+- [x] Update `settings.json` — replace all `~/.claude/hooks/` paths with `~/.degacore/scripts/hooks/`; rename `CLAUDE_SOUND` → `DEGA_SOUND` and `CLAUDE_SOUND_VOLUME` → `DEGA_SOUND_VOLUME`; update statusline path to `~/.degacore/scripts/statusline.sh` (deps: 2, 3, 4, 5, 6, 7, 8, 9)
 - [ ] Update `commands/apply-core.md` — rewrite install flow: target `$DEGA_CORE_HOME` (`~/.degacore/`); create subdirectory layout (`config/`, `scripts/`, `state/`, `sounds/`); install scripts to `scripts/`, hooks to `scripts/hooks/`, commands to `config/commands/`, etc.; detect installed agents and generate per-agent config (shims, settings, symlinks/copies for commands and rules) (deps: 10)
 - [ ] Update `README.md` and `INSTALL.md` — update directory structure documentation, install instructions, and path references to reflect `~/.degacore/` layout (deps: 11)
-- [ ] Run `shellcheck` on all modified `.sh` files; verify no stale `~/.claude/` references remain in scripts or hooks (grep audit) (deps: 2, 3, 4, 5, 6, 7, 8, 9)
+- [x] Run `shellcheck` on all modified `.sh` files; verify no stale `~/.claude/` references remain in scripts or hooks (grep audit) (deps: 2, 3, 4, 5, 6, 7, 8, 9)
 
 ## Decision log
 
