@@ -132,11 +132,11 @@ Agent-specific directories remain where each agent expects them:
 
 ## Completion criteria
 
-- [ ] `scripts/agent-shim.sh` exists and passes `shellcheck`
-- [ ] No hardcoded `claude` command invocations remain in orchestrator scripts (orch-engine, orch-run, orch-review, orch-verify, planner-loop, canon.sh)
-- [ ] No `~/.claude/` path references remain in scripts or hooks (except project-local `.claude/commands/` in canon-scaffold.sh which is intentional)
-- [ ] `DEGA_SOUND` and `DEGA_SOUND_VOLUME` are the primary env vars (with `CLAUDE_SOUND*` fallbacks)
-- [ ] `settings.json` hook paths point to `~/.degacore/scripts/hooks/`
-- [ ] `/apply-core` installs to `~/.degacore/` with `config/`, `scripts/`, `state/`, `sounds/` layout
-- [ ] `shellcheck` passes on all modified `.sh` files
-- [ ] `grep -r "~/.claude/" scripts/ hooks/` returns zero hits (excluding intentional project-local refs)
+- [x] `scripts/agent-shim.sh` exists and passes `shellcheck`
+- [x] No hardcoded `claude` command invocations remain in orchestrator scripts (orch-engine, orch-run, orch-review, orch-verify, planner-loop, canon.sh)
+- [x] No `~/.claude/` path references remain in scripts or hooks (except project-local `.claude/commands/` in canon-scaffold.sh which is intentional)
+- [x] `DEGA_SOUND` and `DEGA_SOUND_VOLUME` are the primary env vars (with `CLAUDE_SOUND*` fallbacks)
+- [x] `settings.json` hook paths point to `~/.degacore/scripts/hooks/`
+- [x] `/apply-core` installs to `~/.degacore/` with `config/`, `scripts/`, `state/`, `sounds/` layout
+- [x] `shellcheck` passes on all modified `.sh` files
+- [x] `grep -r "~/.claude/" scripts/ hooks/` returns zero hits (excluding intentional project-local refs)
