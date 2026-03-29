@@ -115,7 +115,7 @@ Agent-specific directories remain where each agent expects them:
 - [x] Update `scripts/log-client.sh` and `scripts/log-server.py` — replace `~/.claude/logs/` with `$DEGA_CORE_HOME/state/logs/`; update Python paths to read `DEGA_CORE_HOME` env var (deps: 1)
 - [x] Update `settings.json` — replace all `~/.claude/hooks/` paths with `~/.degacore/scripts/hooks/`; rename `CLAUDE_SOUND` → `DEGA_SOUND` and `CLAUDE_SOUND_VOLUME` → `DEGA_SOUND_VOLUME`; update statusline path to `~/.degacore/scripts/statusline.sh` (deps: 2, 3, 4, 5, 6, 7, 8, 9)
 - [x] Update `commands/apply-core.md` — rewrite install flow: target `$DEGA_CORE_HOME` (`~/.degacore/`); create subdirectory layout (`config/`, `scripts/`, `state/`, `sounds/`); install scripts to `scripts/`, hooks to `scripts/hooks/`, commands to `config/commands/`, etc.; detect installed agents and generate per-agent config (shims, settings, symlinks/copies for commands and rules) (deps: 10)
-- [ ] Update `README.md` and `INSTALL.md` — update directory structure documentation, install instructions, and path references to reflect `~/.degacore/` layout (deps: 11)
+- [x] Update `README.md` and `INSTALL.md` — update directory structure documentation, install instructions, and path references to reflect `~/.degacore/` layout (deps: 11)
 - [x] Run `shellcheck` on all modified `.sh` files; verify no stale `~/.claude/` references remain in scripts or hooks (grep audit) (deps: 2, 3, 4, 5, 6, 7, 8, 9)
 
 ## Decision log
