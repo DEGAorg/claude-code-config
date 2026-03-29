@@ -31,10 +31,12 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=read-github-config.sh
 source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 # --- Constants ---
 
-LOG_DIR="${HOME}/.claude/planner"
+LOG_DIR="${DEGA_CORE_HOME}/state/planner"
 FOCUS_FILE="${REPO_ROOT}/focus.yaml"
 TECH_DEBT_FILE="${REPO_ROOT}/docs/exec-plans/tech-debt.md"
 QUALITY_FILE="${REPO_ROOT}/docs/QUALITY.md"
@@ -87,7 +89,9 @@ done
 
 check_deps() {
 	local missing=()
-	for cmd in jq claude; do
+	local agent_cmd
+	agent_cmd="$(dega_agent_command)"
+	for cmd in jq "${agent_cmd}"; do
 		if ! command -v "${cmd}" >/dev/null 2>&1; then
 			missing+=("${cmd}")
 		fi
