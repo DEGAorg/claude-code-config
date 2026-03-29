@@ -14,7 +14,12 @@
 
 set -euo pipefail
 
-_LOG_SOCK="${HOME}/.claude/logs/log.sock"
+# Source agent-shim for DEGA_CORE_HOME
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
+
+_LOG_SOCK="${DEGA_CORE_HOME}/state/logs/log.sock"
 
 # _LOG_TRANSPORT: "socat" | "nc" | "none"
 _LOG_TRANSPORT="none"

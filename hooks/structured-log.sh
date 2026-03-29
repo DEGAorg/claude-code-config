@@ -3,21 +3,23 @@
 #
 # Noop when:
 #   - RALPH_MODE is set (non-interactive ralph-loop context)
-#   - ~/.claude/.session-log-config does not exist (session-start-logging.sh not fired)
+#   - $DEGA_CORE_HOME/state/.session-log-config does not exist (session-start-logging.sh not fired)
 #   - backend in config is not "local" (gcp or skip — not yet implemented)
 #
-# Log location: ~/.claude/logs/sessions/YYYY-MM-DD.jsonl
+# Log location: $DEGA_CORE_HOME/state/logs/sessions/YYYY-MM-DD.jsonl
 # Entry format: {"ts":"...","tool":"...","exit_code":N}
 #
 # Reading the log:
-#   rg '"tool":"Bash"' ~/.claude/logs/sessions/          # all bash calls
-#   rg '"exit_code":[^0]' ~/.claude/logs/sessions/       # non-zero exits
+#   rg '"tool":"Bash"' ~/.degacore/state/logs/sessions/   # all bash calls
+#   rg '"exit_code":[^0]' ~/.degacore/state/logs/sessions/ # non-zero exits
 
 set -euo pipefail
 
+DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
+
 [[ -n "${RALPH_MODE:-}" ]] && exit 0
 
-CONFIG="${HOME}/.claude/.session-log-config"
+CONFIG="${DEGA_CORE_HOME}/state/.session-log-config"
 [[ ! -f "$CONFIG" ]] && exit 0
 
 BACKEND=$(jq -r '.backend' "$CONFIG")
@@ -27,7 +29,7 @@ INPUT=$(cat)
 TOOL=$(jq -r '.tool_name // "unknown"' <<<"$INPUT")
 STATUS=$(jq -r '.tool_response.exit_code // 0' <<<"$INPUT")
 
-LOG_DIR="${HOME}/.claude/logs/sessions"
+LOG_DIR="${DEGA_CORE_HOME}/state/logs/sessions"
 mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/$(date +%Y-%m-%d).jsonl"
 

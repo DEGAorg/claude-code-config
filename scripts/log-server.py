@@ -31,11 +31,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import types
 
-LOG_DIR = Path.home() / ".claude" / "logs"
+_DEGA_CORE_HOME = Path(os.environ.get("DEGA_CORE_HOME", Path.home() / ".degacore"))
+LOG_DIR = _DEGA_CORE_HOME / "state" / "logs"
 RALPH_LOG_DIR = LOG_DIR / "ralph"
 SOCKET_PATH = LOG_DIR / "log.sock"
 PID_FILE = LOG_DIR / "log-server.pid"
-GCP_CREDS_PATH = Path.home() / ".claude" / "gcp-sa.json"
+GCP_CREDS_PATH = _DEGA_CORE_HOME / "config" / "gcp-sa.json"
 GCP_LOG_NAME = "ralph"
 
 _logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def _setup_logging() -> None:
 def _init_gcp_client() -> object | None:
     """Load GCP credentials and return a Cloud Logging client, or None.
 
-    Checks ~/.claude/gcp-sa.json then $GOOGLE_APPLICATION_CREDENTIALS.
+    Checks $DEGA_CORE_HOME/config/gcp-sa.json then $GOOGLE_APPLICATION_CREDENTIALS.
     Emits a startup warning and returns None if credentials are absent.
 
     Returns:
@@ -98,7 +99,7 @@ def _gcp_write(client: object, event: dict[str, object]) -> None:
 def _write_local(event: dict[str, object]) -> None:
     """Append an event to today's local JSONL file.
 
-    Creates ~/.claude/logs/ralph/ if it does not exist.
+    Creates $DEGA_CORE_HOME/state/logs/ralph/ if it does not exist.
 
     Args:
         event: The parsed event dict to persist.
