@@ -88,7 +88,7 @@ Our hooks use Claude event names. Gemini uses different names (`BeforeTool` vs `
 - [x] Create `scripts/adapters/codex-settings.sh` — read `settings-template.json`, generate `config.toml` (MCP servers, model config) and `hooks.json` (hooks in Codex format) for `~/.codex/` (deps: 4)
 - [x] Update `commands/apply-core.md` — add step to detect installed agents (`command -v claude gemini codex`), run corresponding adapter for each, generate instruction file shims (`CLAUDE.md`, `GEMINI.md` pointing to `AGENTS.md`; Codex uses `AGENTS.md` natively) (deps: 5, 6, 7)
 - [x] Run `shellcheck` on all modified/new `.sh` files; verify shim returns correct values for all three agents (deps: 2, 3, 5, 6, 7)
-- [ ] Smoke test — run orchestrator with `DEGA_PROVIDER=gemini` on a trivial 1-item plan; verify worker spawns with correct `gemini -p --yolo` command (deps: 2, 8)
+- [x] Smoke test — run orchestrator with `DEGA_PROVIDER=gemini` on a trivial 1-item plan; verify worker spawns with correct `gemini -p --yolo` command (deps: 2, 8)
 
 ## Decision log
 
