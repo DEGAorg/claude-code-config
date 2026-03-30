@@ -6,16 +6,21 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
-## 1. Verify tmux environment
+## 1. Verify environment
 
-`canon.sh` launches the tmux session with the dashboard. This command expects to
-already be running inside tmux. Check the environment:
+`canon.sh` launches the session — either via Toad (preferred) or tmux (fallback).
+Check which environment is active:
 
 ```bash
-echo "${TMUX:-not-set}"
+echo "TMUX=${TMUX:-not-set} TOAD_CWD=${TOAD_CWD:-not-set}"
 ```
 
-- **Inside tmux** (`$TMUX` is set): good. Check the session name:
+- **Toad** (`$TOAD_CWD` is set): running inside Toad via ACP. The Builder and
+  Automation sections update automatically from `.canon/state.json`. Print
+  nothing, continue to step 2.
+
+- **tmux** (`$TMUX` is set, `$TOAD_CWD` is not set): running inside tmux.
+  Check the session name:
 
   ```bash
   tmux display-message -p '#S'
@@ -27,10 +32,10 @@ echo "${TMUX:-not-set}"
     > Running inside tmux session "<name>" (not "canon"). Dashboard may not be
     > visible, but the workflow works the same.
 
-- **Not inside tmux** (`$TMUX` is not set): print and stop:
+- **Neither set**: print and stop:
 
-  > Not running inside tmux. Run `./canon.sh` first to launch the Canon
-  > environment with the dashboard.
+  > Not running inside a Canon environment. Run `./canon.sh` first to launch
+  > the Canon session with the dashboard.
 
   Do not proceed to step 2.
 

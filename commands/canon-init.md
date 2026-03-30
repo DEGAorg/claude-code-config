@@ -30,8 +30,7 @@ Do not stop at the first failure — check all of them so the user gets one comp
 
 | Check | Command | If missing |
 |-------|---------|-----------|
-| tmux | `command -v tmux` | "Install tmux: `brew install tmux`" |
-| toad | `command -v toad` | "Install toad: see DEGAorg/conductor-view README" |
+| toad or tmux | `command -v toad \|\| command -v tmux` | "Install toad (preferred): see DEGAorg/conductor-view README, or tmux: `brew install tmux`" |
 | agent-shim.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/agent-shim.sh" ]]` | "Run `/apply-core` to install the agent shim" |
 | canon-scaffold.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh" ]]` | "Run `/apply-core` and select Canon Scaffold" |
 
@@ -52,7 +51,7 @@ Do not continue if any check fails.
 mkdir -p .canon .claude/commands
 ```
 
-Fetch the `/canon-start` command so it's available when Claude starts inside tmux:
+Fetch the `/canon-start` command so it's available when the agent starts:
 
 ```bash
 curl -sfL "https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/canon/commands/canon-start.md" \
@@ -99,13 +98,20 @@ else
     "$(date -u +%FT%TZ)" "$(date -u +%FT%TZ)" >"${STATE}"
 fi
 
-# ── Dashboard renderer (best available) ──────────────────────────────
-# Priority: toad > terminal-ui (global) > terminal-ui (bundled) > cat loop
+# ── Launch mode: Toad (preferred) or tmux (fallback) ─────────────────
+if command -v toad >/dev/null 2>&1; then
+  exec toad acp "/canon-start" --project-dir "${PROJECT_DIR}"
+fi
+
+# ── Fallback: tmux with agent + dashboard ────────────────────────────
+if ! command -v tmux >/dev/null 2>&1; then
+  echo "error: neither toad nor tmux found. Install one of:"
+  echo "  toad  — see DEGAorg/conductor-view README"
+  echo "  tmux  — brew install tmux"
+  exit 1
+fi
+
 _canon_dashboard_cmd() {
-  if command -v toad >/dev/null 2>&1; then
-    echo "toad --project ${PROJECT_DIR}"
-    return
-  fi
   if command -v terminal-ui >/dev/null 2>&1; then
     echo "terminal-ui --state ${STATE}"
     return
@@ -118,8 +124,6 @@ _canon_dashboard_cmd() {
 }
 RIGHT_CMD="$(_canon_dashboard_cmd)"
 
-# ── Create tmux: left=agent, right=dashboard ─────────────────────────
-# When the agent exits, update dashboard status to idle and keep the pane alive
 HEADLESS_FLAGS="$(dega_agent_headless_flags)"
 AGENT_CMD="$(dega_agent_command) ${HEADLESS_FLAGS}; "
 AGENT_CMD+="[[ -f '${TUI_WRITE}' ]] && bash '${TUI_WRITE}' '${STATE}' status=idle log.info='Agent session ended'; "
@@ -129,10 +133,8 @@ tmux new-session -d -s canon "${AGENT_CMD}"
 tmux split-window -h -t canon -p 40 "${RIGHT_CMD}"
 tmux select-pane -t canon:.0
 
-# ── Pre-type /canon-start (user hits Enter to confirm) ──────────────
 tmux send-keys -t canon:.0 "/canon-start" ""
 
-# ── Status bar ───────────────────────────────────────────────────────
 tmux set-option -t canon status-left " Canon "
 tmux set-option -t canon status-right " %H:%M "
 
