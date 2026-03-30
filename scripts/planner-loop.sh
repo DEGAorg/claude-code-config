@@ -233,15 +233,18 @@ run_assess() {
 	local prompt
 	prompt=$(gather_context)
 
-	local agent_cmd
-	agent_cmd="$(dega_agent_command)"
-	local prompt_flag
-	prompt_flag="$(dega_agent_prompt_flag)"
+	local assess_cmd
+	assess_cmd="$(dega_agent_build_headless_cmd "${prompt}")"
+	local json_flag
+	json_flag="$(dega_agent_json_flag)"
+	# Insert JSON flag after headless flags, before prompt flag/exec
+	local prefix
+	prefix="$(dega_agent_command) $(dega_agent_headless_flags)"
+	assess_cmd="${prefix} ${json_flag}${assess_cmd#"${prefix}"}"
 
 	local assess_output
 	local assess_exit=0
-	assess_output=$(${agent_cmd} ${prompt_flag} --output-format json \
-		"${prompt}" 2>"${LOGFILE}.assess-stderr") || assess_exit=$?
+	assess_output=$(eval "${assess_cmd}" 2>"${LOGFILE}.assess-stderr") || assess_exit=$?
 
 	if [[ ${assess_exit} -ne 0 ]]; then
 		local stderr_content
@@ -257,7 +260,7 @@ run_assess() {
 		return 1
 	fi
 
-	# claude --output-format json wraps the result — extract the text content
+	# JSON output wraps the result — extract the text content
 	local text_result
 	text_result=$(printf '%s' "${assess_output}" | jq -r '
 		if .result then
@@ -369,14 +372,11 @@ ${instructions_block}
 - **Plan file**: ${REPO_ROOT}/${plan_dir}/plan.md
 - **Plan status**: ${status_hint}"
 
-	local agent_cmd
-	agent_cmd="$(dega_agent_command)"
-	local headless_flags
-	headless_flags="$(dega_agent_headless_flags)"
+	local writer_cmd
+	writer_cmd="$(dega_agent_build_headless_cmd "${writer_prompt}")"
 
 	local plan_exit=0
-	${agent_cmd} ${headless_flags} \
-		"${writer_prompt}" 2>"${LOGFILE}.plan-stderr" || plan_exit=$?
+	eval "${writer_cmd}" 2>"${LOGFILE}.plan-stderr" || plan_exit=$?
 
 	if [[ ${plan_exit} -ne 0 ]]; then
 		local stderr_content

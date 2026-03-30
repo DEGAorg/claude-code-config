@@ -40,6 +40,10 @@ Files available:
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
 - `scripts/agent-shim.sh`
+- `scripts/adapters/claude-settings.sh`
+- `scripts/adapters/gemini-settings.sh`
+- `scripts/adapters/codex-settings.sh`
+- `settings-template.json`
 - `scripts/log-server.py`
 - `scripts/statusline.sh`
 - `dega-core.yaml`
@@ -144,6 +148,7 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/config/skills/` (any files)
 - `~/.degacore/config/agents/` (any files)
 - `~/.degacore/scripts/agent-shim.sh`
+- `~/.degacore/scripts/adapters/` (claude-settings.sh, gemini-settings.sh, codex-settings.sh)
 - `~/.degacore/scripts/statusline.sh`
 - `~/.degacore/scripts/log-server.py`
 - `~/.degacore/scripts/hooks/` (any files)
@@ -172,10 +177,18 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/state/logs/`
 - `~/.degacore/state/planner/`
 
-Also detect installed agents by checking for their config directories:
-- `~/.claude/` -> Claude Code
-- `~/.gemini/` -> Gemini CLI
-- `~/.codex/` -> Codex CLI
+Also detect installed agents by checking for their CLI binaries:
+
+```bash
+command -v claude  # Claude Code
+command -v gemini  # Gemini CLI
+command -v codex   # Codex CLI
+```
+
+If a binary is found, the agent is considered installed. Also check for
+existing config directories (`~/.claude/`, `~/.gemini/`, `~/.codex/`) —
+an agent is detected if either the binary exists or the config directory
+exists.
 
 Also check in the current working directory (target project root):
 - `dega-core.yaml`
@@ -272,14 +285,17 @@ the GitHub URLs above. Extract the raw file content from each response.
 Create the `~/.degacore/` directory tree if it doesn't exist:
 
 ```bash
-mkdir -p ~/.degacore/{config/{commands,skills,rules,agents},scripts/{hooks/orch-lifecycle,terminal-ui/src},state/{logs,planner},sounds}
+mkdir -p ~/.degacore/{config/{commands,skills,rules,agents},scripts/{adapters,hooks/orch-lifecycle,terminal-ui/src},state/{logs,planner},sounds}
 ```
 
-Also install the agent-shim.sh foundation script (always, regardless of
-component selection — other scripts depend on it):
+Also install the agent-shim and adapter scripts (always, regardless of
+component selection — other scripts depend on them):
 - `scripts/agent-shim.sh` -> `~/.degacore/scripts/agent-shim.sh`
+- `scripts/adapters/claude-settings.sh` -> `~/.degacore/scripts/adapters/claude-settings.sh`
+- `scripts/adapters/gemini-settings.sh` -> `~/.degacore/scripts/adapters/gemini-settings.sh`
+- `scripts/adapters/codex-settings.sh` -> `~/.degacore/scripts/adapters/codex-settings.sh`
 
-Run `chmod +x ~/.degacore/scripts/agent-shim.sh`.
+Run `chmod +x` on all four scripts.
 
 Install each selected component to its `~/.degacore/` location:
 
@@ -493,61 +509,79 @@ agents are installed and generate agent-specific config for each one.
 
 #### Detection
 
-Check for these agent config directories:
+Detect installed agents using both binary presence and config directory existence:
 
-| Agent | Config dir | Indicator |
-|-------|-----------|-----------|
-| Claude Code | `~/.claude/` | directory exists |
-| Gemini CLI | `~/.gemini/` | directory exists |
-| Codex CLI | `~/.codex/` | directory exists |
+```bash
+command -v claude && HAVE_CLAUDE=1
+command -v gemini && HAVE_GEMINI=1
+command -v codex  && HAVE_CODEX=1
 
-If no agent directories exist, default to creating `~/.claude/` (Claude Code
-is the primary supported agent).
+# Also detect by config directory (agent may be installed but not on PATH)
+[[ -d ~/.claude ]] && HAVE_CLAUDE=1
+[[ -d ~/.gemini ]] && HAVE_GEMINI=1
+[[ -d ~/.codex ]]  && HAVE_CODEX=1
+```
 
-#### Per-agent config generation
+If no agents are detected, default to Claude Code (create `~/.claude/`).
 
-For each detected agent, generate config in its config directory. The
-agent's config directory is `~/.<agent>/` (e.g. `~/.claude/`, `~/.gemini/`).
+Report which agents were detected before proceeding.
 
-##### Global instructions file
+#### Per-agent settings generation
 
-Each agent uses a different filename for global instructions:
+For each detected agent, run its adapter script to generate settings from
+the shared template. The adapters read `~/.degacore/settings-template.json`
+and write agent-specific config to the agent's config directory.
 
-| Agent | File | Content |
-|-------|------|---------|
-| Claude | `~/.claude/CLAUDE.md` | Thin shim pointing to shared template |
-| Gemini | `~/.gemini/GEMINI.md` | Thin shim pointing to shared template |
-| Codex | `~/.codex/CODEX.md` | Thin shim pointing to shared template |
+| Agent | Adapter script | Output |
+|-------|---------------|--------|
+| Claude | `~/.degacore/scripts/adapters/claude-settings.sh` | `~/.claude/settings.json` |
+| Gemini | `~/.degacore/scripts/adapters/gemini-settings.sh` | `~/.gemini/settings.json` |
+| Codex | `~/.degacore/scripts/adapters/codex-settings.sh` | `~/.codex/config.toml` + `~/.codex/hooks.json` |
 
-If the **Agent Template** component was selected:
+Run the adapter only if the **Settings Template** component was selected.
+Each adapter handles its own merge/overwrite logic:
 
-- If the agent's global instructions file does **not** exist: write a thin
-  shim that sources the shared template:
+- If the agent's settings file does **not** exist: write it directly.
+- If it **does** exist: read both files and merge the template's keys
+  into the existing file — preserve any user keys that don't conflict.
+  Show the merged result and ask for confirmation before writing.
+
+```bash
+# Run adapter for each detected agent
+[[ "${HAVE_CLAUDE:-}" == 1 ]] && bash ~/.degacore/scripts/adapters/claude-settings.sh
+[[ "${HAVE_GEMINI:-}" == 1 ]] && bash ~/.degacore/scripts/adapters/gemini-settings.sh
+[[ "${HAVE_CODEX:-}" == 1 ]]  && bash ~/.degacore/scripts/adapters/codex-settings.sh
+```
+
+#### Global instructions file (AGENTS.md shims)
+
+Each agent looks for a specific instruction file. Claude and Gemini need
+thin shims that redirect to `AGENTS.md` (the project-level single source
+of truth). Codex reads `AGENTS.md` natively (configured via
+`model_instructions_file = "AGENTS.md"` in its `config.toml`).
+
+| Agent | Instruction file | Content |
+|-------|-----------------|---------|
+| Claude | `~/.claude/CLAUDE.md` | Shim pointing to `AGENTS.md` |
+| Gemini | `~/.gemini/GEMINI.md` | Shim pointing to `AGENTS.md` |
+| Codex | *(none needed)* | Reads `AGENTS.md` natively via config.toml |
+
+If the **Agent Template** component was selected, for Claude and Gemini:
+
+- If the agent's instruction file does **not** exist: write a thin shim:
   ```markdown
   # Agent Configuration
 
-  Read and follow all instructions in ~/.degacore/config/agent-template.md
+  Read and follow all instructions in AGENTS.md
   ```
 - If it **already exists**: tell the user it exists and ask whether to
   overwrite, skip, or show a diff. Never silently overwrite.
 
-##### Settings file
+Codex does not need an instruction shim — the codex-settings adapter
+sets `model_instructions_file = "AGENTS.md"` in `config.toml`, which
+tells Codex to read `AGENTS.md` directly.
 
-Each agent has its own settings format. Currently only Claude Code
-settings are supported:
-
-- **Claude Code**: If the **Settings Template** component was selected,
-  generate `~/.claude/settings.json` from `~/.degacore/settings-template.json`.
-  - If `~/.claude/settings.json` does **not** exist: copy the template.
-  - If it **does** exist: read both files and merge the template's keys
-    into the existing file — preserve any user keys that don't conflict.
-    Show the merged result and ask for confirmation before writing.
-- **Gemini/Codex**: Settings generation is not yet supported (Phase 3).
-  Skip with a note: "Settings generation for <agent> is not yet supported.
-  Shared scripts and commands are installed — settings must be configured
-  manually."
-
-##### Commands (symlinks or copies)
+#### Commands (symlinks or copies)
 
 If the **Commands** component was selected, link commands into each agent's
 config directory.
@@ -568,7 +602,7 @@ If the agent's `commands/` directory already exists and is NOT a symlink to
 and contains custom files. Replace with symlink to shared commands, merge,
 or skip?"
 
-##### Rules (symlinks or copies)
+#### Rules (symlinks or copies)
 
 If the **Rules** component was selected, link rules into each agent's
 config directory using the same symlink-or-copy strategy as commands:
@@ -642,8 +676,9 @@ List which agents were configured:
 
 ```
 Agents configured:
-  Claude Code — ~/.claude/ (settings, commands, rules, CLAUDE.md)
-  Gemini CLI  — ~/.gemini/ (commands, rules, GEMINI.md; settings: manual)
+  Claude Code — ~/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
+  Gemini CLI  — ~/.gemini/ (settings.json, commands, rules, GEMINI.md → AGENTS.md)
+  Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
 ```
 
 Example summary:
@@ -664,7 +699,7 @@ Installed to ~/.degacore/:
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
 
 Agents configured:
-  Claude Code — ~/.claude/ (settings, commands, rules, CLAUDE.md)
+  Claude Code — ~/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
 
 Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.

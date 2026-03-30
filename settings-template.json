@@ -1,0 +1,166 @@
+{
+  "_doc": [
+    "Agent-neutral settings template. Adapters read this and generate",
+    "agent-specific config (settings.json for Claude/Gemini, config.toml",
+    "+ hooks.json for Codex). Do not deploy this file directly."
+  ],
+  "_event_name_mapping": {
+    "_doc": "Canonical event names used in this template → agent-specific names",
+    "PreToolUse":       { "claude": "PreToolUse",       "gemini": "BeforeTool",   "codex": "PreToolUse" },
+    "PostToolUse":      { "claude": "PostToolUse",      "gemini": "AfterTool",    "codex": "PostToolUse" },
+    "Stop":             { "claude": "Stop",             "gemini": "SessionEnd",   "codex": "Stop" },
+    "UserPromptSubmit": { "claude": "UserPromptSubmit", "gemini": "SessionStart", "codex": "UserPromptSubmit" }
+  },
+  "env": {
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DEGA_SOUND": "super-mario-bros",
+    "DEGA_SOUND_VOLUME": "25"
+  },
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(sudo *)",
+      "Bash(mkfs *)",
+      "Bash(dd *)",
+      "Bash(curl *|bash*)",
+      "Bash(wget *|bash*)",
+      "Bash(git push --force*)",
+      "Bash(git push *--force*)",
+      "Bash(git reset --hard*)",
+      "Bash(gh pr merge*)",
+
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.ssh/**)",
+
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.git-credentials)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.kube/**)",
+      "Read(~/.npmrc)",
+      "Read(~/.npm/**)",
+      "Read(~/.pypirc)",
+      "Read(~/.gem/credentials)",
+      "Read(~/Library/Keychains/**)",
+      "Read(~/Library/Application Support/**/metamask*/**)",
+      "Read(~/Library/Application Support/**/electrum*/**)",
+      "Read(~/Library/Application Support/**/exodus*/**)",
+      "Read(~/Library/Application Support/**/phantom*/**)",
+      "Read(~/Library/Application Support/**/solflare*/**)",
+
+      "Read(~/.local/share/keyrings/**)",
+      "Read(~/.config/**/metamask*/**)",
+      "Read(~/.local/share/**/metamask*/**)",
+      "Read(~/.electrum/**)",
+      "Read(~/.config/Exodus/**)",
+      "Read(~/.config/exodus/**)",
+      "Read(~/.config/**/phantom*/**)",
+      "Read(~/.local/share/**/phantom*/**)",
+      "Read(~/.config/**/solflare*/**)",
+      "Read(~/.local/share/**/solflare*/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/enforce-loop-mode.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/enforce-exec-plan-naming.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/session-start-logging.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); command -v rg >/dev/null 2>&1 || exit 0; REFS=$(rg -l \"$BASENAME\" docs/ AGENTS.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/orch-done-sync.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/update-exec-plan-reminder.sh"
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/structured-log.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/ralph-reviewer-stop.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ~/.degacore/scripts/hooks/play-sound.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "exa": {
+      "command": "npx",
+      "args": ["-y", "exa-mcp-server"],
+      "env": {
+        "EXA_API_KEY": "your-exa-api-key-here"
+      }
+    }
+  }
+}
