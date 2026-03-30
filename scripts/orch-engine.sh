@@ -256,17 +256,17 @@ spawn_worker() {
 	prompt_file="${prompt_file}.md"
 	printf '%s\n' "${prompt}" >"${prompt_file}"
 
-	# Create tmux window and run agent worker
-	# Foreground: interactive TUI (full agent). Background: headless (agent + headless flags).
-	local agent_cmd
-	agent_cmd="$(dega_agent_command)"
+	# Build agent command using shim helper (handles Codex exec pattern)
+	local cmd_template agent_cmd_str
+	cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+	agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat \'${prompt_file}\')\"}"
+
+	# Skip env -u when session var is empty (e.g., Codex has no session var)
 	local session_var
 	session_var="$(dega_agent_session_var)"
-	local agent_cmd_str
-	if [[ "${BACKGROUND}" == true ]]; then
-		agent_cmd_str="${agent_cmd} $(dega_agent_headless_flags) \"\$(cat '${prompt_file}')\""
-	else
-		agent_cmd_str="${agent_cmd} --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+	local env_prefix=""
+	if [[ -n "${session_var}" ]]; then
+		env_prefix="env -u '${session_var}'"
 	fi
 
 	# Kill stale window from previous iteration if it exists
@@ -276,7 +276,7 @@ spawn_worker() {
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${pane_name}" \
 		"cd '${WORKTREE_DIR}' && \
 		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
-		 env -u ${session_var} ${agent_cmd_str} ; \
+		 ${env_prefix} ${agent_cmd_str} ; \
 		 echo '--- worker ${item_id} exited ---'; \
 		 sleep 2"
 
