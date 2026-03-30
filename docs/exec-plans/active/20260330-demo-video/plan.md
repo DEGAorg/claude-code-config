@@ -109,7 +109,7 @@ canon/demo-video/
 
 - [ ] Scaffold Remotion project in `canon/demo-video/` — run `pnpm create video`, install Remotion + Tailwind + transitions, configure TS strict mode, verify `pnpm exec remotion preview` launches
 - [ ] Create theme and shared components — Terminal, TypeWriter in `src/components/`, theme constants in `src/styles/theme.ts` (deps: 1)
-- [ ] Build Intro composition — logo, tagline, typed-text cursor animation, fade to black (deps: 2)
+- [x] Build Intro composition — logo, tagline, typed-text cursor animation, fade to black (deps: 2)
 - [ ] Build PhaseCard composition — reusable component accepting props (label, subtitle), render all 5 phase cards (deps: 2)
 - [ ] Build Outro composition — tagline, branding, fade out (deps: 2)
 - [ ] Wire all compositions in Root.tsx, preview each segment, verify timing and transitions (deps: 3, 4, 5)
