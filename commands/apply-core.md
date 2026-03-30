@@ -40,6 +40,10 @@ Files available:
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
 - `scripts/agent-shim.sh`
+- `scripts/adapters/claude-settings.sh`
+- `scripts/adapters/gemini-settings.sh`
+- `scripts/adapters/codex-settings.sh`
+- `settings-template.json`
 - `scripts/log-server.py`
 - `scripts/statusline.sh`
 - `dega-core.yaml`
