@@ -1,68 +1,124 @@
-import { interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { Terminal } from "./Terminal";
-import { TypeWriter } from "./TypeWriter";
-import { colors, timing } from "../styles/theme";
+import { GlowText } from "./GlowText";
+import { DataStream } from "./DataStream";
+import { HorizontalRule } from "./HorizontalRule";
+import { colors, fonts, timing } from "../styles/theme";
 
-/** Outro composition — tagline, branding, fade to black */
+/**
+ * Outro — closing card.
+ *
+ * Sequence:
+ * 0-10:  Black, data streams fade in
+ * 10-30: Tagline glows in
+ * 35:    Line draws
+ * 45:    Stats appear
+ * 80:    GitHub link fades in
+ * Last 15: Everything fades out
+ */
 export const Outro: React.FC = () => {
   const frame = useCurrentFrame();
-  const { outroFrames, fadeFrames } = timing;
+  const { outroFrames } = timing;
 
-  const fadeOutOpacity = interpolate(
+  const streamOpacity = interpolate(frame, [0, 15], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const statsOpacity = interpolate(frame, [45, 55], [0, 0.7], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const linkOpacity = interpolate(frame, [80, 90], [0, 0.5], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const fadeOut = interpolate(
     frame,
-    [outroFrames - fadeFrames, outroFrames],
+    [outroFrames - 15, outroFrames],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
   );
 
-  const brandingOpacity = interpolate(
-    frame,
-    [20, 35],
-    [0, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-
   return (
-    <div style={{ width: "100%", height: "100%", opacity: fadeOutOpacity }}>
+    <AbsoluteFill style={{ opacity: fadeOut }}>
       <Terminal>
-        <TypeWriter
-          text="Ship faster with agents."
-          fontSize={52}
-          color={colors.green}
-          startFrame={5}
-          delayFrames={2}
-          showCursor={false}
-        />
+        <AbsoluteFill style={{ opacity: streamOpacity }}>
+          <DataStream columns={10} speed={0.4} opacity={0.04} />
+        </AbsoluteFill>
+
         <div
           style={{
-            opacity: brandingOpacity,
-            marginTop: 40,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 12,
+            gap: 24,
+            zIndex: 2,
           }}
         >
-          <span
+          <GlowText
+            text="Agents build. You decide."
+            fontSize={64}
+            color={colors.green}
+            glowColor={colors.greenGlow}
+            enterFrame={10}
+            stagger={1}
+            spacing={2}
+          />
+
+          <HorizontalRule enterFrame={35} width={25} color={colors.blue} />
+
+          {/* Stats line */}
+          <div
             style={{
-              fontSize: 28,
+              display: "flex",
+              gap: 40,
+              opacity: statsOpacity,
+              fontFamily: fonts.mono,
+              fontSize: 16,
               color: colors.textMuted,
-              fontFamily: "JetBrains Mono, SF Mono, Menlo, monospace",
             }}
           >
-            DEGA — Canon Pipeline
-          </span>
-          <span
+            <span>
+              agents <span style={{ color: colors.blue }}>+</span> skills{" "}
+              <span style={{ color: colors.blue }}>+</span> strategies
+            </span>
+            <span style={{ color: colors.green }}>
+              no code knowledge required
+            </span>
+          </div>
+
+          {/* GitHub link */}
+          <div
             style={{
-              fontSize: 18,
-              color: colors.cyan,
-              fontFamily: "JetBrains Mono, SF Mono, Menlo, monospace",
+              marginTop: 40,
+              opacity: linkOpacity,
+              fontFamily: fonts.mono,
+              fontSize: 14,
+              color: colors.blue,
+              letterSpacing: 2,
             }}
           >
             github.com/DEGAorg
-          </span>
+          </div>
+
+          {/* Powered by */}
+          <div
+            style={{
+              opacity: linkOpacity,
+              fontFamily: fonts.mono,
+              fontSize: 12,
+              color: colors.textMuted,
+              letterSpacing: 3,
+              textTransform: "uppercase",
+            }}
+          >
+            powered by DEGA
+          </div>
         </div>
       </Terminal>
-    </div>
+    </AbsoluteFill>
   );
 };

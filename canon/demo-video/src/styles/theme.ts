@@ -1,21 +1,25 @@
-/** Terminal-aesthetic theme constants for Canon demo video */
+/** Canon demo video — Mr. Robot meets crypto dashboard */
 
 export const colors = {
-  bg: "#0d1117",
-  bgLight: "#161b22",
-  border: "#30363d",
-  text: "#c9d1d9",
-  textMuted: "#8b949e",
-  green: "#3fb950",
-  cyan: "#58a6ff",
-  orange: "#d29922",
-  purple: "#bc8cff",
-  red: "#f85149",
-  cursor: "#58a6ff",
+  bg: "#0a0a0a",
+  bgSubtle: "#111111",
+  grid: "#1a1a1a",
+  gridBright: "#222222",
+  border: "#2a2a2a",
+  text: "#e8e8e8",
+  textMuted: "#555555",
+  green: "#00ff41",
+  greenDim: "#00cc33",
+  greenGlow: "rgba(0, 255, 65, 0.15)",
+  blue: "#00d4ff",
+  blueDim: "#0099cc",
+  blueGlow: "rgba(0, 212, 255, 0.12)",
+  scanLine: "rgba(0, 255, 65, 0.03)",
+  cursor: "#00ff41",
 } as const;
 
 export const fonts = {
-  mono: "JetBrains Mono, SF Mono, Menlo, monospace",
+  mono: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace",
 } as const;
 
 export const sizing = {
@@ -24,11 +28,11 @@ export const sizing = {
   fps: 30,
 } as const;
 
-/** Timing in frames (at 30fps) */
+/** Timing in frames (at 30fps). Snappy for 2-3min hackathon demo. */
 export const timing = {
-  introFrames: 120,
+  introFrames: 195,
   phaseCardFrames: 90,
-  outroFrames: 90,
-  fadeFrames: 15,
-  typeDelayFrames: 2,
+  outroFrames: 165,
+  fadeFrames: 10,
+  typeDelayFrames: 1,
 } as const;
