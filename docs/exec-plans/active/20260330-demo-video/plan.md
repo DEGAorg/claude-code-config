@@ -3,10 +3,10 @@
 ## Context
 
 The canon demo is a screen recording of the full pipeline (scaffold →
-strategy → develop → run). The recording itself is slow and needs visual
-structure: an intro, phase transition cards, and an outro. These are
-built with Remotion (React-based programmatic video) and composited
-with the screen recording in post.
+strategy → build → run). The recording needs visual structure: an intro,
+phase transition cards, and an outro. These are built with Remotion
+(React-based programmatic video) and composited with the screen
+recording in post.
 
 Location: `canon/demo-video/`
 
@@ -28,39 +28,33 @@ into the screen recording. Each segment is a Remotion composition.
 Title card between intro and scaffold recording:
 
 - Phase label: "SCAFFOLD"
-- Subtitle: "Fetching agents, skills, and project structure"
-- Phase number indicator: "1 / 5"
+- Subtitle: "Setting up agents, skills, and project structure"
 - Slide-in from right or glitch/reveal animation
 - Terminal aesthetic consistent with intro
 
 ### 3. Phase: Strategy (2-3s)
 
 - Phase label: "STRATEGY"
-- Subtitle: "Selecting market and designing the edge"
-- Phase number: "2 / 5"
+- Subtitle: "Picking a market and designing the edge"
 
-### 4. Phase: Develop (2-3s)
+### 4. Phase: Build (2-3s)
 
 - Phase label: "BUILD"
-- Subtitle: "Orchestrator drives workers to implement the strategy"
-- Phase number: "3 / 5"
+- Subtitle: "The Conductor drives agents to write the strategy"
 
-### 5. Phase: Test & Review (2-3s)
+### 5. Phase: Review (2-3s)
 
 - Phase label: "REVIEW"
-- Subtitle: "Automated review — iterate until SHIP"
-- Phase number: "4 / 5"
+- Subtitle: "Automated review — agents iterate until it ships"
 
 ### 6. Phase: Run (2-3s)
 
 - Phase label: "RUN"
-- Subtitle: "Strategy live — scanning markets, detecting edges"
-- Phase number: "5 / 5"
+- Subtitle: "Strategy goes live — scanning markets, finding edges"
 
 ### 7. Outro (4-6s)
 
-- Summary stats (could be dynamic props):
-  - "6 agents — 8 skills — 1 strategy — 0 human code"
+- Tagline: "Agents, skills, strategies — no code knowledge required"
 - DEGA branding
 - URL or GitHub link
 - Fade out
@@ -88,8 +82,7 @@ canon/demo-video/
 │   ├── Outro.tsx             # Outro segment
 │   ├── components/
 │   │   ├── Terminal.tsx      # Terminal-style text container
-│   │   ├── TypeWriter.tsx    # Typed text animation
-│   │   └── PhaseCounter.tsx  # "N / 5" indicator
+│   │   └── TypeWriter.tsx    # Typed text animation
 │   └── styles/
 │       └── theme.ts          # Colors, fonts, timing constants
 └── public/
@@ -108,25 +101,25 @@ canon/demo-video/
 - Background: `#0a0a0a` (near-black)
 - Primary text: `#e0e0e0` (light gray)
 - Accent: `#22c55e` (green-500, terminal green)
-- Secondary accent: `#3b82f6` (blue-500, for phase numbers)
+- Secondary accent: `#3b82f6` (blue-500)
 - Font: JetBrains Mono (monospace, terminal feel)
 - All animations ease-in-out, no jarring cuts
 
 ## Progress log
 
-- [ ] Scaffold Remotion project in `canon/demo-video/` — init with `pnpm create video`, configure TS + Tailwind
-- [ ] Create theme and shared components — Terminal, TypeWriter, PhaseCounter (deps: 1)
-- [ ] Build Intro composition — logo, tagline, cursor animation (deps: 2)
-- [ ] Build PhaseCard composition — reusable for all 5 phases, accepts props (label, subtitle, number) (deps: 2)
-- [ ] Build Outro composition — stats, branding, fade (deps: 2)
-- [ ] Wire all compositions in Root.tsx, render previews, verify timing (deps: 3, 4, 5)
-- [ ] Export all segments as MP4 clips (deps: 6)
+- [ ] Scaffold Remotion project in `canon/demo-video/` — run `pnpm create video`, install Remotion + Tailwind + transitions, configure TS strict mode, verify `pnpm exec remotion preview` launches
+- [ ] Create theme and shared components — Terminal, TypeWriter in `src/components/`, theme constants in `src/styles/theme.ts` (deps: 1)
+- [ ] Build Intro composition — logo, tagline, typed-text cursor animation, fade to black (deps: 2)
+- [ ] Build PhaseCard composition — reusable component accepting props (label, subtitle), render all 5 phase cards (deps: 2)
+- [ ] Build Outro composition — tagline, branding, fade out (deps: 2)
+- [ ] Wire all compositions in Root.tsx, preview each segment, verify timing and transitions (deps: 3, 4, 5)
+- [ ] Export all segments as individual MP4 clips at 1920x1080 30fps (deps: 6)
 
 ## Completion criteria
 
 - [ ] `pnpm exec remotion preview` shows all compositions
-- [ ] Each phase card renders with correct label, subtitle, and counter
+- [ ] Each phase card renders with correct label and subtitle
 - [ ] Intro has typed-text animation and terminal aesthetic
-- [ ] Outro shows dynamic stats
+- [ ] Outro shows tagline
 - [ ] All segments export to MP4 at 1920x1080 30fps
 - [ ] Total Remotion content under 30s (clips are concise)
