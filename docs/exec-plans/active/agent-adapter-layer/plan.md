@@ -101,12 +101,12 @@ Our hooks use Claude event names. Gemini uses different names (`BeforeTool` vs `
 
 ## Completion criteria
 
-- [ ] `dega_agent_command` returns correct binary for all three agents
-- [ ] `dega_agent_headless_flags` returns `--dangerously-skip-permissions` for Claude, `--yolo` for Gemini/Codex
-- [ ] `dega_agent_session_var` returns `CLAUDECODE` for Claude, `GEMINI_CLI` for Gemini, empty for Codex
-- [ ] `dega_agent_build_headless_cmd` produces correct command string for all three agents
-- [ ] Orchestrator scripts handle empty session var without error
-- [ ] Three adapter scripts exist and generate valid config for their respective agents
-- [ ] `/apply-core` detects installed agents and runs adapters
-- [ ] `shellcheck` passes on all modified/new `.sh` files
-- [ ] Smoke test passes with `DEGA_PROVIDER=gemini` (worker spawns with correct flags)
+- [x] `dega_agent_command` returns correct binary for all three agents
+- [x] `dega_agent_headless_flags` returns `--dangerously-skip-permissions` for Claude, `--yolo` for Gemini/Codex
+- [x] `dega_agent_session_var` returns `CLAUDECODE` for Claude, `GEMINI_CLI` for Gemini, empty for Codex
+- [x] `dega_agent_build_headless_cmd` produces correct command string for all three agents
+- [x] Orchestrator scripts handle empty session var without error
+- [x] Three adapter scripts exist and generate valid config for their respective agents
+- [x] `/apply-core` detects installed agents and runs adapters
+- [x] `shellcheck` passes on all modified/new `.sh` files
+- [x] Smoke test passes with `DEGA_PROVIDER=gemini` (worker spawns with correct flags)
