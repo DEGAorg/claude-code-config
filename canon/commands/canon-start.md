@@ -6,41 +6,12 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
-## 1. Verify environment
-
-`canon.sh` launches the session — either via Toad (preferred) or tmux (fallback).
-Check which environment is active:
-
-```bash
-echo "TMUX=${TMUX:-not-set} TOAD_CWD=${TOAD_CWD:-not-set}"
-```
-
-- **Toad** (`$TOAD_CWD` is set): running inside Toad via ACP. The Builder and
-  Automation sections update automatically from `.canon/state.json`. Print
-  nothing, continue to step 2.
-
-- **tmux** (`$TMUX` is set, `$TOAD_CWD` is not set): running inside tmux.
-  Check the session name:
-
-  ```bash
-  tmux display-message -p '#S'
-  ```
-
-  - Session name is "canon": print nothing, continue to step 2.
-  - Different session name: print once and continue:
-
-    > Running inside tmux session "<name>" (not "canon"). Dashboard may not be
-    > visible, but the workflow works the same.
-
-- **Neither set**: print and stop:
-
-  > Not running inside a Canon environment. Run `./canon.sh` first to launch
-  > the Canon session with the dashboard.
-
-  Do not proceed to step 2.
+## 1. Initialize
 
 **State write convention:** Every `terminal-ui-write.sh` call in steps 2–7 is guarded.
 Before each call, check if the script exists and skip silently if it does not.
+
+Proceed directly to step 2.
 
 ---
 
