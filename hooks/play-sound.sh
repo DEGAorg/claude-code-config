@@ -6,14 +6,12 @@ set -euo pipefail
 #
 # Environment variables:
 #   DEGA_SOUND           Sound name (default: super-mario-bros). Set to "none" to disable.
-#                        Falls back to CLAUDE_SOUND for backward compatibility.
 #   DEGA_SOUND_VOLUME    Playback volume 0–100 (default: 50).
-#                        Falls back to CLAUDE_SOUND_VOLUME for backward compatibility.
 #   RALPH_LOOP           Set to "1" by ralph-loop.sh — plays tick at 15% volume.
 
 DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
 
-sound_name="${DEGA_SOUND:-${CLAUDE_SOUND:-super-mario-bros}}"
+sound_name="${DEGA_SOUND:-super-mario-bros}"
 
 # Empty string or "none" disables sound
 [[ -z "$sound_name" || "$sound_name" == "none" ]] && exit 0
@@ -21,7 +19,7 @@ sound_name="${DEGA_SOUND:-${CLAUDE_SOUND:-super-mario-bros}}"
 sounds_dir="${DEGA_CORE_HOME}/sounds"
 
 # Volume: 0-100 scale, default 50
-vol="${DEGA_SOUND_VOLUME:-${CLAUDE_SOUND_VOLUME:-50}}"
+vol="${DEGA_SOUND_VOLUME:-50}"
 
 # Ralph loop mode: play tick at low volume instead of configured sound
 if [[ "${RALPH_LOOP:-}" == "1" ]]; then
