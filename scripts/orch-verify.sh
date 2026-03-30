@@ -135,7 +135,7 @@ tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
 
 # Build agent command using shim helper (handles Codex exec pattern)
 CMD_TEMPLATE="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
-AGENT_CMD_STR="${CMD_TEMPLATE/DEGA_PROMPT_MARKER/\"\$(cat \'${PROMPT_FILE}\')\"}"
+AGENT_CMD_STR="${CMD_TEMPLATE/DEGA_PROMPT_MARKER/\"\$(cat '${PROMPT_FILE}')\"}"
 
 # Skip env -u when session var is empty (e.g., Codex has no session var)
 SESSION_VAR="$(dega_agent_session_var)"
