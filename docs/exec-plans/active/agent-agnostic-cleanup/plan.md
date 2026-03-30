@@ -48,8 +48,8 @@ Straightforward cleanup pass. Remove transitional fallbacks added in Phase 1, up
 
 ## Completion criteria
 
-- [ ] `grep -r "CLAUDE_SOUND" scripts/ hooks/` returns zero hits
-- [ ] `grep -r "~/.claude/" scripts/ hooks/ commands/` returns zero hits (excluding intentional project-local `.claude/commands/`)
-- [ ] `ralph-loop.sh` archived or deleted
-- [ ] Research docs moved to `docs/decisions/`
-- [ ] `shellcheck` passes on all modified `.sh` files
+- [x] `grep -r "CLAUDE_SOUND" scripts/ hooks/` returns zero hits
+- [x] `grep -r "~/.claude/" scripts/ hooks/ commands/` returns zero hits (excluding intentional project-local `.claude/commands/`)
+- [x] `ralph-loop.sh` archived or deleted
+- [x] Research docs moved to `docs/decisions/`
+- [x] `shellcheck` passes on all modified `.sh` files
