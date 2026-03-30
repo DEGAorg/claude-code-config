@@ -1,0 +1,59 @@
+--- item: Copy 4 MP3 files to `sounds/` with clean names ---
+Created `sounds/` directory at repo root and copied all 4 MP3 files from
+`~/Downloads/`. Renamed `unstoppable_5.mp3` to `unstoppable.mp3` for clean
+naming; the other three already had clean names. Total size is ~139KB across
+4 files. Files are ready at `sounds/unstoppable.mp3`, `sounds/super-mario-bros.mp3`,
+`sounds/yeahoo.mp3`, and `sounds/warzone-level-up.mp3`.
+---
+
+--- item: Create `hooks/play-sound.sh` ---
+Created `hooks/play-sound.sh` — a Stop event hook that plays a sound when Claude
+finishes. Reads `CLAUDE_SOUND` env var (defaults to `unstoppable`), resolves to
+`~/.claude/dega/sounds/${CLAUDE_SOUND}.mp3`, and runs `afplay` in background with
+`disown` so it never blocks. Empty `CLAUDE_SOUND` disables sound. Script is
+shellcheck-clean and shfmt-formatted with tabs. Made executable.
+---
+
+--- item: Update `settings.json` — add `CLAUDE_SOUND` env var and Stop hook ---
+Added `"CLAUDE_SOUND": "unstoppable"` to the `env` section in settings.json.
+Added a second Stop hook entry running `bash ~/.claude/hooks/play-sound.sh`
+alongside the existing `ralph-check.sh` hook. Both hooks fire on Stop events
+independently. The env var is available to all hooks including play-sound.sh.
+JSON validated — no syntax issues.
+---
+
+--- item: Update `commands/apply-core.md` — add Sounds component ---
+Added the Sounds component across all 5 sections of apply-core.md: (1) Source
+list — added 4 MP3 files and hooks/play-sound.sh, (2) Step 1 inventory — added
+~/.claude/dega/sounds/ check, (3) Step 2 install menu — added Sounds component
+with full description, available sounds, and recommended tag, (4) Step 4 install
+instructions — added Sounds section creating ~/.claude/dega/sounds/, copying 4
+MP3s, and installing play-sound.sh hook, (5) Step 7 post-install — added Sounds
+summary line to the example output.
+---
+
+--- item: Update `CLAUDE.md` repo map — add `sounds/` entry ---
+Added `sounds/` to two places in CLAUDE.md: (1) the Repo Map table — added entry
+with description "MP3 sound files played on task completion via hooks/play-sound.sh",
+and (2) the ASCII tree diagram in the Architecture section — added `sounds/` line
+between `hooks/` and `docs/`. Also updated the `hooks/` description in the table
+from "PreToolUse / PostToolUse hook scripts" to include Stop events, since
+play-sound.sh is a Stop hook.
+---
+
+--- item: Test: verify `afplay` plays the default sound from `~/.claude/dega/sounds/` ---
+Created `~/.claude/dega/sounds/` and copied all 4 MP3 files there for testing.
+Ran `hooks/play-sound.sh` with default `CLAUDE_SOUND=unstoppable` — exited 0 and
+afplay launched successfully. Confirmed background process with `warzone-level-up`
+(longer file). Verified edge cases: empty env var disables sound, nonexistent name
+exits cleanly, unset env var defaults to `unstoppable`. shellcheck passes clean.
+---
+
+--- item: All requirements met ---
+Final verification pass over all artifacts. Confirmed: (1) play-sound.sh exists
+and is correct — set -euo pipefail, background afplay, disown, exit 0, (2)
+settings.json has CLAUDE_SOUND env var and Stop hook entry, (3) apply-core.md
+has Sounds component in all 5 sections, (4) CLAUDE.md has sounds/ in repo map
+table and ASCII tree, (5) all 4 MP3 files present with clean names. Marked all
+5 completion criteria checkboxes in plan.md. Plan is fully complete.
+---

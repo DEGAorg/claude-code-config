@@ -1,0 +1,5 @@
+REWORK_ITEMS: 3
+
+--- item 3 (review failed) ---
+FINDING: The word "planner" does not appear anywhere in commands/apply-core.md. The handoff summary claims three changes were made (Step 1 inventory, Step 2 user menu, Step 4 install section) but none are present in the file. The file contains no entries for ~/.claude/scripts/planner-loop.sh, ~/.claude/agents/planner-assess.md, or ~/.claude/agents/planner-writer.md.
+ACTION: Add the Planner component to commands/apply-core.md in three places: (1) Step 1 inventory — add ~/.claude/scripts/planner-loop.sh, ~/.claude/agents/planner-assess.md, ~/.claude/agents/planner-writer.md to the existence check list around line 117. (2) Step 2 user menu — add a Planner entry after the Orchestrator entry (after line 175) describing the autonomous planner loop, its 3 files, the Orchestrator dependency, and opt-in recommendation. (3) Step 4 install section — add a Planner subsection after the Orchestrator subsection (after line 367) with mkdir, file copy, and chmod instructions for all 3 files.

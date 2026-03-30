@@ -1,0 +1,8 @@
+DONE:
+- Verified modified scripts pass shellcheck and shfmt (completion criterion)
+
+REMAINING:
+- none — all progress log items and completion criteria are checked
+
+BLOCKERS:
+- none

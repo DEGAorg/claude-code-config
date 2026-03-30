@@ -1,0 +1,10 @@
+DONE:
+- Verified final completion criterion: `bash scripts/ralph-check.sh` exits 0 on clean state.
+  Method: git stash (CHANGES becomes 0), run check, git stash pop.
+  Result: 6/6 criteria passing, exit 0. All completion criteria are now [x].
+
+REMAINING:
+- none
+
+BLOCKERS:
+- none

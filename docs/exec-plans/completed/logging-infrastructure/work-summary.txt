@@ -1,0 +1,11 @@
+DONE:
+- Smoke test: started log-server.py via `uv run` (installed uv first — not present on system),
+  waited for ~/.claude/logs/log.sock to appear, sent a test event via Python unix socket
+  (socat also not installed on this machine), confirmed entry in
+  ~/.claude/logs/ralph/2026-02-27.jsonl. All completion criteria checked in plan.md.
+
+REMAINING:
+- none
+
+BLOCKERS:
+- none

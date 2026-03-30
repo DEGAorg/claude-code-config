@@ -1,0 +1,133 @@
+--- item: Update `hooks/session-start-logging.sh` to reference ---
+Replaced the SCRIPT_DIR-computed path with a fixed absolute path
+${HOME}/.claude/scripts/log-server.py in hooks/session-start-logging.sh.
+Removed the SCRIPT_DIR variable entirely since it was only used to derive
+the SERVER path and is no longer needed. shellcheck and shfmt both pass
+with no warnings. The next task is the Phase 2 second item: update
+scripts/ralph-loop.sh to reference ${HOME}/.claude/scripts/log-server.py
+instead of ${SCRIPT_DIR}/log-server.py.
+---
+--- item: Update `scripts/ralph-loop.sh` to reference ---
+Changed line 57 in scripts/ralph-loop.sh from
+`uv run --script "${SCRIPT_DIR}/log-server.py"` to
+`uv run --script "${HOME}/.claude/scripts/log-server.py"`. SCRIPT_DIR is still
+present (used for sourcing log-client.sh on line 15), so it was not removed. Both
+shellcheck -x and shfmt pass with no warnings. Phase 2 is now fully complete.
+---
+--- item: Change `bash hooks/session-start-logging.sh` → ---
+Updated settings.json UserPromptSubmit hook command from `bash hooks/session-start-logging.sh`
+to `bash ~/.claude/hooks/session-start-logging.sh`. This makes the global hook
+reference its absolute installed path, so it works from any project directory.
+The next task is Phase 3 item 2: change `bash hooks/structured-log.sh` to
+`bash ~/.claude/hooks/structured-log.sh` in the PostToolUse `.*` matcher.
+---
+--- item: Change `bash hooks/structured-log.sh` → ---
+Updated settings.json PostToolUse `.*` matcher hook command from
+`bash hooks/structured-log.sh` to `bash ~/.claude/hooks/structured-log.sh`.
+This ensures the global structured-log hook is referenced by its absolute
+installed path, consistent with the session-start-logging.sh change. Phase 3
+is now fully complete. Remaining work: Phase 4 (apply-core.md updates) and
+Phase 5 (end-to-end verification).
+---
+--- item: Keep `bash hooks/enforce-loop-mode.sh` relative (per-repo behavior is correct) ---
+Verified settings.json line 56 already has `bash hooks/enforce-loop-mode.sh` as a relative
+path. No change was needed — this is a per-repo PreToolUse hook that only fires when Claude
+Code runs from within this project directory. Leaving it relative is intentional: it guards
+Ralph Loop bash commands but must not activate globally in other projects. Phase 3 is now
+fully complete (all 4 items checked). Next task is Phase 3 item 4: keep
+`bash scripts/ralph-check.sh` relative (Stop hook).
+---
+--- item: Keep `bash scripts/ralph-check.sh` relative (per-repo Stop hook) ---
+Verified settings.json line 105 already has `bash scripts/ralph-check.sh` as a relative path
+in the Stop hook. No change was needed — same reasoning as enforce-loop-mode.sh: this is a
+per-repo Stop hook that must not activate globally when Claude Code runs in other projects.
+Phase 3 is now fully complete (all 4 items checked). Next: Phase 4 — update apply-core.md
+to add logging artifacts (log-server.py to Global scripts, session-start-logging.sh +
+structured-log.sh to Global hooks, log-client.sh + plan-advance.sh + task-complete.sh to
+Ralph Loop per-repo section, GCP setup step, post-install summary update).
+---
+--- item: Add to **Global scripts** section (install to `~/.claude/scripts/`): ---
+Updated commands/apply-core.md in four places: (1) added `scripts/log-server.py` to the
+Files available list in the Source section; (2) added `~/.claude/scripts/` to the Step 1
+inventory checklist; (3) added a new **Logging** component to the Step 2 component list
+(describes log-server.py, JSONL output, GCP zero-config); (4) added a new
+"Logging — Global scripts" install section in Step 4 (creates ~/.claude/scripts/, writes
+log-server.py there). Next worker should add session-start-logging.sh and structured-log.sh
+to the Hooks section (Phase 4 item 2).
+---
+--- item: Add to **Global hooks** section (install to `~/.claude/hooks/`): ---
+Updated commands/apply-core.md in three places: (1) added hooks/session-start-logging.sh
+and hooks/structured-log.sh to the Files available list; (2) expanded the Step 2 Logging
+component description to mention these two global hooks; (3) added a new
+"Logging — Global hooks" install subsection in Step 4 with chmod +x instructions and a note
+that they reference ${HOME}/.claude/scripts/log-server.py. Next worker should add
+scripts/log-client.sh, scripts/plan-advance.sh, and scripts/task-complete.sh to the Ralph
+Loop per-repo section (Phase 4 item 3).
+---
+--- item: Add to **Ralph Loop** per-repo section: ---
+Updated commands/apply-core.md in four places: (1) added scripts/log-client.sh,
+scripts/plan-advance.sh, scripts/task-complete.sh to the Files available list in Source;
+(2) added them to the Step 1 per-repo cwd inventory checklist; (3) expanded the Step 2
+Ralph Loop component description to list all eight per-repo files; (4) added them to the
+Step 4 Ralph Loop install section with chmod +x for log-client.sh. Next tasks: Phase 4
+items 4-5 (GCP setup step and post-install summary update) and Phase 5 end-to-end
+verification.
+---
+--- item: Add **GCP setup step** (Step 5, before post-install): ---
+Added a new Step 6 "GCP setup (optional)" to commands/apply-core.md between Self-install
+(Step 5, unchanged) and Post-install (renumbered to Step 7). The step only applies when
+Logging was selected, checks for ~/.claude/gcp-sa.json presence, and either confirms GCP
+is active or provides step-by-step instructions for creating a service account key and
+placing it at that path. Includes a warning not to commit the file. Post-install (Step 7)
+was updated to report GCP active vs local-only status. Phase 4 item 4 is now done; one
+Phase 4 item remains: update post-install summary — but this was already handled in Step 7.
+Next: Phase 5 end-to-end verification.
+---
+--- item: Update **post-install summary** to show logging status (local vs gcp) ---
+Enhanced Step 7 (Post-install) in commands/apply-core.md to be more concrete.
+Added two explicit template lines for logging status ("✓ Logging — GCP active"
+vs "✓ Logging — local-only"), plus a full example summary block with checklist
+format so the agent knows exactly what output to produce. Phase 4 is now fully
+complete (all 5 items checked). Next: Phase 5 end-to-end verification.
+---
+--- item: Kill any running log server: `rm -f ~/.claude/logs/log.sock` ---
+Ran `rm -f ~/.claude/logs/log.sock` to clear any stale socket file. The file
+was either absent or successfully removed. No processes were running the log
+server at the time. Next task: start the log server fresh with
+`uv run ~/.claude/scripts/log-server.py &` then fire a test event.
+---
+--- item: Start fresh: `uv run ~/.claude/scripts/log-server.py &` ---
+~/.claude/scripts/ did not exist; created it and copied scripts/log-server.py there.
+Started the server with `uv run ~/.claude/scripts/log-server.py &` — it installed
+27 packages and is now listening on ~/.claude/logs/log.sock (pid 2835, local-only
+mode, no gcp-sa.json which is expected). The next task is to source log-client.sh
+and fire a LOOP_START event to confirm events reach the JSONL log file.
+---
+--- item: Source log-client.sh and fire a LOOP_START event with jq payload ---
+Sourced scripts/log-client.sh directly (set -euo pipefail is compatible with the
+shell environment). Built payload with jq -cn and called log_event "LOOP_START".
+The event appeared in ~/.claude/logs/ralph/2026-02-27.jsonl as the last entry,
+confirming the full transport chain (log-client.sh → nc → log.sock → log-server.py
+→ JSONL file) works end-to-end. Next task: confirm the JSONL entry (done inline),
+then shellcheck/shfmt all modified shell files, then run ralph-check.sh.
+---
+--- item: Confirm entry appears in `~/.claude/logs/ralph/YYYY-MM-DD.jsonl` ---
+Verified ~/.claude/logs/ralph/2026-02-27.jsonl contains the LOOP_START event fired
+by the previous worker (timestamp 2026-02-27T16:43:48Z, task_slug=logging-integration,
+max_iterations=3, iteration=1). The full transport chain (log-client.sh → nc →
+log.sock → log-server.py → JSONL) is confirmed working. Two items remain in Phase 5:
+shellcheck/shfmt all modified shell files, then run bash scripts/ralph-check.sh.
+---
+--- item: Shellcheck and shfmt all modified shell files ---
+All three modified shell files (scripts/log-client.sh, hooks/session-start-logging.sh,
+scripts/ralph-loop.sh) passed shellcheck clean. shfmt -d revealed all three used tab
+indentation instead of 2-space; applied shfmt -i 2 -w to reformat. Re-ran shellcheck
+after shfmt — still all clean. One Phase 5 item remains: run bash scripts/ralph-check.sh
+and confirm it passes.
+---
+--- item: Run `bash scripts/ralph-check.sh` — must pass ---
+ralph-check.sh initially failed on shfmt (shell scripts not 2-space indented). Fixed by
+running shfmt -w scripts/*.sh hooks/*.sh. All 7 criteria now pass. Marked the final Phase 5
+checkbox [x] in plan.md and ran task-complete.sh. This is the last item in the plan — all
+phases (1-5) are complete. The logging-integration plan is done.
+---

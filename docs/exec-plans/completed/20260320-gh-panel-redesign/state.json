@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "plan": "20260320-gh-panel-redesign",
+  "issueNumber": 9,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Add `fetch_all_plan_issues` to `fetch.py` — fetch issues across all plan:* labels (draft, active, pr-review, completed, failed) for status counts",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Create `status_overview.py` — status cards widget: colored count boxes for each plan state, plus open issues and PRs counts",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Rewrite `timeline.py` — chronological list of plan lifecycle events with colored label badges (plan:active=green, plan:pr-review=blue, plan:completed=purple, plan:failed=red)",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Rewrite `github_state.py` — new layout: status overview on top, timeline in middle, detail tabs collapsed at bottom",
+      "deps": [
+        2,
+        3
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 1,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 5,
+      "description": "Test: open GitHub panel, verify status cards show correct counts, timeline shows recent plan events with colors, detail tabs expand on click",
+      "deps": [
+        4
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-21T05:58:27Z",
+  "updatedAt": "2026-03-21T06:12:33Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

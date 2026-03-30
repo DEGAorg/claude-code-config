@@ -1,0 +1,19 @@
+{
+  "slug": "sound-hooks-linux",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "9bc464bd578dbfbf11db9bb9e43d11bbbd75fb01b95f67a7c09220b0afaa5d0d",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": true
+  }
+}

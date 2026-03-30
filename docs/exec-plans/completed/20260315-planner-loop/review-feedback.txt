@@ -1,0 +1,5 @@
+REWORK_ITEMS: 5
+
+--- item 5 (review failed) ---
+FINDING: focus.yaml is not present in .gitignore. The file ends at line 21 with /tests/scratch/ and contains no mention of focus.yaml anywhere.
+ACTION: Add `focus.yaml` entry to .gitignore, after the orchestrator runtime state section as described in the handoff summary.

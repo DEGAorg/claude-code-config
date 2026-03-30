@@ -1,0 +1,19 @@
+{
+  "slug": "plan-date-prefix",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Linting clean (`shellcheck`, `shfmt -d` on any touched scripts)",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "74248f6f185f36fed58c29e2ee316f6094d4787e80ee68fb3e13616f8a1b8aa7",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "logging-infrastructure",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Smoke test: start server, send a test event, verify JSONL entry written",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "448e48a07e5fc25abe50eebead843229550ef0c0cfbd93f55fdd608ca695b931",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

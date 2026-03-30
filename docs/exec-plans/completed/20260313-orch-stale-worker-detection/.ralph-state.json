@@ -1,0 +1,19 @@
+{
+  "slug": "20260313-orch-stale-worker-detection",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Test: kill a worker 3 times, verify item marked \"failed\" after max iterations",
+    "claimed_complete": false
+  },
+  "last_result": null,
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

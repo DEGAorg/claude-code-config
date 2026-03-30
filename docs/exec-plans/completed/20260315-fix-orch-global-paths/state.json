@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "plan": "20260315-fix-orch-global-paths",
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Fix `scripts/orch-state.sh` line 26 — change ORCH_REPO_ROOT default from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Fix `scripts/orch-run.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Fix `scripts/orch-engine.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Fix `scripts/orch-review.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 5,
+      "description": "Fix `scripts/orch-verify.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 6,
+      "description": "Fix `scripts/planner-loop.sh` — change REPO_ROOT from SCRIPT_DIR-based to git-toplevel with pwd fallback (deps: none)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 7,
+      "description": "Run shellcheck on all 6 modified files (deps: 1-6)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 8,
+      "description": "Verify orch-run.sh works from a different project directory by checking REPO_ROOT resolves correctly (deps: 1-6)",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-15T22:46:01Z",
+  "updatedAt": "2026-03-15T22:51:34Z",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

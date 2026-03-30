@@ -1,0 +1,8 @@
+DONE:
+- Verified `apply-core.md` lists only `ralph.yaml` as the per-project install
+
+REMAINING:
+- none (all completion criteria checked)
+
+BLOCKERS:
+- none

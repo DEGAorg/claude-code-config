@@ -1,0 +1,10 @@
+DONE:
+- Ran shellcheck and shfmt -d on scripts/ralph-loop.sh (the only shell script touched by this plan). Both pass clean — no warnings, no formatting issues.
+- Marked linting completion criterion [x] in plan.md.
+- All four completion criteria are now checked.
+
+REMAINING:
+- none
+
+BLOCKERS:
+- none

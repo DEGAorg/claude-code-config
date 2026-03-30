@@ -1,0 +1,5 @@
+REWORK_ITEMS: 4
+
+--- item 4 ---
+FINDING: No plan.md sync exists in the SHIP path of scripts/orch-engine.sh. The worker summary claims a cp was added between orch_kill_done_workers and orch_merge_worktree, but lines 374-376 show no such command. The only cp in the SHIP block (line 389) copies state.json, not plan.md.
+ACTION: Add the plan.md sync to the SHIP path in orch-engine.sh, between line 374 (orch_kill_done_workers) and line 376 (orch_merge_worktree). Per the plan approach: cp "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md" "${REPO_ROOT}/docs/exec-plans/active/${SLUG}/plan.md" — guarded by a file-existence check.

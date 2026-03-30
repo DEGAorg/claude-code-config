@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # EXAMPLE: PostToolUse hook — logs GAM (Google Apps Manager) write operations
 # to JSONL. Adapt the verb patterns for any CLI tool where you want an audit
@@ -20,26 +20,26 @@ FIRST_WORD="${GAM_ARGS%% *}"
 echo "${FIRST_WORD}" | grep -qiE "^${READ_PATTERN}$" && exit 0
 
 # Match write verb
-ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:space:]]|$)" \
-  | head -1 | tr -d ' ' || true)
+ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:space:]]|$)" |
+	head -1 | tr -d ' ' || true)
 [[ -z "${ACTION}" ]] && exit 0
 
 # Log the mutation
-EXIT_CODE=$(echo "${INPUT}" | jq -r '.tool_result.exit_code // 0')
+EXIT_CODE=$(echo "${INPUT}" | jq -r '.tool_response.exit_code // 0')
 [[ "${EXIT_CODE}" == "0" ]] && STATUS="success" || STATUS="failed"
 LOG_FILE="${CLAUDE_PROJECT_DIR}/google/.changelog-raw.jsonl"
 mkdir -p "$(dirname "${LOG_FILE}")"
 
 jq -nc \
-  --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-  --arg action "${ACTION}" \
-  --arg command "${COMMAND}" \
-  --arg status "${STATUS}" \
-  '{timestamp: $ts, action: $action, command: $command, status: $status}' \
-  >> "${LOG_FILE}"
+	--arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+	--arg action "${ACTION}" \
+	--arg command "${COMMAND}" \
+	--arg status "${STATUS}" \
+	'{timestamp: $ts, action: $action, command: $command, status: $status}' \
+	>>"${LOG_FILE}"
 
 # Remind the operator
 if [[ "${STATUS}" == "success" ]]; then
-  echo "GAM MUTATION: ${ACTION} — logged to ${LOG_FILE}"
+	echo "GAM MUTATION: ${ACTION} — logged to ${LOG_FILE}"
 fi
 exit 0

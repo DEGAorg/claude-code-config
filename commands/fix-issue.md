@@ -14,8 +14,10 @@ confirmation at any step.
 
 ## 1. Plan
 
-Write a detailed implementation plan to `plan-issue-$ISSUE_NUMBER.md`
-in the repo root. The plan must:
+Create a plan directory at `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/`
+where `YYYYMMDD` is today's date (8 digits), e.g. `20260302-issue-42/`.
+Write the plan to `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/plan.md`.
+The plan must:
 
 - Summarize the issue requirements
 - List every file to create or modify
@@ -23,10 +25,13 @@ in the repo root. The plan must:
 - Call out risks or open questions
 - Reference relevant code paths by file:line
 
+For simple single-file obvious fixes, an ephemeral plan in the root is
+acceptable — use judgment. Non-trivial work always goes in `exec-plans/`.
+
 ## 2. Implement
 
 Implement the plan across all necessary files. Follow the
-project's CLAUDE.md standards. Keep changes minimal and focused
+project's AGENTS.md standards. Keep changes minimal and focused
 on the issue requirements -- no speculative features.
 
 ## 3. Build, test, lint
@@ -38,7 +43,7 @@ Run the project's full quality pipeline in this order:
 3. Add new tests for the changed behavior
 4. Run linting, formatting, and type-checking -- fix any issues
 
-Refer to the project's CLAUDE.md or package.json/Makefile/etc.
+Refer to the project's AGENTS.md or package.json/Makefile/etc.
 for the correct commands.
 
 ## 4. Branch, commit, and push
@@ -47,8 +52,9 @@ for the correct commands.
   bugs, `feat/` for features, `refactor/` for refactors, `docs/`
   for documentation. When ambiguous, use `fix/`.
 - Create a branch named `{prefix}issue-$ISSUE_NUMBER`
-- Delete the plan file (`plan-issue-$ISSUE_NUMBER.md`) -- it was a
-  working artifact and should not be committed
+- Move the plan directory from `docs/exec-plans/active/YYYYMMDD-issue-$ISSUE_NUMBER/`
+  to `docs/exec-plans/completed/YYYYMMDD-issue-$ISSUE_NUMBER/` — do not delete it.
+  Plans are permanent artifacts and inform future work.
 - Commit all changes with a conventional commit message referencing
   the issue
 - Push the branch
@@ -69,7 +75,7 @@ multi-agent code review of the PR. Produce a list of findings
 ranked by severity (P1 = blocks merge, P2 = important, P3 = nice
 to have).
 
-## 7. Fix findings
+## 7. Fix findings and converge
 
 Address all P1-P3 findings. For each finding, either:
 
@@ -78,7 +84,26 @@ Address all P1-P3 findings. For each finding, either:
   the churn (e.g. a stylistic disagreement or an impossible edge
   case). Document the reasoning inline.
 
-After addressing all findings:
+### Convergence loop (up to 3 rounds)
+
+After addressing all findings from the previous review, run a
+lightweight self-review before committing:
+
+1. Re-read every changed file end-to-end
+2. Check for regressions introduced by the fixes: broken types,
+   missed edge cases, inconsistent behavior, new dead code
+3. Identify any new P1-P3 issues
+
+**If new P1-P3 issues are found:** fix them, then repeat from
+step 1 of this loop.
+
+**If clean (no new P1-P3 issues):** proceed to verification.
+
+**Maximum 3 rounds.** If P1-P3 findings are still present after
+round 3, stop immediately and surface the open issues for human
+review -- do not proceed to commit.
+
+### Verification (after loop converges)
 
 1. Re-run the full quality pipeline (build, test, lint)
 2. Commit the fixes as a separate commit (do not squash into the

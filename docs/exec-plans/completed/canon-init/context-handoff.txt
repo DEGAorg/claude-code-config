@@ -1,0 +1,32 @@
+--- item: Smoke test: run `/canon-init` in a scratch directory, verify `.canon/` structure ---
+Simulated all 9 steps of canon-init.md in a temp directory (/tmp). Created .canon/ with
+6 agent files, 8 skill files, config.yaml, ralph.yaml, execution/.gitkeep, workflows/ dir,
+and AGENTS.md at project root. All structural and content checks pass. The GitHub raw URLs
+(raw.githubusercontent.com) currently 404 because canon/ only exists on premar-demo, not
+main — this is expected and resolves on merge. Confirmed ~/.claude/ was untouched. Scratch
+dir cleaned up via `trash`.
+---
+--- item: Verify `AGENTS.md` content at project root matches Canon entry-point spec ---
+Cross-referenced the AGENTS.md template in commands/canon-init.md step 8 against the Canon
+specs (Canon_MVP_Technical_Roadmap.md, SAS_Agent_Framework.md, Canon_Key_Components.md).
+Found one gap: `canon_activity` MCP tool was missing from the Available Tools section.
+The spec defines 8 MCP tools but the template only had 7. Added `canon_activity — Query
+execution data (trades, decisions, signals)` to commands/canon-init.md. All other sections
+(6 agents, 5 workflows, 5 rules, 8 skills, quick reference) match the spec exactly.
+---
+--- item: Confirm `~/.claude/` is not modified after running the command ---
+Audited every write instruction in commands/canon-init.md. All 9 steps write exclusively
+to project-local paths (.canon/ subtree and AGENTS.md at project root). Zero references
+to ~/.claude/ except the explicit "Does not touch ~/.claude/" declaration on line 6. No
+hooks, scripts, includes, or indirect mechanisms that could write globally. Grepped for
+~/.claude, $HOME/.claude, settings.json, rules/, apply-core, and global — all clean.
+Also confirmed completion criteria checkbox for this item.
+---
+--- item: Running `/canon-init` in an empty directory creates `.canon/` with 6 agents, 8 skills, ---
+Independently verified the completion criterion by simulating canon-init in a fresh
+/tmp/canon-init-verify directory. Copied all 6 agent files and 8 skill files from
+canon/, created config.yaml, ralph.yaml, execution/.gitkeep, workflows/ dir, and
+AGENTS.md at root. Validated counts (6 agents, 8 skills) and file existence for all
+expected artifacts. All checks pass. Scratch dir cleaned up. Marked the final
+completion criterion checkbox in plan.md — all items now checked.
+---

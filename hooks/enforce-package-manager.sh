@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # EXAMPLE: PreToolUse hook — blocks npm in projects that use pnpm.
 # Adapt for any "use X not Y" convention (e.g., yarn vs npm, uv vs pip).
@@ -9,7 +9,7 @@ CMD=$(jq -r '.tool_input.command // empty')
 [[ ! -f "${CLAUDE_PROJECT_DIR}/pnpm-lock.yaml" ]] && exit 0
 
 if echo "$CMD" | grep -qE '^npm\s'; then
-  echo "BLOCKED: This project uses pnpm, not npm. Use pnpm instead." >&2
-  exit 2
+	echo "BLOCKED: This project uses pnpm, not npm. Use pnpm instead." >&2
+	exit 2
 fi
 exit 0

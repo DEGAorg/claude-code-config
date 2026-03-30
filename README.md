@@ -2,24 +2,25 @@
 
 Opinionated defaults, documentation, and workflows for Claude Code at Trail of Bits. Covers sandboxing, permissions, hooks, skills, MCP servers, and usage patterns we've found effective across security audits, development, and research.
 
-**First-time setup:**
+**Quick start:** See **[INSTALL.md](INSTALL.md)** for setup instructions.
 
 ```bash
-git clone https://github.com/trailofbits/claude-code-config.git
+git clone https://github.com/DEGAorg/claude-code-config.git
 cd claude-code-config
 claude
+# then run: /apply-core
 ```
 
-Then inside the session, run `/trailofbits:config`. It walks you through installing each component, detects what you already have, and self-installs the command so future runs work from any directory. Run `/trailofbits:config` again after updates.
-
 ## Contents
+
+**[File Structure](#file-structure)**
 
 **[Getting Started](#getting-started)**
 - [Read These First](#read-these-first)
 - [Prerequisites](#prerequisites)
 - [Shell Setup](#shell-setup)
 - [Settings](#settings)
-- [Global CLAUDE.md](#global-claudemd)
+- [Global Agent Template](#global-agent-template)
 
 **[Configuration](#configuration)**
 - [Sandboxing](#sandboxing)
@@ -31,14 +32,40 @@ Then inside the session, run `/trailofbits:config`. It walks you through install
 
 **[Usage](#usage)**
 - [Continuous Improvement](#continuous-improvement)
-- [Project-level CLAUDE.md](#project-level-claudemd)
+- [Project-level AGENTS.md](#project-level-agentsmd)
 - [Context Management](#context-management)
 - [Web Browsing](#web-browsing)
 - [Fast Mode](#fast-mode)
 - [Commands](#commands)
+- [Orchestrator](#orchestrator)
 - [Writing Skills and Agents](#writing-skills-and-agents)
 - [Recommended Skills](#recommended-skills)
 - [Recommended MCP Servers](#recommended-mcp-servers)
+
+## File Structure
+
+| Path | Purpose |
+|------|---------|
+| `commands/` | Global slash commands (`/apply-core`, `/canon-init`, `/core-init`, `/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
+| `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
+| `skills/` | Core skills (app-legibility, custom-linter-authoring, sound-notifications) |
+| `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
+| `scripts/` | Shell scripts and tooling — orchestrator engine, terminal-ui dashboard, logging, Canon scripts |
+| `sounds/` | MP3 sound files played on task completion |
+| `docs/` | Pipeline docs, architecture, exec plans, [self-development guide](docs/Self_Development.md) |
+| `tests/` | Test scripts for hooks and infrastructure |
+| `canon/` | Canon layer — prediction market skills, agents, hooks, commands, templates |
+| `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
+| `AGENTS.md` | Project-level agent configuration (single source of truth) |
+| `CLAUDE.md` | Shim — tells Claude Code to read `AGENTS.md` |
+| `GEMINI.md` | Shim — tells Gemini to read `AGENTS.md` |
+| `.cursorrules` | Shim — tells Cursor/Codex to read `AGENTS.md` |
+| `agent-template.md` | Global agent instructions template (installed to `~/.degacore/config/agent-template.md`) |
+| `settings.json` | Settings template (hooks, permissions, statusline) — installed to `~/.degacore/settings-template.json` |
+| `mcp-template.json` | MCP server configuration template |
+| `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
+
+For the full file-level map, see the Repo Map table in [`AGENTS.md`](AGENTS.md).
 
 ## Getting Started
 
@@ -72,6 +99,11 @@ Install core tools via Homebrew:
 brew install jq ripgrep fd ast-grep shellcheck shfmt \
   actionlint zizmor macos-trash node@22 pnpm uv
 ```
+
+> **`jq` is required.** Several hooks in `settings.json` parse tool input
+> from stdin with `jq`. Without it, hooks degrade gracefully (warn and
+> allow), but hook-based guardrails like blocking `rm -rf` and enforcing
+> feature branches will be disabled.
 
 Python tools (via uv):
 
@@ -127,10 +159,9 @@ claude-local() {
 
 ### Settings
 
-Copy `settings.json` to `~/.claude/settings.json` (or merge entries into your existing file). The `$schema` key enables autocomplete and validation in editors that support JSON Schema. The template includes:
+The `/apply-core` command installs `settings.json` to `~/.degacore/settings-template.json` and generates agent-specific settings (e.g. `~/.claude/settings.json`) from it. The `$schema` key enables autocomplete and validation in editors that support JSON Schema. The template includes:
 
 - **`env` (privacy)** -- disables three non-essential outbound streams: Statsig telemetry (`DISABLE_TELEMETRY`), Sentry error reporting (`DISABLE_ERROR_REPORTING`), and feedback surveys (`CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY`). Avoid the umbrella `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` -- it also disables auto-updates.
-- **`env` (agent teams)** -- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enables [multi-agent teams](https://code.claude.com/docs/en/agent-teams) where one session coordinates multiple teammates with independent context windows. Experimental -- known limitations around session resumption and task coordination.
 - **`enableAllProjectMcpServers: false`** -- this is the default, set explicitly so it doesn't get flipped by accident. Project `.mcp.json` files live in git, so a compromised repo could ship malicious MCP servers.
 - **`alwaysThinkingEnabled: true`** -- persists [extended thinking](https://code.claude.com/docs/en/common-workflows#use-extended-thinking-thinking-mode) across sessions. Toggle per-session with `Option+T`. Adds latency and cost on simple tasks; worth it for complex reasoning.
 - **`permissions`** -- deny rules that block reading credentials/secrets and editing shell config (see [Sandboxing](#sandboxing))
@@ -149,27 +180,13 @@ A two-line status bar at the bottom of the terminal:
 
 Line 1 shows the model, current folder, and git branch. Line 2 shows a visual context usage bar (color-coded: green <50%, yellow 50-79%, red 80%+), session cost, elapsed time, and prompt cache hit rate.
 
-Copy the script:
+The `/apply-core` command installs the script to `~/.degacore/scripts/statusline.sh`. The `statusLine` entry in `settings.json` points to this path. Requires `jq`.
 
-```bash
-mkdir -p ~/.claude
-cp scripts/statusline.sh ~/.claude/statusline.sh
-chmod +x ~/.claude/statusline.sh
-```
+### Global Agent Template
 
-The `statusLine` entry in `settings.json` points to this script. Requires `jq`.
+The global agent template at `~/.degacore/config/agent-template.md` sets default instructions for every AI coding session. It covers development philosophy (no speculative features, no premature abstraction, replace don't deprecate), code quality hard limits (function length, complexity, line width), language-specific toolchains for Python (`uv`, `ruff`, `ty`), Node/TypeScript (`oxlint`, `vitest`), Rust (`clippy`, `cargo deny`), Bash, and GitHub Actions, plus testing methodology, code review order, and workflow conventions (commits, hooks, PRs).
 
-### Global CLAUDE.md
-
-The global `CLAUDE.md` file at `~/.claude/CLAUDE.md` sets default instructions for every Claude Code session. It covers development philosophy (no speculative features, no premature abstraction, replace don't deprecate), code quality hard limits (function length, complexity, line width), language-specific toolchains for Python (`uv`, `ruff`, `ty`), Node/TypeScript (`oxlint`, `vitest`), Rust (`clippy`, `cargo deny`), Bash, and GitHub Actions, plus testing methodology, code review order, and workflow conventions (commits, hooks, PRs).
-
-Copy the template into place:
-
-```bash
-cp claude-md-template.md ~/.claude/CLAUDE.md
-```
-
-Review and customize it for your own preferences. The template is opinionated -- adjust the language sections, tool choices, and hard limits to match your stack. For background on how CLAUDE.md files work (hierarchy, auto memory, modular rules, imports), see [Manage Claude's memory](https://code.claude.com/docs/en/memory).
+The `/apply-core` command installs the template to `~/.degacore/config/agent-template.md` and generates a thin shim in each detected agent's config directory (e.g. `~/.claude/CLAUDE.md`, `~/.gemini/GEMINI.md`) that points to the shared template. Review and customize the template for your own preferences -- it's opinionated, so adjust the language sections, tool choices, and hard limits to match your stack. For background on how CLAUDE.md files work (hierarchy, auto memory, modular rules, imports), see [Manage Claude's memory](https://code.claude.com/docs/en/memory).
 
 ## Configuration
 
@@ -266,7 +283,7 @@ Don't want to write hooks by hand? The [hookify plugin](https://github.com/anthr
       "hooks": [
         {
           "type": "command",
-          "command": "jq -r '\"[\" + (now | todate) + \"] \" + .tool_input.command' >> ~/.claude/bash-commands.log"
+          "command": "jq -r '\"[\" + (now | todate) + \"] \" + .tool_input.command' >> ~/.degacore/state/logs/bash-commands.log"
         }
       ]
     }
@@ -414,9 +431,9 @@ Most people's use of Claude Code plateaus early. You find a workflow that works,
 
 Run `/insights` once a week. It analyzes your recent sessions and surfaces patterns -- what's working, what's failing, where you're spending time. When it tells you something useful, act on it: add a rule to your CLAUDE.md, write a hook to block a mistake you keep making, extract a repeated workflow into a skill. Each adjustment compounds. After a few weeks your setup is meaningfully different from the defaults, tuned to how you actually work.
 
-## Project-level CLAUDE.md
+## Project-level AGENTS.md
 
-For each project you work on, add a `CLAUDE.md` at the repo root with project-specific context. The [global CLAUDE.md](#global-claudemd) sets defaults; the project file layers on what's unique to this codebase. A good project CLAUDE.md includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions.
+For each project you work on, add an `AGENTS.md` at the repo root with project-specific context. The [global agent template](#global-agent-template) sets defaults; the project file layers on what's unique to this codebase. A good project `AGENTS.md` includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions. Provider-specific shim files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) point agents to `AGENTS.md` automatically.
 
 For an example of a well-structured project CLAUDE.md, see [crytic/slither's CLAUDE.md](https://github.com/crytic/slither/blob/master/CLAUDE.md). It layers slither-specific context -- SlithIR internals, detector traversal patterns, type handling pitfalls -- on top of the same global standards from this repo.
 
@@ -452,7 +469,7 @@ Use this deliberately: when a task requires reading a lot of documentation, expl
 
 **For complex features, interview first, implement second.** Have Claude interview you about the feature (requirements, edge cases, tradeoffs), then write a spec to a file. Start a fresh session to implement the spec.
 
-**Put stable context in CLAUDE.md, not the conversation.** Project architecture, coding standards, tool preferences, workflow conventions -- anything reusable goes in CLAUDE.md. It loads automatically every session and survives `/clear`.
+**Put stable context in AGENTS.md, not the conversation.** Project architecture, coding standards, tool preferences, workflow conventions -- anything reusable goes in `AGENTS.md` (project-level) or your agent's global instructions file (e.g. `~/.claude/CLAUDE.md`). It loads automatically every session and survives `/clear`.
 
 If you need to pass context between sessions, commit your work, write a brief plan to a file, `/clear`, and start the next session by pointing Claude at that file. You can also resume previous sessions with `claude --continue` (picks up the last session) or `claude --resume` (lets you choose from recent sessions). But a fresh session with a written handoff is usually better than resuming a stale one -- the context is cleaner and the prompt cache is warm.
 
@@ -502,13 +519,9 @@ If you do use it, enable it at session start. Toggling it on mid-conversation re
 
 ## Commands
 
-Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The two in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
+Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The commands in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
 
-```bash
-mkdir -p ~/.claude/commands
-cp commands/review-pr.md ~/.claude/commands/
-cp commands/fix-issue.md ~/.claude/commands/
-```
+The `/apply-core` command installs all commands to `~/.degacore/config/commands/` and symlinks (or copies) them into each detected agent's config directory (e.g. `~/.claude/commands/`).
 
 ### Review PR
 
@@ -519,6 +532,54 @@ cp commands/fix-issue.md ~/.claude/commands/
 [`commands/fix-issue.md`](commands/fix-issue.md) -- Takes a GitHub issue and fully autonomously completes it -- plans, implements, tests, creates a PR, self-reviews with parallel agents, fixes its own findings, and comments on the issue when done. Invoke with `/fix-issue 123` where `123` is the issue number.
 
 Once a workflow is a command, it's not just faster for you -- it's something an agent can run too. You can point `/fix-issue` at 50 issues in parallel across worktrees, run `/review-pr` on every open PR in a repo, or schedule either as part of CI. Commands turn manual workflows into scalable operations.
+
+## Orchestrator
+
+The orchestrator runs execution plans with parallel worker agents in tmux. Each worker gets its own git worktree, and a reviewer checks each item before it ships.
+
+```bash
+bash ~/.degacore/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
+```
+
+### Engine heartbeat
+
+The engine writes a Unix timestamp to `$ORCH_STATE_DIR/plans/$SLUG/heartbeat` at regular intervals — every poll cycle and before/after major steps (worker spawn, review, SHIP/FAIL). The dashboard and garbage collector use this file to detect whether the engine is alive or hung.
+
+The heartbeat file is a single `date +%s` epoch. If it hasn't been updated in over 5 minutes (300 seconds), the engine is considered dead.
+
+### Dashboard auto-exit
+
+The dashboard loop checks engine liveness every 2 seconds using two signals:
+
+1. **tmux window existence** — `tmux has-window -t SESSION:engine` returns false when the engine window is gone
+2. **Heartbeat staleness** — the heartbeat file is older than 5 minutes
+
+When both signals indicate the engine is dead, the dashboard enters a **grace period** (default 60 seconds, configurable via `ORCH_DASHBOARD_TIMEOUT` env var) so you can read the final output. After the grace period expires, the dashboard kills the tmux session and exits.
+
+As a safety net, the engine's tmux command appends `sleep 30; tmux kill-session` after the engine exits. This ensures the session is terminated even if the dashboard loop is broken or hung. Timeline: engine exits → 30s sleep → safety-net kill fires at ~60s.
+
+### Garbage collection
+
+Stale orchestrator sessions accumulate when the dashboard or safety net fails to clean up. `orch-gc.sh` finds and kills them.
+
+```bash
+# List stale sessions without killing them
+bash ~/.degacore/scripts/orch-gc.sh --dry-run
+
+# Kill stale sessions
+bash ~/.degacore/scripts/orch-gc.sh
+
+# Or via orch-run.sh
+bash ~/.degacore/scripts/orch-run.sh --gc
+```
+
+A session is stale when it has no `engine` tmux window OR its heartbeat file is older than 10 minutes. For each stale session, `orch-gc.sh` prints the session name, slug, age, and reason before killing it. The `--dry-run` flag lists stale sessions without killing them.
+
+Run `orch-gc.sh` when you notice leftover `orch-*` tmux sessions (check with `tmux list-sessions`), or add it to a cron job for automatic cleanup.
+
+### Heartbeat indicator
+
+The Ink dashboard displays a "Last heartbeat: Xs ago" indicator in the header bar. It updates every second and turns red when the heartbeat is stale (>5 minutes), giving you a visual signal of engine liveness.
 
 ## Writing Skills and Agents
 

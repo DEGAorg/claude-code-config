@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "plan": "20260320-orch-auto-issue",
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Add auto-issue creation to `scripts/orch-run.sh` — read dega-core.yaml, create issue via plan-create.sh if sync enabled and no meta exists, write plan-meta.json",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Fix `scripts/gh-plan-sync.sh` to search both `.orchestrator/plans/<slug>/` and worktree for plan-meta.json",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Test: run orchestrator on a local plan with `github.sync: true`, verify issue created, labels updated through lifecycle, issue closed on SHIP",
+      "deps": [
+        1,
+        2
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-21T01:20:54Z",
+  "updatedAt": "2026-03-21T01:29:57Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "ralph-global-install",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "`apply-core.md` lists only `ralph.yaml` as the per-project install",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "32856aba9d230c0c5ff5b42550b30e9e81b4939aa7d18cbe2054f5a25cded5d5",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

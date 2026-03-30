@@ -1,0 +1,20 @@
+DONE:
+- Updated @description header in commands/apply-core.md to mention per-repo ralph install
+  alongside global ~/.claude/ install.
+- Added ralph file checks to Step 1 (inventory): ralph.yaml, scripts/ralph-loop.sh,
+  scripts/ralph-check.sh, scripts/ralph-worker-prompt.md, scripts/ralph-reviewer-prompt.md
+  checked in the current working directory (project root).
+- Added Ralph Loop as an opt-in component in Step 2 multi-select question, with description
+  of per-repo install scope.
+- Added #### Ralph Loop install section in Step 4: creates scripts/ if missing, prompts before
+  overwriting ralph.yaml (same as CLAUDE.md treatment), writes all 4 script files, runs
+  chmod +x on the two .sh files.
+- Verified shellcheck and shfmt pass cleanly on all scripts/ and hooks/ (no script changes).
+- Verified no TODOs or FIXMEs introduced.
+- Marked all 6 progress log steps [x].
+
+REMAINING:
+- None. All progress log steps complete.
+
+BLOCKERS:
+- none

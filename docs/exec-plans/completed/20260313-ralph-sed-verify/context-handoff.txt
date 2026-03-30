@@ -1,0 +1,15 @@
+--- item: Create /tmp/ralph-sed-test/hello.txt with content "hello world" and write a multiline context-handoff entry describing what was done ---
+Created the directory /tmp/ralph-sed-test/ and wrote "hello world" to hello.txt.
+Verified the file content reads back correctly via cat.
+This is the first item in the plan — the next worker should create goodbye.txt
+in the same directory with "goodbye world" content.
+No blockers encountered.
+---
+
+--- item: Create /tmp/ralph-sed-test/goodbye.txt with content "goodbye world" and write a multiline context-handoff entry describing what was done (deps: 1) ---
+Created /tmp/ralph-sed-test/goodbye.txt with content "goodbye world".
+Verified the file content reads back correctly via cat.
+Both test files now exist: hello.txt and goodbye.txt in /tmp/ralph-sed-test/.
+This was the second and final item — the reviewer should confirm both files
+exist and that the per-item sed handling worked without errors on multiline handoff text.
+---

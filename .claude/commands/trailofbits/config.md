@@ -10,7 +10,7 @@ https://raw.githubusercontent.com/trailofbits/claude-code-config/main/
 
 Files to fetch when needed:
 - `settings.json`
-- `claude-md-template.md`
+- `agent-template.md`
 - `mcp-template.json`
 - `scripts/statusline.sh`
 - `commands/review-pr.md`
@@ -34,7 +34,7 @@ Files to fetch when needed:
 
    - **settings.json**: If `~/.claude/settings.json` doesn't exist, write it directly. If it does exist, read both files and merge the repo's keys into the existing file — preserve any user keys that don't conflict. Show the user the merged result and ask for confirmation before writing.
 
-   - **CLAUDE.md**: If `~/.claude/CLAUDE.md` doesn't exist, write the fetched `claude-md-template.md` content to `~/.claude/CLAUDE.md`. If it already exists, tell the user it exists and ask whether to overwrite, skip, or show a diff. Never silently overwrite CLAUDE.md — it likely has personal customizations.
+   - **CLAUDE.md**: If `~/.claude/CLAUDE.md` doesn't exist, write the fetched `agent-template.md` content to `~/.claude/CLAUDE.md`. If it already exists, tell the user it exists and ask whether to overwrite, skip, or show a diff. Never silently overwrite CLAUDE.md — it likely has personal customizations.
 
    - **MCP servers**: If `~/.mcp.json` doesn't exist, write the fetched template to `~/.mcp.json` and remind the user to replace `your-exa-api-key-here`. If it exists, read it, merge any missing server entries from the template, and show the result before writing.
 

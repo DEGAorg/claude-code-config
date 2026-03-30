@@ -1,0 +1,13 @@
+PASS
+All completion criteria verified.
+
+Verification details:
+1. Toad fork runs — ToadApp imports on macOS (Python 3.14.3, darwin), claude-code-acp installed
+2. GitHub panel in SideBar — GitHubStateWidget mounted in MainScreen.compose() with 4 TabPanes (Timeline, Issues, Plans, PRs)
+3. Timeline — TimelineView fetches repo events via gh api, renders DataTable with When/Who/Event/Details columns
+4. Issues grouped by label — IssuesView._group_by_label() creates per-label DataTable sections; verified with test data
+5. Plans progress — parse_progress() correctly counts checkboxes (e.g., "3/7 done" from 3 checked / 7 total)
+6. PRs review + CI — _review_label() maps APPROVED/CHANGES_REQUESTED, _ci_status() summarizes statusCheckRollup
+7. Keybinding — ctrl+g bound to action_toggle_github in MainScreen; r bound to action_refresh in GitHubStateWidget
+8. Auth failure — GitHubStateWidget.on_mount() calls check_auth(), shows "Not authenticated — run: gh auth login" via _show_error() instead of crashing
+9. Works on macOS — platform=darwin, all imports and unit tests pass

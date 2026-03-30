@@ -1,0 +1,60 @@
+--- item: Create `scripts/orch-display.sh`: detect platform, open terminal window(s) attached to tmux session (read-only) ---
+Created scripts/orch-display.sh with platform detection and read-only tmux attach.
+Detection order: macOS iTerm2 (osascript new tab) > macOS Terminal.app (osascript new window)
+> WSL (wt.exe new-tab) > Linux desktop (gnome-terminal/konsole/xterm) > fallback (prints command).
+Uses `tmux attach-session -t <session> -r` for read-only mode. Session name is passed as
+the sole argument — orch-run.sh uses `orch-${SLUG}`. Passes shellcheck and shfmt clean.
+---
+
+--- item: Add `--orch <state-path>` entry point to `scripts/terminal-ui/src/cli.tsx` that renders `orchestrator-app.tsx` ---
+Rewrote cli.tsx to support two modes via a discriminated union: `--state <path>` renders
+the original App (session monitoring), `--orch <state-path>` renders OrchestratorApp
+(orchestrator dashboard). Arg parsing checks --orch first, falls back to --state, and
+exits with usage if neither is provided. Type-checked clean with `tsc --noEmit`. No new
+dependencies added — OrchestratorApp was already implemented.
+---
+
+--- item: Build terminal-ui: `cd scripts/terminal-ui && pnpm install && pnpm run build` (deps: 2) ---
+Ran `pnpm install` (lockfile up to date, no new deps needed) and `pnpm run build` (tsc)
+in scripts/terminal-ui/. Build completed with zero errors. Verified dist/cli.js (987 bytes)
+and dist/orchestrator-app.js (4332 bytes) both present. The --orch mode added in the
+previous item is now compiled and ready for orch-run.sh to invoke.
+---
+
+--- item: Replace `watch jq` dashboard in `orch-run.sh` with Ink dashboard command (deps: 3) ---
+Replaced the `while true; do clear; jq . state.json; sleep 2; done` dashboard loop in
+orch-run.sh (line 181-183) with `node terminal-ui/dist/cli.js --orch <state-path>`.
+The TERMINAL_UI_CLI variable is set to `${SCRIPT_DIR}/terminal-ui/dist/cli.js` and passed
+to tmux new-session. Passes shellcheck (only pre-existing SC1091 info for sourced file)
+and shfmt clean. The dashboard pane now renders the Ink OrchestratorApp instead of raw JSON.
+---
+
+--- item: Add `--background` flag to `orch-run.sh`, make foreground (auto-open windows) the default (deps: 1, 4) ---
+Added `--background` flag to orch-run.sh arg parsing (BACKGROUND=false by default).
+After tmux session creation, calls `orch-display.sh "${TMUX_SESSION}"` to auto-open
+display windows unless --background is set. Background mode prints manual attach
+instructions instead. The --background flag is preserved through the `exec` re-invocation
+for REVISE rework cycles. Updated usage comments and error messages. Passes shellcheck
+(only pre-existing SC1091 info) and shfmt clean.
+---
+
+--- item: Test: `orch-run.sh <slug>` opens terminal windows with dashboard and workers visible on macOS (deps: 5) ---
+Tested all components on macOS (Darwin, Terminal.app, tmux 3.6a). Found that
+`timeout` command is not available on macOS — added portable `run_with_timeout`
+helper to orch-display.sh using background process + kill pattern. Verified:
+(1) orch-display.sh opens Terminal.app window with read-only tmux attach,
+(2) Ink dashboard renders correctly in tmux with proper status icons/colors/iteration
+counts from a valid orchestrator state file, (3) orch-display.sh fails gracefully
+for missing sessions, (4) shellcheck and shfmt clean on both scripts. Only file
+changed: scripts/orch-display.sh (added run_with_timeout + timeout wrappers on
+osascript calls for iTerm2 and Terminal.app).
+---
+
+--- item: Update `commands/apply-core.md` manifest with `orch-display.sh` (deps: 5) ---
+Added `scripts/orch-display.sh` to commands/apply-core.md in four places:
+(1) Source "Files available" list, (2) Step 1 inventory check for existing
+installs, (3) Step 4 Orchestrator install section file mapping, and
+(4) Orchestrator component description in Step 2. All additions placed
+next to orch-run.sh for logical grouping. This is the final progress log
+item — all items are now checked.
+---

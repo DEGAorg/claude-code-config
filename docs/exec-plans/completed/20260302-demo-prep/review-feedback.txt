@@ -1,0 +1,13 @@
+CRITERION: /develop runs without referencing nonexistent MCP tools
+FINDING: Local develop.md is clean (zero canon_ refs), but GitHub-served version on premar-demo still has 4 canon_ MCP references. Verified: curl -s ".../premar-demo/canon/commands/develop.md" | grep -c "canon_" → 4. Since /canon-init fetches from GitHub, the installed develop.md will still reference nonexistent MCP tools.
+ACTION: Commit all 9 modified files and push to origin/premar-demo. The branch is not main — pushing is allowed per repo conventions. No additional code changes needed.
+
+CRITERION: /ralph-cycle runs without referencing nonexistent MCP tools
+FINDING: Same issue — local ralph-cycle.md is fixed, but origin/premar-demo serves the stale version with canon_ refs.
+ACTION: Same push resolves this.
+
+CRITERION: End-to-end: clean dir → /canon-init → Canon context fully loaded
+FINDING: The prior E2E test claimed 19 files land correctly, but 8 files (dev.md, qa.md, develop.md, ralph-cycle.md, discover.md, backtesting.md, ralph-loop.md, risk-management.md) are fetched from GitHub where stale versions are served. Canon context is structurally complete but content is stale for 8/19 files.
+ACTION: After pushing, re-run E2E in a clean temp directory. Verify: grep -r "canon_" .canon/ .claude/commands/ should return zero matches in demo-critical files (develop.md, ralph-cycle.md, quick-dev.md).
+
+NOTE: This is the same finding as the previous iteration's review. The code changes are correct — only the commit+push step is missing. The worker should: (1) git add the 9 files, (2) git commit, (3) git push origin premar-demo, (4) wait ~60s for GitHub CDN cache, (5) re-verify fetched content.

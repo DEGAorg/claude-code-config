@@ -1,0 +1,53 @@
+# Dega Core config for claude-code-config repo
+version: 1
+max_iterations: 3
+
+budget:
+  warn_at_iteration: 2
+check_command: bash scripts/ralph-check.sh
+poll_interval_seconds: 15
+review_poll_interval_seconds: 10
+verify_poll_interval_seconds: 10
+
+# Legacy worker and reviewer prompt templates (used by scripts/ralph-loop.sh — use orchestrator instead)
+worker_prompt: scripts/ralph-worker-prompt.md
+reviewer_prompt: scripts/ralph-reviewer-prompt.md
+
+github:
+  sync: true
+  repo: DEGAorg/claude-code-config
+  labels: true
+  comments: true
+  close_on_ship: false
+  pr_target: ace-work
+
+timeline:
+  repo: DEGAorg/claude-code-config
+  branch: develop
+  path: data/timeline.json
+
+success_criteria:
+  # Repo health — shell scripts pass shellcheck
+  - id: shellcheck
+    description: no shellcheck errors in scripts/ and hooks/
+    check: shellcheck -e SC1091 scripts/*.sh hooks/*.sh
+
+  # Repo health — shell scripts are shfmt-formatted
+  - id: shfmt
+    description: shell scripts are formatted (shfmt)
+    check: "find scripts/ hooks/ -maxdepth 1 -name '*.sh' -exec shfmt -d {} +"
+
+  # Repo health — CI workflows are valid
+  - id: actionlint
+    description: CI workflows pass actionlint
+    check: actionlint
+
+  # Repo health — no stray TODOs in core artifacts
+  - id: no-todos
+    description: no TODO/FIXME in commands/, skills/, hooks/
+    check: "! rg 'TODO|FIXME' commands/ skills/ hooks/"
+
+  # Exec-plan structure — active plans must be directories
+  - id: exec-plan-dirs
+    description: all entries in docs/exec-plans/active/ are directories (no loose .md files)
+    check: "! find docs/exec-plans/active -maxdepth 1 -name '*.md' | grep -q ."

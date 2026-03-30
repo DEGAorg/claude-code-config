@@ -1,0 +1,169 @@
+--- item: Convert 4 MP3 sounds to OGG using ffmpeg ---
+Converted all 4 MP3 files in sounds/ to OGG format using ffmpeg with libopus codec
+(not libvorbis — Homebrew ffmpeg doesn't ship libvorbis, and the native vorbis encoder
+is marked experimental). Used `ffmpeg -i X.mp3 -c:a libopus -b:a 64k X.ogg`. OGG Opus
+is natively supported by paplay (PulseAudio/PipeWire), which is the target use case.
+Files created: unstoppable.ogg (18KB), super-mario-bros.ogg (12KB), warzone-level-up.ogg
+(42KB), yeahoo.ogg (10KB). The play-sound.sh rewrite should reference .ogg for paplay
+and note that these are Opus-encoded (paplay handles both Vorbis and Opus in OGG containers).
+---
+
+--- item: Rewrite `hooks/play-sound.sh` with platform detection, `none` disable, and volume control ---
+Rewrote hooks/play-sound.sh from the macOS-only afplay script to a cross-platform
+version. Platform detection uses `uname -s` with a case statement: Darwin uses afplay,
+Linux tries mpv > ffplay > paplay > WSL2 PowerShell in priority order. mpv/ffplay use
+MP3 files directly; paplay uses .ogg (Opus-encoded, from previous task). WSL2 detected
+via `grep -qi microsoft /proc/version`, falls back to PowerShell WPF MediaPlayer.
+CLAUDE_SOUND=none (or empty) exits immediately. CLAUDE_SOUND_VOLUME (0-100, default 50)
+normalized per player: afplay/powershell get float 0.0-1.0 via awk, paplay gets
+0-65536 via shell arithmetic, mpv/ffplay pass through directly. All playback is
+backgrounded with `& disown`. No player found = silent skip. Script still needs
+shellcheck/shfmt pass (next task).
+---
+
+--- item: Shellcheck and shfmt the new script ---
+Ran shellcheck on hooks/play-sound.sh — passed clean with zero warnings. Ran shfmt -i 2
+(2-space indent per repo convention) which applied three categories of fixes: removed
+extra spaces inside arithmetic expansion $(( )) → $(( )), moved case patterns (Darwin/Linux)
+to column 0 with body indented 2 (shfmt's canonical style), and split `& disown` onto
+separate lines inside brace groups. Both tools now pass clean. Script went from 70 to
+76 lines due to the line splits but behavior is identical.
+---
+
+--- item: Add `CLAUDE_SOUND_VOLUME=50` to `settings.json` env block ---
+Added "CLAUDE_SOUND_VOLUME": "50" to the env block in settings.json, right after the
+existing CLAUDE_SOUND entry (line 10). Validated the file is still valid JSON. This is
+the default volume (50 out of 0-100) that play-sound.sh reads via ${CLAUDE_SOUND_VOLUME:-50}.
+The value is a string "50" since settings.json env values are all strings — play-sound.sh
+treats it as an integer via shell arithmetic.
+---
+
+--- item: Update `commands/apply-core.md` — add OGG files to source list, update Sounds description ---
+Updated commands/apply-core.md in four places: (1) Added 4 OGG files (unstoppable.ogg,
+super-mario-bros.ogg, yeahoo.ogg, warzone-level-up.ogg) to the source file list alongside
+the existing MP3 entries. (2) Rewrote the Sounds component description — removed "macOS only
+(afplay)", added cross-platform note (macOS, Linux, WSL2), listed `none` as a valid value
+for CLAUDE_SOUND, and documented CLAUDE_SOUND_VOLUME (0-100, default 50). (3) Updated the
+Sounds installation section to install both MP3 and OGG files (8 files total) with a note
+that OGG is needed for paplay on Linux. (4) Updated the post-install summary line from
+"4 MP3s" to "MP3 + OGG". The remaining tasks are macOS and Linux/WSL2 testing.
+---
+
+--- item: Test on macOS — verify `afplay` path still works ---
+Ran 8 test scenarios on macOS (Darwin): (1) CLAUDE_SOUND=none exits 0 immediately,
+(2) empty CLAUDE_SOUND exits 0 immediately, (3) default sound "unstoppable" at volume 50
+plays via afplay (backgrounded, exit 0), (4) "yeahoo" at volume 10 plays correctly,
+(5-6) volume boundaries 0 and 100 both work (afplay accepts 0.00 and 1.00), (7) nonexistent
+sound name "nonexistent-sound" skips silently (file not found, exit 0), (8) volume
+normalization math verified (awk float division produces correct 0.00/0.50/0.75/1.00).
+shellcheck and shfmt -i 2 both pass clean. MP3 files are installed at ~/.claude/dega/sounds/.
+OGG files exist in repo but aren't installed yet — not needed for macOS path.
+---
+
+--- item: Create `skills/sound-notifications.md` global skill ---
+Created skills/sound-notifications.md following the same format as existing skills
+(app-legibility.md, custom-linter-authoring.md). The skill documents: what the Stop
+hook does, both env vars (CLAUDE_SOUND and CLAUDE_SOUND_VOLUME) with their values
+and defaults, the 4 available sounds, platform support table (macOS/Linux/WSL2 with
+player priority), how to add custom sounds (both MP3 + OGG required, with ffmpeg
+conversion command), and a troubleshooting table covering common issues (no sound on
+Linux, WSL2, volume, disabling, missing OGG). This is knowledge injection — it shapes
+how Claude answers sound configuration questions from any project.
+---
+
+--- item: Test on Linux or WSL2 if available — verify at least one player path works ---
+No Linux or WSL2 environment available on this macOS machine. Performed structural
+validation instead: (1) bash -n syntax check passes, (2) shellcheck passes clean,
+(3) shfmt -i 2 passes with no diff, (4) all 4 OGG files verified as valid Opus audio
+via file + ffprobe (durations: unstoppable 2.0s, super-mario-bros 1.2s, warzone-level-up
+6.4s, yeahoo 1.0s), (5) volume normalization math verified correct at boundaries 0/1/25/50/75/100
+(afplay 0.00-1.00, paplay 0-65536), (6) player command flags verified against docs
+(mpv --volume 0-100, ffplay -volume 0-100, paplay --volume 0-65536), (7) all 4 sound
+pairs confirmed (MP3+OGG). Real Linux playback testing deferred — WSL2 PowerShell path
+is documented as P2 risk in the plan.
+---
+
+--- item: `hooks/play-sound.sh` handles macOS, pure Linux, and WSL2 ---
+Verified completion criterion against the script at hooks/play-sound.sh (76 lines).
+macOS: Darwin case (lines 33-38) uses afplay with float volume normalization.
+Pure Linux: Linux case (lines 44-61) tries mpv > ffplay > paplay in priority order,
+with mpv/ffplay using MP3 and paplay using OGG. WSL2: detected via grep -qi microsoft
+/proc/version (line 62), falls back to PowerShell WPF MediaPlayer with wslpath
+conversion. All paths background with disown, no player found = silent skip (exit 0).
+No code changes needed — the script was already correct from the implementation tasks.
+---
+
+--- item: `CLAUDE_SOUND=none` exits immediately without playing ---
+Verified completion criterion by running the script with CLAUDE_SOUND=none and
+CLAUDE_SOUND="" — both exit 0 in 0.003s. The guard at line 14 of hooks/play-sound.sh
+(`[[ -z "$sound_name" || "$sound_name" == "none" ]] && exit 0`) fires before any
+volume normalization or platform detection code. No code changes needed — the behavior
+was already correct from the implementation phase.
+---
+
+--- item: OGG versions of all 4 sounds exist in `sounds/` ---
+Verified all 4 OGG files exist in sounds/: unstoppable.ogg (Opus mono 24kHz),
+super-mario-bros.ogg (Opus stereo 48kHz), warzone-level-up.ogg (Opus stereo 48kHz),
+yeahoo.ogg (Opus mono 48kHz). All confirmed as valid Ogg Opus audio via `file` command.
+No code changes needed — files were created in the earlier "Convert 4 MP3 sounds to OGG"
+implementation task. Completion criterion satisfied.
+---
+
+--- item: `commands/apply-core.md` installs OGG files and describes cross-platform support ---
+Verified completion criterion against commands/apply-core.md. Three aspects checked:
+(1) Source list includes all 4 OGG files (lines 50-53) alongside MP3s. (2) Sounds
+component description (lines 106-114) says "Works on macOS, Linux, and WSL2", lists
+Linux player requirements (mpv/ffplay/paplay), documents `none` disable value, and
+documents CLAUDE_SOUND_VOLUME (0-100, default 50). (3) Sounds installation section
+(lines 217-228) lists all 8 files (4 MP3 + 4 OGG) with note that OGG is needed for
+paplay on Linux. No code changes needed — all updates were made by the earlier
+"Update commands/apply-core.md" implementation task.
+---
+
+--- item: `CLAUDE_SOUND_VOLUME` controls playback volume across all players ---
+Verified volume normalization across all 5 player paths in hooks/play-sound.sh.
+Math checked at boundaries (0, 25, 50, 75, 100): afplay gets 0.00-1.00 float via awk,
+mpv/ffplay pass 0-100 through directly, paplay gets 0-65536 via shell arithmetic,
+PowerShell reuses the afplay float. Tested on macOS with volumes 0, 25, 50 (default),
+and 75 — all play correctly. Default (unset CLAUDE_SOUND_VOLUME) falls back to 50
+via ${CLAUDE_SOUND_VOLUME:-50}. No code changes needed — implementation was already correct.
+---
+
+--- item: `settings.json` has `CLAUDE_SOUND_VOLUME` env var defaulting to `50` ---
+Verified settings.json line 10 contains "CLAUDE_SOUND_VOLUME": "50" in the env block,
+right after the CLAUDE_SOUND entry. This was added by an earlier worker in the
+"Add CLAUDE_SOUND_VOLUME=50 to settings.json env block" implementation task. Value is
+a string "50" (all env values in settings.json are strings). No code changes needed —
+just marked the completion criterion checkbox [x] in plan.md.
+---
+
+--- item: `skills/sound-notifications.md` installed globally via `/apply-core` ---
+Added skills/sound-notifications.md to commands/apply-core.md in three places:
+(1) Source file list — added `skills/sound-notifications.md` after the existing
+app-legibility.md entry. (2) Skills component description — updated from
+"custom-linter-authoring and app-legibility" to include "sound-notifications".
+(3) Post-install summary example — added sound-notifications to the Skills line.
+The skill file itself was already created by a previous worker. The Skills install
+section is generic ("Write each skill file to ~/.claude/skills/<name>.md") so no
+changes needed there — it covers all skills in the source list automatically.
+---
+
+--- item: Script passes shellcheck and shfmt ---
+Ran shellcheck and shfmt -i 2 -d on hooks/play-sound.sh — both pass clean with zero
+warnings and zero formatting diffs. No code changes needed. Previous workers already
+applied shellcheck and shfmt fixes during the implementation phase (see "Shellcheck
+and shfmt the new script" handoff entry). This completion criterion just confirms
+the script remains lint-clean after all subsequent edits.
+---
+
+--- item: macOS playback still works (regression check) ---
+Ran 10 regression tests on macOS (Darwin): (1) CLAUDE_SOUND=none exits 0 in 0.003s,
+(2) empty CLAUDE_SOUND exits 0 in 0.006s, (3) default sound "unstoppable" at volume 50
+plays via afplay (exit 0), (4) "yeahoo" at volume 10 plays correctly, (5) volume 0
+boundary works (afplay accepts 0.00), (6) volume 100 boundary works (afplay accepts
+1.00), (7) nonexistent sound "nonexistent-sound" skips silently (exit 0), (8) volume
+normalization math verified correct at 0/25/50/75/100 → 0.00/0.25/0.50/0.75/1.00,
+(9) all 4 sounds (unstoppable, super-mario-bros, warzone-level-up, yeahoo) play without
+error at volume 25, (10) shellcheck + shfmt still pass clean. This was the last
+completion criterion — all checkboxes in plan.md are now [x].
+---

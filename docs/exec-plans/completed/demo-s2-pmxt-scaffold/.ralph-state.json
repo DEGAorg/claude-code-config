@@ -1,0 +1,19 @@
+{
+  "slug": "demo-s2-pmxt-scaffold",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "README \"Verify connections\" section exists",
+    "claimed_complete": true
+  },
+  "last_result": "SHIP",
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "376a8fb35687e4cecac36c45669fcb01055a0dd75281922c9ae2c5682d5c7f9a",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  }
+}

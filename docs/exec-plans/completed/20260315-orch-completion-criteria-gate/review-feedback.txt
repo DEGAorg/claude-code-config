@@ -1,0 +1,9 @@
+REWORK_ITEMS: 1,4
+
+--- item 1 ---
+FINDING: orch_count_unchecked_criteria() was added to the main repo's scripts/orch-state.sh (line 682) but NOT to the worktree's copy at .orchestrator/worktrees/20260315-orch-completion-criteria-gate/scripts/orch-state.sh (ends at line 679 without the function). The worktree's orch-engine.sh sources ${SCRIPT_DIR}/orch-state.sh (line 18), so when run from the worktree branch the function will be missing.
+ACTION: Add the orch_count_unchecked_criteria() function to the worktree's scripts/orch-state.sh so it is included in the branch's commit. The function itself is correctly implemented — it just needs to be in the right file.
+
+--- item 4 ---
+FINDING: orch-engine.sh:296 and :316 call orch_count_unchecked_criteria() but the function does not exist in scripts/orch-state.sh. This is a dependency on Item 1 that was never fulfilled — the engine will crash at runtime with "command not found" when it reaches the completion criteria gate.
+ACTION: Add orch_count_unchecked_criteria() to scripts/orch-state.sh (Item 1 scope) before this item can pass. The function should accept a plan.md path and return the count of unchecked "- [ ]" lines under "## Completion criteria", using the awk pattern from the plan's approach section.

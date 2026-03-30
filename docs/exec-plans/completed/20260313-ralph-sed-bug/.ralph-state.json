@@ -1,0 +1,24 @@
+{
+  "slug": "20260313-ralph-sed-bug",
+  "iteration": 1,
+  "status": "in_progress",
+  "current_task": {
+    "text": "Test: run ralph-loop.sh on a plan where context-handoff.txt has multiline content",
+    "claimed_complete": true
+  },
+  "last_result": null,
+  "iterations": [],
+  "stagnation_count": 0,
+  "last_diff_hash": "25f172540b1d658d995c43d116885561e3fe33ae2be7246dc8a75e3fb2540b9c",
+  "budget": {
+    "iterations_used": 1,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": false
+  },
+  "current_review": {
+    "num": 1,
+    "text": "Replace sed with bash expansion for worker prompt substitution (lines 228-231)",
+    "handoff": "Replaced the sed command on lines 228-231 of scripts/ralph-loop.sh with bash parameter\nexpansion. The worker prompt template is now read via `cat \"${WORKER_PROMPT}\"` and then\ntwo `${WORKER_CONTEXT//\\{PLACEHOLDER\\}/${VALUE}}` expansions handle {TASK_DIR} and\n{STATE_FILE}. This matches the proven pattern from orch-review.sh lines 95-99. The\nsurrounding handoff-append logic (lines 231-241) was untouched."
+  }
+}

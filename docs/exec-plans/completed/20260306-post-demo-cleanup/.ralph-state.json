@@ -1,0 +1,19 @@
+{
+  "slug": "20260306-post-demo-cleanup",
+  "iteration": 3,
+  "status": "in_progress",
+  "current_task": {
+    "text": "",
+    "claimed_complete": true
+  },
+  "last_result": null,
+  "iterations": [],
+  "stagnation_count": 2,
+  "last_diff_hash": "518cbefcdf2811bc7c164e15422a0e46894d63f477f29eec0f0a5dff97d54f19",
+  "budget": {
+    "iterations_used": 3,
+    "iterations_max": 3,
+    "warn_at_iteration": 2,
+    "warned": true
+  }
+}

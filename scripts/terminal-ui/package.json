@@ -1,0 +1,32 @@
+{
+  "name": "@claude-code-config/terminal-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "terminal-ui": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "verify": "tsx src/verify-shell-compat.ts"
+  },
+  "dependencies": {
+    "chokidar": "4.0.3",
+    "ink": "6.8.0",
+    "react": "19.1.0",
+    "strip-ansi": "7.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.13",
+    "@types/react": "19.1.8",
+    "tsx": "4.19.4",
+    "typescript": "5.7.3"
+  }
+}

@@ -1,0 +1,206 @@
+import { Box, Text, useStdout } from "ink";
+import type {
+  OrchestratorItem,
+  ItemStatus,
+  ItemReviewStatus,
+} from "./orch-types.js";
+
+interface SessionTableProps {
+  readonly plan: string;
+  readonly items: readonly OrchestratorItem[];
+  readonly selectedId: number | null;
+}
+
+const STATUS_COLORS: Record<ItemStatus, string> = {
+  queued: "gray",
+  ready: "white",
+  running: "green",
+  review: "cyan",
+  done: "greenBright",
+  failed: "red",
+  blocked: "yellow",
+};
+
+const STATUS_ICONS: Record<ItemStatus, string> = {
+  queued: "·",
+  ready: "○",
+  running: "●",
+  review: "◎",
+  done: "✓",
+  failed: "✗",
+  blocked: "⊘",
+};
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1) + "…";
+}
+
+const REVIEW_ICONS: Record<ItemReviewStatus, string> = {
+  pending: "—",
+  reviewing: "⟳",
+  passed: "✓",
+  failed: "✗",
+};
+
+const REVIEW_COLORS: Record<ItemReviewStatus, string> = {
+  pending: "gray",
+  reviewing: "cyan",
+  passed: "green",
+  failed: "red",
+};
+
+function formatReview(item: OrchestratorItem): string {
+  return REVIEW_ICONS[item.reviewStatus];
+}
+
+function formatWorker(item: OrchestratorItem): string {
+  if (item.tmuxPane) return item.tmuxPane;
+  if (item.worktree) return "bg";
+  return "—";
+}
+
+function formatIteration(item: OrchestratorItem): string {
+  if (item.status === "queued" || item.status === "blocked") return "—";
+  return `${item.iteration ?? 0}/${item.maxIterations ?? 3}`;
+}
+
+function rowStyle(status: ItemStatus): {
+  color: string;
+  bold: boolean;
+  dimColor: boolean;
+} {
+  switch (status) {
+    case "running":
+      return { color: "greenBright", bold: true, dimColor: false };
+    case "failed":
+      return { color: "red", bold: true, dimColor: false };
+    case "done":
+      return { color: "green", bold: false, dimColor: true };
+    default:
+      return { color: "white", bold: false, dimColor: false };
+  }
+}
+
+function ItemRow({
+  item,
+  isSelected,
+  descWidth,
+}: {
+  readonly item: OrchestratorItem;
+  readonly isSelected: boolean;
+  readonly descWidth: number;
+}) {
+  const statusColor = STATUS_COLORS[item.status];
+  const icon = STATUS_ICONS[item.status];
+  const desc = truncate(item.description, descWidth);
+  const idStr = String(item.id).padStart(2);
+  const style = rowStyle(item.status);
+
+  return (
+    <Box>
+      <Box width={4}>
+        {isSelected ? (
+          <Text color="blueBright">{idStr}</Text>
+        ) : (
+          <Text color={style.color} bold={style.bold} dimColor={style.dimColor}>
+            {idStr}
+          </Text>
+        )}
+      </Box>
+      <Box flexGrow={1}>
+        {isSelected ? (
+          <Text color="blueBright" bold>
+            {desc}
+          </Text>
+        ) : (
+          <Text color={style.color} bold={style.bold} dimColor={style.dimColor}>
+            {desc}
+          </Text>
+        )}
+      </Box>
+      <Box width={12}>
+        <Text color={statusColor} bold={style.bold}>
+          {icon} {item.status}
+        </Text>
+      </Box>
+      <Box width={6}>
+        <Text color={REVIEW_COLORS[item.reviewStatus]}>
+          {formatReview(item)}
+        </Text>
+      </Box>
+      <Box width={5}>
+        <Text dimColor>{formatIteration(item)}</Text>
+      </Box>
+      <Box width={8}>
+        <Text dimColor>{formatWorker(item)}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+export function SessionTable({
+  plan,
+  items,
+  selectedId,
+}: SessionTableProps) {
+  const { stdout } = useStdout();
+  const termCols = stdout?.columns ?? 80;
+
+  const fixedCols = 4 + 12 + 6 + 5 + 8 + 4;
+  const descWidth = Math.max(20, termCols - fixedCols - 4);
+
+  const doneCount = items.filter((i) => i.status === "done").length;
+  const activeCount = items.filter(
+    (i) => i.status === "running" || i.status === "review",
+  ).length;
+
+  return (
+    <Box
+      flexDirection="column"
+      borderStyle="single"
+      borderBottom={false}
+      paddingX={1}
+    >
+      <Box justifyContent="space-between">
+        <Text bold>PLAN: {plan}</Text>
+        <Text>
+          <Text color="green">{doneCount}/{items.length}</Text>
+          <Text dimColor> done, </Text>
+          <Text color="greenBright" bold={activeCount > 0}>{activeCount}</Text>
+          <Text dimColor> active</Text>
+        </Text>
+      </Box>
+
+      <Box marginTop={1}>
+        <Box width={4}>
+          <Text bold dimColor>#</Text>
+        </Box>
+        <Box flexGrow={1}>
+          <Text bold dimColor>ITEM</Text>
+        </Box>
+        <Box width={12}>
+          <Text bold dimColor>STATUS</Text>
+        </Box>
+        <Box width={6}>
+          <Text bold dimColor>REV</Text>
+        </Box>
+        <Box width={5}>
+          <Text bold dimColor>ITER</Text>
+        </Box>
+        <Box width={8}>
+          <Text bold dimColor>WORKER</Text>
+        </Box>
+      </Box>
+
+      {items.map((item) => (
+        <ItemRow
+          key={item.id}
+          item={item}
+          isSelected={item.id === selectedId}
+          descWidth={descWidth}
+        />
+      ))}
+    </Box>
+  );
+}
