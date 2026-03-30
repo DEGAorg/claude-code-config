@@ -5,7 +5,7 @@
 # Detection heuristic (first match wins):
 #   1. DEGA_PROVIDER env var (explicit override)
 #   2. Parent process name (claude, gemini, codex)
-#   3. Session env vars (CLAUDECODE, GEMINI_SESSION, etc.)
+#   3. Session env vars (CLAUDECODE, GEMINI_CLI, etc.)
 #   4. Fallback: claude
 #
 # Usage: source "${SCRIPT_DIR}/agent-shim.sh"
@@ -44,12 +44,8 @@ _dega_detect_provider() {
     echo "claude"
     return
   fi
-  if [[ -n "${GEMINI_SESSION:-}" ]]; then
+  if [[ -n "${GEMINI_CLI:-}" ]]; then
     echo "gemini"
-    return
-  fi
-  if [[ -n "${CODEX_SESSION:-}" ]]; then
-    echo "codex"
     return
   fi
 
@@ -99,33 +95,72 @@ dega_agent_headless_flags() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "-p --dangerously-skip-permissions" ;;
-    gemini) echo "--headless" ;;
-    codex)  echo "--headless" ;;
+    claude) echo "--dangerously-skip-permissions" ;;
+    gemini) echo "--yolo" ;;
+    codex)  echo "--yolo" ;;
     *)      echo "--headless" ;;
   esac
 }
 
 # Returns the session env var name that the agent sets when running.
+# Returns empty string for agents that don't set a session var (e.g., Codex).
 dega_agent_session_var() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
     claude) echo "CLAUDECODE" ;;
-    gemini) echo "GEMINI_SESSION" ;;
-    codex)  echo "CODEX_SESSION" ;;
-    *)      echo "${provider^^}_SESSION" ;;
+    gemini) echo "GEMINI_CLI" ;;
+    codex)  echo "" ;;
+    *)      echo "" ;;
   esac
 }
 
 # Returns the flag used to pass a prompt string to the agent CLI.
+# For Codex, returns "exec" — the prompt is a positional arg to the exec subcommand.
 dega_agent_prompt_flag() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
     claude) echo "-p" ;;
-    gemini) echo "--prompt" ;;
-    codex)  echo "--prompt" ;;
-    *)      echo "--prompt" ;;
+    gemini) echo "-p" ;;
+    codex)  echo "exec" ;;
+    *)      echo "-p" ;;
   esac
+}
+
+# Returns the flag for JSON-formatted output.
+dega_agent_json_flag() {
+  local provider
+  provider="$(dega_agent_type)"
+  case "${provider}" in
+    claude) echo "--output-format json" ;;
+    gemini) echo "--output-format json" ;;
+    codex)  echo "--json" ;;
+    *)      echo "--output-format json" ;;
+  esac
+}
+
+# Assembles a full headless command string for the detected agent.
+# Handles Codex's `exec` subcommand pattern vs Claude/Gemini's flag-based pattern.
+#
+# Usage: cmd="$(dega_agent_build_headless_cmd "your prompt here")"
+#        eval "${cmd}"
+#
+# Claude/Gemini: claude --dangerously-skip-permissions -p "prompt"
+# Codex:         codex --yolo exec "prompt"
+dega_agent_build_headless_cmd() {
+  local prompt="${1:?dega_agent_build_headless_cmd: prompt argument required}"
+  local cmd headless_flags prompt_flag
+
+  cmd="$(dega_agent_command)"
+  headless_flags="$(dega_agent_headless_flags)"
+  prompt_flag="$(dega_agent_prompt_flag)"
+
+  if [[ "${prompt_flag}" == "exec" ]]; then
+    # Codex: command + headless flags + exec subcommand + prompt as positional arg
+    printf '%s %s exec %q' "${cmd}" "${headless_flags}" "${prompt}"
+  else
+    # Claude/Gemini: command + headless flags + prompt flag + prompt
+    printf '%s %s %s %q' "${cmd}" "${headless_flags}" "${prompt_flag}" "${prompt}"
+  fi
 }
