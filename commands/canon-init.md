@@ -100,9 +100,9 @@ fi
 
 # ── Launch mode: Toad (preferred) or tmux (fallback) ─────────────────
 if command -v toad >/dev/null 2>&1; then
-  AGENT_BIN="$(dega_agent_command)"
+  # TODO: add --prompt "/canon-start" once toad supports prefill
   echo "Launching Canon in Toad. Type /canon-start to begin."
-  exec toad acp "${AGENT_BIN}" --project-dir "${PROJECT_DIR}" -t "Canon"
+  exec toad run "${PROJECT_DIR}"
 fi
 
 # ── Fallback: tmux with agent + dashboard ────────────────────────────
