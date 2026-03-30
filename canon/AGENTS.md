@@ -132,7 +132,7 @@ platform-specific knowledge, see `.canon/skills/`:
 - `strategy-patterns.md` — Six strategy archetypes and when to use them
 - `backtesting.md` — Testing methodology, interpreting results, avoiding overfitting
 - `arena-tracking.md` — Registration pipeline, monitoring live strategies
-- `ralph-loop.md` — Configuring and operating autonomous iteration
+- `orchestrator.md` — Configuring and operating the automated build engine
 - `canon-conventions.md` — Coding standards, domain layering, error messages
 
 ---

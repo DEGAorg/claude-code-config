@@ -4,7 +4,7 @@
 @arguments $DESIGN_SPEC: Path to the strategy design specification (from /discover or provided directly)
 
 Load agents: dev, qa.
-Load skills: canon-conventions, backtesting, ralph-loop, risk-management.
+Load skills: canon-conventions, backtesting, orchestrator, risk-management.
 
 Run every step below in order. Do not stop or ask for confirmation between steps.
 
@@ -18,8 +18,9 @@ As dev, verify the project scaffold exists before implementing.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=scaffold status=running log.info="Verifying scaffold..."
 ```
 
@@ -42,8 +43,9 @@ If any are missing, stop and tell the user:
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=develop status=running log.info="Implementing strategy..."
 ```
 
@@ -65,8 +67,9 @@ Do not skip RiskInterface. "I'll add it later" is not acceptable.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=test status=running log.info="Running checks..."
 ```
 
@@ -94,7 +97,7 @@ not met, iterate:
 3. Re-run all check commands from `.canon/dega-core.yaml` `success_criteria`.
 4. Repeat until all checks pass.
 
-Load ralph-loop skill for iteration guidance.
+Load orchestrator skill for iteration guidance.
 
 The `max_iterations` in `.canon/dega-core.yaml` limits how many cycles to attempt.
 If the limit is reached without meeting all criteria, surface the specific
@@ -105,8 +108,9 @@ failing criteria for human review before proceeding.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=qa status=running log.info="QA review..."
 ```
 

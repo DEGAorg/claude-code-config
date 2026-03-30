@@ -2,7 +2,7 @@
 name: dev
 description: Implements prediction market strategies from design to working code
 role: Implements prediction market strategies from design to working code
-skills: [canon-conventions, backtesting, ralph-loop, risk-management]
+skills: [canon-conventions, backtesting, orchestrator, risk-management]
 tools: []
 handoff_to: [qa, risk-analyst]
 handoff_from: [strategy-architect]

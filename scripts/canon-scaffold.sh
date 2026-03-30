@@ -56,7 +56,7 @@ fetch() {
 	fi
 }
 
-# ── 0. Ensure git repo exists (ralph-loop.sh needs it for stagnation detection)
+# ── 0. Ensure git repo exists (orchestrator needs it for worktree isolation)
 if [[ ! -d ".git" ]]; then
 	echo "→ initializing git repo..."
 	git init -q
@@ -81,7 +81,7 @@ state log.info="Agents fetched"
 echo "→ fetching skills..."
 state log.info="Fetching 8 domain skills..."
 for skill in prediction-markets polymarket risk-management strategy-patterns \
-	backtesting arena-tracking ralph-loop canon-conventions; do
+	backtesting arena-tracking orchestrator canon-conventions; do
 	fetch "canon/skills/${skill}.md" ".canon/skills/${skill}.md"
 done
 state log.info="Skills fetched"
@@ -242,7 +242,7 @@ skills:
   strategy-patterns: .canon/skills/strategy-patterns.md
   backtesting: .canon/skills/backtesting.md
   arena-tracking: .canon/skills/arena-tracking.md
-  ralph-loop: .canon/skills/ralph-loop.md
+  orchestrator: .canon/skills/orchestrator.md
   canon-conventions: .canon/skills/canon-conventions.md
 
 workflows:
@@ -274,8 +274,8 @@ context_routing:
     workflow: discover
   iteration:
     agent: dev
-    auto_skills: [ralph-loop, canon-conventions]
-    workflow: ralph-cycle
+    auto_skills: [orchestrator, canon-conventions]
+    workflow: develop
 
 standards:
   always_load: [canon-conventions]
@@ -287,7 +287,7 @@ standards:
     - "If it is not in the repo, it does not exist"
 EOF
 
-# ── 7. Write dega-core.yaml (project root — where ralph-loop.sh expects it) ──
+# ── 7. Write dega-core.yaml (project root — orchestrator config) ─────────────
 echo "→ writing dega-core.yaml..."
 cat >"dega-core.yaml" <<EOF
 version: 1
@@ -443,7 +443,7 @@ echo "  GEMINI.md          <- shim → AGENTS.md"
 echo "  .cursorrules       <- shim → AGENTS.md"
 echo "  package.json, tsconfig.json, .env.example, .gitignore"
 echo ""
-# ── 12. Initial git commit (ralph-loop.sh needs at least one commit) ─────────
+# ── 12. Initial git commit (orchestrator needs at least one commit) ──────────
 echo "→ creating initial commit..."
 git add -A
 git commit -q -m "scaffold: Canon framework initialized"

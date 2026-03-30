@@ -71,8 +71,9 @@ top-to-bottom — the first match determines the current phase.
 Write the detected phase to the state file:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=<detected-phase> status=running log.info="Detected phase: <detected-phase>"
 ```
 
@@ -99,15 +100,16 @@ stop and tell the user:
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=init status=running log.info="Initializing Canon framework..."
 ```
 
 Run the canon-init script:
 
 ```bash
-bash "${HOME}/.claude/scripts/canon-scaffold.sh"
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh"
 ```
 
 The script fetches all agents, skills, and commands from GitHub, generates
@@ -137,8 +139,9 @@ The `.canon/` directory exists but may be incomplete. Verify and fill gaps.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=scaffold status=running log.info="Verifying scaffold completeness..."
 ```
 
@@ -146,7 +149,7 @@ Check each required scaffold file from the list in step 2. If files are missing,
 run the canon-init script with `--force` to regenerate them:
 
 ```bash
-bash "${HOME}/.claude/scripts/canon-scaffold.sh" --force
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh" --force
 ```
 
 Report what was found:
@@ -158,8 +161,9 @@ If any files were created, report them. Then proceed to step 5.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=scaffold status=running log.info="Scaffold complete"
 ```
 
@@ -172,8 +176,9 @@ The scaffold is complete but no strategy spec was found.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=strategy status=running log.info="Looking for strategy specification..."
 ```
 
@@ -218,8 +223,9 @@ Read the copied spec and print a brief summary (market, archetype, edge thesis).
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     log.info="Template bundle installed — bootstrapped files in place"
 ```
 
@@ -256,8 +262,9 @@ If anything is missing, ask the user to clarify before proceeding.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=strategy status=running log.info="Strategy spec ready"
 ```
 
@@ -267,14 +274,16 @@ Proceed to step 6.
 
 ## 6. Phase: develop
 
-A strategy spec exists. Build the strategy using the Ralph Loop — an automated
-worker + reviewer iteration loop that drives implementation from an exec plan.
+A strategy spec exists. Build the strategy using the orchestrator — an automated
+engine that spawns parallel workers in isolated worktrees, reviews each item,
+and iterates until all checks pass.
 
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=develop status=running log.info="Starting development..."
 ```
 
@@ -297,11 +306,15 @@ sed "s/{{DATE}}/$(date +%Y-%m-%d)/" ".canon/templates/<name>/plan.md" \
 
 The pre-filled plan has bootstrapped items already checked off. Only the
 decision-logic items (config, signals, risk, strategy, test assertions)
-remain unchecked — those are what the Ralph Loop will build.
+remain unchecked — those are what the orchestrator will build.
 
 **If /discover or user-provided spec:** Read the plan template at
 the strategy plan template (to be created in `.canon/templates/`) and fill in the placeholders
 based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
+
+**Important:** Every item in the progress log (except the first) must have a
+`(deps: N)` annotation. The orchestrator treats items without deps as ready
+and launches them in parallel. See `~/.claude/rules/exec-plans.md` for format.
 
 Also ensure `dega-core.yaml` exists at the project root (it should from scaffold).
 If not, create it with the standard success criteria:
@@ -309,6 +322,7 @@ If not, create it with the standard success criteria:
 ```yaml
 version: 1
 max_iterations: 5
+check_command: "pnpm exec tsc --noEmit && pnpm exec oxlint src/ && pnpm exec vitest run"
 
 success_criteria:
   - id: types_compile
@@ -322,11 +336,18 @@ success_criteria:
     required: true
 ```
 
+Commit the exec plan (the orchestrator requires a clean git state):
+
+```bash
+git add "docs/exec-plans/active/${SLUG}/plan.md" dega-core.yaml
+git commit -m "plan: ${SLUG}"
+```
+
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=develop status=running log.info="Exec plan generated: ${SLUG}"
 ```
 
@@ -334,49 +355,50 @@ Print:
 
 > **Exec plan generated** at `docs/exec-plans/active/<slug>/plan.md`
 >
-> Launching Ralph Loop to build the strategy...
+> Launching orchestrator to build the strategy...
 
-### 6b. Run Ralph Loop
+### 6b. Run orchestrator
 
-Execute the Ralph Loop with the dashboard state pointed at `.canon/state.json`:
+Launch the orchestrator to execute the plan:
 
 ```bash
-RALPH_TUI_STATE="$(pwd)/.canon/state.json" \
-  bash "${HOME}/.claude/scripts/ralph-loop.sh" "${SLUG}"
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/orch-run.sh" "${SLUG}"
 ```
 
-The Ralph Loop will:
+The orchestrator will:
 
-1. Read the exec plan and find unchecked items
-2. Spawn a worker agent to implement each item
-3. Spawn a reviewer agent to evaluate the work
-4. Iterate until the reviewer outputs SHIP and all health checks pass
-5. Write dashboard state updates throughout (to `.canon/state.json` via `RALPH_TUI_STATE`)
+1. Initialize state in `.orchestrator/plans/<slug>/state.json`
+2. Create a worktree for isolated development
+3. Spawn worker agents for each ready item (respecting dep annotations)
+4. Review each completed item against success criteria
+5. Iterate failed items (up to `max_iterations`)
+6. Run a final review across the full changeset
+7. Create a PR with all changes on completion
 
-**If the Ralph Loop exits 0 (SHIP):** The strategy was built, tested, and approved.
-The exec plan has been moved to `docs/exec-plans/completed/`. Proceed to step 7.
+The orchestrator runs in a tmux session (`orch-<slug>`). State is written to
+`.orchestrator/plans/<slug>/state.json` and the master registry at
+`.orchestrator/master.json`. The Toad TUI or terminal-ui dashboard picks up
+these state changes automatically.
 
-**If the Ralph Loop exits 1 (max iterations):** Print:
+**If the orchestrator completes (all items SHIP):** The strategy was built,
+tested, and approved. A PR has been created. Proceed to step 7.
 
-> Ralph Loop reached max iterations without SHIP. Review the latest
-> feedback at `docs/exec-plans/active/<slug>/review-feedback.txt`
-> and run `/ralph-cycle` to continue iterating.
+**If the orchestrator fails (max iterations on any item):** Print:
+
+> Orchestrator reached max iterations on one or more items. Check the
+> orchestrator state for details:
+> `cat .orchestrator/plans/<slug>/state.json | jq '.items[] | select(.status == "failed")'`
+>
+> Fix the blockers and re-run: `bash orch-run.sh <slug>`
 
 Do not proceed to step 7. Stop here.
 
-**If the Ralph Loop exits 2 (stagnated or blocked):** Print:
-
-> Ralph Loop is blocked. Check `docs/exec-plans/active/<slug>/review-feedback.txt`
-> for details. Fix the blocker and re-run `/canon-start` to continue.
-
-Do not proceed to step 7. Stop here.
-
-Write state update after Ralph Loop completes:
+Write state update after orchestrator completes:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
-    phase=develop status=complete log.info="Ralph Loop complete — strategy built"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
+    phase=develop status=complete log.info="Orchestrator complete — strategy built"
 ```
 
 ---
@@ -407,7 +429,7 @@ state management — metrics reset, live metric updates, and proper cleanup on
 stop/crash via signal traps. Run it in the background so Claude returns control.
 
 ```bash
-bash "${HOME}/.claude/scripts/canon-runner.sh" --dry-run &
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" --dry-run &
 RUNNER_PID=$!
 disown
 ```
@@ -453,10 +475,10 @@ Dashboard state writes degrade gracefully:
 | Component | If missing | Behavior |
 |-----------|-----------|----------|
 | tmux / `$TMUX` not set | Stop with message | User told to run `./canon.sh` first |
-| `~/.claude/scripts/terminal-ui-write.sh` | Skip state file writes | No dashboard updates, workflow still runs |
+| `$DEGA_CORE_HOME/scripts/terminal-ui-write.sh` | Skip state file writes | No dashboard updates, workflow still runs |
 
 Every `terminal-ui-write.sh` call in this command is already guarded with
-`[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] &&`. If the script
+`[[ -f "${TUI_WRITE}" ]] &&`. If the script
 does not exist, the call is skipped silently — no error, no repeated warnings.
 
 ---
