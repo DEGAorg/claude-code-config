@@ -35,8 +35,8 @@ Straightforward cleanup pass. Remove transitional fallbacks added in Phase 1, up
 
 - [x] Remove `CLAUDE_SOUND` / `CLAUDE_SOUND_VOLUME` fallbacks from `hooks/play-sound.sh` and any other files still referencing them
 - [x] Archive `scripts/ralph-loop.sh` — move to `scripts/legacy/` or delete entirely (deps: 1)
-- [ ] Update `agent-template.md`, `README.md`, `INSTALL.md` for final multi-agent documentation (deps: 1)
-- [ ] Clean up research docs — move `docs/agent-agnostic-requirements.md` and `docs/agnostic-gem-recommendations.md` to `docs/decisions/` (deps: 1)
+- [x] Update `agent-template.md`, `README.md`, `INSTALL.md` for final multi-agent documentation (deps: 1)
+- [x] Clean up research docs — move `docs/agent-agnostic-requirements.md` and `docs/agnostic-gem-recommendations.md` to `docs/decisions/` (deps: 1)
 - [ ] Final grep audit — `grep -r "CLAUDE_SOUND\|~/.claude/" scripts/ hooks/ commands/ settings.json` returns zero hits (deps: 1, 2, 3)
 
 ## Decision log
