@@ -23,8 +23,9 @@ fi
 if command -v toad >/dev/null 2>&1; then
   # Toad mode — single process, no tmux needed.
   # Toad handles conversation + Builder/Automation views natively.
-  # /canon-start auto-executes when the agent connects.
-  exec toad acp "/canon-start" --project-dir "${PROJECT_DIR}"
+  # TODO: add --prompt "/canon-start" once toad supports prefill
+  echo "Launching Canon in Toad. Type /canon-start to begin."
+  exec toad run "${PROJECT_DIR}"
 fi
 
 # ── Fallback: tmux with agent + dashboard ────────────────────────────

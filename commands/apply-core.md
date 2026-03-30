@@ -25,6 +25,7 @@ Files available:
 - `commands/cleanup.md`
 - `commands/doc-garden.md`
 - `commands/core-init.md`
+- `commands/canon-init.md`
 - `rules/python.md`
 - `rules/node-typescript.md`
 - `rules/rust.md`
