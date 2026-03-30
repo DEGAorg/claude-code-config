@@ -171,8 +171,8 @@ check_command: |
 poll_interval_seconds: 30
 
 # Worker and reviewer prompts (global, installed by /apply-core)
-worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
-reviewer_prompt: ~/.claude/scripts/ralph-reviewer-prompt.md
+worker_prompt: ~/.degacore/scripts/ralph-worker-prompt.md
+reviewer_prompt: ~/.degacore/scripts/ralph-reviewer-prompt.md
 
 <GITHUB_BLOCK>
 
@@ -296,7 +296,7 @@ Replace this with a one-line description of your project.
 
 ## Working Conventions
 
-- Language-specific standards load from `~/.claude/rules/` by file type
+- Language-specific standards load from `~/.degacore/config/rules/` by file type
 - Ralph Loop config: `dega-core.yaml` (edit `check_command` for your toolchain)
 - Exec plans: `docs/exec-plans/active/<YYYYMMDD-slug>/plan.md`
 
@@ -362,7 +362,7 @@ Next steps:
 2. Edit dega-core.yaml — verify check_command matches your toolchain
 3. Run /apply-core to install global tools (if not already installed)
 4. Create your first exec plan: /plan
-5. Run it: bash ~/.claude/scripts/orch-run.sh <slug>
+5. Run it: bash ~/.degacore/scripts/orch-run.sh <slug>
 ```
 
 Adapt the summary to what actually happened — only show "Skipped" if
