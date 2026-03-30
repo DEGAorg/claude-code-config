@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ralph Loop health check — project-agnostic.
 # Reads success_criteria from dega-core.yaml (falls back to ralph.yaml).
-# Run from project root: bash ~/.claude/scripts/ralph-check.sh
+# Run from project root: bash ~/.degacore/scripts/ralph-check.sh
 # Exit 0 if all criteria pass, exit 1 if any fail.
 
 set -euo pipefail

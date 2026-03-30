@@ -124,7 +124,7 @@ OUTPUT3=$(
   env -u PULSE_SERVER -u DISPLAY -u WAYLAND_DISPLAY -u TERM_PROGRAM \
     -u WSL_DISTRO_NAME \
     PATH="${SHIM_DIR}:${PATH}" \
-    CLAUDE_SOUND="test" \
+    DEGA_SOUND="test" \
     bash "${REPO_ROOT}/hooks/play-sound.sh" 2>&1
 ) || true
 EXIT3=$?
@@ -136,7 +136,7 @@ echo ""
 echo "=== Test 4: play-sound.sh — sound=none exits immediately ==="
 
 OUTPUT4=$(
-  env CLAUDE_SOUND="none" \
+  env DEGA_SOUND="none" \
     bash "${REPO_ROOT}/hooks/play-sound.sh" 2>&1
 ) || true
 EXIT4=$?

@@ -1,7 +1,7 @@
 # Global Development Standards
 
 Global instructions for all projects. Project-specific AGENTS.md files override these defaults.
-Language-specific standards load automatically from `~/.claude/rules/` by file type.
+Language-specific standards load automatically from `~/.degacore/config/rules/` by file type.
 
 - Prefer Exa AI (`mcp__exa__web_search_exa`) over `WebSearch` for all web searches
 - Use skills proactively when they match the task — suggest relevant ones, don't block on them
@@ -117,7 +117,7 @@ completion criteria.
 **Run a plan with the orchestrator:**
 
 ```bash
-bash ~/.claude/scripts/orch-run.sh <dated-slug>
+bash ~/.degacore/scripts/orch-run.sh <dated-slug>
 ```
 
 The orchestrator spawns parallel worker agents in tmux (each in its own
@@ -136,7 +136,7 @@ at the project root.
 
 | Skill | Path | Use when |
 |-------|------|----------|
-| Development Patterns | `~/.claude/skills/development-patterns.md` | Designing agent workflows, orchestration, harness infrastructure |
+| Development Patterns | `~/.degacore/config/skills/development-patterns.md` | Designing agent workflows, orchestration, harness infrastructure |
 
 Skills are installed by `/apply-core`. Read `development-patterns.md` for a pattern
 index covering agent artifacts, context management, convergence loops, quality gates,

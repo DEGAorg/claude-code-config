@@ -433,7 +433,7 @@ Run `/insights` once a week. It analyzes your recent sessions and surfaces patte
 
 ## Project-level AGENTS.md
 
-For each project you work on, add an `AGENTS.md` at the repo root with project-specific context. The [global CLAUDE.md](#global-claudemd) sets defaults; the project file layers on what's unique to this codebase. A good project `AGENTS.md` includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions. Provider-specific shim files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) point agents to `AGENTS.md` automatically.
+For each project you work on, add an `AGENTS.md` at the repo root with project-specific context. The [global agent template](#global-agent-template) sets defaults; the project file layers on what's unique to this codebase. A good project `AGENTS.md` includes architecture (directory tree, key abstractions), build and test commands (`make dev`, `make test`), codebase navigation patterns (ast-grep examples for your codebase), domain-specific APIs and gotchas, and testing conventions. Provider-specific shim files (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) point agents to `AGENTS.md` automatically.
 
 For an example of a well-structured project CLAUDE.md, see [crytic/slither's CLAUDE.md](https://github.com/crytic/slither/blob/master/CLAUDE.md). It layers slither-specific context -- SlithIR internals, detector traversal patterns, type handling pitfalls -- on top of the same global standards from this repo.
 

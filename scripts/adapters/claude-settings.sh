@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Generate ~/.claude/settings.json from settings-template.json.
+# Generate Claude Code settings.json from settings-template.json.
 # Claude uses the canonical event names, so no translation is needed.
 # This adapter strips template metadata and adds Claude-specific fields.
 

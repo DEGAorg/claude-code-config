@@ -146,7 +146,7 @@ Plan created: <issue_url>
 
 To run with the orchestrator:
 
-    bash ~/.claude/scripts/orch-run.sh --issue N
+    bash ~/.degacore/scripts/orch-run.sh --issue N
 ```
 
 Replace `N` with the issue number and `<issue_url>` with the full GitHub issue URL.

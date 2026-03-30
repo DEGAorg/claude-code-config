@@ -6,7 +6,7 @@ Install Core harness artifacts from GitHub into `~/.degacore/` (DEGA_CORE_HOME).
 Works from any directory — no need to clone the repo. Shared artifacts live in
 `~/.degacore/` under a `config/`, `scripts/`, `state/`, `sounds/` layout.
 Agent-specific config (settings, commands, rules) is generated into each
-detected agent's config directory (`~/.claude/`, `~/.gemini/`, `~/.codex/`).
+detected agent's config directory (`~/.<agent>/` — e.g. `.claude`, `.gemini`, `.codex`).
 
 ## Source
 
@@ -186,7 +186,7 @@ command -v codex   # Codex CLI
 ```
 
 If a binary is found, the agent is considered installed. Also check for
-existing config directories (`~/.claude/`, `~/.gemini/`, `~/.codex/`) —
+existing config directories (`~/.<agent>/` — `.claude`, `.gemini`, `.codex`) —
 an agent is detected if either the binary exists or the config directory
 exists.
 
@@ -522,7 +522,7 @@ command -v codex  && HAVE_CODEX=1
 [[ -d ~/.codex ]]  && HAVE_CODEX=1
 ```
 
-If no agents are detected, default to Claude Code (create `~/.claude/`).
+If no agents are detected, default to Claude Code (create its config directory).
 
 Report which agents were detected before proceeding.
 
@@ -534,7 +534,7 @@ and write agent-specific config to the agent's config directory.
 
 | Agent | Adapter script | Output |
 |-------|---------------|--------|
-| Claude | `~/.degacore/scripts/adapters/claude-settings.sh` | `~/.claude/settings.json` |
+| Claude | `~/.degacore/scripts/adapters/claude-settings.sh` | `$HOME/.claude/settings.json` |
 | Gemini | `~/.degacore/scripts/adapters/gemini-settings.sh` | `~/.gemini/settings.json` |
 | Codex | `~/.degacore/scripts/adapters/codex-settings.sh` | `~/.codex/config.toml` + `~/.codex/hooks.json` |
 
@@ -562,7 +562,7 @@ of truth). Codex reads `AGENTS.md` natively (configured via
 
 | Agent | Instruction file | Content |
 |-------|-----------------|---------|
-| Claude | `~/.claude/CLAUDE.md` | Shim pointing to `AGENTS.md` |
+| Claude | `$HOME/.claude/CLAUDE.md` | Shim pointing to `AGENTS.md` |
 | Gemini | `~/.gemini/GEMINI.md` | Shim pointing to `AGENTS.md` |
 | Codex | *(none needed)* | Reads `AGENTS.md` natively via config.toml |
 
@@ -676,7 +676,7 @@ List which agents were configured:
 
 ```
 Agents configured:
-  Claude Code — ~/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
+  Claude Code — $HOME/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
   Gemini CLI  — ~/.gemini/ (settings.json, commands, rules, GEMINI.md → AGENTS.md)
   Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
 ```
@@ -699,7 +699,7 @@ Installed to ~/.degacore/:
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
 
 Agents configured:
-  Claude Code — ~/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
+  Claude Code — $HOME/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
 
 Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
 prediction-market layer on top of Core.
