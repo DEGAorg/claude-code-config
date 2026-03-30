@@ -1,0 +1,5 @@
+REWORK_ITEMS: 2
+
+--- item 2 (review failed) ---
+FINDING: `ELAPSED_STR` is used on line 552 in the PR body but is not computed until lines 632-647. At the time the PR is created (step 8, line 533-593), `ELAPSED_STR` is unset, so the PR body will contain "Elapsed: " with an empty value.
+ACTION: Move the elapsed-time computation (lines 632-647) above step 8 (before line 533), so `ELAPSED_STR` is available when building the PR body.

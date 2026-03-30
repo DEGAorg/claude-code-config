@@ -12,6 +12,7 @@ You receive these via your prompt:
 - **Title**: human-readable plan title
 - **Rationale**: why this task was chosen
 - **Focus area context**: description and constraints from focus.yaml
+- **Instructions**: project-specific conventions and constraints (from instructions file)
 - **Repo root**: working directory for the target repository
 
 ## Execution
@@ -38,7 +39,7 @@ include every section below, in this order:
 ```markdown
 # Plan: [Title]
 
-**Status:** In progress
+**Status:** Draft
 **Created:** YYYY-MM-DD
 
 ## Requirements
@@ -59,6 +60,14 @@ points. Workers read this to understand the strategy.]
 ## Risks and open questions
 
 - [Risk or question — note severity]
+
+## Questions for reviewer
+
+Items below need human input before this plan can be executed.
+If nothing is ambiguous, write "No blocking questions."
+
+- [ ] [Concrete question about an undefined requirement or unclear decision]
+- [ ] [Another question — include context so the reviewer can answer quickly]
 
 ## Progress log
 
@@ -82,6 +91,27 @@ points. Workers read this to understand the strategy.]
 ### 3. Plan quality rules
 
 Follow these rules when writing the plan:
+
+**Status field:**
+- Use `Draft` when created via `--plan-only` (plans needing human review)
+- Use `In progress` when created for immediate execution
+
+**Instructions compliance:**
+- If instructions were provided, follow them strictly
+- Instructions override defaults for plan style, scope, and constraints
+- If an instruction conflicts with the task, note it in "Questions for reviewer"
+
+**Questions for reviewer:**
+- This section is critical in plan-only mode. The human reviews plans before execution.
+- Ask about anything that is ambiguous, undefined, or requires a judgment call
+- Be specific: "Should X use approach A or B?" not "How should X work?"
+- Include enough context that the reviewer can answer without reading the full plan
+- If the task is fully defined and you have no doubts, write "No blocking questions."
+- Common question types:
+  - Scope boundaries ("Should this also handle X or is that a separate plan?")
+  - Design choices ("Use library A vs implement from scratch?")
+  - Missing requirements ("The spec doesn't define behavior when X happens")
+  - Risk acceptance ("This changes a shared interface — acceptable?")
 
 **Progress log items:**
 - Each item is a unit of work for one worker agent
@@ -120,3 +150,4 @@ commits the plan and launches the orchestrator.
 - **No commits** — the planner loop handles git operations
 - **Concrete items** — every progress log item must reference specific files or commands
 - **Deps are critical** — incorrect dependency annotations cause worker failures
+- **Instructions are law** — if instructions file was provided, follow its constraints

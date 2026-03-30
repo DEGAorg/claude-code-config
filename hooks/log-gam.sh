@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 # EXAMPLE: PostToolUse hook — logs GAM (Google Apps Manager) write operations
 # to JSONL. Adapt the verb patterns for any CLI tool where you want an audit

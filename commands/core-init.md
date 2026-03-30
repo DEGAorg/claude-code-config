@@ -1,6 +1,6 @@
 # Core Init
 
-@description Bootstrap any repo for DEGA Core — creates dega-core.yaml, exec-plans, .gitignore entries, and minimal CLAUDE.md. Enables Ralph Loop and orchestrator.
+@description Bootstrap any repo for DEGA Core — creates dega-core.yaml, exec-plans, .gitignore entries, and AGENTS.md with provider shims. Enables Ralph Loop and orchestrator.
 
 Run every step below in order. This command is idempotent — it skips files
 that already exist and never overwrites user-customized config.
@@ -12,7 +12,7 @@ that already exist and never overwrites user-customized config.
 Check if the current directory is the `claude-code-config` repo:
 
 ```bash
-[[ -f "CLAUDE.md" ]] && grep -q "claude-code-config" "CLAUDE.md" 2>/dev/null
+[[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null
 ```
 
 If that succeeds, stop and print:
@@ -63,7 +63,26 @@ in later steps.
 
 ---
 
-## 3. Create directory structure
+## 3. Check for jq
+
+Hooks installed by `/apply-core` require `jq` to parse tool input from stdin.
+Check if it's available and warn if missing:
+
+```bash
+command -v jq >/dev/null 2>&1
+```
+
+If `jq` is NOT found, print a warning (but continue):
+
+> ⚠ `jq` is not installed. Hooks that guard against `rm -rf` and enforce
+> feature branches will be disabled until `jq` is available.
+> Install it: `brew install jq` (macOS) or `apt install jq` (Linux).
+
+Do not abort — the rest of core-init does not require `jq`.
+
+---
+
+## 4. Create directory structure
 
 Create all directories. These are no-ops if they already exist:
 
@@ -104,7 +123,41 @@ Check each line before appending — skip if already in `.gitignore`. Create
 
 **If it does not exist:** write it using the detected language from Step 2.
 
-Template (substitute `<CHECK_COMMAND>` with the detected value):
+### GitHub detection
+
+Before writing the file, detect the GitHub remote and `gh` CLI availability:
+
+1. **Check if `gh` is installed and authenticated:**
+
+   ```bash
+   gh auth status 2>/dev/null
+   ```
+
+2. **If `gh` is available**, detect the GitHub repo from the git remote:
+
+   ```bash
+   gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null
+   ```
+
+   If that succeeds, use the returned `owner/repo` value for the `github.repo`
+   field and set `sync: true`.
+
+3. **If `gh` is NOT installed, not authenticated, or repo detection fails**,
+   write the `github:` block with `sync: false` and a comment explaining why:
+
+   ```yaml
+   github:
+     # gh CLI not available — install gh and run /core-init again to enable sync
+     sync: false
+   ```
+
+**The `github:` block must ALWAYS be present in the output.** There is no
+scenario where it is omitted.
+
+### Template
+
+Substitute `<CHECK_COMMAND>` with the detected value from Step 2, and
+`<GITHUB_BLOCK>` with the result of GitHub detection above:
 
 ```yaml
 # DEGA Core config — edit to match your project
@@ -118,8 +171,10 @@ check_command: |
 poll_interval_seconds: 30
 
 # Worker and reviewer prompts (global, installed by /apply-core)
-worker_prompt: ~/.claude/scripts/ralph-worker-prompt.md
-reviewer_prompt: ~/.claude/scripts/ralph-reviewer-prompt.md
+worker_prompt: ~/.degacore/scripts/ralph-worker-prompt.md
+reviewer_prompt: ~/.degacore/scripts/ralph-reviewer-prompt.md
+
+<GITHUB_BLOCK>
 
 success_criteria:
   - "tests pass"
@@ -127,21 +182,101 @@ success_criteria:
   - "types valid"
 ```
 
+Where `<GITHUB_BLOCK>` is one of:
+
+**When `gh` detected the repo successfully:**
+
+```yaml
+github:
+  sync: true
+  repo: <OWNER/REPO>
+  labels: true
+  comments: true
+  close_on_ship: true
+```
+
+**When `gh` is not installed, not authenticated, or detection failed:**
+
+```yaml
+github:
+  # gh CLI not available — install gh and run /core-init again to enable sync
+  sync: false
+```
+
 ---
 
-## 5. Write CLAUDE.md
+## 5. CRITICAL: github block must NEVER be omitted
 
-**If `CLAUDE.md` already exists:** tell the user it exists and skip. Print:
+**The `github:` block is MANDATORY in every `dega-core.yaml` produced by this
+command. There is NO scenario where it may be left out.**
 
-> `CLAUDE.md` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
+- If `gh` is installed and the repo is detected → write `sync: true` with full config.
+- If `gh` is NOT installed, not authenticated, or detection fails → write `sync: false` with a comment.
+- **Never skip the `github:` block.** Even if every detection step fails, the block must be present with `sync: false`.
+
+A missing `github:` block breaks the orchestrator's `GH_SYNC` detection and
+cascades into plan-path failures. This is the single most common failure mode
+on fresh Linux installs.
+
+After writing `dega-core.yaml`, proceed immediately to the validation gate
+(Step 6) before continuing.
+
+---
+
+## 6. Validation gate: verify github block exists
+
+After writing `dega-core.yaml`, re-read the file and verify the `github:` key
+is present. This is a programmatic check, not a visual one.
+
+```bash
+grep -q '^github:' dega-core.yaml
+```
+
+**If the check fails** (exit code non-zero):
+
+1. Print an error:
+
+   > **ERROR:** `dega-core.yaml` is missing the `github:` block. Adding fallback.
+
+2. Append the fallback block to the file:
+
+   ```bash
+   cat >> dega-core.yaml << 'EOF'
+
+   github:
+     # ADDED BY VALIDATION GATE — github block was missing after initial write
+     # Install gh and run /core-init again to enable sync
+     sync: false
+   EOF
+   ```
+
+3. Re-run the check to confirm the fix:
+
+   ```bash
+   grep -q '^github:' dega-core.yaml || { echo "FATAL: github block still missing after repair"; exit 1; }
+   ```
+
+**If the check passes**, print:
+
+> `dega-core.yaml` validated — `github:` block present.
+
+**Do not proceed to the next step until this validation passes.**
+
+---
+
+## 7. Write AGENTS.md + provider shims
+
+**If `AGENTS.md` already exists:** tell the user it exists and skip. Print:
+
+> `AGENTS.md` already exists — skipping. Delete it and re-run `/core-init` to regenerate.
 
 **If it does not exist:** fetch the minimal template from GitHub:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-claude-template.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-agent-template.md
 ```
 
-Write the fetched content to `CLAUDE.md` in the current directory.
+Write the fetched content to `AGENTS.md` in the current directory.
 
 If the fetch fails, write this fallback directly:
 
@@ -161,7 +296,7 @@ Replace this with a one-line description of your project.
 
 ## Working Conventions
 
-- Language-specific standards load from `~/.claude/rules/` by file type
+- Language-specific standards load from `~/.degacore/config/rules/` by file type
 - Ralph Loop config: `dega-core.yaml` (edit `check_command` for your toolchain)
 - Exec plans: `docs/exec-plans/active/<YYYYMMDD-slug>/plan.md`
 
@@ -170,9 +305,38 @@ Replace this with a one-line description of your project.
 Check `docs/exec-plans/active/` for in-progress plans before starting new work.
 ```
 
+### Provider shims
+
+After writing `AGENTS.md`, create provider-specific shim files that point
+agents to `AGENTS.md`. Skip any shim that already exists.
+
+**`CLAUDE.md`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+```
+
+**`GEMINI.md`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+```
+
+**`.cursorrules`** — write if it does not exist:
+
+```markdown
+# Agent Configuration
+
+Read and follow all instructions in AGENTS.md.
+```
+
 ---
 
-## 6. Print completion message
+## 8. Print completion message
 
 Summarize what was created. Use a checklist format:
 
@@ -185,17 +349,20 @@ Created:
 ✓ .claude/commands/              — local commands directory
 ✓ .gitignore                     — added .orchestrator/ and focus.yaml entries
 ✓ dega-core.yaml                — core config (<LANGUAGE> detected, <PKG_MGR> if Node)
-✓ CLAUDE.md                     — minimal project context
+✓ AGENTS.md                     — project agent configuration (single source of truth)
+✓ CLAUDE.md                     — shim pointing to AGENTS.md
+✓ GEMINI.md                     — shim pointing to AGENTS.md
+✓ .cursorrules                  — shim pointing to AGENTS.md
 
 Skipped (already existed):
 ⊘ <list any files that were skipped>
 
 Next steps:
-1. Edit CLAUDE.md — add your project's repo map and conventions
+1. Edit AGENTS.md — add your project's repo map and conventions
 2. Edit dega-core.yaml — verify check_command matches your toolchain
 3. Run /apply-core to install global tools (if not already installed)
 4. Create your first exec plan: /plan
-5. Run it: bash ~/.claude/scripts/orch-run.sh <slug>
+5. Run it: bash ~/.degacore/scripts/orch-run.sh <slug>
 ```
 
 Adapt the summary to what actually happened — only show "Skipped" if

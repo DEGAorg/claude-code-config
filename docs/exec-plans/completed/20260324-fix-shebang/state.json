@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "plan": "20260324-fix-shebang",
+  "issueNumber": 17,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Replace `#!/bin/bash` with `#!/usr/bin/env bash` in all 6 files and verify with `rg '#!/bin/bash' scripts/ hooks/`",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 1,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-24T20:51:20Z",
+  "updatedAt": "2026-03-24T20:56:44Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

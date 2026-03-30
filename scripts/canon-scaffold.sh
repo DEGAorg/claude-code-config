@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canon Scaffold — scaffolds a Canon prediction-market project.
 #
-# Usage: bash ~/.claude/scripts/canon-scaffold.sh [--force]
+# Usage: bash "$DEGA_CORE_HOME/scripts/canon-scaffold.sh" [--force]
 #
 # Run from inside the target project directory (must be empty or use --force).
 # Fetches agents, skills, and commands from GitHub, generates config and
@@ -19,15 +19,18 @@ FORCE=false
 PROJECT_DIR="$(pwd)"
 PROJECT_NAME="$(basename "${PROJECT_DIR}")"
 STATE_FILE="${PROJECT_DIR}/.canon/state.json"
-TUI_WRITE="${HOME}/.claude/scripts/terminal-ui-write.sh"
+DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
+TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Helper: write state to dashboard (no-op if writer not installed) ─────────
 state() {
-	[[ -f "${TUI_WRITE}" ]] && bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
+	if [[ -f "${TUI_WRITE}" ]]; then
+		bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
+	fi
 }
 
 # ── Guard: don't run inside claude-code-config itself ─────────────────────────
-if [[ -f "CLAUDE.md" ]] && grep -q "claude-code-config" "CLAUDE.md" 2>/dev/null; then
+if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null; then
 	echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
 	exit 1
 fi
@@ -53,7 +56,7 @@ fetch() {
 	fi
 }
 
-# ── 0. Ensure git repo exists (ralph-loop.sh needs it for stagnation detection)
+# ── 0. Ensure git repo exists (orchestrator needs it for worktree isolation)
 if [[ ! -d ".git" ]]; then
 	echo "→ initializing git repo..."
 	git init -q
@@ -78,7 +81,7 @@ state log.info="Agents fetched"
 echo "→ fetching skills..."
 state log.info="Fetching 8 domain skills..."
 for skill in prediction-markets polymarket risk-management strategy-patterns \
-	backtesting arena-tracking ralph-loop canon-conventions; do
+	backtesting arena-tracking orchestrator canon-conventions; do
 	fetch "canon/skills/${skill}.md" ".canon/skills/${skill}.md"
 done
 state log.info="Skills fetched"
@@ -239,7 +242,7 @@ skills:
   strategy-patterns: .canon/skills/strategy-patterns.md
   backtesting: .canon/skills/backtesting.md
   arena-tracking: .canon/skills/arena-tracking.md
-  ralph-loop: .canon/skills/ralph-loop.md
+  orchestrator: .canon/skills/orchestrator.md
   canon-conventions: .canon/skills/canon-conventions.md
 
 workflows:
@@ -271,8 +274,8 @@ context_routing:
     workflow: discover
   iteration:
     agent: dev
-    auto_skills: [ralph-loop, canon-conventions]
-    workflow: ralph-cycle
+    auto_skills: [orchestrator, canon-conventions]
+    workflow: develop
 
 standards:
   always_load: [canon-conventions]
@@ -284,7 +287,7 @@ standards:
     - "If it is not in the repo, it does not exist"
 EOF
 
-# ── 7. Write dega-core.yaml (project root — where ralph-loop.sh expects it) ──
+# ── 7. Write dega-core.yaml (project root — orchestrator config) ─────────────
 echo "→ writing dega-core.yaml..."
 cat >"dega-core.yaml" <<EOF
 version: 1
@@ -354,6 +357,24 @@ cat >"AGENTS.md" <<'EOF'
 5. "If it's not in the repo, it doesn't exist"
 EOF
 
+# ── 9b. Write provider shims (CLAUDE.md, GEMINI.md, .cursorrules) ────────────
+echo "→ writing provider shims..."
+for shim in CLAUDE.md GEMINI.md; do
+	cat >"${shim}" <<'SHIMEOF'
+# Agent Configuration
+
+Read and follow all instructions in [AGENTS.md](AGENTS.md).
+SHIMEOF
+	echo "  wrote: ${shim}"
+done
+
+cat >".cursorrules" <<'SHIMEOF'
+# Agent Configuration
+
+Read and follow all instructions in AGENTS.md.
+SHIMEOF
+echo "  wrote: .cursorrules"
+
 # ── 10. Verify ────────────────────────────────────────────────────────────────
 echo ""
 echo "→ verifying..."
@@ -376,7 +397,10 @@ for f in \
 	src/clients/sportsbook.ts \
 	package.json \
 	tsconfig.json \
-	AGENTS.md; do
+	AGENTS.md \
+	CLAUDE.md \
+	GEMINI.md \
+	.cursorrules; do
 	if [[ ! -f "${f}" ]]; then
 		echo "  MISSING: ${f}" >&2
 		ERRORS=$((ERRORS + 1))
@@ -413,9 +437,13 @@ echo ""
 echo "  src/clients/"
 echo "    polymarket.ts, sportsbook.ts"
 echo ""
-echo "  package.json, tsconfig.json, .env.example, .gitignore, AGENTS.md"
+echo "  AGENTS.md          <- project configuration (source of truth)"
+echo "  CLAUDE.md          <- shim → AGENTS.md"
+echo "  GEMINI.md          <- shim → AGENTS.md"
+echo "  .cursorrules       <- shim → AGENTS.md"
+echo "  package.json, tsconfig.json, .env.example, .gitignore"
 echo ""
-# ── 12. Initial git commit (ralph-loop.sh needs at least one commit) ─────────
+# ── 12. Initial git commit (orchestrator needs at least one commit) ──────────
 echo "→ creating initial commit..."
 git add -A
 git commit -q -m "scaffold: Canon framework initialized"

@@ -12,7 +12,7 @@
 #   0 — all criteria verified (PASS)
 #   1 — some criteria remain unchecked (FAIL)
 #
-# Requires: jq, claude CLI, tmux, orch-state.sh
+# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh, agent-shim.sh
 
 set -euo pipefail
 
@@ -21,6 +21,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -30,13 +32,18 @@ fi
 
 PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-verifier.md"
 
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
+
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
-# Use worktree plan path if worktree exists (matches orch-engine.sh)
-if [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
+# Use worktree plan path; in GH mode resolve from .orchestrator/
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+elif [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
 	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
 else
 	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
@@ -89,7 +96,7 @@ orch_write_state "${SLUG}" "${UPDATED}"
 
 # --- Read poll interval ---
 
-POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
+POLL_INTERVAL=$(orch_read_config "verify_poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
 # --- Tmux session ---
@@ -126,13 +133,23 @@ fi
 # Kill stale verifier window from previous iteration
 tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
 
+# Build agent command using shim helper (handles Codex exec pattern)
+CMD_TEMPLATE="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+AGENT_CMD_STR="${CMD_TEMPLATE/DEGA_PROMPT_MARKER/\"\$(cat '${PROMPT_FILE}')\"}"
+
+# Skip env -u when session var is empty (e.g., Codex has no session var)
+SESSION_VAR="$(dega_agent_session_var)"
+ENV_PREFIX=""
+if [[ -n "${SESSION_VAR}" ]]; then
+	ENV_PREFIX="env -u '${SESSION_VAR}'"
+fi
+
 tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
 	"cd '${VERIFY_CWD}' && \
 	 RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-	 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
-	 \"\$(cat '${PROMPT_FILE}')\" ; \
+	 ${ENV_PREFIX} ${AGENT_CMD_STR} ; \
 	 echo '--- verifier exited ---'; \
-	 sleep 5"
+	 sleep 2"
 
 # Stream verifier output to log file
 tmux pipe-pane -t "${TMUX_SESSION}:${WINDOW_NAME}" \
@@ -142,7 +159,7 @@ echo "orch-verify: spawned verifier in tmux window '${WINDOW_NAME}'"
 
 # --- Poll for verify-result.txt ---
 
-MAX_POLLS=120  # 120 * 10s = 20 minutes default timeout
+MAX_POLLS=120 # 120 * 10s = 20 minutes default timeout
 poll_count=0
 
 while true; do

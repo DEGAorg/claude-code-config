@@ -1,0 +1,5 @@
+REWORK_ITEMS: 1
+
+--- item 1 (review failed) ---
+FINDING: scripts/orch-display.sh:63 still contains `#!/bin/bash` inside a heredoc that generates a .command file. The worker summary claims "zero matches" from `rg '#!/bin/bash' scripts/ hooks/` but this instance produces a match.
+ACTION: Replace `#!/bin/bash` with `#!/usr/bin/env bash` at scripts/orch-display.sh:63 (the heredoc shebang in `open_command_file()`), so that `rg '#!/bin/bash' scripts/ hooks/` truly returns zero matches as required by the item.

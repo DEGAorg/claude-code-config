@@ -17,6 +17,9 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
 
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
+
 # --- Parse args ---
 
 SLUG=""
@@ -54,15 +57,29 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
+
 # Per-plan state paths
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+
+# Write current epoch to heartbeat file — called at poll start, after
+# worker spawn, after review, after each SHIP/FAIL step, and before exit.
+write_heartbeat() {
+	date +%s >"${HEARTBEAT_FILE}"
+}
 
 # Plan dir points to the worktree copy so workers never touch main repo
-PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+else
+	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+fi
 if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
 	exit 1
@@ -81,6 +98,30 @@ TOTAL_COUNT=$(jq '.items | length' "${ORCH_STATE_FILE}")
 
 POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-30}"
+
+# --- Lifecycle hooks ---
+# Runs all executable scripts in hooks/orch-lifecycle/ with (event, slug, ...extra args).
+# Hooks are sorted alphabetically so numeric prefixes control ordering (01-*, 02-*, ...).
+# Failures are logged but never block the orchestrator.
+
+LIFECYCLE_HOOKS_DIR="${SCRIPT_DIR}/../hooks/orch-lifecycle"
+
+run_lifecycle_hooks() {
+	local event="$1"
+	shift
+	if [[ ! -d "${LIFECYCLE_HOOKS_DIR}" ]]; then
+		return 0
+	fi
+	local hook
+	while IFS= read -r -d '' hook; do
+		if [[ -x "${hook}" ]]; then
+			echo "orch-engine: lifecycle hook: $(basename "${hook}") ${event} ${SLUG}"
+			"${hook}" "${event}" "${SLUG}" "$@" 2>&1 || {
+				echo "orch-engine: WARN — lifecycle hook failed: $(basename "${hook}") (exit $?)" >&2
+			}
+		fi
+	done < <(find "${LIFECYCLE_HOOKS_DIR}" -maxdepth 1 -type f -print0 | sort -z)
+}
 
 # --- Worker prompt template ---
 
@@ -138,6 +179,40 @@ $(cat "${review_file}")
 "
 	fi
 
+	# Pre-hydrate context: file paths, requirements, criteria, check command
+	local approach_section
+	approach_section=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Approach/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_path}")
+
+	local file_paths
+	file_paths=$(printf '%s\n%s\n' "${item_desc}" "${approach_section}" |
+		orch_extract_file_paths)
+
+	local plan_sections
+	plan_sections=$(orch_extract_plan_sections "${plan_path}")
+
+	local task_context=""
+	if [[ -n "${file_paths}" ]]; then
+		task_context="### Relevant file paths
+
+${file_paths}
+"
+	fi
+	if [[ -n "${plan_sections}" ]]; then
+		task_context="${task_context}
+${plan_sections}"
+	fi
+
+	# Cap pre-hydrated context at 200 lines
+	if [[ -n "${task_context}" ]]; then
+		task_context=$(printf '%s\n' "${task_context}" | head -200)
+	fi
+
 	cat <<-PROMPT
 		${WORKER_PROMPT_BASE}
 
@@ -150,6 +225,9 @@ $(cat "${review_file}")
 		- **Plan path**: ${plan_path}
 		- **Done-files directory**: ${done_dir}
 		- **Worktree**: ${WORKTREE_DIR}
+
+		## Task Context (pre-gathered by orchestrator)
+		${task_context:-"(no pre-hydrated context available)"}
 
 		## Completed dependency summaries
 		${dep_context:-"(no dependencies)"}
@@ -178,13 +256,17 @@ spawn_worker() {
 	prompt_file="${prompt_file}.md"
 	printf '%s\n' "${prompt}" >"${prompt_file}"
 
-	# Create tmux window and run claude worker
-	# Foreground: interactive TUI (full claude). Background: headless (claude -p).
-	local claude_cmd
-	if [[ "${BACKGROUND}" == true ]]; then
-		claude_cmd="claude -p --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
-	else
-		claude_cmd="claude --dangerously-skip-permissions \"\$(cat '${prompt_file}')\""
+	# Build agent command using shim helper (handles Codex exec pattern)
+	local cmd_template agent_cmd_str
+	cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+	agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
+
+	# Skip env -u when session var is empty (e.g., Codex has no session var)
+	local session_var
+	session_var="$(dega_agent_session_var)"
+	local env_prefix=""
+	if [[ -n "${session_var}" ]]; then
+		env_prefix="env -u '${session_var}'"
 	fi
 
 	# Kill stale window from previous iteration if it exists
@@ -194,9 +276,9 @@ spawn_worker() {
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${pane_name}" \
 		"cd '${WORKTREE_DIR}' && \
 		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
-		 env -u CLAUDECODE ${claude_cmd} ; \
+		 ${env_prefix} ${agent_cmd_str} ; \
 		 echo '--- worker ${item_id} exited ---'; \
-		 sleep 5"
+		 sleep 2"
 
 	# Stream worker output to log file for the dashboard
 	tmux pipe-pane -t "${TMUX_SESSION}:${pane_name}" \
@@ -208,6 +290,7 @@ spawn_worker() {
 # --- Wave execution loop ---
 
 echo ""
+echo "orch-engine: GH_SYNC=${GH_SYNC}"
 echo "orch-engine: starting wave execution"
 echo "  plan: ${SLUG}"
 echo "  total items: ${TOTAL_COUNT}"
@@ -216,7 +299,17 @@ echo "  worktree: ${WORKTREE_DIR}"
 echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
+# Fire start lifecycle hooks (only on first execution, not rework re-execs)
+ITERATION_SUM=$(jq '[.items[].iteration // 0] | add // 0' "${ORCH_STATE_FILE}")
+if [[ "${ITERATION_SUM}" -eq 0 ]]; then
+	run_lifecycle_hooks "start" \
+		--items "${TOTAL_COUNT}" \
+		--max-workers "${MAX_WORKERS}"
+fi
+
 while true; do
+	write_heartbeat
+
 	# Sync done-files, detect stale workers, promote
 	# Worker windows stay alive until SHIP/REVISE so capture-pane output is visible
 	orch_sync_done_files "${SLUG}"
@@ -245,7 +338,7 @@ while true; do
 				"${ORCH_STATE_FILE}")
 			while IFS= read -r line; do
 				echo "orch-engine:   FAILED — item ${line}"
-			done <<< "${failed_ids}"
+			done <<<"${failed_ids}"
 		else
 			echo "orch-engine: all ${TOTAL_COUNT} items complete"
 		fi
@@ -284,6 +377,7 @@ while true; do
 			spawn_worker "${rid}" "${rdesc}"
 			spawned=$((spawned + 1))
 		done
+		write_heartbeat
 	fi
 
 	# Sleep before next poll
@@ -294,6 +388,10 @@ done
 
 echo "orch-engine: running per-item review via orch-review.sh"
 "${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+write_heartbeat
+
+# Fire review lifecycle hooks
+run_lifecycle_hooks "review"
 
 # Read review result from state
 REVIEW_RESULT=$(jq -r '.finalReview.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
@@ -322,7 +420,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
 		orch_write_state "${SLUG}" "${updated}"
 
-		if "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
+		if GH_SYNC="${GH_SYNC}" "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
 			# Verifier succeeded — re-check criteria
 			CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
 			if [[ "${CC_AFTER}" -gt 0 ]]; then
@@ -369,9 +467,26 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
 		orch_write_state "${SLUG}" "${updated}"
 	fi
+
+	# Fire verify lifecycle hooks — state.json now has verification result
+	run_lifecycle_hooks "verify"
 fi
 
 # --- Actual SHIP / REVISE handling ---
+
+# Safety net: if the engine crashes during the SHIP flow (e.g., unguarded
+# command fails with set -e), mark state as "ship-crashed" so it doesn't
+# stay stuck at "verifying" forever.
+ship_crash_handler() {
+	echo "orch-engine: FATAL — engine crashed during SHIP flow (line $1)" >&2
+	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+	jq --arg now "${now}" \
+		'.status = "ship-crashed" | .updatedAt = $now' \
+		"${ORCH_STATE_FILE}" >"${ORCH_STATE_FILE}.tmp" &&
+		mv "${ORCH_STATE_FILE}.tmp" "${ORCH_STATE_FILE}"
+	write_heartbeat
+}
+trap 'ship_crash_handler ${LINENO}' ERR
 
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
@@ -393,91 +508,129 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
 	# Play completion sound if available
 	if [[ -x "${SCRIPT_DIR}/../hooks/play-sound.sh" ]]; then
-		bash "${SCRIPT_DIR}/../hooks/play-sound.sh" "success" || true
+		DEGA_SOUND=success bash "${SCRIPT_DIR}/../hooks/play-sound.sh" || true
 	fi
 
 	# Kill worker/reviewer windows now that we're done
 	orch_kill_done_workers "${SLUG}"
 
 	# --- Step 1: Sync worktree plan.md back to main repo ---
-	MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
-	WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
-	if [[ -f "${WT_PLAN}" ]]; then
-		if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
-			echo "orch-engine: [SHIP 1/8] synced plan.md from worktree"
-		else
-			echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
-		fi
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 1/9] skipped — GH mode (no local plan sync)"
 	else
-		echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
+		MAIN_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+		WT_PLAN="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}/plan.md"
+		if [[ -f "${WT_PLAN}" ]]; then
+			if cp "${WT_PLAN}" "${MAIN_PLAN_DIR}/plan.md"; then
+				echo "orch-engine: [SHIP 1/9] synced plan.md from worktree"
+			else
+				echo "orch-engine: ERROR — failed to sync plan.md from worktree" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
+		else
+			echo "orch-engine: WARN — worktree plan.md not found: ${WT_PLAN}"
+		fi
 	fi
 
-	# --- Step 2: Merge worktree branch into main ---
-	if orch_merge_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 2/8] worktree merged"
+	write_heartbeat
+
+	# --- Step 2: Commit worktree changes (stay on worktree branch) ---
+	# Workers commit to orch/<slug> branch. We push that branch directly
+	# for the PR instead of merging into the working branch. This gives
+	# each plan its own PR even when multiple plans run concurrently.
+	if orch_commit_worktree "${SLUG}"; then
+		echo "orch-engine: [SHIP 2/9] worktree changes committed"
 	else
-		echo "orch-engine: ERROR — worktree merge failed" >&2
-		SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		echo "orch-engine: WARN — worktree commit returned non-zero (may have no changes)"
 	fi
+
+	write_heartbeat
 
 	# --- Step 3: Deregister from master state ---
 	orch_master_deregister "${SLUG}" "completed"
-	echo "orch-engine: [SHIP 3/8] deregistered from master state"
+	echo "orch-engine: [SHIP 3/9] deregistered from master state"
+
+	write_heartbeat
 
 	# --- Step 4: Move plan from active/ to completed/ ---
-	ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 	COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
-	if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
-		mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
-		if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
-			echo "orch-engine: [SHIP 4/8] moved plan to completed/"
-		else
-			echo "orch-engine: ERROR — failed to move plan to completed/" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
-		fi
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 4/9] skipped — GH mode (no local plan move)"
 	else
-		echo "orch-engine: WARN — active plan dir not found: ${ACTIVE_PLAN_DIR}"
+		ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+		if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
+			mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+			if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
+				echo "orch-engine: [SHIP 4/9] moved plan to completed/"
+			else
+				echo "orch-engine: ERROR — failed to move plan to completed/" >&2
+				SHIP_ERRORS=$((SHIP_ERRORS + 1))
+			fi
+		else
+			echo "orch-engine: WARN — active plan dir not found: ${ACTIVE_PLAN_DIR}"
+		fi
+
+		# Save final state.json into completed plan directory
+		if [[ -d "${COMPLETED_DIR}" ]]; then
+			cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
+		fi
 	fi
 
-	# Save final state.json into completed plan directory
-	if [[ -d "${COMPLETED_DIR}" ]]; then
-		cp "${ORCH_STATE_FILE}" "${COMPLETED_DIR}/state.json"
-	fi
+	write_heartbeat
 
 	# --- Step 5: Commit the plan move ---
-	git -C "${REPO_ROOT}" add \
-		"docs/exec-plans/active/${SLUG}" \
-		"docs/exec-plans/completed/${SLUG}"
-	if git -C "${REPO_ROOT}" diff --cached --quiet; then
-		echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 5/9] skipped — GH mode (no plan move to commit)"
 	else
-		if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
-			echo "orch-engine: [SHIP 5/8] committed plan move"
-		else
-			echo "orch-engine: ERROR — git commit failed for plan move" >&2
-			SHIP_ERRORS=$((SHIP_ERRORS + 1))
+		# Stage the deletion of active/ (already moved by step 4) and new completed/ dir.
+		# Guard each path — step 4 may have partially failed or paths may not exist.
+		git -C "${REPO_ROOT}" rm -r --cached --ignore-unmatch \
+			"docs/exec-plans/active/${SLUG}" 2>/dev/null || true
+		if [[ -d "${REPO_ROOT}/docs/exec-plans/completed/${SLUG}" ]]; then
+			git -C "${REPO_ROOT}" add "docs/exec-plans/completed/${SLUG}"
 		fi
-	fi
-
-	# --- Step 6: Append to plan registry ---
-	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
-	if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
-		# Commit registry update
-		git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
-		if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-			if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
-				echo "orch-engine: ERROR — git commit failed for registry update" >&2
+		if git -C "${REPO_ROOT}" diff --cached --quiet; then
+			echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
+		else
+			if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
+				echo "orch-engine: [SHIP 5/9] committed plan move"
+			else
+				echo "orch-engine: ERROR — git commit failed for plan move" >&2
 				SHIP_ERRORS=$((SHIP_ERRORS + 1))
 			fi
 		fi
-		echo "orch-engine: [SHIP 6/8] appended to plan registry"
-	else
-		echo "orch-engine: WARN — registry append failed (non-fatal)"
 	fi
 
+	write_heartbeat
+
+	# --- Step 6: Append to plan registry ---
+	ITER_COUNT=$(jq '[.items[].iteration // 0] | max' "${ORCH_STATE_FILE}")
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: [SHIP 6/9] skipped — GH mode (issues are the registry)"
+	else
+		if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+			# Commit registry update
+			git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
+			if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
+				if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
+					echo "orch-engine: ERROR — git commit failed for registry update" >&2
+					SHIP_ERRORS=$((SHIP_ERRORS + 1))
+				fi
+			fi
+			echo "orch-engine: [SHIP 6/9] appended to plan registry"
+		else
+			echo "orch-engine: WARN — registry append failed (non-fatal)"
+		fi
+	fi
+
+	write_heartbeat
+
 	# --- Step 7: Append to changelog ---
-	PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
+	if [[ "${GH_SYNC}" == true ]]; then
+		PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${PLAN_DIR}/plan.md" 2>/dev/null || true)
+	else
+		PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
+	fi
 	if [[ -n "${PLAN_TITLE}" ]]; then
 		if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
 			git -C "${REPO_ROOT}" add "CHANGELOG.md"
@@ -487,7 +640,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					SHIP_ERRORS=$((SHIP_ERRORS + 1))
 				fi
 			fi
-			echo "orch-engine: [SHIP 7/8] appended to changelog"
+			echo "orch-engine: [SHIP 7/9] appended to changelog"
 		else
 			echo "orch-engine: WARN — changelog append failed (non-fatal)"
 		fi
@@ -495,9 +648,100 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 		echo "orch-engine: WARN — could not extract plan title for changelog"
 	fi
 
-	# --- Step 8: Clean up worktree ---
+	write_heartbeat
+
+	# --- Compute elapsed time (needed by PR body and final summary) ---
+	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
+	if [[ -n "${STARTED_AT}" ]]; then
+		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null ||
+			date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
+		if [[ -n "${START_EPOCH}" ]]; then
+			NOW_EPOCH=$(date +%s)
+			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
+			ELAPSED_MIN=$((ELAPSED_SECS / 60))
+			ELAPSED_SEC=$((ELAPSED_SECS % 60))
+			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
+		else
+			ELAPSED_STR="unknown"
+		fi
+	else
+		ELAPSED_STR="unknown"
+	fi
+
+	write_heartbeat
+
+	# --- Step 8: Push worktree branch and create PR ---
+	# Each plan pushes its own orch/ branch so multiple concurrent
+	# plans produce separate PRs instead of sharing the working branch.
+	# Read actual branch name from the worktree (includes issue number if set).
+	ORCH_BRANCH=$(git -C "${ORCH_STATE_DIR}/worktrees/${SLUG}" \
+		rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${SLUG}")
+	PR_TARGET=$(grep 'pr_target:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
+		awk '{print $2}' | tr -d ' ' || true)
+	PR_TARGET="${PR_TARGET:-main}"
+
+	WORKTREE_DIR_PUSH="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+	if [[ -d "${WORKTREE_DIR_PUSH}" ]]; then
+		# Push the worktree branch directly
+		if git -C "${WORKTREE_DIR_PUSH}" push -u origin "${ORCH_BRANCH}" 2>&1; then
+			echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
+
+			# Build PR body
+			PR_BODY="## SHIP Summary"$'\n\n'
+			PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
+			PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
+			if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+				PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
+			fi
+			PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
+			PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
+
+			# Add Closes #N if issue is linked
+			ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
+			if [[ -n "${ISSUE_NUMBER}" ]]; then
+				PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
+			fi
+
+			# Determine repo for gh pr create
+			GH_REPO=$(grep 'repo:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
+				head -1 | awk '{print $2}' | tr -d ' ' || true)
+
+			PR_TITLE="plan: ${SLUG}"
+			GH_ARGS=(pr create
+				--title "${PR_TITLE}"
+				--base "${PR_TARGET}"
+				--head "${ORCH_BRANCH}"
+			)
+			if [[ -n "${GH_REPO}" ]]; then
+				GH_ARGS+=(--repo "${GH_REPO}")
+			fi
+
+			if PR_URL=$(gh "${GH_ARGS[@]}" --body "${PR_BODY}" 2>&1); then
+				echo "orch-engine: PR created: ${PR_URL}"
+
+				# Post PR link as comment on the linked issue
+				if [[ -n "${ISSUE_NUMBER}" && -n "${GH_REPO}" ]]; then
+					gh issue comment "${ISSUE_NUMBER}" \
+						--repo "${GH_REPO}" \
+						--body "PR created: ${PR_URL}" 2>&1 || {
+						echo "orch-engine: WARN — failed to post PR link on issue #${ISSUE_NUMBER}" >&2
+					}
+				fi
+			else
+				echo "orch-engine: WARN — PR creation failed (non-fatal): ${PR_URL}" >&2
+			fi
+		else
+			echo "orch-engine: WARN — git push failed, skipping PR creation" >&2
+		fi
+	else
+		echo "orch-engine: [SHIP 8/9] skipped PR — no worktree (changes on working branch)"
+	fi
+
+	write_heartbeat
+
+	# --- Step 9: Clean up worktree ---
 	if orch_cleanup_worktree "${SLUG}"; then
-		echo "orch-engine: [SHIP 8/8] worktree cleaned up"
+		echo "orch-engine: [SHIP 9/9] worktree cleaned up"
 	else
 		echo "orch-engine: WARN — worktree cleanup failed (non-fatal)"
 	fi
@@ -512,41 +756,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	# --- Post-SHIP validation ---
 	echo ""
 	VALIDATION_OK=true
-	if [[ -d "${REPO_ROOT}/docs/exec-plans/active/${SLUG}" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan still in active/" >&2
-		VALIDATION_OK=false
-	fi
-	if [[ ! -d "${COMPLETED_DIR}" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan not in completed/" >&2
-		VALIDATION_OK=false
-	fi
-	if [[ ! -f "${COMPLETED_DIR}/plan.md" ]]; then
-		echo "orch-engine: VALIDATION FAIL — plan.md missing from completed/" >&2
-		VALIDATION_OK=false
-	fi
-	if git -C "${REPO_ROOT}" status --porcelain \
-		"docs/exec-plans/active/${SLUG}" \
-		"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
-		echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
-		VALIDATION_OK=false
-	fi
-
-	# --- SHIP summary with elapsed time ---
-	STARTED_AT=$(jq -r '.startedAt // empty' "${ORCH_STATE_FILE}")
-	if [[ -n "${STARTED_AT}" ]]; then
-		START_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "${STARTED_AT}" +%s 2>/dev/null \
-			|| date -d "${STARTED_AT}" +%s 2>/dev/null || echo "")
-		if [[ -n "${START_EPOCH}" ]]; then
-			NOW_EPOCH=$(date +%s)
-			ELAPSED_SECS=$((NOW_EPOCH - START_EPOCH))
-			ELAPSED_MIN=$((ELAPSED_SECS / 60))
-			ELAPSED_SEC=$((ELAPSED_SECS % 60))
-			ELAPSED_STR="${ELAPSED_MIN}m ${ELAPSED_SEC}s"
-		else
-			ELAPSED_STR="unknown"
-		fi
+	if [[ "${GH_SYNC}" == true ]]; then
+		echo "orch-engine: post-validation skipped — GH mode (no local plan artifacts)"
 	else
-		ELAPSED_STR="unknown"
+		if [[ -d "${REPO_ROOT}/docs/exec-plans/active/${SLUG}" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan still in active/" >&2
+			VALIDATION_OK=false
+		fi
+		if [[ ! -d "${COMPLETED_DIR}" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan not in completed/" >&2
+			VALIDATION_OK=false
+		fi
+		if [[ ! -f "${COMPLETED_DIR}/plan.md" ]]; then
+			echo "orch-engine: VALIDATION FAIL — plan.md missing from completed/" >&2
+			VALIDATION_OK=false
+		fi
+		if git -C "${REPO_ROOT}" status --porcelain \
+			"docs/exec-plans/active/${SLUG}" \
+			"docs/exec-plans/completed/${SLUG}" 2>/dev/null | grep -q .; then
+			echo "orch-engine: VALIDATION FAIL — uncommitted plan changes" >&2
+			VALIDATION_OK=false
+		fi
 	fi
 
 	echo ""
@@ -561,7 +791,7 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo "  Errors:   ${SHIP_ERRORS}"
 	echo "  Elapsed:  ${ELAPSED_STR}"
 	if [[ "${VALIDATION_OK}" == true ]] && [[ "${SHIP_ERRORS}" -eq 0 ]]; then
-		echo "  Status:   all 8 steps passed, validation OK"
+		echo "  Status:   all 9 steps passed, validation OK"
 	else
 		echo "  Status:   completed with issues (${SHIP_ERRORS} error(s), validation=${VALIDATION_OK})" >&2
 		echo "  Details:  .orchestrator/plans/${SLUG}/logs/engine.log" >&2
@@ -570,7 +800,15 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 	echo ""
 	echo "orch-engine: log saved to .orchestrator/plans/${SLUG}/logs/engine.log"
 
+	# Fire ship lifecycle hooks with summary data
+	run_lifecycle_hooks "ship" \
+		--items "${TOTAL_COUNT}" \
+		--passed "${DONE_COUNT}" \
+		--failed "${FAILED_COUNT}" \
+		--elapsed "${ELAPSED_STR}"
+
 	# Engine exits — dashboard stays open showing DONE screen
+	write_heartbeat
 	exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo ""
@@ -578,11 +816,21 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
 	echo "  Re-running wave execution for rework items..."
 	echo ""
 
+	# Fire revise lifecycle hooks
+	REVISE_FAILED=$(orch_count_by_status "${SLUG}" "failed")
+	REVISE_DONE=$(orch_count_by_status "${SLUG}" "done")
+	run_lifecycle_hooks "revise" \
+		--items "${TOTAL_COUNT}" \
+		--passed "${REVISE_DONE}" \
+		--failed "${REVISE_FAILED}"
+
 	# Kill worker windows before re-exec
 	orch_kill_done_workers "${SLUG}"
 
 	# Update master progress before re-exec
 	orch_master_update_progress "${SLUG}"
+
+	write_heartbeat
 
 	# Re-exec engine for rework pass (review already reset items to "ready")
 	BACKGROUND_FLAG=""
@@ -603,5 +851,6 @@ else
 	orch_write_state "${SLUG}" "${updated}"
 
 	# Engine exits — dashboard stays open showing FAILED screen
+	write_heartbeat
 	exit 1
 fi

@@ -1,0 +1,5 @@
+REWORK_ITEMS: 4
+
+--- item 4 (review failed) ---
+FINDING: The commit fa3712f only toggled the checkbox in plan.md — zero source files were changed. The actual rewrite of github_state.py exists as an uncommitted modification in /Users/cerratoa/dega/conductor-view/ (along with all other items' changes), but was never committed. The worker operated in the wrong repo (claude-code-config worktree) and only modified plan.md there.
+ACTION: Commit the actual source changes in conductor-view to the correct branch. The file content at conductor-view/src/toad/widgets/github_state.py looks correct (VerticalScroll with StatusOverview, TimelineView, Collapsible detail tabs), but it must be committed for the item to be considered done.

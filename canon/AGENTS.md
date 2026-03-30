@@ -1,11 +1,79 @@
-# Canon Strategy Development
+# Canon — Prediction Market Development Layer
 
-## Quick Reference
-- Framework config: `.canon/config.yaml`
-- Ralph Loop config: `.canon/dega-core.yaml`
-- Agent personas: `.canon/agents/`
-- Skills (domain knowledge): `.canon/skills/`
-- Workflows: `.canon/workflows/`
+Canon builds on top of the AI Development Core (`../AGENTS.md`). Everything here is
+specific to prediction market development. Generic patterns belong in the parent Core.
+
+---
+
+## Structure
+
+```
+canon/
+├── AGENTS.md          ← You are here (single source of truth)
+├── CLAUDE.md          ← Shim → points to AGENTS.md
+├── commands/          ← Slash commands (canon-start, develop, discover, register, quick-dev)
+├── hooks/             ← Canon-specific lifecycle hooks (empty — future use)
+├── skills/            ← Skills (prediction-markets, polymarket, strategy-patterns, risk-management, backtesting, arena-tracking, canon-conventions)
+├── agents/            ← Agent personas (dev, market-analyst, strategy-architect, risk-analyst, qa, deployment-ops)
+├── rules/             ← Domain layering enforcement (ast-grep)
+├── templates/         ← Strategy templates (client-polymarket.ts, client-sportsbook.ts, nba-momentum/)
+└── docs/              ← Canon-specific docs (empty — future use)
+```
+
+---
+
+## Relationship to Core
+
+Canon **depends on** Core. Core **never depends on** Canon.
+
+- Core provides: dev pipeline, harness patterns, generic commands (`/fix-issue`, `/review-pr`,
+  `/plan`, `/cleanup`), generic hooks, generic skills.
+- Canon provides: prediction market domain models, market analysis agents, oracle integration
+  patterns, position management skills, domain-specific linters and hooks.
+
+When a Canon pattern proves useful beyond prediction markets, promote it to Core.
+
+---
+
+## Installation
+
+Requires Core to be installed first:
+
+```
+/apply-core            # Install generic AI development infrastructure
+```
+
+Canon artifacts are included in the repo and loaded automatically when working
+in the `canon/` directory. No separate install command needed.
+
+---
+
+## Domain
+
+Canon targets prediction market development. Shipped skills cover:
+
+- Prediction market fundamentals and terminology (`skills/prediction-markets.md`)
+- Polymarket API integration (`skills/polymarket.md`)
+- Strategy design patterns (`skills/strategy-patterns.md`)
+- Risk management and position sizing (`skills/risk-management.md`)
+- Backtesting methodology (`skills/backtesting.md`)
+- Arena tracking and performance monitoring (`skills/arena-tracking.md`)
+
+---
+
+## Harness
+
+Canon inherits all Core harness infrastructure (lean AGENTS.md map, `rules/`,
+commands, hooks, `docs/exec-plans/`, quality grades) automatically. No
+duplication needed here.
+
+Canon-specific addition: domain layering enforcement
+(`Types → Config → Repo → Service → Runtime → UI`) is defined in
+`canon/rules/domain-layering.md` and enforced via `ast-grep` rules with
+agent-friendly error messages. See the `custom-linter-authoring` skill
+for how to write and extend these rules.
+
+---
 
 ## Available Agents
 
@@ -41,6 +109,20 @@
 4. Error messages include what/why/how
 5. "If it's not in the repo, it doesn't exist"
 
+## Strategy Quick Reference
+
+- Framework config: `.canon/config.yaml`
+- Ralph Loop config: `.canon/dega-core.yaml`
+- Agent personas: `.canon/agents/`
+- Skills (domain knowledge): `.canon/skills/`
+- Workflows: `.canon/workflows/`
+
+### Strategy Structure
+- `src/strategy.ts` — Strategy logic
+- `src/types/TradeSignal.ts` — Output interface
+- `src/types/RiskInterface.ts` — Risk validation
+- `.canon/dega-core.yaml` — Ralph Loop config
+
 ## Domain Knowledge (Skills)
 For prediction market concepts, strategy patterns, risk management, and
 platform-specific knowledge, see `.canon/skills/`:
@@ -50,11 +132,18 @@ platform-specific knowledge, see `.canon/skills/`:
 - `strategy-patterns.md` — Six strategy archetypes and when to use them
 - `backtesting.md` — Testing methodology, interpreting results, avoiding overfitting
 - `arena-tracking.md` — Registration pipeline, monitoring live strategies
-- `ralph-loop.md` — Configuring and operating autonomous iteration
+- `orchestrator.md` — Configuring and operating the automated build engine
 - `canon-conventions.md` — Coding standards, domain layering, error messages
 
-## Strategy Structure
-- `src/strategy.ts` — Strategy logic
-- `src/types/TradeSignal.ts` — Output interface
-- `src/types/RiskInterface.ts` — Risk validation
-- `.canon/dega-core.yaml` — Ralph Loop config
+---
+
+## Active Work
+
+The Canon layer is shipped. Commands, skills, agents, rules, and templates are
+all in place. The live runner with terminal dashboard and orchestrator are
+operational.
+
+Current focus areas:
+- Strategy template expansion (new market types beyond NBA/sports)
+- Arena integration for live performance tracking
+- Backtesting pipeline refinement

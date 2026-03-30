@@ -1,0 +1,31 @@
+# Plan Creation Instructions
+
+These instructions are read by the plan writer agent every time it creates
+a new execution plan. Use this file to encode project-specific conventions,
+constraints, and domain knowledge that every plan should respect.
+
+## Architecture constraints
+
+- All shell scripts must pass `shellcheck` and `shfmt`
+- Core artifacts (scripts/, hooks/, commands/) must remain project-agnostic
+- Domain-specific logic goes in `canon/`, never in core
+
+## Plan style
+
+- Progress log items should be small enough for one agent session (~15 min)
+- Prefer sequential plans unless items are truly independent
+- Every plan must have verifiable completion criteria (commands, not prose)
+- Include "Files to touch" table so reviewers can assess blast radius
+
+## What to avoid
+
+- No UI work of any kind
+- No changes to CI/CD pipelines without explicit approval
+- No new dependencies without justification in the decision log
+
+## Domain knowledge
+
+- The orchestrator runs in tmux with one pane per worker
+- Workers operate in isolated git worktrees
+- Plans are committed before the orchestrator runs them
+- dega-core.yaml at repo root configures per-project settings

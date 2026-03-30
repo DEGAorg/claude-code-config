@@ -60,7 +60,7 @@ Run the project's full quality pipeline:
 2. Run the full test suite -- iterate on failures until green
 3. Run linting, formatting, and type-checking -- fix any issues
 
-Refer to the project's CLAUDE.md or package.json/Makefile/etc.
+Refer to the project's AGENTS.md or package.json/Makefile/etc.
 for the correct commands.
 
 ## 4. Commit and push

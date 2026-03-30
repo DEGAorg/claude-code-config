@@ -1,0 +1,11 @@
+PASS
+All completion criteria verified.
+
+Criterion 1: scripts/agent-shim.sh exists and passes shellcheck — VERIFIED (no errors/warnings)
+Criterion 2: No hardcoded claude command invocations in orchestrator scripts — VERIFIED (remaining "claude" mentions are comments listing CLI names, not invocations)
+Criterion 3: No ~/.claude/ path references in scripts or hooks — VERIFIED (only hits are in legacy ralph-*.sh files which are explicitly out of scope per plan requirements; no hits in migrated scripts or hooks)
+Criterion 4: DEGA_SOUND and DEGA_SOUND_VOLUME are primary env vars with CLAUDE_SOUND* fallbacks — VERIFIED (play-sound.sh uses ${DEGA_SOUND:-${CLAUDE_SOUND:-super-mario-bros}} pattern)
+Criterion 5: settings.json hook paths point to ~/.degacore/scripts/hooks/ — VERIFIED (8 hook paths, all use ~/.degacore/scripts/hooks/)
+Criterion 6: /apply-core installs to ~/.degacore/ with config/, scripts/, state/, sounds/ layout — VERIFIED (apply-core.md targets DEGA_CORE_HOME with correct subdirectory structure)
+Criterion 7: shellcheck passes on all modified .sh files — VERIFIED (only SC1091 info-level messages about sourced files not provided as input, no errors or warnings)
+Criterion 8: grep -r "~/.claude/" scripts/ hooks/ returns zero hits excluding intentional refs — VERIFIED (only hits are in legacy ralph-check.sh, ralph-loop.sh, ralph-worktree.sh which are explicitly skipped per plan: "ralph-loop.sh is legacy — skip it")

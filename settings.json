@@ -5,8 +5,8 @@
     "DISABLE_TELEMETRY": "1",
     "DISABLE_ERROR_REPORTING": "1",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
-    "CLAUDE_SOUND": "super-mario-bros",
-    "CLAUDE_SOUND_VOLUME": "25"
+    "DEGA_SOUND": "super-mario-bros",
+    "DEGA_SOUND_VOLUME": "25"
   },
   "enableAllProjectMcpServers": false,
   "alwaysThinkingEnabled": true,
@@ -22,6 +22,7 @@
       "Bash(git push --force*)",
       "Bash(git push *--force*)",
       "Bash(git reset --hard*)",
+      "Bash(gh pr merge*)",
 
       "Edit(~/.bashrc)",
       "Edit(~/.zshrc)",
@@ -44,7 +45,18 @@
       "Read(~/Library/Application Support/**/electrum*/**)",
       "Read(~/Library/Application Support/**/exodus*/**)",
       "Read(~/Library/Application Support/**/phantom*/**)",
-      "Read(~/Library/Application Support/**/solflare*/**)"
+      "Read(~/Library/Application Support/**/solflare*/**)",
+
+      "Read(~/.local/share/keyrings/**)",
+      "Read(~/.config/**/metamask*/**)",
+      "Read(~/.local/share/**/metamask*/**)",
+      "Read(~/.electrum/**)",
+      "Read(~/.config/Exodus/**)",
+      "Read(~/.config/exodus/**)",
+      "Read(~/.config/**/phantom*/**)",
+      "Read(~/.local/share/**/phantom*/**)",
+      "Read(~/.config/**/solflare*/**)",
+      "Read(~/.local/share/**/solflare*/**)"
     ]
   },
   "hooks": {
@@ -54,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/enforce-loop-mode.sh"
+            "command": "bash ~/.degacore/scripts/hooks/enforce-loop-mode.sh"
           }
         ]
       },
@@ -63,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/enforce-exec-plan-naming.sh"
+            "command": "bash ~/.degacore/scripts/hooks/enforce-exec-plan-naming.sh"
           }
         ]
       }
@@ -73,7 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/session-start-logging.sh"
+            "command": "bash ~/.degacore/scripts/hooks/session-start-logging.sh"
           }
         ]
       }
@@ -84,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); REFS=$(rg -l \"$BASENAME\" docs/ CLAUDE.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
+            "command": "command -v jq >/dev/null 2>&1 || exit 0; FILE=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ]; then BASENAME=$(basename \"$FILE\"); command -v rg >/dev/null 2>&1 || exit 0; REFS=$(rg -l \"$BASENAME\" docs/ AGENTS.md README.md 2>/dev/null | head -5); if [ -n \"$REFS\" ]; then echo \"DOC-REMINDER: $BASENAME is referenced in docs — check if updates needed: $REFS\"; fi; fi"
           }
         ]
       },
@@ -93,7 +105,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/orch-done-sync.sh"
+            "command": "bash ~/.degacore/scripts/hooks/orch-done-sync.sh"
           }
         ]
       },
@@ -102,7 +114,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/update-exec-plan-reminder.sh"
+            "command": "bash ~/.degacore/scripts/hooks/update-exec-plan-reminder.sh"
           }
         ]
       },
@@ -111,7 +123,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/structured-log.sh"
+            "command": "bash ~/.degacore/scripts/hooks/structured-log.sh"
           }
         ]
       }
@@ -121,11 +133,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/ralph-reviewer-stop.sh"
+            "command": "bash ~/.degacore/scripts/hooks/ralph-reviewer-stop.sh"
           },
           {
             "type": "command",
-            "command": "bash ~/.claude/hooks/play-sound.sh"
+            "command": "bash ~/.degacore/scripts/hooks/play-sound.sh"
           }
         ]
       }
@@ -133,6 +145,6 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh"
+    "command": "~/.degacore/scripts/statusline.sh"
   }
 }

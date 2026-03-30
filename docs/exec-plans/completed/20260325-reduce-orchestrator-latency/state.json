@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "plan": "20260325-reduce-orchestrator-latency",
+  "issueNumber": 29,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Add `review_poll_interval_seconds: 10` and `verify_poll_interval_seconds: 10` to `dega-core.yaml`; reduce `poll_interval_seconds` from 30 to 15",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Update `scripts/orch-review.sh`: read `review_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in reviewer tmux spawn",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Update `scripts/orch-verify.sh`: read `verify_poll_interval_seconds` with 10s fallback; change `sleep 5` to `sleep 2` in verifier tmux spawn",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Update `scripts/orch-engine.sh`: change `sleep 5` to `sleep 2` in worker tmux spawn command",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 5,
+      "description": "Add `orch_extract_file_paths()` and `orch_extract_plan_sections()` helper functions to `scripts/orch-state.sh`",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 6,
+      "description": "Update `build_worker_prompt()` in `scripts/orch-engine.sh` to call new helpers and inject pre-hydrated context (file paths, requirements, check command, completion criteria) into the worker prompt",
+      "deps": [
+        4,
+        5
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 7,
+      "description": "Update `agents/orch-worker.md` to document pre-hydrated context sections and instruct workers to use provided context before discovering on their own",
+      "deps": [
+        6
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 8,
+      "description": "Run `shellcheck -e SC1091` on all modified scripts (`scripts/orch-engine.sh`, `scripts/orch-review.sh`, `scripts/orch-verify.sh`, `scripts/orch-state.sh`) and fix any issues",
+      "deps": [
+        2,
+        3,
+        6,
+        7
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-25T21:40:28Z",
+  "updatedAt": "2026-03-25T21:53:30Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

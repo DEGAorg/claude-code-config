@@ -3,8 +3,8 @@
 # Creates a git worktree for isolated parallel execution, runs ralph-loop.sh
 # inside it, and cleans up on exit.
 #
-# Usage: bash ~/.claude/scripts/ralph-worktree.sh <task-slug>
-# Example: bash ~/.claude/scripts/ralph-worktree.sh 20260306-docs-update
+# Usage: bash ~/.degacore/scripts/ralph-worktree.sh <task-slug>
+# Example: bash ~/.degacore/scripts/ralph-worktree.sh 20260306-docs-update
 #
 # Creates worktree at .claude/worktrees/<slug> on branch ralph/<slug>.
 # On SHIP: reports branch name for PR/merge.
@@ -105,7 +105,7 @@ if [[ "${WORKTREE_DIRTY}" == "true" ]]; then
 	echo "  worktree kept at: ${WORKTREE_DIR}"
 	echo "  branch: ${BRANCH}"
 	echo ""
-	echo "  To resume: bash ~/.claude/scripts/ralph-worktree.sh ${TASK_SLUG}"
+	echo "  To resume: bash ~/.degacore/scripts/ralph-worktree.sh ${TASK_SLUG}"
 	echo "  To discard: git worktree remove --force ${WORKTREE_DIR}"
 else
 	echo "ralph-worktree: loop exited (code ${LOOP_EXIT}) with no changes — cleaning up"

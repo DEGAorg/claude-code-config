@@ -6,7 +6,7 @@
 #
 # Usage: scripts/orch-review.sh <slug>
 #
-# Requires: jq, claude CLI, tmux, orch-state.sh
+# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh
 
 set -euo pipefail
 
@@ -15,6 +15,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -22,8 +24,10 @@ if [[ -z "${SLUG}" ]]; then
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 PROMPT_TEMPLATE="${SCRIPT_DIR}/ralph-item-reviewer-prompt.md"
+
+# GH_SYNC flag — exported by orch-run.sh when github.sync is true
+GH_SYNC="${GH_SYNC:-false}"
 
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
@@ -31,6 +35,15 @@ DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+
+# Use worktree plan path; in GH mode resolve from .orchestrator/
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+elif [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
+	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+else
+	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+fi
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
 	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
@@ -81,7 +94,7 @@ fi
 # --- Read concurrency and poll settings from state ---
 
 MAX_WORKERS=$(jq '.maxParallelWorkers // 4' "${ORCH_STATE_FILE}")
-POLL_INTERVAL=$(orch_read_config "poll_interval_seconds")
+POLL_INTERVAL=$(orch_read_config "review_poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
 # --- Mark failed work items as review-skipped ---
@@ -155,14 +168,26 @@ spawn_reviewer() {
 	# Kill stale window from previous iteration if it exists
 	tmux kill-window -t "${TMUX_SESSION}:${window_name}" 2>/dev/null || true
 
-	# Reviewers always run headless (claude -p) — read-only, no TUI needed
+	# Build agent command using shim helper (handles Codex exec pattern)
+	local cmd_template agent_cmd_str
+	cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+	agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
+
+	# Skip env -u when session var is empty (e.g., Codex has no session var)
+	local session_var
+	session_var="$(dega_agent_session_var)"
+	local env_prefix=""
+	if [[ -n "${session_var}" ]]; then
+		env_prefix="env -u '${session_var}'"
+	fi
+
 	tmux new-window -d -t "${TMUX_SESSION}" -n "${window_name}" \
 		"cd '${review_cwd}' && \
+		 GH_SYNC='${GH_SYNC}' \
 		 RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-		 env -u CLAUDECODE claude -p --dangerously-skip-permissions \
-		 \"\$(cat '${prompt_file}')\" ; \
+		 ${env_prefix} ${agent_cmd_str} ; \
 		 echo '--- reviewer ${item_id} exited ---'; \
-		 sleep 5"
+		 sleep 2"
 
 	# Stream reviewer output to log file
 	tmux pipe-pane -t "${TMUX_SESSION}:${window_name}" \

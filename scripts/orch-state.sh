@@ -57,9 +57,36 @@ orch_read_config() {
 	fi
 
 	local value
-	value=$(grep "${key}:" "${config_file}" 2>/dev/null |
+	value=$(grep -m1 "^${key}:" "${config_file}" 2>/dev/null |
 		awk '{print $2}' | tr -d ' ' || true)
 	printf '%s' "${value}"
+}
+
+# --- Platform detection ---
+
+# Detect the current platform. Returns one of: macos, wsl, linux.
+# Uses $OSTYPE for fast detection with uname -s fallback.
+orch_platform() {
+	# WSL check first — WSL reports OSTYPE as linux-gnu but runs on Windows
+	if [[ -f /proc/version ]] && grep -qi microsoft /proc/version; then
+		printf 'wsl'
+		return 0
+	fi
+
+	case "${OSTYPE:-}" in
+	darwin*) printf 'macos' ;;
+	linux*) printf 'linux' ;;
+	*)
+		# Fallback to uname -s
+		local kernel
+		kernel=$(uname -s 2>/dev/null || echo "Unknown")
+		case "${kernel}" in
+		Darwin) printf 'macos' ;;
+		Linux) printf 'linux' ;;
+		*) printf 'linux' ;; # Default to linux for unknown platforms
+		esac
+		;;
+	esac
 }
 
 # --- Per-plan path helpers ---
@@ -174,7 +201,7 @@ orch_sync_done_files() {
 			# Warn on done-files smaller than 20 bytes but accept them —
 			# the reviewer will catch garbage content
 			local file_size
-			file_size=$(wc -c < "${done_file}")
+			file_size=$(wc -c <"${done_file}")
 			if ((file_size < 20)); then
 				echo "orch-state: WARNING — item ${item_id} done-file small (${file_size} bytes < 20), accepting for review"
 			fi
@@ -559,6 +586,7 @@ orch_master_update_progress() {
 
 orch_create_worktree() {
 	local slug="$1"
+	local issue_number="${2:-}"
 	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
 
 	if [[ -d "${worktree_dir}" ]]; then
@@ -566,7 +594,14 @@ orch_create_worktree() {
 		return 0
 	fi
 
-	local branch="orch/${slug}"
+	# Branch name includes issue number when available (e.g., orch/13-dashboard-view)
+	local branch
+	if [[ -n "${issue_number}" ]]; then
+		branch="orch/${issue_number}-${slug}"
+	else
+		branch="orch/${slug}"
+	fi
+
 	mkdir -p "${ORCH_STATE_DIR}/worktrees"
 	git -C "${ORCH_REPO_ROOT}" worktree add "${worktree_dir}" -b "${branch}" HEAD
 	echo "orch-state: created worktree at ${worktree_dir} on branch ${branch}"
@@ -604,7 +639,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"; then
 orch_merge_worktree() {
 	local slug="$1"
 	local worktree_dir="${ORCH_STATE_DIR}/worktrees/${slug}"
-	local branch="orch/${slug}"
+	local branch
+	branch=$(git -C "${worktree_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${slug}")
 
 	if [[ ! -d "${worktree_dir}" ]]; then
 		echo "orch-state: no worktree to merge"
@@ -673,10 +709,13 @@ orch_cleanup_worktree() {
 		return 0
 	fi
 
+	# Read actual branch name before removing the worktree
+	local branch
+	branch=$(git -C "${worktree_dir}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "orch/${slug}")
+
 	git -C "${ORCH_REPO_ROOT}" worktree remove "${worktree_dir}" --force
 	echo "orch-state: removed worktree at ${worktree_dir}"
 
-	local branch="orch/${slug}"
 	if git -C "${ORCH_REPO_ROOT}" rev-parse --verify "${branch}" >/dev/null 2>&1; then
 		git -C "${ORCH_REPO_ROOT}" branch -D "${branch}"
 		echo "orch-state: deleted branch ${branch}"
@@ -863,4 +902,99 @@ orch_count_unchecked_criteria() {
 		capturing && /^- \[ \]/ { count++ }
 		END { print count+0 }
 	' "${plan_file}"
+}
+
+# --- Context pre-hydration helpers ---
+
+# Extract file paths from text (stdin). Finds backtick-quoted paths and bare
+# path/file.ext patterns. Only keeps paths containing "/" and a file extension
+# to reduce false positives. Returns one deduplicated path per line.
+#   Usage: echo "some text with \`scripts/foo.sh\`" | orch_extract_file_paths
+orch_extract_file_paths() {
+	local input
+	input=$(cat)
+
+	if [[ -z "${input}" ]]; then
+		return 0
+	fi
+
+	{
+		# Backtick-quoted paths: `path/to/file.ext`
+		# shellcheck disable=SC2016 # backtick pattern is literal regex, not shell expansion
+		printf '%s\n' "${input}" | grep -oE '`[^`]+`' |
+			tr -d '`' |
+			grep -E '/.*\.[a-zA-Z0-9]+$'
+
+		# Bare paths: word boundaries around path/file.ext patterns
+		# Matches sequences like scripts/orch-state.sh or docs/exec-plans/active/foo/plan.md
+		printf '%s\n' "${input}" | grep -oE '[a-zA-Z0-9_./-]+/[a-zA-Z0-9_.-]+\.[a-zA-Z0-9]+' |
+			grep -vE '^\.' |
+			grep -vE '(https?://|www\.)'
+	} | sort -u
+}
+
+# Extract the Requirements and Completion criteria sections from a plan.md,
+# plus the check_command from dega-core.yaml. Outputs a combined text block
+# suitable for injecting into a worker prompt. Caps output at 200 lines.
+#   Usage: orch_extract_plan_sections "/path/to/plan.md"
+orch_extract_plan_sections() {
+	local plan_file="$1"
+
+	if [[ ! -f "${plan_file}" ]]; then
+		echo "orch-state: WARNING — plan file not found: ${plan_file}" >&2
+		return 0
+	fi
+
+	local output=""
+
+	# Extract ## Requirements section
+	local requirements
+	requirements=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Requirements/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_file}")
+
+	if [[ -n "${requirements}" ]]; then
+		output="### Requirements
+
+${requirements}
+"
+	fi
+
+	# Extract ## Completion criteria section
+	local criteria
+	criteria=$(awk '
+		/^```/ { fence = !fence; next }
+		fence { next }
+		/^## Completion criteria/ { capturing = 1; next }
+		capturing && /^## / { capturing = 0; next }
+		capturing { print }
+	' "${plan_file}")
+
+	if [[ -n "${criteria}" ]]; then
+		output="${output}
+### Completion criteria
+
+${criteria}
+"
+	fi
+
+	# Read check_command from dega-core.yaml
+	local check_cmd
+	check_cmd=$(orch_read_config "check_command")
+	if [[ -n "${check_cmd}" ]]; then
+		output="${output}
+### Check command
+
+\`\`\`bash
+${check_cmd}
+\`\`\`
+"
+	fi
+
+	# Cap at 200 lines to avoid context bloat
+	printf '%s\n' "${output}" | head -200
 }

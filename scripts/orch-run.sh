@@ -6,14 +6,18 @@
 # The poll loop, worker spawning, review, and cleanup all run inside
 # orch-engine.sh in a tmux window named "engine".
 #
-# Usage: scripts/orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]
+# Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
+#        scripts/orch-run.sh --gc [--dry-run]
 #
 # Options:
+#   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
 #   --background         Headless mode — tmux only, no display windows
+#   --gc [--dry-run]     Run garbage collection on stale orch-* tmux sessions
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
+# Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --background
 
 set -euo pipefail
@@ -21,8 +25,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
+# shellcheck source=agent-shim.sh
+source "${SCRIPT_DIR}/agent-shim.sh"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=read-github-config.sh
+source "${SCRIPT_DIR}/read-github-config.sh"
 
 # --- Check dependencies ---
 
@@ -45,12 +53,25 @@ check_deps
 # --- Parse args ---
 
 SLUG=""
+ISSUE_NUMBER=""
 MAX_WORKERS=4
 MAX_ITERATIONS=3
 BACKGROUND=false
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
+	--gc)
+		shift
+		exec bash "${SCRIPT_DIR}/orch-gc.sh" "$@"
+		;;
+	--issue)
+		ISSUE_NUMBER="${2:-}"
+		if [[ -z "${ISSUE_NUMBER}" ]]; then
+			echo "error: --issue requires an issue number" >&2
+			exit 1
+		fi
+		shift 2
+		;;
 	--max-workers)
 		MAX_WORKERS="${2:-4}"
 		shift 2
@@ -65,7 +86,7 @@ while [[ $# -gt 0 ]]; do
 		;;
 	-*)
 		echo "error: unknown option: $1" >&2
-		echo "usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
+		echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 		exit 1
 		;;
 	*)
@@ -76,25 +97,133 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--background]" >&2
+	echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
 	exit 1
 fi
 
-PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+# --- GH sync mode ---
+# When github.sync is true, plans live in .orchestrator/ instead of
+# docs/exec-plans/. This keeps PRs free of plan artifacts.
+GH_SYNC=false
+if gh_config_bool sync; then
+	GH_SYNC=true
+fi
+export GH_SYNC
+
+if [[ "${GH_SYNC}" == true ]]; then
+	PLAN_DIR="${REPO_ROOT}/.orchestrator/plans/${SLUG}"
+else
+	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+fi
+
+# --- Fetch plan from GitHub Issue if --issue is set ---
+
+FROM_ISSUE=false
+if [[ -n "${ISSUE_NUMBER}" ]]; then
+	# Validate issue number format
+	if ! [[ "${ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
+		echo "error: issue number must be a positive integer, got: ${ISSUE_NUMBER}" >&2
+		exit 1
+	fi
+
+	# Validate gh auth before launch (fail fast — auth is interactive)
+	# shellcheck source=ensure-gh.sh
+	source "${SCRIPT_DIR}/ensure-gh.sh"
+	ensure_gh
+	if ! gh auth status &>/dev/null; then
+		echo "error: gh is not authenticated. Run: gh auth login" >&2
+		echo "Then re-run this command." >&2
+		exit 2
+	fi
+
+	echo "orch: fetching plan from issue #${ISSUE_NUMBER}..."
+	"${SCRIPT_DIR}/gh-plan-fetch.sh" "${ISSUE_NUMBER}" "${SLUG}" >&2
+
+	# Verify fetched plan exists in .orchestrator/
+	FETCHED_PLAN=".orchestrator/plans/${SLUG}/plan.md"
+	if [[ ! -f "${FETCHED_PLAN}" ]]; then
+		echo "error: gh-plan-fetch.sh did not produce ${FETCHED_PLAN}" >&2
+		exit 1
+	fi
+
+	if [[ "${GH_SYNC}" == true ]]; then
+		# GH mode: PLAN_DIR already points to .orchestrator/, no copy needed
+		echo "orch: GH mode — plan stays in .orchestrator/plans/${SLUG}/"
+	else
+		# Local mode: copy fetched plan into docs/exec-plans/active/
+		mkdir -p "${PLAN_DIR}"
+		cp "${FETCHED_PLAN}" "${PLAN_DIR}/plan.md"
+	fi
+	FROM_ISSUE=true
+fi
+
 if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
 	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
+	echo "  hint: pass --issue N to fetch from a GitHub Issue" >&2
 	exit 1
 fi
 
-# --- Uncommitted plan guard ---
-plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
-if [[ -n "${plan_dirty}" ]]; then
-	echo "error: plan has uncommitted changes — commit before running orch" >&2
-	echo "  dirty files:" >&2
-	while IFS= read -r line; do
-		echo "    ${line}" >&2
-	done <<< "${plan_dirty}"
-	exit 1
+# --- Uncommitted plan guard (skip for issue-sourced plans and GH mode) ---
+if [[ "${FROM_ISSUE}" == false ]] && [[ "${GH_SYNC}" == false ]]; then
+	plan_dirty=$(git -C "${REPO_ROOT}" status --porcelain "docs/exec-plans/active/${SLUG}/" 2>/dev/null || true)
+	if [[ -n "${plan_dirty}" ]]; then
+		echo "error: plan has uncommitted changes — commit before running orch" >&2
+		echo "  dirty files:" >&2
+		while IFS= read -r line; do
+			echo "    ${line}" >&2
+		done <<<"${plan_dirty}"
+		exit 1
+	fi
+fi
+
+# --- Auto-create GitHub Issue if sync enabled and no meta exists ---
+
+PLAN_META_DIR="${ORCH_STATE_DIR}/plans/${SLUG}"
+PLAN_META_FILE="${PLAN_META_DIR}/plan-meta.json"
+
+if [[ -z "${ISSUE_NUMBER}" ]] && gh_config_bool sync; then
+	if [[ ! -f "${PLAN_META_FILE}" ]]; then
+		# Extract plan title from the first "# Plan: ..." heading
+		plan_title=$(grep -m1 '^# Plan:' "${PLAN_DIR}/plan.md" 2>/dev/null |
+			sed 's/^# Plan:[[:space:]]*//' || true)
+		if [[ -z "${plan_title}" ]]; then
+			plan_title="${SLUG}"
+		fi
+
+		# Ensure gh is available and authenticated
+		if "${SCRIPT_DIR}/ensure-gh.sh" --quiet; then
+			echo "orch: creating GitHub Issue for plan '${SLUG}'..."
+			if issue_num=$("${SCRIPT_DIR}/plan-create.sh" \
+				--title "${plan_title}" \
+				--body-file "${PLAN_DIR}/plan.md"); then
+				ISSUE_NUMBER="${issue_num}"
+				mkdir -p "${PLAN_META_DIR}"
+				jq -n \
+					--argjson issue "${ISSUE_NUMBER}" \
+					--arg repo "$(gh_resolve_repo "")" \
+					--arg slug "${SLUG}" \
+					--arg createdAt "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+					'{
+						issue_number: $issue,
+						repo: $repo,
+						slug: $slug,
+						created_at: $createdAt
+					}' >"${PLAN_META_FILE}"
+				echo "orch: created issue #${ISSUE_NUMBER}, wrote ${PLAN_META_FILE}"
+			else
+				echo "orch: WARNING — failed to create GitHub Issue, continuing without sync" >&2
+			fi
+		else
+			echo "orch: WARNING — gh not authenticated, skipping auto-issue creation" >&2
+		fi
+	else
+		# plan-meta.json exists — read the issue number from it
+		existing_issue=$(jq -r '.issue_number // empty' "${PLAN_META_FILE}")
+		if [[ -n "${existing_issue}" ]]; then
+			ISSUE_NUMBER="${existing_issue}"
+			echo "orch: found existing issue #${ISSUE_NUMBER} in plan-meta.json"
+		fi
+	fi
 fi
 
 # --- Already-running detection ---
@@ -156,9 +285,16 @@ init_state() {
 	  }
 	]')
 
+	# Build issue number as JSON value (number or null)
+	local issue_json="null"
+	if [[ -n "${ISSUE_NUMBER}" ]]; then
+		issue_json="${ISSUE_NUMBER}"
+	fi
+
 	STATE_JSON=$(jq -n \
 		--argjson version 1 \
 		--arg plan "${SLUG}" \
+		--argjson issueNumber "${issue_json}" \
 		--argjson maxWorkers "${MAX_WORKERS}" \
 		--argjson items "${ITEMS_JSON}" \
 		--arg mode "foreground" \
@@ -167,6 +303,7 @@ init_state() {
 		'{
 	    version: $version,
 	    plan: $plan,
+	    issueNumber: $issueNumber,
 	    maxParallelWorkers: $maxWorkers,
 	    mode: $mode,
 	    items: $items,
@@ -203,15 +340,27 @@ fi
 
 # --- Create worktree for file isolation ---
 
-orch_create_worktree "${SLUG}"
+orch_create_worktree "${SLUG}" "${ISSUE_NUMBER}"
 
 # --- Copy plan directory into worktree ---
 
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
-WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+if [[ "${GH_SYNC}" == true ]]; then
+	WORKTREE_PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+else
+	WORKTREE_PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+fi
 mkdir -p "${WORKTREE_PLAN_DIR}"
 cp -r "${PLAN_DIR}/"* "${WORKTREE_PLAN_DIR}/"
 echo "orch: copied plan into worktree at ${WORKTREE_PLAN_DIR}"
+
+# Copy plan-meta.json into worktree so lifecycle hooks can find it
+if [[ -f "${PLAN_META_FILE}" ]]; then
+	WORKTREE_META_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+	mkdir -p "${WORKTREE_META_DIR}"
+	cp "${PLAN_META_FILE}" "${WORKTREE_META_DIR}/plan-meta.json"
+	echo "orch: copied plan-meta.json into worktree"
+fi
 
 # --- Register in master state ---
 
@@ -222,7 +371,45 @@ orch_master_update_progress "${SLUG}"
 
 if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
-	DASH_CMD="while true; do node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null; echo '[dashboard restarting in 3s...]'; sleep 3; done"
+	HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+	GRACE_TIMEOUT="${ORCH_DASHBOARD_TIMEOUT:-60}"
+	# Dashboard loop: restart node UI on crash, check engine liveness via
+	# heartbeat file staleness (>5min) and tmux window existence every 2s.
+	# When engine is dead, enter a grace period then kill the session.
+	read -r -d '' DASH_CMD <<-DASHEOF || true
+	grace_start=0
+	while true; do
+	  node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null
+	  engine_alive=true
+	  if ! tmux has-window -t '${TMUX_SESSION}:engine' 2>/dev/null; then
+	    engine_alive=false
+	  fi
+	  if [[ -f '${HEARTBEAT_FILE}' ]]; then
+	    last_hb=\$(cat '${HEARTBEAT_FILE}')
+	    now=\$(date +%s)
+	    age=\$(( now - last_hb ))
+	    if [[ \${age} -gt 300 ]]; then
+	      engine_alive=false
+	    fi
+	  fi
+	  if [[ "\${engine_alive}" == false ]]; then
+	    if [[ \${grace_start} -eq 0 ]]; then
+	      grace_start=\$(date +%s)
+	      echo "[engine exited — dashboard will close in ${GRACE_TIMEOUT}s]"
+	    fi
+	    elapsed=\$(( \$(date +%s) - grace_start ))
+	    if [[ \${elapsed} -ge ${GRACE_TIMEOUT} ]]; then
+	      echo "[grace period expired — killing session]"
+	      tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null || true
+	      break
+	    fi
+	  else
+	    grace_start=0
+	    echo '[dashboard restarting in 2s...]'
+	  fi
+	  sleep 2
+	done
+	DASHEOF
 	tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
 fi
 
@@ -237,7 +424,7 @@ LOG_FILE=$(orch_plan_log_file "${SLUG}")
 orch_ensure_plan_dirs "${SLUG}"
 
 tmux new-window -d -t "${TMUX_SESSION}" -n "engine" \
-	"cd '${REPO_ROOT}' && bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30"
+	"cd '${REPO_ROOT}' && GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30; tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null"
 
 # --- Open display windows (foreground mode) ---
 

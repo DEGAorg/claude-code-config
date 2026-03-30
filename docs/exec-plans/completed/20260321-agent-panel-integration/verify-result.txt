@@ -1,0 +1,10 @@
+PASS
+All completion criteria verified.
+
+1. /panel github opens the GitHub panel — slash command handler emits OpenPanel, MainScreen mounts panel
+2. /panel github close closes it — slash command handler emits ClosePanel, MainScreen collapses panel
+3. Claude knows about panels — welcome message, help text in claude.com.toml, conductor-panels.md skill
+4. Panel opens without ctrl+g — OpenPanel ACP message path bypasses keybinding entirely
+5. End-to-end works — agent response interception strips /panel lines and emits ACP messages
+
+All 39 tests in tests/test_agent_panel_control.py pass.

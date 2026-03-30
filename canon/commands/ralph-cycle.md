@@ -3,7 +3,7 @@
 @description Autonomous iteration loop — execute, check, iterate until all success criteria pass or budget is exhausted.
 
 Load agent: dev.
-Load skills: ralph-loop, canon-conventions.
+Load skills: orchestrator, canon-conventions.
 
 Run every step below. The loop repeats steps 1-3 until the SHIP or ESCALATE condition is met.
 
@@ -15,14 +15,15 @@ if the script exists and skip silently if not. Do not warn about missing dashboa
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=execute status=running log.info="Iteration ${ITERATION:-1}: executing..."
 ```
 
 Implement or modify code toward the success criteria defined in `.canon/dega-core.yaml`.
 
-Load skills: canon-conventions, ralph-loop.
+Load skills: canon-conventions, orchestrator.
 
 Input:
 - Task description
@@ -36,8 +37,9 @@ Apply changes. Follow domain layering and error message conventions.
 Write state update:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     phase=check status=running log.info="Running success criteria checks..."
 ```
 
@@ -67,8 +69,9 @@ Evaluate the current state:
 - All success criteria pass → Write state update and summary, exit loop:
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     status=idle log.info="SHIP — all criteria met"
 ```
 
@@ -82,8 +85,9 @@ Evaluate the current state:
 - Stuck (same failure ≥3 iterations without progress)
 
 ```bash
-[[ -f "${HOME}/.claude/scripts/terminal-ui-write.sh" ]] && \
-  bash "${HOME}/.claude/scripts/terminal-ui-write.sh" .canon/state.json \
+TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
+[[ -f "${TUI_WRITE}" ]] && \
+  bash "${TUI_WRITE}" .canon/state.json \
     status=error error="Escalated — human intervention required"
 ```
 

@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "plan": "20260321-fix-ci-pipeline",
+  "issueNumber": 10,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Update `.github/workflows/ci.yml` — add `-e SC1091 -S warning` to shellcheck step",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 1,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Audit and fix SC2015 in `scripts/canon-runner.sh`, `scripts/canon-scaffold.sh`, `scripts/ralph-loop.sh` — replace `A && B || C` with proper if/then/else where it matters",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Audit and fix SC2317 in `scripts/ralph-loop.sh` — unreachable command warning",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Test: run shellcheck locally with the same flags as CI, verify zero exit code",
+      "deps": [
+        1,
+        2,
+        3
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-21T06:29:37Z",
+  "updatedAt": "2026-03-27T20:58:24Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 13210
+  }
+}

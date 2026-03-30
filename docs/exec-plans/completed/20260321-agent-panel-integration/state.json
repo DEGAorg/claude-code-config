@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "plan": "20260321-agent-panel-integration",
+  "issueNumber": 11,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Register `/panel` slash command in Toad — parse args (panel_id, open/close), emit OpenPanel/ClosePanel ACP messages",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Handle `/panel` in conversation widget — intercept before sending to agent, translate to panel messages",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Create `skills/conductor-panels.md` in claude-code-config — teaches Claude about available panels and the `/panel` command",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Update Claude agent config in conductor-view — add panel awareness to agent description or help text",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 5,
+      "description": "Test: launch toad --conductor, type \"show me the project state\", verify Claude responds with /panel github and panel opens",
+      "deps": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-21T07:23:57Z",
+  "updatedAt": "2026-03-21T07:36:04Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}

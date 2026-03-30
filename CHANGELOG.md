@@ -7,8 +7,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Add missing gh-plan scripts to /apply-core install manifest (`20260324-apply-core-gh-scripts`) — 2026-03-24
+
+- Create GitHub Issue when plan is written, not when orch starts (`20260324-issue-on-plan-create`) — 2026-03-24
+
+- Orchestrator creates PR on SHIP with linked branch (`20260320-orch-ship-pr`) — 2026-03-21
+
+- Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Complete GH audit trail with work summaries, feedback, and verify results (`20260325-gh-audit-trail`) — 2026-03-25
+
+- Skip git-tracked plan artifacts when github.sync is true (`20260325-gh-mode-skip-local-artifacts`) — 2026-03-25
+
+- Development Patterns Skill System (`20260321-development-patterns-skill`) — 2026-03-21
+
+- Agent-to-panel integration — Claude controls the GitHub panel (`20260321-agent-panel-integration`) — 2026-03-21
+
+- Redesign GitHub panel — PM dashboard with status and timeline (`20260320-gh-panel-redesign`) — 2026-03-21
+
+- Agent-controlled panels + direct conductor launch (`20260320-agent-panel-control`) — 2026-03-21
+
+- Verify issue body sync works end-to-end (`20260320-verify-body-sync`) — 2026-03-21
+
+- Sync issue body — check off progress log and completion criteria (`20260320-issue-body-sync`) — 2026-03-21
+
+- Conductor TUI — Toad Fork + GitHub Project State (`20260320-project-state-tui`) — 2026-03-21
+
+- GitHub Issues as Plan System (`20260320-github-issues-plans`) — 2026-03-21
+
 - Clear SHIP completion — state, dashboard, and session cleanup (`20260315-fix-orch-ship-completion`) — 2026-03-15
 
 - Autonomous planner loop — long-running agent that plans and executes (`20260315-planner-loop`) — 2026-03-15
@@ -20,6 +47,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix CI pipeline — shellcheck severity and excluded codes (`20260321-fix-ci-pipeline`) — 2026-03-27
+
+- Fix sound interface bug in orch-engine.sh (`20260324-fix-sound-bug`) — 2026-03-24
+
+- Fix shebang inconsistency across scripts and hooks (`20260324-fix-shebang`) — 2026-03-24
+
+- Fix GitHub panel — agent-summoned and repo-aware (`20260320-fix-gh-panel-design`) — 2026-03-21
+
+- Fix orchestrator review quality — reject partial completions (`20260320-orch-review-quality`) — 2026-03-21
+
+- Fix SHIP flow — don't close issue until PR merges (`20260320-fix-ship-close-flow`) — 2026-03-21
+
 - Workshop Prep — Install Fixes, Ralph Cleanup, Merge to Develop (`20260319-workshop-prep`) — 2026-03-20
 
 - Fix orch worktree commits stalling on pre-commit hooks (`20260315-fix-orch-worktree-hooks`) — 2026-03-16
@@ -27,6 +66,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Fix orch scripts to work when installed globally (`20260315-fix-orch-global-paths`) — 2026-03-15
 
 - Fix apply-core to include all orchestrator and planner files (`20260315-fix-apply-core-orch-files`) — 2026-03-15
+
+
+### Removed
+- Delete diagnostic debris and stale worktrees (`20260324-delete-diagnostic-debris`) — 2026-03-24
 
 ## 2026-03-15
 
