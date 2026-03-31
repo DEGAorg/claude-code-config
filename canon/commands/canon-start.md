@@ -282,42 +282,10 @@ sed "s/{{DATE}}/$(date +%Y-%m-%d)/" ".canon/templates/<name>/plan.md" \
 
 The pre-filled plan has bootstrapped items already checked off. Only the
 decision-logic items (config, signals, risk, strategy, test assertions)
-remain unchecked — those are what the orchestrator will build.
+remain unchecked — those are what you will build now.
 
-**If /discover or user-provided spec:** Read the plan template at
-the strategy plan template (to be created in `.canon/templates/`) and fill in the placeholders
+**If /discover or user-provided spec:** Create a plan with the items needed
 based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
-
-**Important:** Every item in the progress log (except the first) must have a
-`(deps: N)` annotation. The orchestrator treats items without deps as ready
-and launches them in parallel. See `~/.claude/rules/exec-plans.md` for format.
-
-Also ensure `dega-core.yaml` exists at the project root (it should from scaffold).
-If not, create it with the standard success criteria:
-
-```yaml
-version: 1
-max_iterations: 5
-check_command: "pnpm exec tsc --noEmit && pnpm exec oxlint src/ && pnpm exec vitest run"
-
-success_criteria:
-  - id: types_compile
-    check: "pnpm exec tsc --noEmit"
-    required: true
-  - id: lint_clean
-    check: "pnpm exec oxlint src/"
-    required: true
-  - id: tests_pass
-    check: "pnpm exec vitest run"
-    required: true
-```
-
-Commit the exec plan (the orchestrator requires a clean git state):
-
-```bash
-git add "docs/exec-plans/active/${SLUG}/plan.md" dega-core.yaml
-git commit -m "plan: ${SLUG}"
-```
 
 Write state update:
 
@@ -327,55 +295,41 @@ Write state update:
     phase=develop status=running log.info="Exec plan generated: ${SLUG}"
 ```
 
-Print:
+### 6b. Build the strategy
 
-> **Exec plan generated** at `docs/exec-plans/active/<slug>/plan.md`
->
-> Launching orchestrator to build the strategy...
+Read the exec plan at `docs/exec-plans/active/${SLUG}/plan.md`. For each
+unchecked item, implement it directly:
 
-### 6b. Run orchestrator
+1. Read the item description
+2. Write the code (create files, implement logic)
+3. Write state update for each item completed:
+   ```bash
+   [[ -f "${TUI_WRITE}" ]] && \
+     bash "${TUI_WRITE}" .canon/state.json \
+       phase=develop status=running log.info="Done: <item description>"
+   ```
+4. Mark the item as checked in the plan: `[x]`
+5. Move to the next unchecked item
 
-Launch the orchestrator to execute the plan:
+After all items are done, run the success criteria checks:
 
 ```bash
-bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/orch-run.sh" "${SLUG}"
+pnpm exec tsc --noEmit
+pnpm exec oxlint src/
+pnpm exec vitest run
 ```
 
-The orchestrator will:
+If checks fail, fix the issues and re-run. Iterate until all pass.
 
-1. Initialize state in `.orchestrator/plans/<slug>/state.json`
-2. Create a worktree for isolated development
-3. Spawn worker agents for each ready item (respecting dep annotations)
-4. Review each completed item against success criteria
-5. Iterate failed items (up to `max_iterations`)
-6. Run a final review across the full changeset
-7. Create a PR with all changes on completion
-
-The orchestrator runs in a tmux session (`orch-<slug>`). State is written to
-`.orchestrator/plans/<slug>/state.json` and the master registry at
-`.orchestrator/master.json`. The Toad TUI or terminal-ui dashboard picks up
-these state changes automatically.
-
-**If the orchestrator completes (all items SHIP):** The strategy was built,
-tested, and approved. A PR has been created. Proceed to step 7.
-
-**If the orchestrator fails (max iterations on any item):** Print:
-
-> Orchestrator reached max iterations on one or more items. Check the
-> orchestrator state for details:
-> `cat .orchestrator/plans/<slug>/state.json | jq '.items[] | select(.status == "failed")'`
->
-> Fix the blockers and re-run: `bash orch-run.sh <slug>`
-
-Do not proceed to step 7. Stop here.
-
-Write state update after orchestrator completes:
+When all checks pass:
 
 ```bash
 [[ -f "${TUI_WRITE}" ]] && \
   bash "${TUI_WRITE}" .canon/state.json \
-    phase=develop status=complete log.info="Orchestrator complete — strategy built"
+    phase=develop status=complete log.info="Strategy built — all checks pass"
 ```
+
+Proceed to step 7.
 
 ---
 
