@@ -140,15 +140,13 @@
     { "label": "Demo Video", "startDay": 11, "days": 1, "color": "green", "text": "YouTube — recorded Mar 30", "status": "done" },
     { "label": "Integration Test", "startDay": 18, "days": 3, "color": "accent", "text": "Integration + smoke tests", "status": "pending" },
     { "label": "Testing Phase", "startDay": 21, "days": 9, "color": "accent", "text": "Heavy testing + bug fixes", "status": "pending" },
-    { "label": "DoraHacks + DMs", "startDay": 15, "days": 15, "color": "green", "text": "Listing live Apr 3 → outreach to Apr 18", "status": "pending" },
-    { "label": "Workshops", "startDay": 15, "days": 15, "color": "cyan", "text": "Pre-hackathon workshops (Apr 3–18)", "status": "pending" },
+    { "label": "DoraHacks + DMs", "startDay": 15, "days": 21, "color": "green", "text": "Listing Apr 3, DMs Apr 4-24 (3 weeks)", "status": "pending" },
+    { "label": "Workshops", "startDay": 20, "days": 22, "color": "cyan", "text": "5 sessions: Apr 8, 10, 15, 17, 29", "status": "pending" },
     { "label": "Hackathon", "startDay": 30, "days": 21, "color": "yellow", "text": "3 weeks — NBA Playoffs", "status": "pending" },
     { "label": "Finale", "startDay": 52, "days": 2, "color": "red", "text": "Livestream", "status": "pending" }
   ],
   "gates": [
     { "day": 6, "label": "Budget", "type": "gate" },
-    { "day": 19, "label": "GO/NO-GO", "type": "gate" },
-    { "day": 29, "label": "Reg close", "type": "event" },
     { "day": 30, "label": "KICKOFF", "type": "event" },
     { "day": 51, "label": "Sub close", "type": "event" },
     { "day": 53, "label": "WINNERS", "type": "event" }
@@ -159,7 +157,6 @@
     { "name": "Canon CLI (register + help + wallet)", "timing": "Days 8-11", "type": "build" },
     { "name": "Arena MVP", "timing": "Days 12-18", "type": "build" },
     { "name": "Integration", "timing": "Days 19-21", "type": "build" },
-    { "name": "GO/NO-GO", "timing": "Apr 7", "type": "gate" },
     { "name": "HACKATHON", "timing": "Apr 18", "type": "event" }
   ],
   "parallelTrack": [
@@ -204,7 +201,7 @@
         { "text": "Arena — scaffold, API, leaderboard, Polymarket data", "type": "product" },
         { "text": "Canon CLI ↔ Arena integration", "type": "product" },
         { "text": "DoraHacks listing live (Apr 3)", "type": "marketing" },
-        { "text": "DM outreach begins", "type": "marketing" },
+        { "text": "DM outreach begins Apr 4", "type": "marketing" },
         { "text": "Workshops begin", "type": "marketing" }
       ]
     },
@@ -216,7 +213,6 @@
       "tasks": [
         { "text": "Heavy testing — all modules", "type": "product" },
         { "text": "Bug fixes + edge cases", "type": "product" },
-        { "text": "Apr 7 — GO/NO-GO", "type": "gate" },
         { "text": "DM outreach at scale", "type": "marketing" },
         { "text": "Workshops continue", "type": "marketing" }
       ]
@@ -230,7 +226,6 @@
         { "text": "Final testing + fixes", "type": "product" },
         { "text": "Deploy stable version", "type": "product" },
         { "text": "Final outreach + workshops wrap up", "type": "marketing" },
-        { "text": "Apr 17 — Registration closes", "type": "event" },
         { "text": "Apr 18 — KICKOFF", "type": "event" }
       ]
     },
@@ -242,7 +237,7 @@
       "tasks": [
         { "text": "Week 1 checkpoint (Apr 24)", "type": "event" },
         { "text": "Week 2 checkpoint (May 1)", "type": "event" },
-        { "text": "Submissions close (May 9)", "type": "event" },
+        { "text": "Registration + submissions close (May 9)", "type": "event" },
         { "text": "Judging (May 10)", "type": "event" },
         { "text": "WINNERS LIVESTREAM (May 11)", "type": "event" }
       ]
