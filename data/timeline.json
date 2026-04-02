@@ -2,14 +2,14 @@
   "meta": {
     "title": "Canon Hackathon Dashboard",
     "subtitle": "Internal planning view",
-    "generated": "2026-03-22",
+    "generated": "2026-04-02",
     "startDate": "2026-03-19",
     "hackathonDate": "2026-04-18",
     "finaleDate": "2026-05-11",
     "totalDays": 54
   },
   "stats": [
-    { "value": "30", "label": "Days to hackathon", "color": "yellow" },
+    { "value": "16", "label": "Days to hackathon", "color": "yellow" },
     { "value": "17", "label": "Build days (parallel)", "color": "accent" },
     { "value": "78", "label": "Plans shipped (core)", "color": "green" },
     { "value": "$3K", "label": "Confirmed budget", "color": "cyan" },
@@ -31,8 +31,8 @@
       "risk": "medium",
       "tags": ["gate"],
       "startDay": 3,
-      "description": "Test pmxt against Polymarket: fetchMarkets, fetchPositions, fetchBalance, createOrder, fetchOHLCV. Must pass before MCP Server starts. Fallback: direct Polymarket CLOB API.",
-      "status": "pending"
+      "description": "Test pmxt against Polymarket: fetchMarkets, fetchPositions, fetchBalance, createOrder, fetchOHLCV. Must pass before Canon CLI starts. Fallback: direct Polymarket CLOB API.",
+      "status": "done"
     },
     {
       "name": "RPA Outreach Tool",
@@ -41,15 +41,15 @@
       "tags": ["orch"],
       "startDay": 4,
       "description": "Playwright script: scrape DoraHacks profiles, store JSON/SQLite, semi-manual DM sending. Rate limiting + tracking. Primary registration driver.",
-      "status": "pending"
+      "status": "done"
     },
     {
-      "name": "MCP Server",
+      "name": "Canon CLI",
       "days": 6,
       "risk": "low-med",
       "tags": [],
       "startDay": 5,
-      "description": "8 tools: canon_init (wraps existing), canon_register (needs Arena), canon_market (pmxt), canon_position (pmxt), canon_test (pmxt), canon_ralph (wraps existing), canon_activity (new), canon_help (partial). New repo.",
+      "description": "4 commands: canon init, canon market, canon position, canon register. POC code exists from pmxt work.",
       "status": "pending"
     },
     {
@@ -67,8 +67,8 @@
       "risk": "low",
       "tags": [],
       "startDay": 0,
-      "description": "Sampson defines strategy logic, parameters, and market approach for 6 templates: arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, contrarian-fade.",
-      "status": "pending",
+      "description": "Sampson defines strategy logic, parameters, and market approach. 18 strategy types reviewed. Selecting which become code templates.",
+      "status": "done",
       "owner": "Sampson"
     },
     {
@@ -77,8 +77,17 @@
       "risk": "low",
       "tags": ["orch"],
       "startDay": 8,
-      "description": "Implement Sampson's strategy definitions as scaffoldable TS/Python projects. Orchestrator builds, Alberto oversees. Depends on strategy definitions + MCP tools being stable.",
+      "description": "Implement Sampson's strategy definitions as scaffoldable TS/Python projects. Orchestrator builds, Alberto oversees. Depends on strategy definitions + Canon CLI being stable.",
       "status": "pending"
+    },
+    {
+      "name": "Demo Video",
+      "days": 1,
+      "risk": "none",
+      "tags": ["done"],
+      "startDay": 11,
+      "description": "Recorded Mar 30, uploaded to YouTube. Title: Prediction Market Strategy Built From Scratch by Canon AI.",
+      "status": "done"
     },
     {
       "name": "Core Infrastructure",
@@ -86,18 +95,19 @@
       "risk": "none",
       "tags": ["done"],
       "startDay": 0,
-      "description": "Ralph Loop, Orchestrator, Planner Loop, Agent Framework (6 personas, 8 skills), 10 hooks, 8 commands, domain layering. 78 plans shipped.",
+      "description": "Ralph Loop, Orchestrator, Planner Loop, Agent Framework (6 personas, 8 skills), 10 hooks, 8 commands, domain layering. 78 plans shipped. CORE hardening (14 items): orchestrator latency, Linux/WSL compat, PreToolUse hook errors, tmux env propagation, shebang fixes, CI pipeline, provider-agnostic agent config.",
       "status": "done"
     }
   ],
   "ganttBars": [
     { "label": "Conductor + TUI", "startDay": 0, "days": 3, "color": "accent", "text": "TOAD + Conductor (3 days)", "status": "active" },
-    { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "pending" },
-    { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "pending" },
-    { "label": "MCP Server", "startDay": 5, "days": 6, "color": "accent", "text": "8 tools (6 days)", "status": "pending" },
-    { "label": "Template Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — strategy definitions", "status": "pending" },
+    { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
+    { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
+    { "label": "Canon CLI", "startDay": 5, "days": 6, "color": "accent", "text": "4 commands (6 days)", "status": "pending" },
+    { "label": "Template Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — strategy definitions", "status": "done" },
     { "label": "Template Code", "startDay": 8, "days": 4, "color": "cyan", "text": "Orch + Alberto — code templates", "status": "pending" },
     { "label": "Arena MVP", "startDay": 11, "days": 7, "color": "accent", "text": "Leaderboard + Portfolio (7 days)", "status": "pending" },
+    { "label": "Demo Video", "startDay": 11, "days": 1, "color": "green", "text": "YouTube — recorded Mar 30", "status": "done" },
     { "label": "Integration Test", "startDay": 18, "days": 3, "color": "accent", "text": "Integration + smoke tests", "status": "pending" },
     { "label": "Testing Phase", "startDay": 21, "days": 9, "color": "accent", "text": "Heavy testing + bug fixes", "status": "pending" },
     { "label": "DoraHacks + DMs", "startDay": 6, "days": 24, "color": "green", "text": "Registration window + outreach", "status": "pending" },
@@ -115,7 +125,7 @@
   "criticalPath": [
     { "name": "Conductor", "timing": "Days 1-3", "type": "build" },
     { "name": "pmxt POC", "timing": "Day 4", "type": "gate" },
-    { "name": "MCP Server", "timing": "Days 6-11", "type": "build" },
+    { "name": "Canon CLI", "timing": "Days 6-11", "type": "build" },
     { "name": "Arena MVP", "timing": "Days 12-18", "type": "build" },
     { "name": "Integration", "timing": "Days 19-21", "type": "build" },
     { "name": "GO/NO-GO", "timing": "Apr 7", "type": "gate" },
@@ -131,23 +141,23 @@
       "num": 1,
       "dates": "Mar 19 – 23",
       "theme": "Foundation + Conductor",
-      "current": true,
+      "current": false,
       "tasks": [
         { "text": "pmxt POC + RPA tool (orch, parallel)", "type": "product" },
         { "text": "TOAD TUI eval + Conductor build", "type": "product" },
         { "text": "DoraHacks listing draft", "type": "marketing" },
         { "text": "Discord setup", "type": "marketing" },
         { "text": "Carlos meeting (Mar 19)", "type": "planning" },
-        { "text": "pmxt result → MCP approach", "type": "gate" }
+        { "text": "pmxt result → CLI approach", "type": "gate" }
       ]
     },
     {
       "num": 2,
       "dates": "Mar 24 – 29",
-      "theme": "MCP Server",
+      "theme": "Canon CLI",
       "current": false,
       "tasks": [
-        { "text": "MCP Server — build through Conductor", "type": "product" },
+        { "text": "Canon CLI — build through Conductor", "type": "product" },
         { "text": "Templates (orch, parallel)", "type": "product" },
         { "text": "DoraHacks listing LIVE (Mar 25)", "type": "marketing" },
         { "text": "DM outreach begins", "type": "marketing" },
@@ -158,10 +168,10 @@
       "num": 3,
       "dates": "Mar 30 – Apr 5",
       "theme": "Arena MVP",
-      "current": false,
+      "current": true,
       "tasks": [
         { "text": "Arena — scaffold, API, leaderboard, Polymarket data", "type": "product" },
-        { "text": "MCP ↔ Arena integration", "type": "product" },
+        { "text": "Canon CLI ↔ Arena integration", "type": "product" },
         { "text": "Arena screenshot → update listing", "type": "marketing" },
         { "text": "DM outreach at scale", "type": "marketing" }
       ]
@@ -208,9 +218,9 @@
     }
   ],
   "cutList": [
-    { "priority": "MUST SHIP", "level": "p1", "items": "Conductor + Arena leaderboard + canon_register + canon_market + 3 templates" },
-    { "priority": "SHOULD SHIP", "level": "p2", "items": "Remaining MCP tools + 4 more templates + portfolio view" },
-    { "priority": "NICE TO HAVE", "level": "p3", "items": "canon_activity + canon_test + polished DX docs" },
-    { "priority": "CUT FIRST", "level": "p4", "items": "canon_help refinement, 10th template, video walkthroughs" }
+    { "priority": "MUST SHIP", "level": "p1", "items": "Conductor + Arena leaderboard + canon register + canon market + 3 templates" },
+    { "priority": "SHOULD SHIP", "level": "p2", "items": "Remaining CLI commands + 4 more templates + portfolio view" },
+    { "priority": "NICE TO HAVE", "level": "p3", "items": "canon activity + canon test + polished DX docs" },
+    { "priority": "CUT FIRST", "level": "p4", "items": "canon help refinement, 10th template, video walkthroughs" }
   ]
 }
