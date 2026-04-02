@@ -57,8 +57,8 @@
       "days": 3,
       "risk": "low-med",
       "tags": [],
-      "startDay": 8,
-      "description": "Remaining CLI commands: canon register (needs Arena), canon help, canon balance/wallet.",
+      "startDay": 17,
+      "description": "Remaining CLI commands: canon register (needs Arena), canon help, canon balance/wallet. Depends on Arena MVP.",
       "status": "pending"
     },
     {
@@ -131,7 +131,7 @@
     { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
     { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
     { "label": "Canon CLI (init + start)", "startDay": 5, "days": 3, "color": "green", "text": "init + start — done", "status": "done" },
-    { "label": "Canon CLI (register + help + wallet)", "startDay": 8, "days": 3, "color": "accent", "text": "register, help, wallet", "status": "pending" },
+    { "label": "Canon CLI (register + help + wallet)", "startDay": 17, "days": 3, "color": "accent", "text": "register, help, wallet (needs Arena)", "status": "pending" },
     { "label": "Strategies Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — 18 types reviewed", "status": "done" },
     { "label": "Templates (TS)", "startDay": 8, "days": 1, "color": "green", "text": "TS base — done", "status": "done" },
     { "label": "Templates (Python)", "startDay": 9, "days": 2, "color": "cyan", "text": "Python base", "status": "pending" },
