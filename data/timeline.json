@@ -81,12 +81,30 @@
       "owner": "Sampson"
     },
     {
-      "name": "Template Code",
-      "days": 4,
+      "name": "Template Code (TypeScript)",
+      "days": 1,
+      "risk": "none",
+      "tags": ["done"],
+      "startDay": 8,
+      "description": "TypeScript base template codebase. Scaffoldable project structure complete.",
+      "status": "done"
+    },
+    {
+      "name": "Template Code (Strategies)",
+      "days": 2,
       "risk": "low",
       "tags": ["orch"],
-      "startDay": 8,
-      "description": "Implement Sampson's strategy definitions as scaffoldable TS/Python projects. Orchestrator builds, Alberto oversees. Depends on strategy definitions + Canon CLI being stable.",
+      "startDay": 9,
+      "description": "Strategy-specific template configs built on TS/Python base. Half done — selecting from Sampson's 18 types.",
+      "status": "active"
+    },
+    {
+      "name": "Template Code (Python)",
+      "days": 2,
+      "risk": "low",
+      "tags": ["orch"],
+      "startDay": 9,
+      "description": "Python base template codebase. Not started yet.",
       "status": "pending"
     },
     {
@@ -115,7 +133,9 @@
     { "label": "Canon CLI (init + start)", "startDay": 5, "days": 2, "color": "green", "text": "init + start — done", "status": "done" },
     { "label": "Canon CLI (register + help + wallet)", "startDay": 7, "days": 4, "color": "accent", "text": "register, help, wallet", "status": "pending" },
     { "label": "Template Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — strategy definitions", "status": "done" },
-    { "label": "Template Code", "startDay": 8, "days": 4, "color": "cyan", "text": "Orch + Alberto — code templates", "status": "pending" },
+    { "label": "Template Code (TS)", "startDay": 8, "days": 1, "color": "green", "text": "TypeScript base — done", "status": "done" },
+    { "label": "Template Code (Strategies)", "startDay": 9, "days": 2, "color": "accent", "text": "Strategy configs — half done", "status": "active" },
+    { "label": "Template Code (Python)", "startDay": 9, "days": 2, "color": "cyan", "text": "Python base — pending", "status": "pending" },
     { "label": "Arena MVP", "startDay": 11, "days": 7, "color": "accent", "text": "Leaderboard + Portfolio (7 days)", "status": "pending" },
     { "label": "Demo Video", "startDay": 11, "days": 1, "color": "green", "text": "YouTube — recorded Mar 30", "status": "done" },
     { "label": "Integration Test", "startDay": 18, "days": 3, "color": "accent", "text": "Integration + smoke tests", "status": "pending" },
