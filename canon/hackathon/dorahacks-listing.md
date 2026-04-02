@@ -8,7 +8,7 @@ Hosted by DEGA, this event challenges participants to build AI-powered agents th
 
 Whether you're passionate about AI, quantitative trading, or open-source innovation, this is your chance to build real strategies that compete in live markets and win from a $3,000 USDC prize pool.
 
-To stay connected and communicate with other developers in the Hackathon, join the DEGA Discord: https://discord.gg/dega Once inside, head over to the #hackathon channel where we'll be sharing updates, answering questions, and connecting with the community.
+Join the DEGA Discord to connect with other participants: https://discord.gg/dega — head to the #hackathon channel for updates, Q&A, and team-building.
 
 ## About DEGA
 
@@ -40,7 +40,7 @@ Participants will leverage Canon — DEGA's AI development layer for prediction 
 - **Apr 24, 2026:** Checkpoint Livestream — Week 1 (30 min)
 - **May 1, 2026:** Checkpoint Livestream — Week 2 (30 min)
 - **May 9, 2026:** Submission Deadline — 11:59 PM CT
-- **May 10, 2026:** Judging — Automated Leaderboard Snapshot
+- **May 10, 2026:** Final Leaderboard Snapshot
 - **May 11, 2026:** Winners Announced — Live Stream
 
 Registration is open now through April 17, 2026.
@@ -91,15 +91,15 @@ Participants will have access to:
 
 - **Discord:** https://discord.gg/dega — Main hub for announcements, mentoring, and team-building. Join the #hackathon channel.
 - **X (Twitter):** @Dega_org — Live updates and reminders.
-- **YouTube:** DEGA Channel — Workshop recordings and recap videos.
+- **YouTube:** DEGA Channel — Workshop recordings and recaps.
 
 ## Post-Hackathon Support
 
 Winners and standout teams will gain:
 
-- Promotion across DEGA channels and social media.
-- Networking opportunities with prediction market developers and AI engineers.
-- Continued access to Canon tools for strategy development beyond the hackathon.
+- Promotion across DEGA channels and social media
+- Networking opportunities with prediction market developers and AI engineers
+- Continued access to Canon tools for strategy development beyond the hackathon
 
 ## Why Join?
 
