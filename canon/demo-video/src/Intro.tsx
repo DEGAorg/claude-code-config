@@ -68,7 +68,7 @@ export const Intro: React.FC = () => {
           <HorizontalRule enterFrame={40} width={30} color={colors.green} />
 
           <TypeWriter
-            text="AI-powered prediction market research"
+            text="AI-powered prediction market strategy"
             startFrame={50}
             fontSize={26}
             color={colors.textMuted}
