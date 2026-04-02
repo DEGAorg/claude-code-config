@@ -45,19 +45,19 @@
     },
     {
       "name": "Canon CLI (init + start)",
-      "days": 2,
+      "days": 3,
       "risk": "none",
       "tags": ["done"],
       "startDay": 5,
-      "description": "canon init and canon start commands. Used in demo video. Working end-to-end.",
+      "description": "canon init and canon start commands. Used in demo video. Working end-to-end. Complex bootstrapping task.",
       "status": "done"
     },
     {
       "name": "Canon CLI (register + help + wallet)",
-      "days": 4,
+      "days": 3,
       "risk": "low-med",
       "tags": [],
-      "startDay": 7,
+      "startDay": 8,
       "description": "Remaining CLI commands: canon register (needs Arena), canon help, canon balance/wallet.",
       "status": "pending"
     },
@@ -71,7 +71,7 @@
       "status": "pending"
     },
     {
-      "name": "Template Research",
+      "name": "Strategies Research",
       "days": 4,
       "risk": "low",
       "tags": [],
@@ -81,7 +81,7 @@
       "owner": "Sampson"
     },
     {
-      "name": "Template Code (TypeScript)",
+      "name": "Templates (TS)",
       "days": 1,
       "risk": "none",
       "tags": ["done"],
@@ -90,22 +90,22 @@
       "status": "done"
     },
     {
-      "name": "Template Code (Strategies)",
-      "days": 2,
-      "risk": "low",
-      "tags": ["orch"],
-      "startDay": 9,
-      "description": "Strategy-specific template configs built on TS/Python base. Half done — selecting from Sampson's 18 types.",
-      "status": "active"
-    },
-    {
-      "name": "Template Code (Python)",
+      "name": "Templates (Python)",
       "days": 2,
       "risk": "low",
       "tags": ["orch"],
       "startDay": 9,
       "description": "Python base template codebase. Not started yet.",
       "status": "pending"
+    },
+    {
+      "name": "Strategy Implementation",
+      "days": 2,
+      "risk": "low",
+      "tags": ["orch"],
+      "startDay": 15,
+      "description": "Strategy-specific template configs built on TS/Python base. Half done — selecting from Sampson's 18 types.",
+      "status": "active"
     },
     {
       "name": "Demo Video",
@@ -130,12 +130,12 @@
     { "label": "Canon TUI", "startDay": 0, "days": 3, "color": "green", "text": "Canon TUI — done", "status": "done" },
     { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
     { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
-    { "label": "Canon CLI (init + start)", "startDay": 5, "days": 2, "color": "green", "text": "init + start — done", "status": "done" },
-    { "label": "Canon CLI (register + help + wallet)", "startDay": 7, "days": 4, "color": "accent", "text": "register, help, wallet", "status": "pending" },
-    { "label": "Template Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — strategy definitions", "status": "done" },
-    { "label": "Template Code (TS)", "startDay": 8, "days": 1, "color": "green", "text": "TypeScript base — done", "status": "done" },
-    { "label": "Template Code (Strategies)", "startDay": 9, "days": 2, "color": "accent", "text": "Strategy configs — half done", "status": "active" },
-    { "label": "Template Code (Python)", "startDay": 9, "days": 2, "color": "cyan", "text": "Python base — pending", "status": "pending" },
+    { "label": "Canon CLI (init + start)", "startDay": 5, "days": 3, "color": "green", "text": "init + start — done", "status": "done" },
+    { "label": "Canon CLI (register + help + wallet)", "startDay": 8, "days": 3, "color": "accent", "text": "register, help, wallet", "status": "pending" },
+    { "label": "Strategies Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — 18 types reviewed", "status": "done" },
+    { "label": "Templates (TS)", "startDay": 8, "days": 1, "color": "green", "text": "TS base — done", "status": "done" },
+    { "label": "Templates (Python)", "startDay": 9, "days": 2, "color": "cyan", "text": "Python base", "status": "pending" },
+    { "label": "Strategy Implementation", "startDay": 15, "days": 2, "color": "accent", "text": "Half done — Apr 3 start", "status": "active" },
     { "label": "Arena MVP", "startDay": 11, "days": 7, "color": "accent", "text": "Leaderboard + Portfolio (7 days)", "status": "pending" },
     { "label": "Demo Video", "startDay": 11, "days": 1, "color": "green", "text": "YouTube — recorded Mar 30", "status": "done" },
     { "label": "Integration Test", "startDay": 18, "days": 3, "color": "accent", "text": "Integration + smoke tests", "status": "pending" },
@@ -164,8 +164,8 @@
   ],
   "parallelTrack": [
     { "name": "RPA Tool", "timing": "Days 5-6", "type": "parallel" },
-    { "name": "Tmpl Research", "timing": "Days 1-4 (Sampson)", "type": "parallel" },
-    { "name": "Tmpl Code", "timing": "Days 9-12 (orch)", "type": "parallel" }
+    { "name": "Strategies Research", "timing": "Days 1-4 (Sampson)", "type": "parallel" },
+    { "name": "Strategy Implementation", "timing": "Day 15+ (orch)", "type": "parallel" }
   ],
   "weeks": [
     {
