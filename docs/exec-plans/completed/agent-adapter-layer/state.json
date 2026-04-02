@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "plan": "agent-adapter-layer",
+  "issueNumber": 65,
+  "maxParallelWorkers": 4,
+  "mode": "foreground",
+  "items": [
+    {
+      "id": 1,
+      "description": "Update `scripts/agent-shim.sh` — fill all helper functions with real Gemini/Codex values: `dega_agent_command` returns `gemini`/`codex`; `dega_agent_headless_flags` returns `--yolo` for both; `dega_agent_session_var` returns `GEMINI_CLI` for Gemini, empty for Codex; `dega_agent_prompt_flag` returns `-p` for Claude/Gemini, `exec` for Codex; add `dega_agent_json_flag` returning `--output-format json` for Claude/Gemini, `--json` for Codex; add `dega_agent_build_headless_cmd` that assembles the full command string handling Codex's `exec` subcommand pattern",
+      "deps": [],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 2,
+      "description": "Update orchestrator scripts to handle Codex pattern and missing session var — in `orch-engine.sh`, `orch-review.sh`, `orch-verify.sh`: use `dega_agent_build_headless_cmd` instead of manual command assembly; skip `env -u` when session var is empty",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 3,
+      "description": "Update `scripts/planner-loop.sh` — use `dega_agent_build_headless_cmd` for assessor and writer spawns; use `dega_agent_json_flag` for JSON output",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 4,
+      "description": "Create `settings-template.json` — agent-neutral hook/permission definitions using canonical event names (`PreToolUse`, `PostToolUse`, `Stop`); document the mapping to each agent's names in comments",
+      "deps": [
+        1
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 5,
+      "description": "Create `scripts/adapters/claude-settings.sh` — read `settings-template.json`, output `settings.json` with Claude event names and `~/.degacore/` hook paths",
+      "deps": [
+        4
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 6,
+      "description": "Create `scripts/adapters/gemini-settings.sh` — read `settings-template.json`, translate event names (`PreToolUse`→`BeforeTool`, `PostToolUse`→`AfterTool`, `Stop`→`SessionEnd`), output `settings.json` for `~/.gemini/`",
+      "deps": [
+        4
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 7,
+      "description": "Create `scripts/adapters/codex-settings.sh` — read `settings-template.json`, generate `config.toml` (MCP servers, model config) and `hooks.json` (hooks in Codex format) for `~/.codex/`",
+      "deps": [
+        4
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 8,
+      "description": "Update `commands/apply-core.md` — add step to detect installed agents (`command -v claude gemini codex`), run corresponding adapter for each, generate instruction file shims (`CLAUDE.md`, `GEMINI.md` pointing to `AGENTS.md`; Codex uses `AGENTS.md` natively)",
+      "deps": [
+        5,
+        6,
+        7
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 9,
+      "description": "Run `shellcheck` on all modified/new `.sh` files; verify shim returns correct values for all three agents",
+      "deps": [
+        2,
+        3,
+        5,
+        6,
+        7
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    },
+    {
+      "id": 10,
+      "description": "Smoke test — run orchestrator with `DEGA_PROVIDER=gemini` on a trivial 1-item plan; verify worker spawns with correct `gemini -p --yolo` command",
+      "deps": [
+        2,
+        8
+      ],
+      "status": "done",
+      "workerPid": null,
+      "tmuxPane": null,
+      "worktree": null,
+      "iteration": 0,
+      "maxIterations": 3,
+      "lastResult": "SHIP",
+      "reviewStatus": "passed"
+    }
+  ],
+  "finalReview": {
+    "status": "done",
+    "result": "SHIP",
+    "reworkItems": []
+  },
+  "startedAt": "2026-03-30T06:23:35Z",
+  "updatedAt": "2026-03-30T06:43:53Z",
+  "status": "verifying",
+  "verification": {
+    "status": "passed",
+    "uncheckedCount": 0,
+    "iteration": 2
+  }
+}
