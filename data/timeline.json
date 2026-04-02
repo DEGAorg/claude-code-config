@@ -44,12 +44,21 @@
       "status": "done"
     },
     {
-      "name": "Canon CLI",
-      "days": 6,
+      "name": "Canon CLI (init + start)",
+      "days": 2,
+      "risk": "none",
+      "tags": ["done"],
+      "startDay": 5,
+      "description": "canon init and canon start commands. Used in demo video. Working end-to-end.",
+      "status": "done"
+    },
+    {
+      "name": "Canon CLI (register + help + wallet)",
+      "days": 4,
       "risk": "low-med",
       "tags": [],
-      "startDay": 5,
-      "description": "4 commands: canon init, canon market, canon position, canon register. POC code exists from pmxt work.",
+      "startDay": 7,
+      "description": "Remaining CLI commands: canon register (needs Arena), canon help, canon balance/wallet.",
       "status": "pending"
     },
     {
@@ -103,7 +112,8 @@
     { "label": "Conductor + TUI", "startDay": 0, "days": 3, "color": "accent", "text": "TOAD + Conductor (3 days)", "status": "active" },
     { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
     { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
-    { "label": "Canon CLI", "startDay": 5, "days": 6, "color": "accent", "text": "4 commands (6 days)", "status": "pending" },
+    { "label": "Canon CLI (init + start)", "startDay": 5, "days": 2, "color": "green", "text": "init + start — done", "status": "done" },
+    { "label": "Canon CLI (register + help + wallet)", "startDay": 7, "days": 4, "color": "accent", "text": "register, help, wallet", "status": "pending" },
     { "label": "Template Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — strategy definitions", "status": "done" },
     { "label": "Template Code", "startDay": 8, "days": 4, "color": "cyan", "text": "Orch + Alberto — code templates", "status": "pending" },
     { "label": "Arena MVP", "startDay": 11, "days": 7, "color": "accent", "text": "Leaderboard + Portfolio (7 days)", "status": "pending" },
@@ -125,7 +135,7 @@
   "criticalPath": [
     { "name": "Conductor", "timing": "Days 1-3", "type": "build" },
     { "name": "pmxt POC", "timing": "Day 4", "type": "gate" },
-    { "name": "Canon CLI", "timing": "Days 6-11", "type": "build" },
+    { "name": "Canon CLI (register + help + wallet)", "timing": "Days 8-11", "type": "build" },
     { "name": "Arena MVP", "timing": "Days 12-18", "type": "build" },
     { "name": "Integration", "timing": "Days 19-21", "type": "build" },
     { "name": "GO/NO-GO", "timing": "Apr 7", "type": "gate" },
