@@ -17,13 +17,13 @@
   ],
   "components": [
     {
-      "name": "TOAD TUI + Conductor",
+      "name": "Canon TUI",
       "days": 3,
-      "risk": "medium",
-      "tags": [],
+      "risk": "none",
+      "tags": ["done"],
       "startDay": 0,
-      "description": "Build the Conductor agent interface using TOAD TUI. Main Claude pane + dynamic worker panes. Wraps existing orchestrator. The tool Alberto uses to build everything after it.",
-      "status": "active"
+      "description": "Toad fork with agent control mechanisms, split view (agent + timeline). Panel positioning fixes complete.",
+      "status": "done"
     },
     {
       "name": "pmxt POC",
@@ -127,7 +127,7 @@
     }
   ],
   "ganttBars": [
-    { "label": "Conductor + TUI", "startDay": 0, "days": 3, "color": "accent", "text": "TOAD + Conductor (3 days)", "status": "active" },
+    { "label": "Canon TUI", "startDay": 0, "days": 3, "color": "green", "text": "Canon TUI — done", "status": "done" },
     { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
     { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
     { "label": "Canon CLI (init + start)", "startDay": 5, "days": 2, "color": "green", "text": "init + start — done", "status": "done" },
