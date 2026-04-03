@@ -34,16 +34,18 @@ Participants will leverage Canon — DEGA's AI development layer for prediction 
 ## Key Dates
 
 - **Apr 18, 2026:** Kickoff Livestream — Hackathon Officially Begins
-- **Apr 19, 2026:** Workshop 1 — Polymarket API Deep Dive (1 hr, recorded)
-- **Apr 20, 2026:** Workshop 2 — Building Prediction Strategies with AI Agents (1 hr, recorded)
-- **Apr 21, 2026:** Workshop 3 — Canon AI Tools for Rapid Prototyping (1 hr, recorded)
+- **Apr 8, 2026:** Workshop 1 — Prediction Markets 101 + Why NBA Playoffs (1 hr, recorded)
+- **Apr 10, 2026:** Workshop 2 — NBA Playoffs Market Analysis with AI (1 hr, recorded)
+- **Apr 15, 2026:** Workshop 3 — Canon Setup + Build Your First Strategy (1 hr, recorded)
+- **Apr 17, 2026:** Workshop 4 — Templates, Data Feeds, and Launching a Scanner (1 hr, recorded)
+- **Apr 29, 2026:** Workshop 5 — AMA + Live Strategy Review (1 hr, recorded)
 - **Apr 24, 2026:** Checkpoint Livestream — Week 1 (30 min)
 - **May 1, 2026:** Checkpoint Livestream — Week 2 (30 min)
 - **May 9, 2026:** Submission Deadline — 11:59 PM CT
 - **May 10, 2026:** Final Leaderboard Snapshot
 - **May 11, 2026:** Winners Announced — Live Stream
 
-Registration is open now through April 17, 2026.
+Registration is open now through May 9, 2026.
 
 ## Prize Pool & Distribution
 
@@ -83,7 +85,7 @@ Participants will have access to:
 
 - Canon CLI documentation and strategy templates (nba-momentum, arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, contrarian-fade)
 - Polymarket API documentation and integration guides
-- Three recorded workshops (Polymarket API, AI agent strategies, Canon tools)
+- Five recorded workshops (prediction markets intro, market analysis with AI, Canon setup, templates & data feeds, AMA + strategy review)
 - Checkpoint livestreams with live Q&A (Apr 24 and May 1)
 - Community support in the DEGA Discord #hackathon channel
 
