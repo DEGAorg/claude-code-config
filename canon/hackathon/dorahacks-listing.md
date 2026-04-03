@@ -18,7 +18,7 @@ DEGA is building tools and infrastructure to empower creators and developers to 
 
 Participants will leverage Canon — DEGA's AI development layer for prediction market strategies:
 
-- **Canon CLI (`canon init`):** Scaffold a new strategy from battle-tested templates in seconds. Templates include nba-momentum, arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, and contrarian-fade.
+- **Canon (`canon init`):** Scaffold a new strategy from battle-tested templates in seconds. Templates include nba-momentum, arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, and contrarian-fade.
 - **Canon Market (`canon market`):** Query real-time market data from Polymarket to identify opportunities and inform your strategy logic.
 - **Canon Position (`canon position`):** Monitor your positions, track P&L, and manage portfolio exposure across active markets.
 - **Canon Register (`canon register`):** Register your strategy on the Arena — our web leaderboard that reads Polymarket wallets on-chain for transparent, verifiable rankings.
@@ -63,7 +63,7 @@ Prize payments will be processed and distributed after the winners livestream on
 
 This hackathon runs a single competitive track. There are no subjective judges and no scoring rubrics. Your ranking is determined entirely by your strategy's profit-and-loss percentage on Polymarket, verified on-chain.
 
-1. **Build** — Use Canon CLI tools and strategy templates to create an AI-powered trading agent.
+1. **Build** — Use Canon tools and strategy templates to create an AI-powered trading agent.
 2. **Fund** — Deposit a minimum of $100 USDC into your Polymarket wallet on Polygon.
 3. **Trade** — Deploy your strategy and let it trade live on Polymarket from Apr 18 through May 9.
 4. **Rank** — The Arena leaderboard reads your wallet's on-chain P&L in real time. At submission deadline, a final snapshot determines rankings.
@@ -83,7 +83,7 @@ Each submission must include:
 
 Participants will have access to:
 
-- Canon CLI documentation and strategy templates (nba-momentum, arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, contrarian-fade)
+- Canon documentation and strategy templates (nba-momentum, arbitrage-scanner, news-sentiment, odds-monitor, simple-strategy, bracket-builder, contrarian-fade)
 - Polymarket API documentation and integration guides
 - Five recorded workshops (prediction markets intro, market analysis with AI, Canon setup, templates & data feeds, AMA + strategy review)
 - Checkpoint livestreams with live Q&A (Apr 24 and May 1)
