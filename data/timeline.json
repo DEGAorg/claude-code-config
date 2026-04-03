@@ -9,18 +9,40 @@
     "totalDays": 54
   },
   "stats": [
-    { "value": "16", "label": "Days to hackathon", "color": "yellow" },
-    { "value": "17", "label": "Build days (parallel)", "color": "accent" },
-    { "value": "78", "label": "Plans shipped (core)", "color": "green" },
-    { "value": "$3K", "label": "Confirmed budget", "color": "cyan" },
-    { "value": "500+", "label": "Registration target", "color": "text" }
+    {
+      "value": "16",
+      "label": "Days to hackathon",
+      "color": "yellow"
+    },
+    {
+      "value": "17",
+      "label": "Build days (parallel)",
+      "color": "accent"
+    },
+    {
+      "value": "78",
+      "label": "Plans shipped (core)",
+      "color": "green"
+    },
+    {
+      "value": "$3K",
+      "label": "Confirmed budget",
+      "color": "cyan"
+    },
+    {
+      "value": "500+",
+      "label": "Registration target",
+      "color": "text"
+    }
   ],
   "components": [
     {
       "name": "Canon TUI",
       "days": 3,
       "risk": "none",
-      "tags": ["done"],
+      "tags": [
+        "done"
+      ],
       "startDay": 0,
       "description": "Toad fork with agent control mechanisms, split view (agent + timeline). Panel positioning fixes complete.",
       "status": "done"
@@ -29,7 +51,9 @@
       "name": "pmxt POC",
       "days": 0.5,
       "risk": "medium",
-      "tags": ["gate"],
+      "tags": [
+        "gate"
+      ],
       "startDay": 3,
       "description": "Test pmxt against Polymarket: fetchMarkets, fetchPositions, fetchBalance, createOrder, fetchOHLCV. Must pass before Canon CLI starts. Fallback: direct Polymarket CLOB API.",
       "status": "done"
@@ -38,7 +62,9 @@
       "name": "RPA Outreach Tool",
       "days": 2,
       "risk": "low-med",
-      "tags": ["orch"],
+      "tags": [
+        "orch"
+      ],
       "startDay": 4,
       "description": "Playwright script: scrape DoraHacks profiles, store JSON/SQLite, semi-manual DM sending. Rate limiting + tracking. Primary registration driver.",
       "status": "done"
@@ -47,7 +73,9 @@
       "name": "Canon CLI (init + start)",
       "days": 3,
       "risk": "none",
-      "tags": ["done"],
+      "tags": [
+        "done"
+      ],
       "startDay": 5,
       "description": "canon init and canon start commands. Used in demo video. Working end-to-end. Complex bootstrapping task.",
       "status": "done"
@@ -84,7 +112,9 @@
       "name": "Templates (TS)",
       "days": 1,
       "risk": "none",
-      "tags": ["done"],
+      "tags": [
+        "done"
+      ],
       "startDay": 8,
       "description": "TypeScript base template codebase. Scaffoldable project structure complete.",
       "status": "done"
@@ -93,7 +123,9 @@
       "name": "Templates (Python)",
       "days": 2,
       "risk": "low",
-      "tags": ["orch"],
+      "tags": [
+        "orch"
+      ],
       "startDay": 9,
       "description": "Python base template codebase. Not started yet.",
       "status": "pending"
@@ -102,16 +134,20 @@
       "name": "Strategy Implementation",
       "days": 2,
       "risk": "low",
-      "tags": ["orch"],
+      "tags": [
+        "orch"
+      ],
       "startDay": 15,
-      "description": "Strategy-specific template configs built on TS/Python base. Half done — selecting from Sampson's 18 types.",
+      "description": "Strategy-specific template configs built on TS/Python base. Half done \u2014 selecting from Sampson's 18 types.",
       "status": "active"
     },
     {
       "name": "Demo Video",
       "days": 1,
       "risk": "none",
-      "tags": ["done"],
+      "tags": [
+        "done"
+      ],
       "startDay": 11,
       "description": "Recorded Mar 30, uploaded to YouTube. Title: Prediction Market Strategy Built From Scratch by Canon AI.",
       "status": "done"
@@ -120,138 +156,450 @@
       "name": "Core Infrastructure",
       "days": 0,
       "risk": "none",
-      "tags": ["done"],
+      "tags": [
+        "done"
+      ],
       "startDay": 0,
       "description": "Ralph Loop, Orchestrator, Planner Loop, Agent Framework (6 personas, 8 skills), 10 hooks, 8 commands, domain layering. 78 plans shipped. CORE hardening (14 items): orchestrator latency, Linux/WSL compat, PreToolUse hook errors, tmux env propagation, shebang fixes, CI pipeline, provider-agnostic agent config.",
       "status": "done"
+    },
+    {
+      "name": "Update RPA Session",
+      "days": 1,
+      "risk": "low",
+      "tags": [],
+      "startDay": 15,
+      "description": "Update RPA session.",
+      "status": "pending"
     }
   ],
   "ganttBars": [
-    { "label": "Canon TUI", "startDay": 0, "days": 3, "color": "green", "text": "Canon TUI — done", "status": "done" },
-    { "label": "pmxt POC", "startDay": 3, "days": 1, "color": "orange", "text": "POC", "status": "done" },
-    { "label": "RPA Tool (orch)", "startDay": 4, "days": 2, "color": "cyan", "text": "Playwright", "status": "done" },
-    { "label": "Canon CLI (init + start)", "startDay": 5, "days": 3, "color": "green", "text": "init + start — done", "status": "done" },
-    { "label": "Canon CLI (register + help + wallet)", "startDay": 17, "days": 3, "color": "accent", "text": "register, help, wallet (needs Arena)", "status": "pending" },
-    { "label": "Strategies Research", "startDay": 0, "days": 4, "color": "green", "text": "Sampson — 18 types reviewed", "status": "done" },
-    { "label": "Templates (TS)", "startDay": 8, "days": 1, "color": "green", "text": "TS base — done", "status": "done" },
-    { "label": "Templates (Python)", "startDay": 9, "days": 2, "color": "cyan", "text": "Python base", "status": "pending" },
-    { "label": "Strategy Implementation", "startDay": 15, "days": 2, "color": "accent", "text": "Half done — Apr 3 start", "status": "active" },
-    { "label": "Arena MVP", "startDay": 11, "days": 7, "color": "accent", "text": "Leaderboard + Portfolio (7 days)", "status": "pending" },
-    { "label": "Demo Video", "startDay": 11, "days": 1, "color": "green", "text": "YouTube — recorded Mar 30", "status": "done" },
-    { "label": "Integration Test", "startDay": 18, "days": 3, "color": "accent", "text": "Integration + smoke tests", "status": "pending" },
-    { "label": "Testing Phase", "startDay": 21, "days": 9, "color": "accent", "text": "Heavy testing + bug fixes", "status": "pending" },
-    { "label": "DoraHacks + DMs", "startDay": 15, "days": 21, "color": "green", "text": "Listing Apr 3, DMs Apr 4-24 (3 weeks)", "status": "pending" },
-    { "label": "Content Tracking", "startDay": 17, "days": 7, "color": "orange", "text": "WS content due Apr 5–11", "status": "pending" },
-    { "label": "Workshops", "startDay": 20, "days": 22, "color": "cyan", "text": "5 sessions: Apr 8, 10, 15, 17, 29", "status": "pending" },
-    { "label": "Hackathon", "startDay": 30, "days": 21, "color": "yellow", "text": "3 weeks — NBA Playoffs", "status": "pending" },
-    { "label": "Finale", "startDay": 52, "days": 2, "color": "red", "text": "Livestream", "status": "pending" }
+    {
+      "label": "Canon TUI",
+      "startDay": 0,
+      "days": 3,
+      "color": "green",
+      "text": "Canon TUI \u2014 done",
+      "status": "done"
+    },
+    {
+      "label": "pmxt POC",
+      "startDay": 3,
+      "days": 1,
+      "color": "orange",
+      "text": "POC",
+      "status": "done"
+    },
+    {
+      "label": "RPA Tool (orch)",
+      "startDay": 4,
+      "days": 2,
+      "color": "cyan",
+      "text": "Playwright",
+      "status": "done"
+    },
+    {
+      "label": "Canon CLI (init + start)",
+      "startDay": 5,
+      "days": 3,
+      "color": "green",
+      "text": "init + start \u2014 done",
+      "status": "done"
+    },
+    {
+      "label": "Canon CLI (register + help + wallet)",
+      "startDay": 17,
+      "days": 3,
+      "color": "accent",
+      "text": "register, help, wallet (needs Arena)",
+      "status": "pending"
+    },
+    {
+      "label": "Strategies Research",
+      "startDay": 0,
+      "days": 4,
+      "color": "green",
+      "text": "Sampson \u2014 18 types reviewed",
+      "status": "done"
+    },
+    {
+      "label": "Templates (TS)",
+      "startDay": 8,
+      "days": 1,
+      "color": "green",
+      "text": "TS base \u2014 done",
+      "status": "done"
+    },
+    {
+      "label": "Templates (Python)",
+      "startDay": 9,
+      "days": 2,
+      "color": "cyan",
+      "text": "Python base",
+      "status": "pending"
+    },
+    {
+      "label": "Strategy Implementation",
+      "startDay": 15,
+      "days": 2,
+      "color": "accent",
+      "text": "Half done \u2014 Apr 3 start",
+      "status": "active"
+    },
+    {
+      "label": "Arena MVP",
+      "startDay": 11,
+      "days": 7,
+      "color": "accent",
+      "text": "Leaderboard + Portfolio (7 days)",
+      "status": "pending"
+    },
+    {
+      "label": "Demo Video",
+      "startDay": 11,
+      "days": 1,
+      "color": "green",
+      "text": "YouTube \u2014 recorded Mar 30",
+      "status": "done"
+    },
+    {
+      "label": "Update RPA Session",
+      "startDay": 15,
+      "days": 1,
+      "color": "accent",
+      "text": "Update RPA Session",
+      "status": "pending"
+    },
+    {
+      "label": "Integration Test",
+      "startDay": 18,
+      "days": 3,
+      "color": "accent",
+      "text": "Integration + smoke tests",
+      "status": "pending"
+    },
+    {
+      "label": "Testing Phase",
+      "startDay": 21,
+      "days": 9,
+      "color": "accent",
+      "text": "Heavy testing + bug fixes",
+      "status": "pending"
+    },
+    {
+      "label": "DoraHacks + DMs",
+      "startDay": 15,
+      "days": 21,
+      "color": "green",
+      "text": "Listing Apr 3, DMs Apr 4-24 (3 weeks)",
+      "status": "pending"
+    },
+    {
+      "label": "Content Tracking",
+      "startDay": 17,
+      "days": 7,
+      "color": "orange",
+      "text": "WS content due Apr 5\u201311",
+      "status": "pending"
+    },
+    {
+      "label": "Workshops",
+      "startDay": 20,
+      "days": 22,
+      "color": "cyan",
+      "text": "5 sessions: Apr 8, 10, 15, 17, 29",
+      "status": "pending"
+    },
+    {
+      "label": "Hackathon",
+      "startDay": 30,
+      "days": 21,
+      "color": "yellow",
+      "text": "3 weeks \u2014 NBA Playoffs",
+      "status": "pending"
+    },
+    {
+      "label": "Finale",
+      "startDay": 52,
+      "days": 2,
+      "color": "red",
+      "text": "Livestream",
+      "status": "pending"
+    }
   ],
   "gates": [
-    { "day": 6, "label": "Budget", "type": "gate" },
-    { "day": 30, "label": "KICKOFF", "type": "event" },
-    { "day": 51, "label": "Sub close", "type": "event" },
-    { "day": 53, "label": "WINNERS", "type": "event" }
+    {
+      "day": 6,
+      "label": "Budget",
+      "type": "gate"
+    },
+    {
+      "day": 30,
+      "label": "KICKOFF",
+      "type": "event"
+    },
+    {
+      "day": 51,
+      "label": "Sub close",
+      "type": "event"
+    },
+    {
+      "day": 53,
+      "label": "WINNERS",
+      "type": "event"
+    }
   ],
   "criticalPath": [
-    { "name": "Conductor", "timing": "Days 1-3", "type": "build" },
-    { "name": "pmxt POC", "timing": "Day 4", "type": "gate" },
-    { "name": "Canon CLI (register + help + wallet)", "timing": "Days 8-11", "type": "build" },
-    { "name": "Arena MVP", "timing": "Days 12-18", "type": "build" },
-    { "name": "Integration", "timing": "Days 19-21", "type": "build" },
-    { "name": "HACKATHON", "timing": "Apr 18", "type": "event" }
+    {
+      "name": "Conductor",
+      "timing": "Days 1-3",
+      "type": "build"
+    },
+    {
+      "name": "pmxt POC",
+      "timing": "Day 4",
+      "type": "gate"
+    },
+    {
+      "name": "Canon CLI (register + help + wallet)",
+      "timing": "Days 8-11",
+      "type": "build"
+    },
+    {
+      "name": "Arena MVP",
+      "timing": "Days 12-18",
+      "type": "build"
+    },
+    {
+      "name": "Integration",
+      "timing": "Days 19-21",
+      "type": "build"
+    },
+    {
+      "name": "HACKATHON",
+      "timing": "Apr 18",
+      "type": "event"
+    }
   ],
   "parallelTrack": [
-    { "name": "RPA Tool", "timing": "Days 5-6", "type": "parallel" },
-    { "name": "Strategies Research", "timing": "Days 1-4 (Sampson)", "type": "parallel" },
-    { "name": "Strategy Implementation", "timing": "Day 15+ (orch)", "type": "parallel" }
+    {
+      "name": "RPA Tool",
+      "timing": "Days 5-6",
+      "type": "parallel"
+    },
+    {
+      "name": "Strategies Research",
+      "timing": "Days 1-4 (Sampson)",
+      "type": "parallel"
+    },
+    {
+      "name": "Strategy Implementation",
+      "timing": "Day 15+ (orch)",
+      "type": "parallel"
+    }
   ],
   "weeks": [
     {
       "num": 1,
-      "dates": "Mar 19 – 23",
+      "dates": "Mar 19 \u2013 23",
       "theme": "Foundation + Conductor",
       "current": false,
       "tasks": [
-        { "text": "pmxt POC + RPA tool (orch, parallel)", "type": "product" },
-        { "text": "TOAD TUI eval + Conductor build", "type": "product" },
-        { "text": "DoraHacks listing draft", "type": "marketing" },
-        { "text": "Discord setup", "type": "marketing" },
-        { "text": "Carlos meeting (Mar 19)", "type": "planning" },
-        { "text": "pmxt result → CLI approach", "type": "gate" }
+        {
+          "text": "pmxt POC + RPA tool (orch, parallel)",
+          "type": "product"
+        },
+        {
+          "text": "TOAD TUI eval + Conductor build",
+          "type": "product"
+        },
+        {
+          "text": "DoraHacks listing draft",
+          "type": "marketing"
+        },
+        {
+          "text": "Discord setup",
+          "type": "marketing"
+        },
+        {
+          "text": "Carlos meeting (Mar 19)",
+          "type": "planning"
+        },
+        {
+          "text": "pmxt result \u2192 CLI approach",
+          "type": "gate"
+        }
       ]
     },
     {
       "num": 2,
-      "dates": "Mar 24 – 29",
+      "dates": "Mar 24 \u2013 29",
       "theme": "Canon CLI",
       "current": false,
       "tasks": [
-        { "text": "Canon CLI — build through Conductor", "type": "product" },
-        { "text": "Templates (orch, parallel)", "type": "product" },
-        { "text": "DoraHacks listing LIVE (Mar 25)", "type": "marketing" },
-        { "text": "DM outreach begins", "type": "marketing" },
-        { "text": "Mar 25 — budget locked", "type": "gate" }
+        {
+          "text": "Canon CLI \u2014 build through Conductor",
+          "type": "product"
+        },
+        {
+          "text": "Templates (orch, parallel)",
+          "type": "product"
+        },
+        {
+          "text": "DoraHacks listing LIVE (Mar 25)",
+          "type": "marketing"
+        },
+        {
+          "text": "DM outreach begins",
+          "type": "marketing"
+        },
+        {
+          "text": "Mar 25 \u2014 budget locked",
+          "type": "gate"
+        }
       ]
     },
     {
       "num": 3,
-      "dates": "Mar 30 – Apr 5",
+      "dates": "Mar 30 \u2013 Apr 5",
       "theme": "Arena MVP",
       "current": true,
       "tasks": [
-        { "text": "Arena — scaffold, API, leaderboard, Polymarket data", "type": "product" },
-        { "text": "Canon CLI ↔ Arena integration", "type": "product" },
-        { "text": "DoraHacks listing live (Apr 3)", "type": "marketing" },
-        { "text": "DM outreach begins Apr 4", "type": "marketing" },
-        { "text": "WS1 content prep (Apr 6)", "type": "marketing" },
-        { "text": "Workshop 1 (Apr 8), WS2 content prep", "type": "marketing" },
-        { "text": "Workshop 2 (Apr 10)", "type": "marketing" }
+        {
+          "text": "Arena \u2014 scaffold, API, leaderboard, Polymarket data",
+          "type": "product"
+        },
+        {
+          "text": "Canon CLI \u2194 Arena integration",
+          "type": "product"
+        },
+        {
+          "text": "DoraHacks listing live (Apr 3)",
+          "type": "marketing"
+        },
+        {
+          "text": "DM outreach begins Apr 4",
+          "type": "marketing"
+        },
+        {
+          "text": "WS1 content prep (Apr 6)",
+          "type": "marketing"
+        },
+        {
+          "text": "Workshop 1 (Apr 8), WS2 content prep",
+          "type": "marketing"
+        },
+        {
+          "text": "Workshop 2 (Apr 10)",
+          "type": "marketing"
+        }
       ]
     },
     {
       "num": 4,
-      "dates": "Apr 6 – 12",
+      "dates": "Apr 6 \u2013 12",
       "theme": "Testing + GO/NO-GO",
       "current": false,
       "tasks": [
-        { "text": "Heavy testing — all modules", "type": "product" },
-        { "text": "Bug fixes + edge cases", "type": "product" },
-        { "text": "DM outreach at scale", "type": "marketing" },
-        { "text": "WS3 content + Workshop 3 (Apr 15)", "type": "marketing" },
-        { "text": "WS4 content + Workshop 4 (Apr 17)", "type": "marketing" }
+        {
+          "text": "Heavy testing \u2014 all modules",
+          "type": "product"
+        },
+        {
+          "text": "Bug fixes + edge cases",
+          "type": "product"
+        },
+        {
+          "text": "DM outreach at scale",
+          "type": "marketing"
+        },
+        {
+          "text": "WS3 content + Workshop 3 (Apr 15)",
+          "type": "marketing"
+        },
+        {
+          "text": "WS4 content + Workshop 4 (Apr 17)",
+          "type": "marketing"
+        }
       ]
     },
     {
       "num": 5,
-      "dates": "Apr 13 – 18",
+      "dates": "Apr 13 \u2013 18",
       "theme": "Final Testing + Launch",
       "current": false,
       "tasks": [
-        { "text": "Final testing + fixes", "type": "product" },
-        { "text": "Deploy stable version", "type": "product" },
-        { "text": "Final outreach + workshops wrap up", "type": "marketing" },
-        { "text": "Apr 18 — KICKOFF", "type": "event" }
+        {
+          "text": "Final testing + fixes",
+          "type": "product"
+        },
+        {
+          "text": "Deploy stable version",
+          "type": "product"
+        },
+        {
+          "text": "Final outreach + workshops wrap up",
+          "type": "marketing"
+        },
+        {
+          "text": "Apr 18 \u2014 KICKOFF",
+          "type": "event"
+        }
       ]
     },
     {
       "num": "6-8",
-      "dates": "Apr 18 – May 11",
+      "dates": "Apr 18 \u2013 May 11",
       "theme": "Hackathon Live",
       "current": false,
       "tasks": [
-        { "text": "Week 1 checkpoint (Apr 24)", "type": "event" },
-        { "text": "WS5 content + Workshop 5 (Apr 29)", "type": "event" },
-        { "text": "Week 2 checkpoint (May 1)", "type": "event" },
-        { "text": "Registration + submissions close (May 9)", "type": "event" },
-        { "text": "Judging (May 10)", "type": "event" },
-        { "text": "WINNERS LIVESTREAM (May 11)", "type": "event" }
+        {
+          "text": "Week 1 checkpoint (Apr 24)",
+          "type": "event"
+        },
+        {
+          "text": "WS5 content + Workshop 5 (Apr 29)",
+          "type": "event"
+        },
+        {
+          "text": "Week 2 checkpoint (May 1)",
+          "type": "event"
+        },
+        {
+          "text": "Registration + submissions close (May 9)",
+          "type": "event"
+        },
+        {
+          "text": "Judging (May 10)",
+          "type": "event"
+        },
+        {
+          "text": "WINNERS LIVESTREAM (May 11)",
+          "type": "event"
+        }
       ]
     }
   ],
   "cutList": [
-    { "priority": "MUST SHIP", "level": "p1", "items": "Conductor + Arena leaderboard + canon register + canon market + 3 templates" },
-    { "priority": "SHOULD SHIP", "level": "p2", "items": "Remaining CLI commands + 4 more templates + portfolio view" },
-    { "priority": "NICE TO HAVE", "level": "p3", "items": "canon activity + canon test + polished DX docs" },
-    { "priority": "CUT FIRST", "level": "p4", "items": "canon help refinement, 10th template, video walkthroughs" }
+    {
+      "priority": "MUST SHIP",
+      "level": "p1",
+      "items": "Conductor + Arena leaderboard + canon register + canon market + 3 templates"
+    },
+    {
+      "priority": "SHOULD SHIP",
+      "level": "p2",
+      "items": "Remaining CLI commands + 4 more templates + portfolio view"
+    },
+    {
+      "priority": "NICE TO HAVE",
+      "level": "p3",
+      "items": "canon activity + canon test + polished DX docs"
+    },
+    {
+      "priority": "CUT FIRST",
+      "level": "p4",
+      "items": "canon help refinement, 10th template, video walkthroughs"
+    }
   ]
 }
