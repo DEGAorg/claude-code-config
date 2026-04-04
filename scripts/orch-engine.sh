@@ -20,6 +20,9 @@ source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=agent-shim.sh
 source "${SCRIPT_DIR}/agent-shim.sh"
 
+# shellcheck source=providers/provider.sh
+source "${SCRIPT_DIR}/providers/provider.sh"
+
 # --- Parse args ---
 
 SLUG=""
@@ -702,27 +705,19 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 				PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
 			fi
 
-			# Determine repo for gh pr create
-			GH_REPO=$(grep 'repo:' "${REPO_ROOT}/dega-core.yaml" 2>/dev/null |
-				head -1 | awk '{print $2}' | tr -d ' ' || true)
-
 			PR_TITLE="plan: ${SLUG}"
-			GH_ARGS=(pr create
-				--title "${PR_TITLE}"
-				--base "${PR_TARGET}"
-				--head "${ORCH_BRANCH}"
-			)
-			if [[ -n "${GH_REPO}" ]]; then
-				GH_ARGS+=(--repo "${GH_REPO}")
-			fi
 
-			if PR_URL=$(gh "${GH_ARGS[@]}" --body "${PR_BODY}" 2>&1); then
+			if PR_URL=$(provider_pr_create \
+				--title "${PR_TITLE}" \
+				--body "${PR_BODY}" \
+				--base "${PR_TARGET}" \
+				--head "${ORCH_BRANCH}" 2>&1); then
 				echo "orch-engine: PR created: ${PR_URL}"
 
 				# Post PR link as comment on the linked issue
-				if [[ -n "${ISSUE_NUMBER}" && -n "${GH_REPO}" ]]; then
-					gh issue comment "${ISSUE_NUMBER}" \
-						--repo "${GH_REPO}" \
+				if [[ -n "${ISSUE_NUMBER}" ]]; then
+					provider_issue_comment \
+						--issue "${ISSUE_NUMBER}" \
 						--body "PR created: ${PR_URL}" 2>&1 || {
 						echo "orch-engine: WARN — failed to post PR link on issue #${ISSUE_NUMBER}" >&2
 					}
