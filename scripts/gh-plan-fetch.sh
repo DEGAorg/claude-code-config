@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]
 #
 # Writes to: .orchestrator/plans/<slug>/plan.md
-# Requires: gh CLI (auto-installed via ensure-gh.sh), authenticated session
+# Requires: provider CLI (auto-installed via provider_ensure_cli), authenticated session
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -83,7 +83,8 @@ echo "Fetching issue #${issue_number} from ${repo}..." >&2
 
 # --- Fetch issue body ---
 
-body="$(gh issue view "${issue_number}" --repo "${repo}" --json body --jq '.body')" || {
+body="$(provider_issue_view --issue "${issue_number}" --repo "${repo}" \
+	--fields body | jq -r '.body')" || {
 	echo "error: failed to fetch issue #${issue_number} from ${repo}" >&2
 	exit 1
 }

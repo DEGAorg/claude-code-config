@@ -82,7 +82,7 @@ else
 fi
 
 # Apply plan:draft label unless labels explicitly disabled in config
-if ! provider_config_bool labels || provider_config_value labels != "false"; then
+if [[ "$(provider_config_value labels)" != "false" ]]; then
 	create_args+=(--label "plan:draft")
 fi
 

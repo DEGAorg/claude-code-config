@@ -206,45 +206,33 @@ start | review | ship | pr_merged | revise | pr | verify) ;;
 	;;
 esac
 
-# --- Ensure gh is available and authenticated ---
+# --- Ensure provider CLI is available and authenticated ---
 
-ensure_gh
+provider_ensure_cli
 
-if ! gh auth status &>/dev/null; then
-	echo "error: gh is not authenticated. Run: gh auth login" >&2
+provider_auth_check || {
 	echo "Then re-run this command." >&2
 	exit 1
-fi
+}
 
 # --- Resolve repo ---
 
-REPO="$(gh_resolve_repo "${REPO}")"
+if [[ -n "${REPO}" ]]; then
+	REPO="$(provider_repo_resolve --repo "${REPO}")"
+else
+	REPO="$(provider_repo_resolve)"
+fi
 
 # --- Label helpers ---
-
-PLAN_LABELS=("plan:draft" "plan:active" "plan:review" "plan:pr-review" "plan:completed" "plan:failed")
-
-remove_plan_labels() {
-	local current_labels
-	current_labels="$(gh issue view "${ISSUE}" --repo "${REPO}" \
-		--json labels -q '[.labels[].name] | join(",")')"
-	for label in "${PLAN_LABELS[@]}"; do
-		if [[ ",${current_labels}," == *",${label},"* ]]; then
-			gh issue edit "${ISSUE}" --repo "${REPO}" \
-				--remove-label "${label}" >/dev/null 2>&1 || true
-		fi
-	done
-}
 
 set_label() {
 	local target_label="$1"
 	# Skip label management if labels disabled in config
-	if [[ "$(gh_config_value labels)" == "false" ]]; then
+	if [[ "$(provider_config_value labels)" == "false" ]]; then
 		return 0
 	fi
-	remove_plan_labels
-	gh issue edit "${ISSUE}" --repo "${REPO}" \
-		--add-label "${target_label}" >/dev/null
+	provider_labels_set --issue "${ISSUE}" --repo "${REPO}" \
+		--label "${target_label}"
 }
 
 # --- Comment helpers ---
@@ -252,17 +240,19 @@ set_label() {
 post_comment() {
 	local body="$1"
 	# Skip comments if disabled in config
-	if [[ "$(gh_config_value comments)" == "false" ]]; then
+	if [[ "$(provider_config_value comments)" == "false" ]]; then
 		return 0
 	fi
-	gh issue comment "${ISSUE}" --repo "${REPO}" --body "${body}"
+	provider_issue_comment --issue "${ISSUE}" --repo "${REPO}" \
+		--body "${body}"
 }
 
 # --- Issue body helpers ---
 
 # Fetch the issue body as raw markdown.
 fetch_issue_body() {
-	gh issue view "${ISSUE}" --repo "${REPO}" --json body -q '.body'
+	provider_issue_view --issue "${ISSUE}" --repo "${REPO}" \
+		--fields body | jq -r '.body'
 }
 
 # Check off a progress-log checkbox matching the item description.
@@ -303,7 +293,8 @@ update_progress_checkbox() {
 		return 0
 	fi
 
-	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+	provider_issue_edit --issue "${ISSUE}" --repo "${REPO}" \
+		--body "${updated_body}" || {
 		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
 		return 0
 	}
@@ -341,7 +332,8 @@ update_body_on_pr() {
 		return 0
 	fi
 
-	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+	provider_issue_edit --issue "${ISSUE}" --repo "${REPO}" \
+		--body "${updated_body}" || {
 		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
 		return 0
 	}
@@ -385,7 +377,8 @@ update_body_on_merge() {
 		return 0
 	fi
 
-	gh issue edit "${ISSUE}" --repo "${REPO}" --body "${updated_body}" >/dev/null || {
+	provider_issue_edit --issue "${ISSUE}" --repo "${REPO}" \
+		--body "${updated_body}" || {
 		echo "warn: failed to write updated body to issue #${ISSUE}" >&2
 		return 0
 	}
@@ -484,14 +477,10 @@ handle_pr_merged() {
 
 	# Close the issue only if close_on_ship is true in dega-core.yaml.
 	local body
-	if gh_config_bool close_on_ship; then
-		local state
-		state="$(gh issue view "${ISSUE}" --repo "${REPO}" --json state -q '.state')"
-		if [[ "${state}" != "CLOSED" ]]; then
-			gh issue close "${ISSUE}" --repo "${REPO}" >/dev/null || {
-				echo "warn: failed to close issue #${ISSUE}" >&2
-			}
-		fi
+	if provider_config_bool close_on_ship; then
+		provider_issue_close --issue "${ISSUE}" --repo "${REPO}" || {
+			echo "warn: failed to close issue #${ISSUE}" >&2
+		}
 		body="**Plan completed.** PR merged and issue closed."
 	else
 		body="**Plan completed.** PR merged. Issue left open for review."
