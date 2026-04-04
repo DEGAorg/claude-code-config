@@ -1,5 +1,6 @@
 # Dega Core config for claude-code-config repo
 version: 1
+provider: github
 max_iterations: 3
 
 budget:
