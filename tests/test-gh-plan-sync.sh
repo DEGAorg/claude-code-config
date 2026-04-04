@@ -159,8 +159,9 @@ MOCK_BODY_FILE="${MOCK_DIR}/body.md"
 MOCK_EDITED_BODY="${MOCK_DIR}/edited-body.md"
 MOCK_DEGA_CORE="${MOCK_DIR}/dega-core.yaml"
 
-# Minimal dega-core.yaml so read-github-config.sh resolves the repo
+# Minimal dega-core.yaml so provider.sh resolves the repo
 cat >"${MOCK_DEGA_CORE}" <<'YAML'
+provider: github
 github:
   sync: true
   repo: test-owner/test-repo
@@ -169,7 +170,7 @@ github:
   close_on_ship: false
 YAML
 
-# Write the mock gh script
+# Write the mock gh script — returns JSON for issue view and handles --jq
 cat >"${MOCK_DIR}/gh" <<'GHSTUB'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -186,25 +187,37 @@ case "${1:-}" in
   issue)
     case "${2:-}" in
       view)
-        # Return mock body when asked for JSON body
-        if [[ " $* " == *"--json body"* ]]; then
-          cat "${MOCK_DIR}/body.md"
-          exit 0
+        # Build a JSON response matching gh's --json output
+        body_content=""
+        if [[ -f "${MOCK_DIR}/body.md" ]]; then
+          body_content="$(cat "${MOCK_DIR}/body.md")"
         fi
-        # Return issue state (default OPEN, or CLOSED if close-called exists)
-        if [[ " $* " == *"--json state"* ]]; then
-          if [[ -f "${MOCK_DIR}/close-called" ]]; then
-            echo "CLOSED"
-          else
-            echo "OPEN"
+        state="OPEN"
+        if [[ -f "${MOCK_DIR}/close-called" ]]; then
+          state="CLOSED"
+        fi
+        json_output=$(jq -n \
+          --arg body "${body_content}" \
+          --arg state "${state}" \
+          '{body: $body, state: $state, title: "test", assignees: [], milestone: null, labels: []}')
+
+        # Extract --jq filter if present
+        jq_filter=""
+        shift 2  # skip "issue view"
+        while [[ $# -gt 0 ]]; do
+          if [[ "$1" == "--jq" ]]; then
+            jq_filter="$2"
+            break
           fi
-          exit 0
+          shift
+        done
+
+        if [[ -n "${jq_filter}" ]]; then
+          echo "${json_output}" | jq "${jq_filter}"
+        else
+          echo "${json_output}"
         fi
-        # Return empty labels
-        if [[ " $* " == *"--json labels"* ]]; then
-          echo ""
-          exit 0
-        fi
+        exit 0
         ;;
       edit)
         # Capture the --body argument
@@ -467,6 +480,17 @@ rm -f "${MOCK_EDITED_BODY}"
 
 printf '\npr_merged\n'
 
+# pr_merged closes the issue when close_on_ship: true
+cat >"${MOCK_DEGA_CORE}" <<'YAML'
+provider: github
+github:
+  sync: true
+  repo: test-owner/test-repo
+  labels: false
+  comments: false
+  close_on_ship: true
+YAML
+
 cat >"${MOCK_BODY_FILE}" <<'BODY'
 # Plan: Test plan
 
@@ -562,6 +586,17 @@ fi
 rm -f "${MOCK_EDITED_BODY}" "${MOCK_DIR}/close-called"
 
 # --- Test: body parse failure is graceful ---
+
+# Restore close_on_ship: false for remaining tests
+cat >"${MOCK_DEGA_CORE}" <<'YAML'
+provider: github
+github:
+  sync: true
+  repo: test-owner/test-repo
+  labels: false
+  comments: false
+  close_on_ship: false
+YAML
 
 # Return empty body to simulate parse failure
 : >"${MOCK_BODY_FILE}"

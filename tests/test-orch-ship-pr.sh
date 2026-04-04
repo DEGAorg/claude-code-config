@@ -92,6 +92,7 @@ chmod +x "${STUB_DIR}/gh"
 # Create minimal dega-core.yaml for repo resolution
 MOCK_CWD="$(mktemp -d)"
 cat >"${MOCK_CWD}/dega-core.yaml" <<'YAML'
+provider: github
 github:
   repo: test-owner/test-repo
   comments: true
@@ -121,6 +122,7 @@ MOCK_COMMENT_FILE="${MOCK_DIR}/comment.txt"
 
 # Minimal dega-core.yaml
 cat >"${MOCK_DIR}/dega-core.yaml" <<'YAML'
+provider: github
 github:
   sync: true
   repo: test-owner/test-repo
@@ -129,7 +131,7 @@ github:
   close_on_ship: false
 YAML
 
-# Mock gh that captures issue comment body
+# Mock gh that captures issue comment body and returns JSON for issue view
 cat >"${MOCK_DIR}/gh" <<'GHSTUB'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -141,10 +143,24 @@ case "${1:-}" in
   issue)
     case "${2:-}" in
       view)
-        if [[ " $* " == *"--json labels"* ]]; then
-          echo ""
-          exit 0
+        # Build JSON response
+        json_output='{"body":"","state":"OPEN","title":"test","assignees":[],"milestone":null,"labels":[]}'
+        # Extract --jq filter if present
+        jq_filter=""
+        shift 2
+        while [[ $# -gt 0 ]]; do
+          if [[ "$1" == "--jq" ]]; then
+            jq_filter="$2"
+            break
+          fi
+          shift
+        done
+        if [[ -n "${jq_filter}" ]]; then
+          echo "${json_output}" | jq "${jq_filter}"
+        else
+          echo "${json_output}"
         fi
+        exit 0
         ;;
       comment)
         # Capture the --body argument
@@ -201,6 +217,7 @@ rm -f "${MOCK_COMMENT_FILE}"
 
 # Test: pr event respects comments: false
 cat >"${MOCK_DIR}/dega-core.yaml" <<'YAML'
+provider: github
 github:
   sync: true
   repo: test-owner/test-repo
@@ -243,6 +260,7 @@ MOCK_DIR="$(mktemp -d)"
 MOCK_GH_LOG="${MOCK_DIR}/gh-calls.log"
 
 cat >"${MOCK_DIR}/dega-core.yaml" <<'YAML'
+provider: github
 github:
   repo: DEGAorg/test-repo
   pr_target: develop

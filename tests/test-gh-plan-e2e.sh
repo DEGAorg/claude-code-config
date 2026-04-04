@@ -137,9 +137,9 @@ fi
 # Resolve repo: --repo flag > dega-core.yaml > git remote
 if [[ -z "${REPO}" ]]; then
 	cd "${REPO_ROOT}"
-	# shellcheck source=scripts/read-github-config.sh
-	source "${REPO_ROOT}/scripts/read-github-config.sh"
-	REPO="$(gh_resolve_repo "")"
+	# shellcheck source=scripts/providers/provider.sh
+	source "${REPO_ROOT}/scripts/providers/provider.sh"
+	REPO="$(provider_repo_resolve)"
 fi
 
 printf '  Using repo: %s\n' "${REPO}"

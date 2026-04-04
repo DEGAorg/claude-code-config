@@ -146,9 +146,9 @@ fi
 # Resolve repo
 if [[ -z "${REPO}" ]]; then
 	cd "${REPO_ROOT}"
-	# shellcheck source=../scripts/read-github-config.sh
-	source "${REPO_ROOT}/scripts/read-github-config.sh"
-	REPO="$(gh_resolve_repo "")"
+	# shellcheck source=../scripts/providers/provider.sh
+	source "${REPO_ROOT}/scripts/providers/provider.sh"
+	REPO="$(provider_repo_resolve)"
 fi
 
 printf '  Using repo: %s\n' "${REPO}"
@@ -414,7 +414,8 @@ SCRIPTS_TO_LINT=(
 	"scripts/orch-run.sh"
 	"scripts/gh-plan-sync.sh"
 	"scripts/plan-create.sh"
-	"scripts/read-github-config.sh"
+	"scripts/providers/provider.sh"
+	"scripts/providers/github.sh"
 	"hooks/orch-lifecycle/01-gh-plan-sync.sh"
 )
 
