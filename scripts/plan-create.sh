@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Create a GitHub Issue from plan content and apply the plan:draft label.
+# Create an issue from plan content and apply the plan:draft label.
 # Returns the issue number on stdout.
 #
 # Usage:
@@ -10,15 +10,13 @@ set -euo pipefail
 #   plan-create.sh --title "Plan title" --body-file -   # read from stdin
 #
 # Options:
-#   --repo OWNER/REPO   Override repo (default: auto-detected from git remote)
+#   --repo OWNER/REPO   Override repo (default: auto-detected)
 #   --label LABEL        Additional label (repeatable, plan:draft always applied)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=scripts/ensure-gh.sh
-source "${SCRIPT_DIR}/ensure-gh.sh"
-# shellcheck source=scripts/read-github-config.sh
-source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=scripts/providers/provider.sh
+source "${SCRIPT_DIR}/providers/provider.sh"
 
 usage() {
 	echo "usage: plan-create.sh --title TITLE (--body BODY | --body-file FILE) [--repo OWNER/REPO] [--label LABEL]..." >&2
@@ -70,54 +68,31 @@ if [[ -z "${body}" && -z "${body_file}" ]]; then
 	usage
 fi
 
-# Read body from file if specified
+# Ensure provider CLI is installed and authenticated
+provider_ensure_cli
+provider_auth_check
+
+# Build provider_issue_create arguments
+create_args=(--title "${title}")
+
 if [[ -n "${body_file}" ]]; then
-	if [[ "${body_file}" == "-" ]]; then
-		body="$(cat)"
-	elif [[ -f "${body_file}" ]]; then
-		body="$(cat "${body_file}")"
-	else
-		echo "error: body file not found: ${body_file}" >&2
-		exit 1
-	fi
+	create_args+=(--body-file "${body_file}")
+else
+	create_args+=(--body "${body}")
 fi
-
-# Ensure gh is installed
-ensure_gh
-
-# Verify authentication
-if ! gh auth status &>/dev/null; then
-	echo "error: gh is not authenticated. Run: gh auth login" >&2
-	echo "Then re-run this command." >&2
-	exit 2
-fi
-
-# Resolve repo via fallback chain: --repo flag > dega-core.yaml > git remote
-repo="$(gh_resolve_repo "${repo}")"
-
-# Build gh issue create command
-gh_args=(issue create --title "${title}" --body "${body}")
 
 # Apply plan:draft label unless labels explicitly disabled in config
-if [[ "$(gh_config_value labels)" != "false" ]]; then
-	gh_args+=(--label "plan:draft")
+if ! provider_config_bool labels || provider_config_value labels != "false"; then
+	create_args+=(--label "plan:draft")
 fi
 
 for label in "${extra_labels[@]+"${extra_labels[@]}"}"; do
-	gh_args+=(--label "${label}")
+	create_args+=(--label "${label}")
 done
 
-gh_args+=(--repo "${repo}")
-
-# Create the issue and capture the URL
-issue_url="$(gh "${gh_args[@]}")"
-
-# Extract issue number from URL (last path segment)
-issue_number="${issue_url##*/}"
-
-if [[ ! "${issue_number}" =~ ^[0-9]+$ ]]; then
-	echo "error: failed to parse issue number from URL: ${issue_url}" >&2
-	exit 1
+if [[ -n "${repo}" ]]; then
+	create_args+=(--repo "${repo}")
 fi
 
-echo "${issue_number}"
+# Create the issue and output the number
+provider_issue_create "${create_args[@]}"

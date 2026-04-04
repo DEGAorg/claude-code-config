@@ -37,10 +37,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=ensure-gh.sh
-source "${SCRIPT_DIR}/ensure-gh.sh"
-# shellcheck source=read-github-config.sh
-source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=providers/provider.sh
+source "${SCRIPT_DIR}/providers/provider.sh"
 
 # --- Parse args ---
 

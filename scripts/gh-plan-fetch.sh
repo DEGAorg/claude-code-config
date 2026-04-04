@@ -9,10 +9,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=scripts/ensure-gh.sh
-source "${SCRIPT_DIR}/ensure-gh.sh"
-# shellcheck source=scripts/read-github-config.sh
-source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=scripts/providers/provider.sh
+source "${SCRIPT_DIR}/providers/provider.sh"
 
 usage() {
 	echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2
@@ -65,21 +63,21 @@ if ! [[ "${issue_number}" =~ ^[0-9]+$ ]]; then
 	exit 1
 fi
 
-# --- Ensure gh is available ---
+# --- Ensure provider CLI is available ---
 
-ensure_gh
+provider_ensure_cli || exit 1
 
 # --- Check authentication ---
 
-if ! gh auth status &>/dev/null; then
-	echo "error: gh is not authenticated. Run: gh auth login" >&2
-	echo "Then re-run this command." >&2
-	exit 2
-fi
+provider_auth_check || exit $?
 
 # --- Resolve repo ---
 
-repo="$(gh_resolve_repo "${repo}")"
+if [[ -n "${repo}" ]]; then
+	repo="$(provider_repo_resolve --repo "${repo}")"
+else
+	repo="$(provider_repo_resolve)"
+fi
 
 echo "Fetching issue #${issue_number} from ${repo}..." >&2
 
