@@ -1,0 +1,7 @@
+Hi {name},
+
+I came across your profile on DoraHacks and was impressed by your work on {hackathon_name}. We're building something exciting at Canon and think your skills would be a great fit.
+
+Check out our upcoming hackathon: {listing_url}
+
+Would love to see you participate — let me know if you have any questions!

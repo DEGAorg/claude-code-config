@@ -1,0 +1,30 @@
+{
+  "name": "rpa-outreach",
+  "version": "0.1.0",
+  "description": "Browser automation tool for DoraHacks hackathon recruitment outreach",
+  "type": "module",
+  "bin": {
+    "rpa-outreach": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint src/ tests/"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.0.2",
+    "commander": "13.1.0",
+    "dotenv": "17.4.0",
+    "playwright": "1.51.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.13.14",
+    "oxlint": "^0.16.6",
+    "typescript": "5.8.2",
+    "vitest": "3.1.1"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

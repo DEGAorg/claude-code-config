@@ -1,0 +1,7 @@
+Hi {name},
+
+I noticed your AI/ML work on {hackathon_name} — really cool stuff. We're hosting a hackathon at Canon where AI and machine learning play a central role in building prediction markets.
+
+Details here: {listing_url}
+
+Would be great to have someone with your ML background involved. Interested?
