@@ -1,9 +1,8 @@
 import type { Page } from "playwright";
-import type { Database as DatabaseType } from "better-sqlite3";
 import type { DmSelectors } from "./types.js";
-import type { Prospect } from "./db.js";
+import type { DbPool, Prospect } from "./db.js";
 import {
-  queryByStatus,
+  claimNextProspect,
   updateStatusWithTimestamp,
   updateStatus,
 } from "./db.js";
@@ -183,7 +182,7 @@ class RateLimiter {
 // ---------- Main sender ----------
 
 export async function sendMessages(
-  db: DatabaseType,
+  pool: DbPool,
   options: SendOptions,
 ): Promise<SendStats> {
   const defaults = loadDefaults();
@@ -203,14 +202,8 @@ export async function sendMessages(
     stoppedReason: null,
   };
 
-  const prospects = queryByStatus(db, "filtered");
-  if (prospects.length === 0) {
-    console.log("[send] No filtered prospects to message.");
-    return stats;
-  }
-
   console.log(
-    `[send] ${prospects.length} filtered prospects. ` +
+    `[send] Claiming prospects one-at-a-time. ` +
       `Batch limit: ${batchLimit}. Mode: ${options.live ? "LIVE" : "DRY-RUN"}`,
   );
 
@@ -219,19 +212,25 @@ export async function sendMessages(
   const rateLimiter = new RateLimiter(rateCapPerHour);
 
   try {
-    for (const prospect of prospects) {
-      if (stats.attempted >= batchLimit) {
-        stats.stoppedReason = `Batch limit reached (${batchLimit})`;
-        console.log(`[send] ${stats.stoppedReason}`);
-        break;
-      }
-
+    while (stats.attempted < batchLimit) {
       if (!rateLimiter.canProceed()) {
         const waitMs = rateLimiter.waitTimeMs();
         stats.stoppedReason =
           `Rate cap reached (${rateCapPerHour}/hr). ` +
           `Would need to wait ${Math.ceil(waitMs / 1000)}s`;
         console.log(`[send] ${stats.stoppedReason}`);
+        break;
+      }
+
+      const prospect = await claimNextProspect(
+        pool,
+        "filtered",
+        "queued",
+      );
+      if (!prospect) {
+        if (stats.attempted === 0) {
+          console.log("[send] No filtered prospects to message.");
+        }
         break;
       }
 
@@ -258,14 +257,19 @@ export async function sendMessages(
 
         if (options.live) {
           const timestamp = new Date().toISOString();
-          updateStatusWithTimestamp(db, prospect.id, "messaged", timestamp);
+          await updateStatusWithTimestamp(
+            pool,
+            prospect.id,
+            "messaged",
+            timestamp,
+          );
         }
       } else if (result.error) {
         const blocker = await detectBlocker(page);
         if (blocker) {
           stats.stoppedReason = `Stop-on-error: ${result.error}`;
           stats.failed += 1;
-          updateStatus(db, prospect.id, "failed");
+          await updateStatus(pool, prospect.id, "failed");
           console.error(
             `[send] STOPPING — blocker detected: ${result.error}`,
           );
@@ -276,7 +280,7 @@ export async function sendMessages(
           `[send] Failed for ${prospect.username}: ${result.error}`,
         );
         stats.failed += 1;
-        updateStatus(db, prospect.id, "skipped");
+        await updateStatus(pool, prospect.id, "skipped");
       }
 
       // Randomized delay between messages
@@ -294,13 +298,17 @@ export async function sendMessages(
     await browser.close();
   }
 
-  console.log(
-    `[send] Done. Attempted: ${stats.attempted}, ` +
-      `Sent: ${stats.sent}, Skipped: ${stats.skipped}, ` +
-      `Failed: ${stats.failed}`,
-  );
-  if (stats.stoppedReason) {
-    console.log(`[send] Stopped early: ${stats.stoppedReason}`);
+  if (stats.attempted === 0) {
+    // Already logged "No filtered prospects" above
+  } else {
+    console.log(
+      `[send] Done. Attempted: ${stats.attempted}, ` +
+        `Sent: ${stats.sent}, Skipped: ${stats.skipped}, ` +
+        `Failed: ${stats.failed}`,
+    );
+    if (stats.stoppedReason) {
+      console.log(`[send] Stopped early: ${stats.stoppedReason}`);
+    }
   }
 
   return stats;

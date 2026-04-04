@@ -1,5 +1,5 @@
-import type { Database as DatabaseType } from "better-sqlite3";
-import { countByStatus, type ProspectStatus } from "./db.js";
+import { countByStatus, getPool, type ProspectStatus } from "./db.js";
+import type { DbPool } from "./db.js";
 
 interface StatusRow {
   label: string;
@@ -16,8 +16,11 @@ const PIPELINE_STAGES: StatusRow[] = [
   { label: "Failed", status: "failed" },
 ];
 
-export function printStatusReport(db: DatabaseType): void {
-  const counts = countByStatus(db);
+export async function printStatusReport(
+  pool?: DbPool,
+): Promise<void> {
+  const p = pool ?? await getPool();
+  const counts = await countByStatus(p);
   let total = 0;
   for (const stage of PIPELINE_STAGES) {
     total += counts[stage.status];

@@ -1,15 +1,15 @@
-export const ProspectStatus = {
-  scraped: "scraped",
-  filtered: "filtered",
-  queued: "queued",
-  messaged: "messaged",
-  replied: "replied",
-  skipped: "skipped",
-  failed: "failed",
-} as const;
+import type { Pool } from "@neondatabase/serverless";
+
+export type DbPool = Pool;
 
 export type ProspectStatus =
-  (typeof ProspectStatus)[keyof typeof ProspectStatus];
+  | "scraped"
+  | "filtered"
+  | "queued"
+  | "messaged"
+  | "replied"
+  | "skipped"
+  | "failed";
 
 export interface Prospect {
   id: number;
@@ -19,13 +19,25 @@ export interface Prospect {
   bio: string;
   tags: string;
   source_hackathon: string;
-  relevance_score: number;
-  interest: string;
+  relevance_score: number | null;
+  interest_tag: string | null;
   status: ProspectStatus;
   messaged_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export type ProspectInsert = Pick<
+  Prospect,
+  | "username"
+  | "profile_url"
+  | "display_name"
+  | "bio"
+  | "tags"
+  | "source_hackathon"
+>;
+
+export type ProspectUpsert = ProspectInsert;
 
 export interface ScraperSelectors {
   profile_list_container: string;

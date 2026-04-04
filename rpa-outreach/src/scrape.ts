@@ -3,7 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Browser, BrowserContext, Page } from "playwright";
 import { loadSession } from "./auth.js";
-import { getDb, upsertProspect, isDuplicate } from "./db.js";
+import { getPool, upsertProspect, isDuplicate } from "./db.js";
 import type { ProspectInsert } from "./db.js";
 import type {
   SelectorsConfig,
@@ -298,11 +298,10 @@ async function scrollToLoadAll(
  *
  * Handles infinite scroll to load all profiles, extracts them
  * using selectors from config/selectors.json, deduplicates by
- * username, and upserts into the SQLite database.
+ * username, and upserts into the Neon database.
  */
 export async function scrapeSinglePage(
   hackathonUrl: string,
-  dbPath?: string,
 ): Promise<ScrapeResult> {
   const selectors = loadSelectors();
   const defaults = loadDefaults();
@@ -359,7 +358,7 @@ export async function scrapeSinglePage(
 
     await page.close();
 
-    const db = getDb(dbPath);
+    const pool = await getPool();
     let inserted = 0;
     let skipped = 0;
     const seenUsernames = new Set<string>();
@@ -376,12 +375,12 @@ export async function scrapeSinglePage(
       }
       seenUsernames.add(profile.username);
 
-      if (isDuplicate(db, profile.username)) {
+      if (await isDuplicate(pool, profile.username)) {
         skipped++;
         continue;
       }
 
-      upsertProspect(db, profile);
+      await upsertProspect(pool, profile);
       inserted++;
     }
 
@@ -411,9 +410,7 @@ export async function scrapeSinglePage(
  * via infinite scroll, deduplicates by username across all
  * hackathons, and applies rate-limited delays between pages.
  */
-export async function scrapeAll(
-  dbPath?: string,
-): Promise<MultiScrapeResult> {
+export async function scrapeAll(): Promise<MultiScrapeResult> {
   const hackathons = loadHackathons();
   const selectors = loadSelectors();
   const defaults = loadDefaults();
@@ -443,7 +440,7 @@ export async function scrapeAll(
     browser = session.browser;
     context = session.context;
 
-    const db = getDb(dbPath);
+    const pool = await getPool();
 
     for (let i = 0; i < hackathons.length; i++) {
       const hackathon = hackathons[i];
@@ -519,12 +516,12 @@ export async function scrapeAll(
         }
         seenUsernames.add(profile.username);
 
-        if (isDuplicate(db, profile.username)) {
+        if (await isDuplicate(pool, profile.username)) {
           skipped++;
           continue;
         }
 
-        upsertProspect(db, profile);
+        await upsertProspect(pool, profile);
         inserted++;
       }
 

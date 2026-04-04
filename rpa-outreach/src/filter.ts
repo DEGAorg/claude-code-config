@@ -1,5 +1,5 @@
-import type { Database as DatabaseType } from "better-sqlite3";
-import { queryByStatus } from "./db.js";
+import { queryByStatus, getPool } from "./db.js";
+import type { DbPool } from "./db.js";
 
 // ---------- Category keywords ----------
 
@@ -127,30 +127,41 @@ export interface FilterStats {
  * Filter all prospects with status 'scraped': score them, tag interest,
  * and update status to 'filtered'.
  */
-export function filterProspects(db: DatabaseType): FilterStats {
-  const prospects = queryByStatus(db, "scraped");
+export async function filterProspects(
+  pool?: DbPool,
+): Promise<FilterStats> {
+  const p = pool ?? await getPool();
+  const prospects = await queryByStatus(p, "scraped");
 
   const stats: FilterStats = {
     processed: 0,
     byCategory: { crypto: 0, "ai-ml": 0, sports: 0, generic: 0 },
   };
 
-  const updateStmt = db.prepare(`
-    UPDATE prospects
-    SET relevance_score = ?, interest_tag = ?, status = 'filtered', updated_at = datetime('now')
-    WHERE id = ?
-  `);
-
-  const runAll = db.transaction(() => {
+  const client = await p.connect();
+  try {
+    await client.query("BEGIN");
     for (const prospect of prospects) {
-      const { interest, score } = scoreProspect(prospect.bio, prospect.tags);
-      updateStmt.run(score, interest, prospect.id);
+      const { interest, score } = scoreProspect(
+        prospect.bio, prospect.tags,
+      );
+      await client.query(
+        `UPDATE prospects
+         SET relevance_score = $1, interest_tag = $2,
+             status = 'filtered', updated_at = NOW()
+         WHERE id = $3`,
+        [score, interest, prospect.id],
+      );
       stats.byCategory[interest] += 1;
       stats.processed += 1;
     }
-  });
-
-  runAll();
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return stats;
 }

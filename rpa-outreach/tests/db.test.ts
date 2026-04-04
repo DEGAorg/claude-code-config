@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from "vitest";
-import type { Database as DatabaseType } from "better-sqlite3";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import type { Pool as PoolType } from "@neondatabase/serverless";
 import {
-  getDb,
-  closeDb,
+  getPool,
+  closePool,
   insertProspect,
   upsertProspect,
   queryByStatus,
@@ -12,6 +12,7 @@ import {
   getProspectByUsername,
   getProspectById,
   countByStatus,
+  claimNextProspect,
 } from "../src/db.js";
 import type { ProspectInsert } from "../src/db.js";
 
@@ -24,34 +25,40 @@ const SAMPLE: ProspectInsert = {
   source_hackathon: "ETHGlobal 2026",
 };
 
-function freshDb(): DatabaseType {
-  return getDb(":memory:");
-}
+let pool: PoolType;
+
+beforeAll(async () => {
+  pool = await getPool();
+});
+
+afterAll(async () => {
+  await closePool();
+});
+
+beforeEach(async () => {
+  await pool.query(
+    "TRUNCATE prospects RESTART IDENTITY CASCADE",
+  );
+});
 
 describe("db", () => {
-  afterEach(() => {
-    closeDb();
-  });
-
   describe("schema", () => {
-    it("creates prospects table on getDb", () => {
-      const db = freshDb();
-      const tables = db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='prospects'",
-        )
-        .all();
-      expect(tables).toHaveLength(1);
+    it("creates prospects table on getPool", async () => {
+      const result = await pool.query(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'prospects'`,
+      );
+      expect(result.rows).toHaveLength(1);
     });
 
-    it("creates indexes", () => {
-      const db = freshDb();
-      const indexes = db
-        .prepare(
-          "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_prospects_%'",
-        )
-        .all() as Array<{ name: string }>;
-      const names = indexes.map((i) => i.name);
+    it("creates indexes", async () => {
+      const result = await pool.query<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes
+         WHERE schemaname = 'public'
+           AND tablename = 'prospects'
+           AND indexname LIKE 'idx_prospects_%'`,
+      );
+      const names = result.rows.map((i) => i.indexname);
       expect(names).toContain("idx_prospects_status");
       expect(names).toContain("idx_prospects_username");
       expect(names).toContain("idx_prospects_relevance");
@@ -59,114 +66,140 @@ describe("db", () => {
   });
 
   describe("insertProspect", () => {
-    it("inserts and returns id", () => {
-      const db = freshDb();
-      const id = insertProspect(db, SAMPLE);
+    it("inserts and returns id", async () => {
+      const id = await insertProspect(pool, SAMPLE);
       expect(id).toBe(1);
     });
 
-    it("rejects duplicate username", () => {
-      const db = freshDb();
-      insertProspect(db, SAMPLE);
-      expect(() => insertProspect(db, SAMPLE)).toThrow(/UNIQUE/);
+    it("rejects duplicate username", async () => {
+      await insertProspect(pool, SAMPLE);
+      await expect(insertProspect(pool, SAMPLE)).rejects.toThrow(
+        /unique/i,
+      );
     });
 
-    it("sets default status to scraped", () => {
-      const db = freshDb();
-      const id = insertProspect(db, SAMPLE);
-      const row = getProspectById(db, id);
+    it("sets default status to scraped", async () => {
+      const id = await insertProspect(pool, SAMPLE);
+      const row = await getProspectById(pool, id);
       expect(row?.status).toBe("scraped");
     });
   });
 
   describe("upsertProspect", () => {
-    it("inserts new prospect", () => {
-      const db = freshDb();
-      const id = upsertProspect(db, SAMPLE);
+    it("inserts new prospect", async () => {
+      const id = await upsertProspect(pool, SAMPLE);
       expect(id).toBeGreaterThan(0);
-      const row = getProspectByUsername(db, "alice");
+      const row = await getProspectByUsername(pool, "alice");
       expect(row?.display_name).toBe("Alice");
     });
 
-    it("updates existing prospect on conflict", () => {
-      const db = freshDb();
-      insertProspect(db, SAMPLE);
-      upsertProspect(db, { ...SAMPLE, display_name: "Alice Updated" });
-      const row = getProspectByUsername(db, "alice");
+    it("updates existing prospect on conflict", async () => {
+      await insertProspect(pool, SAMPLE);
+      await upsertProspect(pool, {
+        ...SAMPLE,
+        display_name: "Alice Updated",
+      });
+      const row = await getProspectByUsername(pool, "alice");
       expect(row?.display_name).toBe("Alice Updated");
     });
   });
 
   describe("queryByStatus", () => {
-    it("returns prospects matching status", () => {
-      const db = freshDb();
-      insertProspect(db, SAMPLE);
-      insertProspect(db, { ...SAMPLE, username: "bob", profile_url: "https://dorahacks.io/bob" });
-      const results = queryByStatus(db, "scraped");
+    it("returns prospects matching status", async () => {
+      await insertProspect(pool, SAMPLE);
+      await insertProspect(pool, {
+        ...SAMPLE,
+        username: "bob",
+        profile_url: "https://dorahacks.io/bob",
+      });
+      const results = await queryByStatus(pool, "scraped");
       expect(results).toHaveLength(2);
     });
 
-    it("returns empty array when no matches", () => {
-      const db = freshDb();
-      const results = queryByStatus(db, "messaged");
+    it("returns empty array when no matches", async () => {
+      const results = await queryByStatus(pool, "messaged");
       expect(results).toHaveLength(0);
     });
   });
 
   describe("updateStatus", () => {
-    it("updates prospect status", () => {
-      const db = freshDb();
-      const id = insertProspect(db, SAMPLE);
-      updateStatus(db, id, "filtered");
-      const row = getProspectById(db, id);
+    it("updates prospect status", async () => {
+      const id = await insertProspect(pool, SAMPLE);
+      await updateStatus(pool, id, "filtered");
+      const row = await getProspectById(pool, id);
       expect(row?.status).toBe("filtered");
     });
   });
 
   describe("updateStatusWithTimestamp", () => {
-    it("updates status and messaged_at", () => {
-      const db = freshDb();
-      const id = insertProspect(db, SAMPLE);
+    it("updates status and messaged_at", async () => {
+      const id = await insertProspect(pool, SAMPLE);
       const ts = "2026-03-26T12:00:00Z";
-      updateStatusWithTimestamp(db, id, "messaged", ts);
-      const row = getProspectById(db, id);
+      await updateStatusWithTimestamp(pool, id, "messaged", ts);
+      const row = await getProspectById(pool, id);
       expect(row?.status).toBe("messaged");
-      expect(row?.messaged_at).toBe(ts);
+      expect(row?.messaged_at).toBe(
+        new Date(ts).toISOString(),
+      );
     });
   });
 
   describe("isDuplicate", () => {
-    it("returns true for existing username", () => {
-      const db = freshDb();
-      insertProspect(db, SAMPLE);
-      expect(isDuplicate(db, "alice")).toBe(true);
+    it("returns true for existing username", async () => {
+      await insertProspect(pool, SAMPLE);
+      expect(await isDuplicate(pool, "alice")).toBe(true);
     });
 
-    it("returns false for unknown username", () => {
-      const db = freshDb();
-      expect(isDuplicate(db, "unknown")).toBe(false);
+    it("returns false for unknown username", async () => {
+      expect(await isDuplicate(pool, "unknown")).toBe(false);
     });
   });
 
   describe("countByStatus", () => {
-    it("returns zero counts when empty", () => {
-      const db = freshDb();
-      const counts = countByStatus(db);
+    it("returns zero counts when empty", async () => {
+      const counts = await countByStatus(pool);
       expect(counts.scraped).toBe(0);
       expect(counts.filtered).toBe(0);
       expect(counts.messaged).toBe(0);
     });
 
-    it("counts correctly across statuses", () => {
-      const db = freshDb();
-      insertProspect(db, SAMPLE);
-      insertProspect(db, { ...SAMPLE, username: "bob", profile_url: "https://dorahacks.io/bob" });
-      const id1 = 1;
-      updateStatus(db, id1, "filtered");
+    it("counts correctly across statuses", async () => {
+      await insertProspect(pool, SAMPLE);
+      await insertProspect(pool, {
+        ...SAMPLE,
+        username: "bob",
+        profile_url: "https://dorahacks.io/bob",
+      });
+      await updateStatus(pool, 1, "filtered");
 
-      const counts = countByStatus(db);
+      const counts = await countByStatus(pool);
       expect(counts.scraped).toBe(1);
       expect(counts.filtered).toBe(1);
+    });
+  });
+
+  describe("claimNextProspect", () => {
+    it("claims prospect and updates status", async () => {
+      await insertProspect(pool, SAMPLE);
+      const claimed = await claimNextProspect(
+        pool,
+        "scraped",
+        "queued",
+      );
+      expect(claimed).toBeDefined();
+      expect(claimed?.username).toBe("alice");
+
+      const row = await getProspectById(pool, claimed!.id);
+      expect(row?.status).toBe("queued");
+    });
+
+    it("returns undefined when no prospects match", async () => {
+      const claimed = await claimNextProspect(
+        pool,
+        "scraped",
+        "queued",
+      );
+      expect(claimed).toBeUndefined();
     });
   });
 });
