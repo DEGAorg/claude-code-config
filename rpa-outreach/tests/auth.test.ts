@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -121,7 +121,6 @@ describe("validateSession", () => {
     vi.mocked(existsSync).mockReturnValue(true);
 
     const { chromium } = await import("playwright");
-    const mockClose = vi.fn();
     const mockPage = {
       goto: vi.fn().mockResolvedValue(undefined),
       waitForSelector: vi.fn().mockResolvedValue({}),
