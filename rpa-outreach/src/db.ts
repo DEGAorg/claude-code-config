@@ -1,7 +1,10 @@
-import Database from "better-sqlite3";
-import type { Database as DatabaseType } from "better-sqlite3";
+import "dotenv/config";
+import { Pool } from "@neondatabase/serverless";
+import type { Pool as PoolType } from "@neondatabase/serverless";
 
 // ---------- Types ----------
+
+export type { PoolType as DbPool };
 
 export type ProspectStatus =
   | "scraped"
@@ -44,7 +47,7 @@ export type ProspectUpsert = ProspectInsert;
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS prospects (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  id              SERIAL PRIMARY KEY,
   username        TEXT    NOT NULL UNIQUE,
   profile_url     TEXT    NOT NULL,
   display_name    TEXT    NOT NULL DEFAULT '',
@@ -54,9 +57,9 @@ CREATE TABLE IF NOT EXISTS prospects (
   relevance_score REAL,
   interest_tag    TEXT,
   status          TEXT    NOT NULL DEFAULT 'scraped',
-  messaged_at     TEXT,
-  created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-  updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  messaged_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
@@ -66,125 +69,158 @@ CREATE INDEX IF NOT EXISTS idx_prospects_relevance ON prospects(relevance_score)
 
 // ---------- Connection ----------
 
-let _db: DatabaseType | null = null;
+let _pool: PoolType | null = null;
 
-export function getDb(dbPath = "outreach.db"): DatabaseType {
-  if (!_db) {
-    _db = new Database(dbPath);
-    _db.pragma("journal_mode = WAL");
-    _db.pragma("foreign_keys = ON");
-    _db.exec(SCHEMA_SQL);
+export async function getPool(): Promise<PoolType> {
+  if (!_pool) {
+    const connectionString = process.env["DATABASE_URL"];
+    if (!connectionString) {
+      throw new Error(
+        "DATABASE_URL is not set. Add it to .env or set it in the environment.",
+      );
+    }
+    _pool = new Pool({ connectionString });
+    await _pool.query(SCHEMA_SQL);
   }
-  return _db;
+  return _pool;
 }
 
-export function closeDb(): void {
-  if (_db) {
-    _db.close();
-    _db = null;
+export async function closePool(): Promise<void> {
+  if (_pool) {
+    await _pool.end();
+    _pool = null;
   }
 }
 
 // ---------- CRUD ----------
 
-export function insertProspect(
-  db: DatabaseType,
+export async function insertProspect(
+  pool: PoolType,
   prospect: ProspectInsert,
-): number {
-  const stmt = db.prepare(`
-    INSERT INTO prospects (username, profile_url, display_name, bio, tags, source_hackathon)
-    VALUES (@username, @profile_url, @display_name, @bio, @tags, @source_hackathon)
-  `);
-  const result = stmt.run(prospect);
-  return Number(result.lastInsertRowid);
-}
-
-export function upsertProspect(
-  db: DatabaseType,
-  prospect: ProspectUpsert,
-): number {
-  const stmt = db.prepare(`
-    INSERT INTO prospects (username, profile_url, display_name, bio, tags, source_hackathon)
-    VALUES (@username, @profile_url, @display_name, @bio, @tags, @source_hackathon)
-    ON CONFLICT(username) DO UPDATE SET
-      profile_url      = excluded.profile_url,
-      display_name     = excluded.display_name,
-      bio              = excluded.bio,
-      tags             = excluded.tags,
-      source_hackathon = excluded.source_hackathon,
-      updated_at       = datetime('now')
-  `);
-  const result = stmt.run(prospect);
-  return Number(result.lastInsertRowid);
-}
-
-export function queryByStatus(
-  db: DatabaseType,
-  status: ProspectStatus,
-): Prospect[] {
-  const stmt = db.prepare(
-    "SELECT * FROM prospects WHERE status = ? ORDER BY id",
+): Promise<number> {
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO prospects
+       (username, profile_url, display_name, bio, tags, source_hackathon)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
+    [
+      prospect.username,
+      prospect.profile_url,
+      prospect.display_name,
+      prospect.bio,
+      prospect.tags,
+      prospect.source_hackathon,
+    ],
   );
-  return stmt.all(status) as Prospect[];
+  return result.rows[0]!.id;
 }
 
-export function updateStatus(
-  db: DatabaseType,
+export async function upsertProspect(
+  pool: PoolType,
+  prospect: ProspectUpsert,
+): Promise<number> {
+  const result = await pool.query<{ id: number }>(
+    `INSERT INTO prospects
+       (username, profile_url, display_name, bio, tags, source_hackathon)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT(username) DO UPDATE SET
+       profile_url      = EXCLUDED.profile_url,
+       display_name     = EXCLUDED.display_name,
+       bio              = EXCLUDED.bio,
+       tags             = EXCLUDED.tags,
+       source_hackathon = EXCLUDED.source_hackathon,
+       updated_at       = NOW()
+     RETURNING id`,
+    [
+      prospect.username,
+      prospect.profile_url,
+      prospect.display_name,
+      prospect.bio,
+      prospect.tags,
+      prospect.source_hackathon,
+    ],
+  );
+  return result.rows[0]!.id;
+}
+
+export async function queryByStatus(
+  pool: PoolType,
+  status: ProspectStatus,
+): Promise<Prospect[]> {
+  const result = await pool.query<Prospect>(
+    "SELECT * FROM prospects WHERE status = $1 ORDER BY id",
+    [status],
+  );
+  return result.rows;
+}
+
+export async function updateStatus(
+  pool: PoolType,
   id: number,
   status: ProspectStatus,
-): void {
-  const stmt = db.prepare(`
-    UPDATE prospects
-    SET status = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `);
-  stmt.run(status, id);
+): Promise<void> {
+  await pool.query(
+    `UPDATE prospects SET status = $1, updated_at = NOW() WHERE id = $2`,
+    [status, id],
+  );
 }
 
-export function updateStatusWithTimestamp(
-  db: DatabaseType,
+export async function updateStatusWithTimestamp(
+  pool: PoolType,
   id: number,
   status: ProspectStatus,
   messagedAt: string,
-): void {
-  const stmt = db.prepare(`
-    UPDATE prospects
-    SET status = ?, messaged_at = ?, updated_at = datetime('now')
-    WHERE id = ?
-  `);
-  stmt.run(status, messagedAt, id);
-}
-
-export function isDuplicate(db: DatabaseType, username: string): boolean {
-  const stmt = db.prepare(
-    "SELECT 1 FROM prospects WHERE username = ? LIMIT 1",
+): Promise<void> {
+  await pool.query(
+    `UPDATE prospects
+     SET status = $1, messaged_at = $2, updated_at = NOW()
+     WHERE id = $3`,
+    [status, messagedAt, id],
   );
-  return stmt.get(username) !== undefined;
 }
 
-export function getProspectByUsername(
-  db: DatabaseType,
+export async function isDuplicate(
+  pool: PoolType,
   username: string,
-): Prospect | undefined {
-  const stmt = db.prepare("SELECT * FROM prospects WHERE username = ?");
-  return stmt.get(username) as Prospect | undefined;
+): Promise<boolean> {
+  const result = await pool.query(
+    "SELECT 1 FROM prospects WHERE username = $1 LIMIT 1",
+    [username],
+  );
+  return result.rows.length > 0;
 }
 
-export function getProspectById(
-  db: DatabaseType,
+export async function getProspectByUsername(
+  pool: PoolType,
+  username: string,
+): Promise<Prospect | undefined> {
+  const result = await pool.query<Prospect>(
+    "SELECT * FROM prospects WHERE username = $1",
+    [username],
+  );
+  return result.rows[0];
+}
+
+export async function getProspectById(
+  pool: PoolType,
   id: number,
-): Prospect | undefined {
-  const stmt = db.prepare("SELECT * FROM prospects WHERE id = ?");
-  return stmt.get(id) as Prospect | undefined;
+): Promise<Prospect | undefined> {
+  const result = await pool.query<Prospect>(
+    "SELECT * FROM prospects WHERE id = $1",
+    [id],
+  );
+  return result.rows[0];
 }
 
-export function countByStatus(
-  db: DatabaseType,
-): Record<ProspectStatus, number> {
-  const stmt = db.prepare(
+export async function countByStatus(
+  pool: PoolType,
+): Promise<Record<ProspectStatus, number>> {
+  const result = await pool.query<{
+    status: ProspectStatus;
+    count: string;
+  }>(
     "SELECT status, COUNT(*) as count FROM prospects GROUP BY status",
   );
-  const rows = stmt.all() as Array<{ status: ProspectStatus; count: number }>;
 
   const counts: Record<ProspectStatus, number> = {
     scraped: 0,
@@ -196,9 +232,51 @@ export function countByStatus(
     failed: 0,
   };
 
-  for (const row of rows) {
-    counts[row.status] = row.count;
+  for (const row of result.rows) {
+    counts[row.status] = Number(row.count);
   }
 
   return counts;
+}
+
+// ---------- Atomic claim ----------
+
+/**
+ * Atomically claim the next prospect with the given status for processing.
+ * Uses SELECT ... FOR UPDATE SKIP LOCKED to prevent concurrent operators
+ * from claiming the same prospect.
+ */
+export async function claimNextProspect(
+  pool: PoolType,
+  fromStatus: ProspectStatus,
+  toStatus: ProspectStatus,
+): Promise<Prospect | undefined> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query<Prospect>(
+      `SELECT * FROM prospects
+       WHERE status = $1
+       ORDER BY id
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED`,
+      [fromStatus],
+    );
+    const prospect = result.rows[0];
+    if (prospect) {
+      await client.query(
+        `UPDATE prospects
+         SET status = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [toStatus, prospect.id],
+      );
+    }
+    await client.query("COMMIT");
+    return prospect;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
