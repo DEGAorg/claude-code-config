@@ -20,6 +20,7 @@ export interface SendOptions {
   rateCapPerHour?: number;
   delayMinMs?: number;
   delayMaxMs?: number;
+  account?: string;
 }
 
 export interface SendStats {

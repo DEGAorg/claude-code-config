@@ -362,7 +362,9 @@ export async function scrapeSinglePage(
  * via infinite scroll, deduplicates by username across all
  * hackathons, and applies rate-limited delays between pages.
  */
-export async function scrapeAll(): Promise<MultiScrapeResult> {
+export async function scrapeAll(
+  _account?: string,
+): Promise<MultiScrapeResult> {
   const hackathons = loadHackathons();
   const selectors = loadSelectors();
   const defaults = loadDefaults();

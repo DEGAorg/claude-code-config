@@ -37,18 +37,23 @@ program
     "--profile-url <urls...>",
     "Profile URL(s) for DM recon (required for --dm-only)",
   )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
   .action(async (opts: {
     scraperOnly?: boolean;
     dmOnly?: boolean;
     profileUrl?: string[];
+    account?: string;
   }) => {
     if (!opts.dmOnly) {
       console.log("[recon] Discovering scraper selectors...");
-      await reconScraperPages();
+      await reconScraperPages(undefined, opts.account);
     }
     if (!opts.scraperOnly) {
       console.log("[recon] Discovering DM selectors...");
-      await reconDmPages(opts.profileUrl);
+      await reconDmPages(opts.profileUrl, opts.account);
     }
     console.log("[recon] Done.");
   });
@@ -58,8 +63,12 @@ program
   .description(
     "Scrape DoraHacks hackathon participant profiles",
   )
-  .action(async () => {
-    const result = await scrapeAll();
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
+  .action(async (opts: { account?: string }) => {
+    const result = await scrapeAll(opts.account);
     console.log(
       `\n[scrape] Complete: ${result.totalInserted} new profiles `
       + `from ${result.hackathons} hackathons`,
@@ -111,6 +120,10 @@ program
     "Max messages per hour",
     parseInt,
   )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
   .action(
     async (opts: {
       listingUrl: string;
@@ -119,6 +132,7 @@ program
       dryRun?: boolean;
       batchLimit?: number;
       rateCap?: number;
+      account?: string;
     }) => {
       const live = opts.live === true && opts.dryRun !== true;
       const pool = await getPool();
@@ -132,6 +146,9 @@ program
         listingUrl: opts.listingUrl,
         hackathonName: opts.hackathonName,
       };
+      if (opts.account !== undefined) {
+        sendOpts.account = opts.account;
+      }
       if (opts.batchLimit !== undefined) {
         sendOpts.batchLimit = opts.batchLimit;
       }

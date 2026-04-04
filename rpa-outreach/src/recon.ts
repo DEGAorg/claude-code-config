@@ -38,6 +38,7 @@ interface ReconResult {
  */
 export async function reconScraperPages(
   urls?: string[],
+  _account?: string,
 ): Promise<ScraperSelectors> {
   mkdirSync(RECON_DIR, { recursive: true });
 
@@ -125,6 +126,7 @@ export async function reconScraperPages(
  */
 export async function reconDmPages(
   profileUrls?: string[],
+  _account?: string,
 ): Promise<DmSelectors> {
   mkdirSync(RECON_DIR, { recursive: true });
 
