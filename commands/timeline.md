@@ -1,9 +1,9 @@
 # Update Timeline
 
-@description Update project timeline statuses in the shared repo file.
-@arguments $UPDATE: Status changes to apply (e.g. "mark Conductor as done, MCP Server is active")
+@description View or update project timeline via GitHub Issues and Project board.
+@arguments $UPDATE: Status changes to apply (e.g. "mark Conductor as done, MCP Server is active"), or "status" to show current state
 
-Update the project timeline based on the user's instructions in $UPDATE.
+View or update the project timeline based on the user's instructions in $UPDATE.
 
 ## Source of truth
 
@@ -12,8 +12,7 @@ Read `timeline` config from `dega-core.yaml` in the project root:
 ```yaml
 timeline:
   repo: DEGAorg/claude-code-config   # GitHub repo
-  branch: develop                     # branch where timeline lives
-  path: data/timeline.json            # file path in repo
+  project_number: 8                  # GitHub Project board number
 ```
 
 If `dega-core.yaml` is missing or has no `timeline` block, abort with an
@@ -23,51 +22,94 @@ error telling the user to add the config.
 
 ### 1. Read config
 
-Parse `dega-core.yaml` from the project root. Extract `timeline.repo`,
-`timeline.branch`, and `timeline.path`.
+Parse `dega-core.yaml` from the project root. Extract `timeline.repo` and
+`timeline.project_number`.
 
 ### 2. Fetch current timeline
 
-```bash
-gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.content' | base64 -d > /tmp/timeline.json
-```
-
-Read the JSON to understand the current state.
-
-### 3. Apply status updates
-
-Parse $UPDATE and modify the `status` field on matching items in both
-`components` and `ganttBars` arrays. Valid statuses:
-
-| Status | Meaning |
-|--------|---------|
-| `done` | Completed |
-| `active` | Currently in progress |
-| `pending` | Not started |
-
-Match items by name/label (fuzzy — "Conductor" matches "Conductor + TUI",
-"TOAD TUI + Conductor", etc.). Update both `components` (by `name`) and
-`ganttBars` (by `label`) when they refer to the same item.
-
-### 4. Update metadata
-
-Set `meta.generated` to today's date (YYYY-MM-DD format).
-
-### 5. Push update
+Retrieve milestones and their issues using `gh`:
 
 ```bash
-SHA=$(gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.sha')
+# List all milestones with open/closed counts
+gh api "repos/${REPO}/milestones?state=all&per_page=100" \
+  --jq '.[] | {number, title, description, due_on, open_issues, closed_issues}'
 
-gh api "repos/${REPO}/contents/${PATH}" \
-  -X PUT \
-  -f message="timeline: update statuses" \
-  -f branch="${BRANCH}" \
-  -f sha="$SHA" \
-  -f content="$(base64 < /tmp/timeline.json)"
+# List all open issues with their labels, milestone, and assignees
+gh issue list --repo "${REPO}" --state all --limit 200 \
+  --json number,title,state,labels,milestone,assignees
 ```
 
-### 6. Confirm
+Retrieve project board item statuses:
+
+```bash
+# Get the GitHub org from the repo (owner)
+ORG="${REPO%%/*}"
+
+# Query project items with Status field values
+gh project item-list "${PROJECT_NUMBER}" --owner "${ORG}" --format json \
+  --limit 200
+```
+
+### 3. Display current status (if $UPDATE is "status")
+
+If the user asked for status, display a summary table:
+
+| Milestone | Done | Active | Todo | Target |
+|-----------|------|--------|------|--------|
+
+For each milestone, count issues by their project board Status field
+(Done / In Progress / Todo). Show the milestone due date as Target.
+
+Then list any issues with `risk:medium` or `risk:high` labels as flagged
+items.
+
+Stop here if $UPDATE is "status" — do not modify anything.
+
+### 4. Apply status updates
+
+Parse $UPDATE and identify which issues to update. Match items by
+name (fuzzy — "Conductor" matches "TOAD TUI + Conductor", etc.).
+
+Valid status transitions map to the project board Status field:
+
+| User says | Project Status field |
+|-----------|---------------------|
+| `done` | Done |
+| `active` | In Progress |
+| `pending` | Todo |
+
+For each matched issue:
+
+#### a. Update project board Status field
+
+```bash
+# Get the item ID and Status field ID from the project
+ITEM_ID=$(gh project item-list "${PROJECT_NUMBER}" --owner "${ORG}" \
+  --format json | jq -r '.items[] | select(.content.number == ISSUE_NUM) | .id')
+
+STATUS_FIELD_ID=$(gh project field-list "${PROJECT_NUMBER}" --owner "${ORG}" \
+  --format json | jq -r '.fields[] | select(.name == "Status") | .id')
+
+# Get the option ID for the target status value
+OPTION_ID=$(gh project field-list "${PROJECT_NUMBER}" --owner "${ORG}" \
+  --format json | jq -r '.fields[] | select(.name == "Status") | .options[] | select(.name == "TARGET_STATUS") | .id')
+
+gh project item-edit --project-id "${PROJECT_ID}" --id "${ITEM_ID}" \
+  --field-id "${STATUS_FIELD_ID}" --single-select-option-id "${OPTION_ID}"
+```
+
+#### b. Close or reopen the issue if needed
+
+```bash
+# If status is "done", close the issue
+gh issue close ISSUE_NUM --repo "${REPO}"
+
+# If status is "active" or "pending" and issue is closed, reopen it
+gh issue reopen ISSUE_NUM --repo "${REPO}"
+```
+
+### 5. Confirm
 
 Report what changed:
-- Which items were updated and to what status
-- Current summary: N done, N active, N pending
+- Which issues were updated and to what status (include issue numbers)
+- Current summary per milestone: N done, N active, N todo
