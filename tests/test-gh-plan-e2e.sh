@@ -148,6 +148,17 @@ printf '  Using repo: %s\n' "${REPO}"
 TEMP_DIR="$(mktemp -d)"
 SLUG="e2e-test-$$-$(date +%s)"
 
+# Provider shim needs dega-core.yaml in the directory tree
+cat >"${TEMP_DIR}/dega-core.yaml" <<EOF
+provider: github
+github:
+  repo: ${REPO}
+  sync: true
+  labels: true
+  comments: true
+  close_on_ship: true
+EOF
+
 # --- Plan content for the test issue ---
 
 PLAN_BODY="$(
