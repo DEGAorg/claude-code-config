@@ -7,6 +7,7 @@ import { scrapeAll } from "./scrape.js";
 import { filterProspects } from "./filter.js";
 import { sendMessages } from "./send.js";
 import { printStatusReport } from "./status.js";
+import { login, validateSession } from "./auth.js";
 
 const program = new Command();
 
@@ -36,18 +37,23 @@ program
     "--profile-url <urls...>",
     "Profile URL(s) for DM recon (required for --dm-only)",
   )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
   .action(async (opts: {
     scraperOnly?: boolean;
     dmOnly?: boolean;
     profileUrl?: string[];
+    account?: string;
   }) => {
     if (!opts.dmOnly) {
       console.log("[recon] Discovering scraper selectors...");
-      await reconScraperPages();
+      await reconScraperPages(undefined, opts.account);
     }
     if (!opts.scraperOnly) {
       console.log("[recon] Discovering DM selectors...");
-      await reconDmPages(opts.profileUrl);
+      await reconDmPages(opts.profileUrl, opts.account);
     }
     console.log("[recon] Done.");
   });
@@ -57,8 +63,12 @@ program
   .description(
     "Scrape DoraHacks hackathon participant profiles",
   )
-  .action(async () => {
-    const result = await scrapeAll();
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
+  .action(async (opts: { account?: string }) => {
+    const result = await scrapeAll(opts.account);
     console.log(
       `\n[scrape] Complete: ${result.totalInserted} new profiles `
       + `from ${result.hackathons} hackathons`,
@@ -110,6 +120,10 @@ program
     "Max messages per hour",
     parseInt,
   )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
   .action(
     async (opts: {
       listingUrl: string;
@@ -118,6 +132,7 @@ program
       dryRun?: boolean;
       batchLimit?: number;
       rateCap?: number;
+      account?: string;
     }) => {
       const live = opts.live === true && opts.dryRun !== true;
       const pool = await getPool();
@@ -131,6 +146,9 @@ program
         listingUrl: opts.listingUrl,
         hackathonName: opts.hackathonName,
       };
+      if (opts.account !== undefined) {
+        sendOpts.account = opts.account;
+      }
       if (opts.batchLimit !== undefined) {
         sendOpts.batchLimit = opts.batchLimit;
       }
@@ -160,5 +178,42 @@ program
     await printStatusReport(pool);
     await closePool();
   });
+
+program
+  .command("login")
+  .description(
+    "Open Chromium for manual DoraHacks login — "
+    + "saves session to auth/<account>/storage-state.json",
+  )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
+  .option(
+    "--validate",
+    "Validate an existing session instead of logging in",
+  )
+  .action(
+    async (opts: { account?: string; validate?: boolean }) => {
+      if (opts.validate) {
+        const valid = await validateSession(opts.account);
+        const name = opts.account ?? "default";
+        if (valid) {
+          console.log(
+            `[login] Session for "${name}" is valid.`,
+          );
+        } else {
+          console.log(
+            `[login] Session for "${name}" is invalid `
+            + `or missing.`,
+          );
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      await login(opts.account);
+    },
+  );
 
 program.parse();

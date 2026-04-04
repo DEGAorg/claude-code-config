@@ -254,6 +254,7 @@ async function loadAllProfiles(
  */
 export async function scrapeSinglePage(
   hackathonUrl: string,
+  account?: string,
 ): Promise<ScrapeResult> {
   const selectors = loadSelectors();
   const defaults = loadDefaults();
@@ -262,7 +263,7 @@ export async function scrapeSinglePage(
   let context: BrowserContext | undefined;
 
   try {
-    const session = await loadSession();
+    const session = await loadSession(account);
     browser = session.browser;
     context = session.context;
 
@@ -362,7 +363,9 @@ export async function scrapeSinglePage(
  * via infinite scroll, deduplicates by username across all
  * hackathons, and applies rate-limited delays between pages.
  */
-export async function scrapeAll(): Promise<MultiScrapeResult> {
+export async function scrapeAll(
+  account?: string,
+): Promise<MultiScrapeResult> {
   const hackathons = loadHackathons();
   const selectors = loadSelectors();
   const defaults = loadDefaults();
@@ -388,7 +391,7 @@ export async function scrapeAll(): Promise<MultiScrapeResult> {
   let totalSkipped = 0;
 
   try {
-    const session = await loadSession();
+    const session = await loadSession(account);
     browser = session.browser;
     context = session.context;
 

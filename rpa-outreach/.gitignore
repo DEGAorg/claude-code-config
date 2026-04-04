@@ -1,6 +1,6 @@
 node_modules/
 dist/
-auth/
+auth/*/storage-state.json
 recon/
 *.db
 *.db-journal
