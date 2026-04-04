@@ -208,7 +208,7 @@ export async function sendMessages(
       `Batch limit: ${batchLimit}. Mode: ${options.live ? "LIVE" : "DRY-RUN"}`,
   );
 
-  const { browser, context } = await loadSession();
+  const { browser, context } = await loadSession(options.account);
   const page = await context.newPage();
   const rateLimiter = new RateLimiter(rateCapPerHour);
 

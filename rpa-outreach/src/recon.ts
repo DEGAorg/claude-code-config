@@ -38,7 +38,7 @@ interface ReconResult {
  */
 export async function reconScraperPages(
   urls?: string[],
-  _account?: string,
+  account?: string,
 ): Promise<ScraperSelectors> {
   mkdirSync(RECON_DIR, { recursive: true });
 
@@ -47,7 +47,7 @@ export async function reconScraperPages(
   let context: BrowserContext | undefined;
 
   try {
-    const session = await loadSession();
+    const session = await loadSession(account);
     browser = session.browser;
     context = session.context;
 
@@ -126,7 +126,7 @@ export async function reconScraperPages(
  */
 export async function reconDmPages(
   profileUrls?: string[],
-  _account?: string,
+  account?: string,
 ): Promise<DmSelectors> {
   mkdirSync(RECON_DIR, { recursive: true });
 
@@ -142,7 +142,7 @@ export async function reconDmPages(
   let context: BrowserContext | undefined;
 
   try {
-    const session = await loadSession();
+    const session = await loadSession(account);
     browser = session.browser;
     context = session.context;
 
