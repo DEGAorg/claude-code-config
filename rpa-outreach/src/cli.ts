@@ -7,6 +7,7 @@ import { scrapeAll } from "./scrape.js";
 import { filterProspects } from "./filter.js";
 import { sendMessages } from "./send.js";
 import { printStatusReport } from "./status.js";
+import { login, validateSession } from "./auth.js";
 
 const program = new Command();
 
@@ -160,5 +161,42 @@ program
     await printStatusReport(pool);
     await closePool();
   });
+
+program
+  .command("login")
+  .description(
+    "Open Chromium for manual DoraHacks login — "
+    + "saves session to auth/<account>/storage-state.json",
+  )
+  .option(
+    "--account <name>",
+    "Account name for session storage (default: \"default\")",
+  )
+  .option(
+    "--validate",
+    "Validate an existing session instead of logging in",
+  )
+  .action(
+    async (opts: { account?: string; validate?: boolean }) => {
+      if (opts.validate) {
+        const valid = await validateSession(opts.account);
+        const name = opts.account ?? "default";
+        if (valid) {
+          console.log(
+            `[login] Session for "${name}" is valid.`,
+          );
+        } else {
+          console.log(
+            `[login] Session for "${name}" is invalid `
+            + `or missing.`,
+          );
+          process.exitCode = 1;
+        }
+        return;
+      }
+
+      await login(opts.account);
+    },
+  );
 
 program.parse();
