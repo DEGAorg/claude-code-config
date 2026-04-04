@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { getDb, closeDb } from "./db.js";
+import { getPool, closePool } from "./db.js";
 import { reconScraperPages, reconDmPages } from "./recon.js";
 import { scrapeAll } from "./scrape.js";
 import { filterProspects } from "./filter.js";
@@ -57,17 +57,13 @@ program
   .description(
     "Scrape DoraHacks hackathon participant profiles",
   )
-  .option(
-    "--db <path>",
-    "SQLite database path",
-    "outreach.db",
-  )
-  .action(async (opts: { db: string }) => {
-    const result = await scrapeAll(opts.db);
+  .action(async () => {
+    const result = await scrapeAll();
     console.log(
       `\n[scrape] Complete: ${result.totalInserted} new profiles `
       + `from ${result.hackathons} hackathons`,
     );
+    await closePool();
   });
 
 program
@@ -75,14 +71,9 @@ program
   .description(
     "Score and tag scraped prospects by relevance",
   )
-  .option(
-    "--db <path>",
-    "SQLite database path",
-    "outreach.db",
-  )
-  .action((opts: { db: string }) => {
-    const db = getDb(opts.db);
-    const stats = filterProspects(db);
+  .action(async () => {
+    const pool = await getPool();
+    const stats = await filterProspects(pool);
     console.log(
       `\n[filter] Processed ${stats.processed} prospects`,
     );
@@ -91,7 +82,7 @@ program
     )) {
       console.log(`  ${category}: ${count}`);
     }
-    closeDb();
+    await closePool();
   });
 
 program
@@ -110,11 +101,6 @@ program
   .option("--live", "Send messages for real (default is dry-run)")
   .option("--dry-run", "Preview messages without sending (default)")
   .option(
-    "--db <path>",
-    "SQLite database path",
-    "outreach.db",
-  )
-  .option(
     "--batch-limit <n>",
     "Max messages per session",
     parseInt,
@@ -130,12 +116,11 @@ program
       hackathonName: string;
       live?: boolean;
       dryRun?: boolean;
-      db: string;
       batchLimit?: number;
       rateCap?: number;
     }) => {
       const live = opts.live === true && opts.dryRun !== true;
-      const db = getDb(opts.db);
+      const pool = await getPool();
 
       console.log(
         `[send] Mode: ${live ? "LIVE" : "DRY-RUN"}`,
@@ -153,7 +138,7 @@ program
         sendOpts.rateCapPerHour = opts.rateCap;
       }
 
-      const stats = await sendMessages(db, sendOpts);
+      const stats = await sendMessages(pool, sendOpts);
 
       console.log(
         `\n[send] Complete: ${stats.sent} sent, `
@@ -163,22 +148,17 @@ program
         console.log(`[send] Stopped: ${stats.stoppedReason}`);
       }
 
-      closeDb();
+      await closePool();
     },
   );
 
 program
   .command("status")
   .description("Show pipeline status report")
-  .option(
-    "--db <path>",
-    "SQLite database path",
-    "outreach.db",
-  )
-  .action((opts: { db: string }) => {
-    const db = getDb(opts.db);
-    printStatusReport(db);
-    closeDb();
+  .action(async () => {
+    const pool = await getPool();
+    await printStatusReport(pool);
+    await closePool();
   });
 
 program.parse();
