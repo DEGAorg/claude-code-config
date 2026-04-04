@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Migrate timeline from JSON to GitHub Issues + Milestones (`20260403-timeline-migration`) — 2026-04-04
+
 - DoraHacks Listing for Canon Hackathon (`dorahacks-listing`) — 2026-04-02
 
 - Complete GH audit trail with work summaries, feedback, and verify results (`20260325-gh-audit-trail`) — 2026-03-25
