@@ -16,6 +16,8 @@ import {
 } from "../src/db.js";
 import type { ProspectInsert } from "../src/db.js";
 
+const skipDb = !process.env["DATABASE_URL"];
+
 const SAMPLE: ProspectInsert = {
   username: "alice",
   profile_url: "https://dorahacks.io/alice",
@@ -25,23 +27,23 @@ const SAMPLE: ProspectInsert = {
   source_hackathon: "ETHGlobal 2026",
 };
 
-let pool: PoolType;
+describe.skipIf(skipDb)("db", () => {
+  let pool: PoolType;
 
-beforeAll(async () => {
-  pool = await getPool();
-});
+  beforeAll(async () => {
+    pool = await getPool();
+  });
 
-afterAll(async () => {
-  await closePool();
-});
+  afterAll(async () => {
+    await closePool();
+  });
 
-beforeEach(async () => {
-  await pool.query(
-    "TRUNCATE prospects RESTART IDENTITY CASCADE",
-  );
-});
+  beforeEach(async () => {
+    await pool.query(
+      "TRUNCATE prospects RESTART IDENTITY CASCADE",
+    );
+  });
 
-describe("db", () => {
   describe("schema", () => {
     it("creates prospects table on getPool", async () => {
       const result = await pool.query(

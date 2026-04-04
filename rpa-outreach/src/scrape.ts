@@ -246,54 +246,6 @@ async function loadAllProfiles(
 }
 
 /**
- * Scroll fallback for pages without a Load More button.
- */
-async function scrollToLoadAll(
-  page: Page,
-  selectors: ScraperSelectors,
-  label: string,
-): Promise<void> {
-  let previousCardCount = 0;
-  let noChangeRounds = 0;
-
-  for (let i = 0; i < MAX_SCROLL_ATTEMPTS; i++) {
-    const currentCount = await page.evaluate(
-      (sel) => {
-        const container = document.querySelector(
-          sel.profile_list_container,
-        );
-        if (!container) return 0;
-        return container.querySelectorAll(sel.profile_card).length;
-      },
-      selectors,
-    );
-
-    if (currentCount === previousCardCount) {
-      noChangeRounds++;
-      if (noChangeRounds >= 3) {
-        console.log(
-          `${label} Scroll complete — ${currentCount} profiles`,
-        );
-        break;
-      }
-    } else {
-      noChangeRounds = 0;
-      console.log(
-        `${label} Scroll ${i + 1}: ${currentCount} profiles loaded`,
-      );
-    }
-
-    previousCardCount = currentCount;
-
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-
-    await page.waitForTimeout(SCROLL_PAUSE_MS);
-  }
-}
-
-/**
  * Scrape a single DoraHacks hackathon participant page.
  *
  * Handles infinite scroll to load all profiles, extracts them

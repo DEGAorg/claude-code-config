@@ -1,39 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import Database from "better-sqlite3";
-import type { Database as DatabaseType } from "better-sqlite3";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import type { Pool as PoolType } from "@neondatabase/serverless";
 import { scoreProspect, filterProspects } from "../src/filter.js";
-import { insertProspect, getProspectById } from "../src/db.js";
+import { insertProspect, getProspectById, getPool, closePool } from "../src/db.js";
 
-// Inline schema for test isolation (no singleton side effects)
-const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS prospects (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  username        TEXT    NOT NULL UNIQUE,
-  profile_url     TEXT    NOT NULL,
-  display_name    TEXT    NOT NULL DEFAULT '',
-  bio             TEXT    NOT NULL DEFAULT '',
-  tags            TEXT    NOT NULL DEFAULT '',
-  source_hackathon TEXT   NOT NULL DEFAULT '',
-  relevance_score REAL,
-  interest_tag    TEXT,
-  status          TEXT    NOT NULL DEFAULT 'scraped',
-  messaged_at     TEXT,
-  created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-  updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects(status);
-CREATE INDEX IF NOT EXISTS idx_prospects_username ON prospects(username);
-CREATE INDEX IF NOT EXISTS idx_prospects_relevance ON prospects(relevance_score);
-`;
+const skipDb = !process.env["DATABASE_URL"];
 
-function createTestDb(): DatabaseType {
-  const db = new Database(":memory:");
-  db.pragma("journal_mode = WAL");
-  db.exec(SCHEMA_SQL);
-  return db;
-}
-
-// ---------- scoreProspect ----------
+// ---------- scoreProspect (pure function, no DB needed) ----------
 
 describe("scoreProspect", () => {
   it("returns generic with score 1 for empty bio and tags", () => {
@@ -73,7 +45,6 @@ describe("scoreProspect", () => {
   });
 
   it("picks the category with the most keyword matches", () => {
-    // 3 crypto keywords vs 1 AI keyword
     const result = scoreProspect(
       "blockchain crypto defi with some ai",
       "",
@@ -96,7 +67,6 @@ describe("scoreProspect", () => {
   });
 
   it("caps score at 10", () => {
-    // Stuff every keyword to ensure we don't exceed 10
     const allCrypto = "blockchain crypto web3 defi nft solidity ethereum bitcoin smart contract dao dapp token wallet layer 2 l2 zk zero knowledge rollup consensus staking";
     const result = scoreProspect(allCrypto, allCrypto);
     expect(result.score).toBeLessThanOrEqual(10);
@@ -109,21 +79,25 @@ describe("scoreProspect", () => {
   });
 });
 
-// ---------- filterProspects ----------
+// ---------- filterProspects (requires Neon DB) ----------
 
-describe("filterProspects", () => {
-  let db: DatabaseType;
+describe.skipIf(skipDb)("filterProspects", () => {
+  let pool: PoolType;
 
-  beforeEach(() => {
-    db = createTestDb();
+  beforeAll(async () => {
+    pool = await getPool();
   });
 
-  afterEach(() => {
-    db.close();
+  afterAll(async () => {
+    await closePool();
   });
 
-  it("filters scraped prospects and updates status to filtered", () => {
-    insertProspect(db, {
+  beforeEach(async () => {
+    await pool.query("TRUNCATE prospects RESTART IDENTITY CASCADE");
+  });
+
+  it("filters scraped prospects and updates status to filtered", async () => {
+    await insertProspect(pool, {
       username: "alice",
       profile_url: "https://dorahacks.io/alice",
       display_name: "Alice",
@@ -132,19 +106,19 @@ describe("filterProspects", () => {
       source_hackathon: "hackathon-1",
     });
 
-    const stats = filterProspects(db);
+    const stats = await filterProspects(pool);
 
     expect(stats.processed).toBe(1);
     expect(stats.byCategory.crypto).toBe(1);
 
-    const prospect = getProspectById(db, 1);
+    const prospect = await getProspectById(pool, 1);
     expect(prospect?.status).toBe("filtered");
     expect(prospect?.interest_tag).toBe("crypto");
     expect(prospect?.relevance_score).toBeGreaterThanOrEqual(2);
   });
 
-  it("does not re-filter already filtered prospects", () => {
-    insertProspect(db, {
+  it("does not re-filter already filtered prospects", async () => {
+    await insertProspect(pool, {
       username: "bob",
       profile_url: "https://dorahacks.io/bob",
       display_name: "Bob",
@@ -153,13 +127,13 @@ describe("filterProspects", () => {
       source_hackathon: "hackathon-1",
     });
 
-    filterProspects(db);
-    const stats2 = filterProspects(db);
+    await filterProspects(pool);
+    const stats2 = await filterProspects(pool);
 
     expect(stats2.processed).toBe(0);
   });
 
-  it("handles multiple prospects in a batch", () => {
+  it("handles multiple prospects in a batch", async () => {
     const prospects = [
       { username: "crypto-dev", bio: "blockchain ethereum defi", tags: "web3" },
       { username: "ml-eng", bio: "deep learning neural network", tags: "pytorch" },
@@ -168,7 +142,7 @@ describe("filterProspects", () => {
     ];
 
     for (const p of prospects) {
-      insertProspect(db, {
+      await insertProspect(pool, {
         username: p.username,
         profile_url: `https://dorahacks.io/${p.username}`,
         display_name: p.username,
@@ -178,7 +152,7 @@ describe("filterProspects", () => {
       });
     }
 
-    const stats = filterProspects(db);
+    const stats = await filterProspects(pool);
 
     expect(stats.processed).toBe(4);
     expect(stats.byCategory.crypto).toBe(1);
@@ -186,17 +160,16 @@ describe("filterProspects", () => {
     expect(stats.byCategory.sports).toBe(1);
     expect(stats.byCategory.generic).toBe(1);
 
-    // All should be filtered
-    const allRows = db
-      .prepare("SELECT status FROM prospects")
-      .all() as Array<{ status: string }>;
-    for (const row of allRows) {
+    const result = await pool.query<{ status: string }>(
+      "SELECT status FROM prospects",
+    );
+    for (const row of result.rows) {
       expect(row.status).toBe("filtered");
     }
   });
 
-  it("returns zeroed stats when no scraped prospects exist", () => {
-    const stats = filterProspects(db);
+  it("returns zeroed stats when no scraped prospects exist", async () => {
+    const stats = await filterProspects(pool);
     expect(stats.processed).toBe(0);
     expect(stats.byCategory).toEqual({
       crypto: 0,
@@ -206,8 +179,8 @@ describe("filterProspects", () => {
     });
   });
 
-  it("assigns relevance scores in valid range", () => {
-    insertProspect(db, {
+  it("assigns relevance scores in valid range", async () => {
+    await insertProspect(pool, {
       username: "dev1",
       profile_url: "https://dorahacks.io/dev1",
       display_name: "Dev",
@@ -215,7 +188,7 @@ describe("filterProspects", () => {
       tags: "",
       source_hackathon: "h1",
     });
-    insertProspect(db, {
+    await insertProspect(pool, {
       username: "dev2",
       profile_url: "https://dorahacks.io/dev2",
       display_name: "Dev2",
@@ -224,12 +197,12 @@ describe("filterProspects", () => {
       source_hackathon: "h1",
     });
 
-    filterProspects(db);
+    await filterProspects(pool);
 
-    const rows = db
-      .prepare("SELECT relevance_score FROM prospects")
-      .all() as Array<{ relevance_score: number }>;
-    for (const row of rows) {
+    const result = await pool.query<{ relevance_score: number }>(
+      "SELECT relevance_score FROM prospects",
+    );
+    for (const row of result.rows) {
       expect(row.relevance_score).toBeGreaterThanOrEqual(1);
       expect(row.relevance_score).toBeLessThanOrEqual(10);
     }
