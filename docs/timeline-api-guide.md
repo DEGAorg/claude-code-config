@@ -29,14 +29,25 @@ related issues and carry a due date.
 
 | Milestone | Purpose |
 |-----------|---------|
-| Core Infrastructure | Shared tooling, CI, repo setup |
-| Conductor + TUI | Orchestrator agent and TUI view |
-| MCP Server | Model Context Protocol server |
-| Arena MVP | Competition platform |
-| Templates | Hackathon starter templates |
-| DoraHacks + Outreach | Listing, outreach, DMs |
-| Workshops | Educational content |
-| Hackathon Event | Event logistics, gates, deadlines |
+| Canon TUI | Toad fork with agent control, split view |
+| pmxt POC | Polymarket exchange test — gate before CLI |
+| RPA Tool | Playwright scraper for DoraHacks outreach |
+| Canon CLI (init + start) | canon init and canon start commands |
+| Canon CLI (register + help + wallet) | Remaining CLI commands (needs Arena) |
+| Strategies Research | Sampson's 18 strategy types review |
+| Templates (TS) | TypeScript base template codebase |
+| Templates (Python) | Python base template codebase |
+| Strategy Implementation | Strategy-specific configs on TS/Python base |
+| Arena MVP | Next.js leaderboard, registration, portfolio |
+| Demo Video | YouTube demo recorded Mar 30 |
+| Update RPA Session | RPA session update |
+| Integration Test | Integration + smoke tests |
+| Testing Phase | Heavy testing + bug fixes |
+| DoraHacks + DMs | Listing + DM outreach campaigns |
+| Content Tracking | Workshop content due Apr 5-11 |
+| Workshops | 5 sessions: Apr 8, 10, 15, 17, 29 |
+| Hackathon | 3-week NBA Playoffs competition |
+| Finale | Judging + Winners livestream |
 
 ### Labels
 
