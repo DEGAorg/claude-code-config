@@ -1,7 +1,6 @@
 # DoraHacks Listing — NBA Playoffs Prediction Market Hackathon
 
 > DEGA Canon hackathon listing for the NBA Playoffs season.
-> Dates are placeholders — Alberto will finalize from timeline.
 
 ---
 
@@ -42,18 +41,17 @@ Participants will leverage:
 
 ## Key Dates
 
-- [Date]: Hackathon Announcement
-- [Date]: Marketing Period Begins
-- [Date]: Workshop 1 — Introduction to Prediction Markets
-- [Date]: Workshop 2 — AI Strategies: Arbitrage, Cross-Market, and Microstructures
-- [Date]: Workshop 3 — Hands-On with Canon: Building Your First Automation
-- [Date]: Workshop 4 — Advanced Strategy Implementation
-- [Date]: Workshop 5 — Live Automation Demo and Q&A
-- [Date]: Registration Opens (pre-registration available from announcement)
-- [Date]: Hackathon Officially Begins
-- [Date]: Submission Deadline (aligned with NBA Playoffs end)
-- [Date]: Judging Period
-- [Date]: Winners Announced
+- April 6: Marketing Period Begins
+- April 9: Workshop 1 — Prediction Markets 101 (YouTube Live)
+- April 14: Workshop 2 — NBA Market Analysis (YouTube Live)
+- April 16: Workshop 3 — Canon Setup (YouTube Live)
+- April 21: Workshop 4 — Templates & Data Feeds (YouTube Live)
+- April 23: Workshop 5 — AMA & Strategy Review (YouTube Live)
+- Pre-registration open from announcement — join at any time
+- May 4: NBA Playoff Hackathon Officially Begins
+- June 19: Submission Deadline (NBA Playoffs end)
+- June 19-20: Judging Period
+- June 20: Winners Announced
 
 ## Prize Pool & Distribution
 
