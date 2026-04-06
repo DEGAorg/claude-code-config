@@ -10,9 +10,9 @@ The DEGA NBA Playoffs Prediction Market Hackathon is a global, fully virtual com
 
 Hosted by DEGA, this event challenges participants to build automated trading strategies that analyze prediction market microstructures — from cross-market arbitrage to speed-based opportunity detection — all powered by Canon, DEGA's AI automation toolkit.
 
-Whether you're passionate about AI, quantitative analysis, or open-source innovation, this is your chance to build impactful automations, collaborate with industry experts, and compete for prizes. This event is purely educational and competition-based — participants work with simulated strategies and are judged on technical execution, not financial outcomes.
+Whether you're passionate about AI, quantitative analysis, or open-source innovation, this is your chance to build automations, learn from workshops, and compete for prizes. This event is educational and competition-based — participants are judged on strategy performance (profit %), not financial outcomes.
 
-To stay connected and communicate more effectively with other developers in the Hackathon, join the DEGA Discord: https://discord.gg/dega Once inside, head over to the #hackathon channel where we'll be sharing updates, answering questions, and connecting with the community.
+Join the DEGA Discord: [channelhere]
 
 ## About DEGA
 
@@ -20,48 +20,36 @@ DEGA is building tools and infrastructure to empower creators and developers to 
 
 ## Core Technology
 
-Participants will leverage:
+Participants will use:
 
 - **Canon CLI**: Bootstrap projects, apply strategy templates, and manage automations from the terminal. `canon init` sets up your workspace; `canon start` launches your automation.
 - **TypeScript Strategy Templates**: Pre-built code base with typed interfaces for market data fetching, strategy logic, and execution — ready to customize.
-- **Automation System View**: Live flow diagrams showing each step of your automation (data fetch → analysis → decision → execution), real-time logs, and an about/description panel — so you always know what your automation is doing and why.
+- **Automation System View**: Live flow diagrams showing each step of your automation (data fetch → analysis → decision → execution), real-time logs, and an about/description panel.
 
 ## Participant Entry Requirements
 
 - Open to global participants.
 - Individuals or teams of up to 5 members.
-- Developers, AI engineers, blockchain enthusiasts, and innovators of all experience levels are welcome.
-- No prior knowledge of prediction markets is required; workshops and documentation will guide participants.
-- Participants can join at any time during the hackathon — there is no registration cutoff.
-
-## Sponsors & Ecosystem Partners
-
-- DEGA — Hackathon Organizer
-- [Partner] — [Role]
+- All experience levels welcome — no prior knowledge of prediction markets required.
+- Workshops and documentation will guide you from zero to running automation.
+- Join at any time during the hackathon — no registration cutoff.
 
 ## Key Dates
 
-- April 6: Marketing Period Begins
 - April 9: Workshop 1 — Prediction Markets 101 (YouTube Live)
 - April 14: Workshop 2 — NBA Market Analysis (YouTube Live)
 - April 16: Workshop 3 — Canon Setup (YouTube Live)
 - April 21: Workshop 4 — Templates & Data Feeds (YouTube Live)
 - April 23: Workshop 5 — AMA & Strategy Review (YouTube Live)
-- Pre-registration open from announcement — join at any time
-- May 4: NBA Playoff Hackathon Officially Begins
-- June 19: Submission Deadline (NBA Playoffs end)
-- June 19-20: Judging Period
+- May 4: NBA Playoff Hackathon Begins
+- June 19: Submission Deadline
 - June 20: Winners Announced
 
 ## Prize Pool & Distribution
 
-Prize: $1,000 — Best Performer
+Prize: $1,000 — Best Performer (highest profit %)
 
-This is a warm-up competition — the prize is symbolic recognition for the top performer. The flagship World Cup Prediction Market Hackathon will feature a significantly larger prize pool with sponsor backing.
-
-Prizes are awarded for competition performance — technical execution, strategy design, and innovation. This hackathon is educational; prizes are not derived from market outcomes.
-
-Prize payments will be processed and distributed after the judging period. Winners will be contacted through their registered details to confirm payment logistics.
+Prizes are awarded based on strategy performance. Winners will be contacted after judging to confirm payment logistics.
 
 ## Themes
 
@@ -71,48 +59,45 @@ Participants build AI-powered automations focused on prediction market microstru
 - **Cross-Market Analysis**: Build strategies that correlate positions across related markets — when one moves, capitalize on the lag in another.
 - **Speed-Based Opportunity**: Detect when market prices haven't yet adjusted to publicly available statistical data (team records, historical matchups, injury reports) and act before the market corrects.
 
-All strategies must be based on quantifiable, system-available data — statistical analysis, mathematical models, and market microstructure patterns. No news sentiment, social media analysis, or external opinion-based approaches.
+Canon's built-in templates focus on these microstructure-based approaches. Participants are free to explore other strategy types, but Canon does not provide templates for news sentiment, social media analysis, or opinion-based strategies.
 
 ## Submission Requirements
 
 Each submission must include:
 
-- **Project Description:** Problem statement, strategy approach, and intended automation behavior.
-- **Source Code:** Publicly accessible (must be on GitHub).
-- **Documentation:** Clear instructions on setup and functionality, including an `about` section describing the automation's flow.
+- **Project Description:** Strategy approach and intended automation behavior.
+- **Source Code:** Publicly accessible on GitHub.
+- **Documentation:** Setup instructions and an `about` section describing the automation's flow.
 - **Demo Video:** 3 to 5 minute presentation of your project.
 
 ## Developer Resources
-
-Participants will have access to:
 
 - Canon CLI documentation
 - TypeScript strategy template and code base
 - Pre-built strategy templates (arbitrage, cross-market, speed-based)
 - Workshop recordings and code samples
-- Mentor-led office hours
 
 ## Judging Criteria
 
-- Innovation & Creativity — 25%
-- Technical Execution & Design — 30%
-- Real-World Utility & Impact — 30%
-- Presentation & Demo — 15%
+Participants are ranked by **profit %** generated by their automation during the competition period. Final standings consider:
+
+- Strategy profit % — primary ranking factor
+- Technical execution and code quality
+- Innovation in strategy design
 
 ## Official Communication Channels
 
-- **Discord:** https://discord.gg/dega — Main hub for announcements, mentoring, and team-building (#hackathon channel).
-- **X (Twitter):** @Dega_org — Live updates and reminders.
-- **YouTube:** DEGA Channel — Workshop and recap videos.
+- **Discord:** [channelhere]
+- **X (Twitter):** @Dega_org
+- **YouTube:** DEGA Channel — Workshop recordings and updates.
 
-## Post-Hackathon Support
+## Post-Hackathon
 
-Winners and standout teams will gain:
+Top performers gain:
 
 - Promotion across DEGA channels.
-- Networking opportunities with developers.
-- Priority access to the upcoming World Cup Prediction Market Hackathon — the flagship event with a larger prize pool and sponsor backing.
+- Priority access to the upcoming World Cup Prediction Market Hackathon — a larger-scale competition with sponsor backing and a bigger prize pool.
 
 ## Why Join?
 
-This hackathon is your launchpad into AI-powered prediction market automation. Learn to build, deploy, and monitor real strategies using Canon — no prior prediction market experience needed. The workshops take you from theory to running automation, and what you build here carries directly into the World Cup hackathon. Whether you're here to learn, compete, or ship something real, this is where it starts.
+Learn to build, deploy, and monitor prediction market automations using Canon — no prior experience needed. The workshops take you from theory to running automation, and what you build here carries directly into the World Cup hackathon.
