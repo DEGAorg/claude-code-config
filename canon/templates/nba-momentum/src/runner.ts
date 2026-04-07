@@ -132,209 +132,268 @@ const NBA_ALIASES: Record<string, string[]> = {
   wolves: ["minnesota", "timberwolves", "wolves"],
 };
 
-/** Check if a text string mentions a team (fuzzy match with aliases). */
+/**
+ * Check if a text string mentions a team (fuzzy match with aliases).
+ *
+ * Strategy:
+ * 1. Direct substring match on normalized full team name.
+ * 2. Last-word fallback — match on just the last word (e.g. "Thunder").
+ * 3. Alias table — match any registered alias fragment for the team.
+ */
 export function textMentionsTeam(
   text: string,
   teamName: string,
 ): boolean {
-  const t = normalize(text);
-  const n = normalize(teamName);
+  const normText = normalize(text);
+  const normTeam = normalize(teamName);
 
-  if (t.includes(n)) return true;
+  // 1. Direct substring match
+  if (normText.includes(normTeam)) return true;
 
-  // Try last word of team name (e.g. "Lakers" from "Los Angeles Lakers")
-  const parts = n.split(" ");
-  const last = parts[parts.length - 1];
-  if (last && last.length > 3 && t.includes(last)) return true;
+  // 2. Last-word fallback (e.g. "Thunder" from "Oklahoma City Thunder")
+  const lastWord = normTeam.split(" ").at(-1);
+  if (lastWord && lastWord.length > 3 && normText.includes(lastWord)) return true;
 
-  // Check aliases
-  for (const [, aliases] of Object.entries(NBA_ALIASES)) {
-    const teamMatches = aliases.some((a) => n.includes(a));
-    const textMatches = aliases.some((a) => t.includes(a));
-    if (teamMatches && textMatches) return true;
+  // 3. Alias table — check if any alias for any alias key matches the team
+  //    and the text contains that alias fragment
+  for (const [_key, aliases] of Object.entries(NBA_ALIASES)) {
+    // Does this alias group relate to the queried team?
+    const groupMatchesTeam = aliases.some((a) => normTeam.includes(normalize(a)));
+    if (!groupMatchesTeam) continue;
+    // Does the text contain any alias fragment from this group?
+    if (aliases.some((a) => normText.includes(normalize(a)))) return true;
   }
 
   return false;
 }
 
-// ── Sportsbook implied probabilities ────────────────────────────────────────
+// ── Team odds extraction ────────────────────────────────────────────────────
 
+/** Raw odds event from The Odds API. */
+export interface OddsEvent {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  commence: Date;
+  bookmakers: Array<{
+    key: string;
+    title: string;
+    markets: Array<{
+      key: string;
+      outcomes: Array<{ name: string; price: number }>;
+    }>;
+  }>;
+}
+
+/** Per-team implied probability aggregated across sportsbooks. */
 export interface TeamOdds {
   team: string;
+  /** Average implied probability across all bookmaker outrights. */
   impliedProb: number;
+  /** Number of bookmakers contributing to the average. */
   sources: number;
 }
 
 /**
- * Extract average implied probability per team from championship
- * outright odds across all bookmakers.
+ * Extract per-team average implied probability from outrights markets.
+ *
+ * For each team name found across all bookmaker outright outcomes:
+ *  - Convert decimal odds → implied probability: 1 / price
+ *  - Average across all bookmakers that list the team
+ *
+ * Only processes markets with key "outrights".
  */
-export function extractTeamOdds(
-  events: Awaited<ReturnType<typeof fetchOdds>>,
-): TeamOdds[] {
-  const teamProbs = new Map<string, number[]>();
+export function extractTeamOdds(events: OddsEvent[]): TeamOdds[] {
+  // Accumulate sum of implied probs and count per team name
+  const accumulator = new Map<string, { sum: number; count: number }>();
 
   for (const event of events) {
-    for (const bm of event.bookmakers) {
-      const outrights = bm.markets.find((m) => m.key === "outrights");
-      if (!outrights) continue;
+    for (const bookmaker of event.bookmakers) {
+      for (const market of bookmaker.markets) {
+        // Only process outright (futures) markets
+        if (market.key !== "outrights") continue;
 
-      for (const outcome of outrights.outcomes) {
-        if (outcome.price <= 1) continue;
-        const probs = teamProbs.get(outcome.name) ?? [];
-        probs.push(1 / outcome.price);
-        teamProbs.set(outcome.name, probs);
+        for (const outcome of market.outcomes) {
+          if (!outcome.name || outcome.price <= 0) continue;
+
+          // Convert decimal odds to implied probability
+          const impliedProb = 1 / outcome.price;
+          const existing = accumulator.get(outcome.name);
+
+          if (existing) {
+            existing.sum += impliedProb;
+            existing.count += 1;
+          } else {
+            accumulator.set(outcome.name, { sum: impliedProb, count: 1 });
+          }
+        }
       }
     }
   }
 
+  // Convert accumulator to TeamOdds array
   const result: TeamOdds[] = [];
-  for (const [team, probs] of teamProbs) {
-    const avg = probs.reduce((a, b) => a + b, 0) / probs.length;
-    result.push({ team, impliedProb: avg, sources: probs.length });
-  }
-
-  return result.sort((a, b) => b.impliedProb - a.impliedProb);
-}
-
-// ── Scan cycle ──────────────────────────────────────────────────────────────
-
-async function runCycle(config: StrategyConfig): Promise<void> {
-  cycleCount++;
-  const ts = new Date().toISOString();
-
-  out("SCAN", `Cycle ${cycleCount} — fetching NBA futures...`);
-
-  // 1. Fetch championship outright odds from sportsbooks
-  const events = await fetchOdds("basketball_nba_championship_winner");
-  const teamOdds = extractTeamOdds(events);
-
-  // 2. Fetch Polymarket NBA championship markets
-  const markets = await searchMarkets("NBA Finals");
-
-  // 3. Match teams to Polymarket markets and compare prices
-  let matchedCount = 0;
-  let cycleSignals = 0;
-
-  for (const { team, impliedProb, sources } of teamOdds) {
-    // Risk gate: require minimum bookmaker sources
-    if (!checkRiskLimits({ sources }, DEFAULT_RISK_CONFIG)) continue;
-
-    const market = markets.find((m) => textMentionsTeam(m.question, team));
-    if (!market) continue;
-
-    matchedCount++;
-
-    // Signal check: delta exceeds mispricing threshold?
-    const signal = shouldFlag(impliedProb, market.yesPrice, config);
-    if (!signal) continue;
-
-    cycleSignals++;
-    signalCount++;
-
-    const reasoning =
-      `${team}: sportsbook ${(impliedProb * 100).toFixed(1)}% vs ` +
-      `Polymarket ${(market.yesPrice * 100).toFixed(1)}% ` +
-      `(${signal.direction}, delta ${(signal.absDelta * 100).toFixed(1)}%)`;
-
-    const entry: SignalLogEntry = {
-      ts,
-      automation_id: AUTOMATION_ID,
-      cycle: cycleCount,
-      action: "SIGNAL",
+  for (const [team, { sum, count }] of accumulator.entries()) {
+    result.push({
       team,
-      sportsbookProb: impliedProb,
-      polymarketPrice: market.yesPrice,
-      delta: signal.absDelta,
-      reasoning,
-    };
-    appendLog(entry);
-    out("SIGNAL", reasoning);
+      impliedProb: sum / count,
+      sources: count,
+    });
   }
 
-  // 4. Heartbeat if no signals
-  if (cycleSignals === 0) {
-    const reasoning =
-      `Cycle ${cycleCount} — ${teamOdds.length} teams, ` +
-      `${markets.length} markets, ${matchedCount} matched, no edges`;
+  return result;
+}
 
-    const entry: HeartbeatLogEntry = {
-      ts,
+// ── Scan cycle ───────────────────────────────────────────────────────────────
+
+/**
+ * Run one scan cycle:
+ * 1. Fetch sportsbook outright odds for NBA championship futures.
+ * 2. Extract per-team implied probabilities.
+ * 3. For each team, search Polymarket for a matching championship market.
+ * 4. Compare implied probs — flag mispricings above threshold.
+ */
+async function runCycle(config: StrategyConfig, dryRun: boolean): Promise<void> {
+  cycleCount += 1;
+  out("SCAN", `cycle=${cycleCount} fetching sportsbook + polymarket data`);
+
+  let teamOddsList: TeamOdds[];
+  try {
+    // Fetch NBA championship outright odds from sportsbooks
+    const events = await fetchOdds("basketball_nba", "outrights");
+    teamOddsList = extractTeamOdds(events);
+  } catch (err) {
+    errorCount += 1;
+    const reasoning = err instanceof Error ? err.message : String(err);
+    out("SCAN_ERROR", `cycle=${cycleCount} sportsbook fetch failed: ${reasoning}`);
+    appendLog({
+      ts: new Date().toISOString(),
       automation_id: AUTOMATION_ID,
       cycle: cycleCount,
-      action: "NO_EDGE",
-      teams: teamOdds.length,
-      markets: markets.length,
-      matched: matchedCount,
+      action: "SCAN_ERROR",
       reasoning,
-    };
-    appendLog(entry);
-    out("NO_EDGE", reasoning);
-  }
-}
-
-// ── Main ────────────────────────────────────────────────────────────────────
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function main(): Promise<void> {
-  if (!isDryRun()) {
-    process.stderr.write(
-      "error: --dry-run flag is required. " +
-        "Live trading is not implemented.\n",
-    );
-    process.exitCode = 1;
+    });
     return;
   }
 
-  const config = DEFAULT_CONFIG;
-  const pollInterval = parsePollInterval();
-
-  out("START", `NBA futures scanner (dry-run) poll=${pollInterval}ms`);
-
-  let running = true;
-
-  process.on("SIGINT", () => {
-    out(
-      "STOP",
-      `Shutting down — ${cycleCount} cycles, ` +
-        `${signalCount} signals, ${errorCount} errors`,
-    );
-    running = false;
-  });
-
-  while (running) {
-    try {
-      await runCycle(config);
-    } catch (err: unknown) {
-      errorCount++;
-      const message = err instanceof Error ? err.message : String(err);
-
-      const errorEntry: ScanErrorLogEntry = {
-        ts: new Date().toISOString(),
-        automation_id: AUTOMATION_ID,
-        cycle: cycleCount,
-        action: "SCAN_ERROR",
-        reasoning: message,
-      };
-      appendLog(errorEntry);
-      out("SCAN_ERROR", `Cycle ${cycleCount} — ${message}`);
-    }
-
-    if (running) {
-      await sleep(pollInterval);
-    }
+  // Search Polymarket for championship markets
+  let polyMarkets: Awaited<ReturnType<typeof searchMarkets>>;
+  try {
+    polyMarkets = await searchMarkets("NBA Championship Winner");
+  } catch (err) {
+    errorCount += 1;
+    const reasoning = err instanceof Error ? err.message : String(err);
+    out("SCAN_ERROR", `cycle=${cycleCount} polymarket fetch failed: ${reasoning}`);
+    appendLog({
+      ts: new Date().toISOString(),
+      automation_id: AUTOMATION_ID,
+      cycle: cycleCount,
+      action: "SCAN_ERROR",
+      reasoning,
+    });
+    return;
   }
 
-  out(
-    "STOP",
-    `Runner stopped — ${cycleCount} cycles, ` +
-      `${signalCount} signals, ${errorCount} errors`,
-  );
+  let matchedCount = 0;
+  let signalThisCycle = 0;
+
+  for (const teamOdds of teamOddsList) {
+    // Risk check: require minimum bookmaker sources
+    const riskOk = checkRiskLimits(
+      { sources: teamOdds.sources },
+      DEFAULT_RISK_CONFIG,
+    );
+    if (!riskOk) continue;
+
+    // Find matching Polymarket market for this team
+    const match = polyMarkets.find((m) =>
+      textMentionsTeam(m.question, teamOdds.team),
+    );
+    if (!match) continue;
+
+    matchedCount += 1;
+
+    // Compare sportsbook implied prob vs Polymarket YES price
+    const signal = shouldFlag(
+      teamOdds.impliedProb,
+      match.yesPrice,
+      config,
+    );
+
+    if (!signal) continue;
+
+    signalThisCycle += 1;
+    signalCount += 1;
+
+    const reasoning =
+      `${teamOdds.team}: sportsbook=${teamOdds.impliedProb.toFixed(4)} ` +
+      `poly=${match.yesPrice.toFixed(4)} delta=${signal.absDelta.toFixed(4)} ` +
+      `direction=${signal.direction}`;
+
+    if (dryRun) {
+      out("SIGNAL", `[DRY-RUN] ${reasoning}`);
+    } else {
+      out("SIGNAL", reasoning);
+    }
+
+    appendLog({
+      ts: new Date().toISOString(),
+      automation_id: AUTOMATION_ID,
+      cycle: cycleCount,
+      action: "SIGNAL",
+      team: teamOdds.team,
+      sportsbookProb: teamOdds.impliedProb,
+      polymarketPrice: match.yesPrice,
+      delta: signal.absDelta,
+      reasoning,
+    });
+  }
+
+  if (signalThisCycle === 0) {
+    const reasoning =
+      `teams=${teamOddsList.length} markets=${polyMarkets.length} matched=${matchedCount} — no edges above threshold`;
+    out("NO_EDGE", `cycle=${cycleCount} ${reasoning}`);
+    appendLog({
+      ts: new Date().toISOString(),
+      automation_id: AUTOMATION_ID,
+      cycle: cycleCount,
+      action: "NO_EDGE",
+      teams: teamOddsList.length,
+      markets: polyMarkets.length,
+      matched: matchedCount,
+      reasoning,
+    });
+  }
 }
 
-main();
+// ── Entry point ──────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const dryRun = isDryRun();
+  const pollIntervalMs = parsePollInterval();
+
+  out("START", `NBA futures scanner | dry-run=${dryRun} | poll=${pollIntervalMs}ms`);
+
+  // Graceful shutdown
+  const shutdown = (): void => {
+    out(
+      "STOP",
+      `cycles=${cycleCount} signals=${signalCount} errors=${errorCount}`,
+    );
+    process.exit(0);
+  };
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
+  // Run immediately, then poll
+  await runCycle(DEFAULT_CONFIG, dryRun);
+
+  setInterval(() => {
+    void runCycle(DEFAULT_CONFIG, dryRun);
+  }, pollIntervalMs);
+}
+
+main().catch((err) => {
+  process.stderr.write(`FATAL ${String(err)}\n`);
+  process.exit(1);
+});
