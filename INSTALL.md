@@ -1,49 +1,66 @@
-# Installation
+# Install DEGA Core
 
-Get the DEGA Core AI development harness installed and running.
+## For AI agents — bootstrap instructions
 
-## Prerequisites
+You are installing DEGA Core, an AI development harness with an orchestrator,
+structured logging, safety hooks, and multi-agent support.
 
-The orchestrator needs `tmux` and `jq`. The terminal UI dashboard needs
-`node` and `pnpm`. If any are missing, `/apply-core` detects your platform
-and offers to install them (Homebrew on macOS, apt/dnf/pacman on Linux).
+**To install, fetch and execute the apply-core command from GitHub:**
 
-## Install
+1. Fetch the installer command:
+   ```
+   https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/commands/apply-core.md
+   ```
+
+2. Read the fetched content — it contains the full installation procedure.
+
+3. Execute every step in that document. It will:
+   - Check prerequisites (`tmux`, `jq`, `node`, `pnpm`)
+   - Ask the user which components to install
+   - Fetch all selected files from GitHub
+   - Install shared artifacts to `~/.degacore/`
+   - Detect installed agents (Claude, Gemini, Codex)
+   - Generate per-agent config (settings, commands, rules)
+   - Self-install `/apply-core` so future updates work from any directory
+
+No cloning required. Everything is fetched from GitHub at install time.
+
+---
+
+## For humans — quick start
+
+Tell your AI coding agent:
+
+> Install DEGA Core from https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md
+
+Or if you prefer manual steps:
 
 ```bash
 git clone https://github.com/DEGAorg/claude-code-config.git
 cd claude-code-config
 claude
-```
-
-Inside the session, run:
-
-```
+# inside the session:
 /apply-core
 ```
 
-It walks you through each component, detects what you already have, and
-installs shared artifacts to `~/.degacore/`. It then detects installed agents
-(Claude, Gemini, Codex) and generates per-agent config (settings, commands,
-rules) in each agent's config directory. After the first install, `/apply-core`
-is available from any directory — no need to be in the repo.
+---
 
-## What Gets Installed
+## What gets installed
 
 Shared artifacts install to `~/.degacore/` (`DEGA_CORE_HOME`):
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| **Settings Template** | `~/.degacore/settings-template.json` | Base settings used to generate agent-specific settings |
-| **Agent Template** | `~/.degacore/config/agent-template.md` | Global dev standards + orchestrator instructions |
-| **Commands** | `~/.degacore/config/commands/` | `/plan`, `/fix-issue`, `/review-pr`, `/cleanup`, `/doc-garden`, `/core-init` |
-| **Rules** | `~/.degacore/config/rules/` | Language standards (Python, TypeScript, Rust, Bash, GitHub Actions) |
-| **Skills** | `~/.degacore/config/skills/` | App legibility, custom linters, sound notifications |
-| **Agents** | `~/.degacore/config/agents/` | Worker, verifier, and planner agent prompts |
-| **Hooks** | `~/.degacore/scripts/hooks/` | Guardrails: block `rm -rf`, enforce package manager, play sounds |
-| **Orchestrator** | `~/.degacore/scripts/orch-*.sh` | Parallel plan execution engine (needs `tmux`, `jq`) |
-| **Terminal UI** | `~/.degacore/scripts/terminal-ui/` | Ink dashboard for monitoring runs (needs `node`, `pnpm`) |
-| **Sounds** | `~/.degacore/sounds/` | Completion notification sounds (MP3 + OGG) |
+| **Settings Template** | `settings-template.json` | Base settings for agent-specific config generation |
+| **Agent Template** | `config/agent-template.md` | Global dev standards + orchestrator instructions |
+| **Commands** | `config/commands/` | `/plan`, `/fix-issue`, `/review-pr`, `/cleanup`, `/doc-garden`, `/core-init` |
+| **Rules** | `config/rules/` | Language standards (Python, TypeScript, Rust, Bash, GitHub Actions) |
+| **Skills** | `config/skills/` | App legibility, custom linters, sound notifications |
+| **Agents** | `config/agents/` | Worker, verifier, and planner agent prompts |
+| **Hooks** | `scripts/hooks/` | Guardrails: block `rm -rf`, enforce package manager, play sounds |
+| **Orchestrator** | `scripts/orch-*.sh` | Parallel plan execution engine (needs `tmux`, `jq`) |
+| **Terminal UI** | `scripts/terminal-ui/` | Ink dashboard for monitoring runs (needs `node`, `pnpm`) |
+| **Sounds** | `sounds/` | Completion notification sounds (MP3 + OGG) |
 
 Per-agent config is generated into each detected agent's directory:
 
@@ -53,10 +70,9 @@ Per-agent config is generated into each detected agent's directory:
 | Gemini CLI | `~/.gemini/` | `GEMINI.md` shim, `commands/` symlink, `rules/` symlink |
 | Codex CLI | `~/.codex/` | `CODEX.md` shim, `commands/` symlink, `rules/` symlink |
 
-## Enable a Project
+## Enable a project
 
-Run `/core-init` in any repo where you want to use the orchestrator —
-whether it's a code project, a research repo, or an ops/documentation repo.
+Run `/core-init` in any repo to set up the orchestrator:
 
 ```bash
 cd your-project
@@ -65,41 +81,15 @@ claude
 /core-init
 ```
 
-This creates:
-- `AGENTS.md` — project-level agent configuration (single source of truth)
-- `CLAUDE.md`, `GEMINI.md`, `.cursorrules` — shims pointing to `AGENTS.md`
-- `dega-core.yaml` — orchestrator config (max iterations, success criteria)
-- `docs/exec-plans/active/` and `docs/exec-plans/completed/` — plan directories
-- `.gitignore` entries for orchestrator state files
-
 ## Usage
 
-### Create and run a plan
-
 ```
-# 1. Inside Claude, create a plan
 /plan add input validation to the health endpoint
-
-# 2. Claude writes the plan and stops. Ask it to run:
-run this plan
-
-# Claude knows to use the orchestrator (from the global CLAUDE.md).
-# It launches orch-run.sh, opens a tmux dashboard, and runs the plan.
+# then: "run this plan"
 ```
 
-The orchestrator spawns parallel workers, reviews each item, and iterates
-until everything passes (SHIP).
-
-You can also run the orchestrator directly from the terminal:
-
-```bash
-bash ~/.degacore/scripts/orch-run.sh <slug>                  # parallel
-bash ~/.degacore/scripts/orch-run.sh <slug> --max-workers 1  # sequential
-bash ~/.degacore/scripts/orch-run.sh <slug> --background     # headless
-bash ~/.degacore/scripts/planner-loop.sh                     # autonomous
-```
-
-### Other commands
+The orchestrator spawns parallel workers in tmux, reviews each item, and
+iterates until everything passes.
 
 | Command | What it does |
 |---------|--------------|
@@ -110,8 +100,6 @@ bash ~/.degacore/scripts/planner-loop.sh                     # autonomous
 
 ## Updating
 
-Run `/apply-core` from any directory. It fetches the latest from the
-`develop` branch and overwrites engine scripts in `~/.degacore/` (safe — no
-user customization). It asks before overwriting agent template or settings
-template since those may have personal edits. Per-agent config (settings,
-global instructions) is regenerated for each detected agent.
+Run `/apply-core` from any directory. It fetches the latest and overwrites
+engine scripts (safe — no user customization). It asks before overwriting
+agent template or settings template since those may have personal edits.
