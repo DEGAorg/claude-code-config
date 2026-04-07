@@ -1,5 +1,7 @@
 import "./index.css";
-import { AbsoluteFill, Composition, Series } from "remotion";
+import { AbsoluteFill, Composition, Series, Still } from "remotion";
+import { HackathonBanner } from "./HackathonBanner";
+import { Workshop1Banner } from "./Workshop1Banner";
 import { Intro } from "./Intro";
 import { PhaseCard, phases } from "./PhaseCard";
 import { Outro } from "./components/Outro";
@@ -78,6 +80,22 @@ export const RemotionRoot: React.FC = () => {
         fps={fps}
         width={width}
         height={height}
+      />
+
+      {/* Hackathon banner — 2400×1200 still */}
+      <Still
+        id="HackathonBanner"
+        component={HackathonBanner}
+        width={2400}
+        height={1200}
+      />
+
+      {/* Workshop 1 YouTube thumbnail — 1280×720 still */}
+      <Still
+        id="Workshop1Banner"
+        component={Workshop1Banner}
+        width={1280}
+        height={720}
       />
     </>
   );
