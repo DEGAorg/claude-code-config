@@ -465,6 +465,7 @@ Write each Ink component to `~/.degacore/scripts/terminal-ui/src/`:
 Write the agent definitions to `~/.degacore/config/agents/`:
 - `agents/orch-worker.md` -> `~/.degacore/config/agents/orch-worker.md`
 - `agents/orch-verifier.md` -> `~/.degacore/config/agents/orch-verifier.md`
+- `agents/conductor.md` -> `~/.degacore/config/agents/conductor.md`
 
 Safe to overwrite — these are engine scripts, hooks, components, and agent
 definitions with no user customization.
