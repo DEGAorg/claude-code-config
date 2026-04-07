@@ -2,14 +2,11 @@
 
 Opinionated defaults, documentation, and workflows for Claude Code at Trail of Bits. Covers sandboxing, permissions, hooks, skills, MCP servers, and usage patterns we've found effective across security audits, development, and research.
 
-**Quick start:** See **[INSTALL.md](INSTALL.md)** for setup instructions.
+**Quick start:** Tell your AI coding agent:
 
-```bash
-git clone https://github.com/DEGAorg/claude-code-config.git
-cd claude-code-config
-claude
-# then run: /apply-core
-```
+> Install DEGA Core from https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md
+
+That's it. The agent fetches the install instructions and runs the full setup autonomously. See **[INSTALL.md](INSTALL.md)** for manual setup and details.
 
 ## Contents
 
