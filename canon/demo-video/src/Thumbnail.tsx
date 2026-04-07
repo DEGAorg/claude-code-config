@@ -38,9 +38,9 @@ export const Thumbnail: React.FC = () => {
           style={{
             fontSize: 64,
             fontWeight: 700,
-            color: colors.green,
+            color: colors.teal,
             letterSpacing: 12,
-            textShadow: `0 0 20px ${colors.greenGlow}, 0 0 40px ${colors.greenGlow}`,
+            textShadow: `0 0 20px ${colors.tealGlow}, 0 0 40px ${colors.tealGlow}`,
           }}
         >
           CANON
@@ -51,9 +51,9 @@ export const Thumbnail: React.FC = () => {
           style={{
             width: 200,
             height: 1,
-            backgroundColor: colors.green,
+            backgroundColor: colors.teal,
             opacity: 0.4,
-            boxShadow: `0 0 8px ${colors.green}`,
+            boxShadow: `0 0 8px ${colors.teal}`,
           }}
         />
 
@@ -74,9 +74,9 @@ export const Thumbnail: React.FC = () => {
           style={{
             fontSize: 48,
             fontWeight: 700,
-            color: colors.blue,
+            color: colors.purple,
             textAlign: "center",
-            textShadow: `0 0 15px ${colors.blueGlow}, 0 0 30px ${colors.blueGlow}`,
+            textShadow: `0 0 15px ${colors.purpleGlow}, 0 0 30px ${colors.purpleGlow}`,
           }}
         >
           Built From Scratch by AI

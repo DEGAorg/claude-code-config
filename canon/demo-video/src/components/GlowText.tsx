@@ -21,8 +21,8 @@ interface GlowTextProps {
 export const GlowText: React.FC<GlowTextProps> = ({
   text,
   fontSize = 72,
-  color = colors.green,
-  glowColor = colors.greenGlow,
+  color = colors.teal,
+  glowColor = colors.tealGlow,
   enterFrame = 0,
   stagger = 2,
   spacing = 4,

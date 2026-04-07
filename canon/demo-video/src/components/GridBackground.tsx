@@ -51,7 +51,7 @@ export const GridBackground: React.FC<GridBackgroundProps> = ({
             <path
               d={`M ${cellSize} 0 L 0 0 0 ${cellSize}`}
               fill="none"
-              stroke={colors.grid}
+              stroke={colors.surface}
               strokeWidth="0.5"
             />
           </pattern>
@@ -73,7 +73,7 @@ export const GridBackground: React.FC<GridBackgroundProps> = ({
               width: 400,
               height: 400,
               borderRadius: "50%",
-              border: `1px solid ${colors.green}`,
+              border: `1px solid ${colors.teal}`,
               opacity: pulseOpacity,
               transform: `scale(${pulseScale})`,
             }}

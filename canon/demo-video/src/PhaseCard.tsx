@@ -90,11 +90,11 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ label, subtitle }) => {
             fontSize: 80,
             fontWeight: 700,
             fontFamily: fonts.mono,
-            color: colors.green,
+            color: colors.teal,
             letterSpacing: 10,
             opacity: labelOpacity,
             transform: `translateX(${labelX}px)`,
-            textShadow: `0 0 ${30 * glowIntensity}px ${colors.greenGlow}, 0 0 ${60 * glowIntensity}px ${colors.greenGlow}`,
+            textShadow: `0 0 ${30 * glowIntensity}px ${colors.tealGlow}, 0 0 ${60 * glowIntensity}px ${colors.tealGlow}`,
           }}
         >
           {label}
@@ -105,9 +105,9 @@ export const PhaseCard: React.FC<PhaseCardProps> = ({ label, subtitle }) => {
           style={{
             width: lineWidth,
             height: 1,
-            backgroundColor: colors.green,
+            backgroundColor: colors.teal,
             opacity: 0.4,
-            boxShadow: `0 0 6px ${colors.green}`,
+            boxShadow: `0 0 6px ${colors.teal}`,
           }}
         />
 

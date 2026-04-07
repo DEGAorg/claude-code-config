@@ -1,24 +1,28 @@
-/** Canon demo video — Mr. Robot meets crypto dashboard */
+/** Canon unified theme — cyberpunk terminal aesthetic */
 
 export const colors = {
-  bg: "#0a0a0a",
-  bgSubtle: "#111111",
-  grid: "#1a1a1a",
-  gridBright: "#222222",
+  bg: "#000000",
+  bgSubtle: "#0a0a0a",
+  surface: "#111111",
+  panel: "#151515",
   border: "#2a2a2a",
-  text: "#e8e8e8",
-  textMuted: "#555555",
-  green: "#00ff41",
-  greenDim: "#00cc33",
-  greenGlow: "rgba(0, 255, 65, 0.15)",
-  blue: "#00d4ff",
-  blueDim: "#0099cc",
-  blueGlow: "rgba(0, 212, 255, 0.12)",
-  scanLine: "rgba(0, 255, 65, 0.03)",
-  cursor: "#00ff41",
+  text: "#ffffff",
+  textMuted: "#a0a0a0",
+  teal: "#00fffc",
+  purple: "#7f00ff",
+  gold: "#cfaa01",
+  pink: "#ff007f",
+  tealGlow: "rgba(0, 255, 252, 0.15)",
+  purpleGlow: "rgba(127, 0, 255, 0.12)",
+  pinkGlow: "rgba(255, 0, 127, 0.10)",
+  scanLine: "rgba(0, 255, 252, 0.03)",
+  cursor: "#00fffc",
 } as const;
 
 export const fonts = {
+  heading: "Orbitron, sans-serif",
+  subheading: "Rajdhani, sans-serif",
+  body: "Space Grotesk, sans-serif",
   mono: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace",
 } as const;
 
