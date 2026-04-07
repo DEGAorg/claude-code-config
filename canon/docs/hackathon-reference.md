@@ -40,10 +40,10 @@ Participants will leverage:
 
 ## Key Dates
 
-- April 9: Workshop 1 — Prediction Markets 101
-- April 14: Workshop 2 — NBA Market Analysis
-- April 16: Workshop 3 — Canon Setup
-- April 21: Workshop 4 — Templates & Data Feeds
+- April 9: Workshop 1 — Prediction Markets & NBA Playoffs Overview
+- April 14: Workshop 2 — Canon Setup
+- April 16: Workshop 3 — Running Your First Strategy
+- April 21: Workshop 4 — Customizing Your Strategy
 - April 23: Workshop 5 — AMA & Strategy Review
 - May 4: NBA Playoff Hackathon Begins
 - June 19: Submission Deadline
