@@ -65,6 +65,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `dega-core.yaml` | Dega Core per-project config (max iterations, success criteria, poll interval) |
 | `commands/` | Global slash commands — `apply-core`, `canon-init`, `core-init`, `fix-issue`, `review-pr`, `plan`, `cleanup`, `doc-garden` |
 | `skills/` | Core skills — `app-legibility`, `changelog`, `custom-linter-authoring`, `development-patterns`, `plan-registry`, `sound-notifications`, `tech-debt-tracking` |
+
 | `skills/patterns/` | Development pattern extensions grouped by topic — loaded by `development-patterns` skill |
 | `hooks/` | Hook scripts for lifecycle events (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.) |
 | `sounds/` | MP3 sound files played on task completion via `hooks/play-sound.sh` |
@@ -103,7 +104,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `docs/Self_Development.md` | How to apply fixes and features — manual and orchestrator workflows |
-| `agents/` | Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer) |
+| `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier, planner-assess, planner-writer) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
