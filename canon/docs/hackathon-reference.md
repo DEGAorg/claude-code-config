@@ -14,7 +14,7 @@ Five free workshops take you from zero to running automation. Join at any time �
 
 🎬 [Watch Canon in action](https://www.youtube.com/watch?v=ROYFkYGOFK0)
 
-💬 Join the DEGA Discord: https://discord.com/channels/1021581633406640228/1490880427492245606
+💬 To stay connected and communicate more effectively with other developers in the Hackathon, join the DEGA Discord: https://discord.gg/dega Once inside, head over to the #prediction-markets-hackathons channel where we'll be sharing updates, answering questions, and connecting with the community.
 
 ## About DEGA
 
@@ -22,9 +22,13 @@ DEGA is building tools and infrastructure to empower developers to launch AI-pow
 
 ## Core Technology
 
-- **Canon CLI**: `canon init` scaffolds your project; `canon start` launches your automation. One command to go from idea to running bot.
-- **TypeScript Strategy Templates**: Pre-built code base with typed interfaces for market data fetching, strategy logic, and execution — ready to customize.
-- **Automation System View**: Live flow diagrams showing each step of your automation (data fetch → analysis → decision → execution), real-time logs, and status monitoring.
+Participants will leverage:
+
+- **Canon CLI**: The guided entry point for your entire workflow. `canon init` scaffolds your project from a strategy template, `canon start` detects your project phase and drives the pipeline automatically — from scaffolding through development to live execution. One command to go from idea to running bot.
+- **TypeScript Strategy Templates**: Pre-built code base with typed interfaces for market data fetching, strategy logic, and execution — ready to customize. Templates cover arbitrage scanning, momentum trading, cross-market analysis, and more.
+- **AI Agent Workflow**: Canon includes specialized AI agents — a market analyst to scan opportunities, a strategy architect to design your approach, a developer agent to help implement and iterate, and a QA agent to validate before you go live. Describe what you want in plain language and the agents guide you through building it.
+- **Arena Registration**: Once your strategy passes quality checks, register it on Canon Arena for live performance tracking, P&L monitoring, and leaderboard ranking.
+- **Automation System View**: Live terminal dashboard showing each step of your automation (data fetch → analysis → decision → execution), real-time logs, and status monitoring.
 
 ## Participant Entry Requirements
 
@@ -36,26 +40,24 @@ DEGA is building tools and infrastructure to empower developers to launch AI-pow
 
 ## Key Dates
 
-- April 9: Workshop 1 — Prediction Markets 101 ([YouTube Live][ws1])
-- April 14: Workshop 2 — NBA Market Analysis ([YouTube Live][ws2])
-- April 16: Workshop 3 — Canon Setup ([YouTube Live][ws3])
-- April 21: Workshop 4 — Templates & Data Feeds ([YouTube Live][ws4])
-- April 23: Workshop 5 — AMA & Strategy Review ([YouTube Live][ws5])
+- April 9: Workshop 1 — Prediction Markets 101
+- April 14: Workshop 2 — NBA Market Analysis
+- April 16: Workshop 3 — Canon Setup
+- April 21: Workshop 4 — Templates & Data Feeds
+- April 23: Workshop 5 — AMA & Strategy Review
 - May 4: NBA Playoff Hackathon Begins
 - June 19: Submission Deadline
 - June 20: Winners Announced
 
-[ws1]: #
-[ws2]: #
-[ws3]: #
-[ws4]: #
-[ws5]: #
+## Prize Pool & Distribution
 
-## Prize Pool
+**Total Prize Pool: $1,000 in USD Stablecoin**
 
-**$1,000 — Best Performer (highest profit %)**
+- **First Place: $1,000** — Best Performer (highest profit %)
 
 Participants are ranked by the profit % their automation generates during the competition period. Top performer takes the prize.
+
+Prizes will be distributed in USD stablecoin. Winners will be contacted through their registered email to confirm wallet addresses and payment logistics.
 
 ## Themes
 
@@ -78,20 +80,25 @@ Each submission must include:
 
 ## Developer Resources
 
+Participants will have access to:
+
 - Canon CLI documentation
 - TypeScript strategy template and code base
 - Pre-built strategy templates (arbitrage, cross-market, speed-based)
 - Workshop recordings and code samples
+- Mentor-led office hours in the Discord #prediction-markets-hackathons channel
 
 ## Judging Criteria
 
-- **Strategy profit %** — primary ranking factor
-- Technical execution and code quality
-- Innovation in strategy design
+Submissions are judged primarily on real-world performance. The automation that generates the highest profit percentage during the competition period wins.
+
+- **Strategy Performance (Profit %)** — The primary ranking factor. Your automation runs against live prediction markets during the NBA Playoffs. Final standings are determined by net profit % from start to finish.
+- **Technical Execution** — Code quality, proper use of Canon's framework and interfaces, test coverage, and clean documentation are considered for tiebreaking and honorable mentions.
+- **Strategy Design** — Creativity and soundness of your trading approach, including how you identify opportunities, manage risk, and adapt to changing market conditions.
 
 ## Official Communication Channels
 
-- **Discord:** https://discord.com/channels/1021581633406640228/1490880427492245606
+- **Discord:** https://discord.gg/dega — Join the #prediction-markets-hackathons channel
 - **X (Twitter):** @Dega_org
 - **YouTube:** [DEGA Channel](https://www.youtube.com/@degaorg) — Workshop recordings and updates.
 
