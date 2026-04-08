@@ -333,6 +333,20 @@ overwrite.
 Write each hook file to `~/.degacore/scripts/hooks/<name>.sh` and
 `chmod +x` it. Safe to overwrite.
 
+#### Enforcement — Global hooks
+
+Write and `chmod +x` each file:
+- `hooks/enforce-loop-mode.sh` -> `~/.degacore/scripts/hooks/enforce-loop-mode.sh`
+- `hooks/enforce-exec-plan-naming.sh` -> `~/.degacore/scripts/hooks/enforce-exec-plan-naming.sh`
+- `hooks/enforce-package-manager.sh` -> `~/.degacore/scripts/hooks/enforce-package-manager.sh`
+
+Safe to overwrite. These are PreToolUse guard hooks referenced by
+`settings-template.json`. `enforce-loop-mode.sh` blocks destructive
+commands and restricts git operations in ralph loop mode.
+`enforce-exec-plan-naming.sh` enforces YYYYMMDD-slug naming for
+exec-plan directories. `enforce-package-manager.sh` enforces use of
+the configured package manager.
+
 #### Skills
 
 Write each skill file to `~/.degacore/config/skills/<name>.md`. Safe to
@@ -687,7 +701,7 @@ Installed to ~/.degacore/:
   Agent Template -> config/agent-template.md
   Commands -> config/commands/ (fix-issue, review-pr, plan, cleanup, doc-garden, core-init)
   Rules -> config/rules/ (python, node-typescript, rust, bash, github-actions)
-  Hooks -> scripts/hooks/ (enforce-package-manager, log-gam)
+  Hooks -> scripts/hooks/ (enforce-loop-mode, enforce-exec-plan-naming, enforce-package-manager, log-gam)
   Skills -> config/skills/ (custom-linter-authoring, app-legibility, sound-notifications)
   Logging -> scripts/log-server.py + scripts/hooks/ (local-only; add gcp-sa.json to enable GCP)
   Sounds -> sounds/ (MP3 + OGG) + scripts/hooks/play-sound.sh
