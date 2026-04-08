@@ -87,9 +87,9 @@ Per-agent config is generated into each detected agent's directory:
 
 | Agent | Directory | What's generated |
 |-------|-----------|-----------------|
-| Claude Code | `~/.claude/` | `settings.json`, `CLAUDE.md` shim, `commands/` symlink, `rules/` symlink |
-| Gemini CLI | `~/.gemini/` | `GEMINI.md` shim, `commands/` symlink, `rules/` symlink |
-| Codex CLI | `~/.codex/` | `CODEX.md` shim, `commands/` symlink, `rules/` symlink |
+| Claude Code | `~/.claude/` | `settings.json`, `CLAUDE.md` shim, `commands/` copies, `rules/` copies |
+| Gemini CLI | `~/.gemini/` | `GEMINI.md` shim, `commands/` copies, `rules/` copies |
+| Codex CLI | `~/.codex/` | `CODEX.md` shim, `commands/` copies, `rules/` copies |
 
 ### Phase 2 — Canon TUI (`~/.local/bin/`)
 

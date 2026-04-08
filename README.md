@@ -1,12 +1,16 @@
-# Trail of Bits Claude Code Config
+# DEGA Core — Agent-Agnostic AI Development Harness
 
-Opinionated defaults, documentation, and workflows for Claude Code at Trail of Bits. Covers sandboxing, permissions, hooks, skills, MCP servers, and usage patterns we've found effective across security audits, development, and research.
+Opinionated defaults, documentation, and workflows for AI coding agents. Works with **Claude Code**, **Gemini CLI**, and **OpenAI Codex** — one codebase, agent-specific only at the boundary. Covers sandboxing, permissions, hooks, skills, MCP servers, and usage patterns we've found effective across security audits, development, and research.
 
 **Quick start:** Tell your AI coding agent:
 
 > Install DEGA Core from https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md
 
-That's it. The agent fetches the install instructions and runs the full setup autonomously. See **[INSTALL.md](INSTALL.md)** for manual setup and details.
+That's it. The agent fetches the install instructions and runs the full setup autonomously — including Canon TUI for visualization. See **[INSTALL.md](INSTALL.md)** for manual setup and details.
+
+### Multi-agent support
+
+The orchestrator, planner, and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
 
 ## Contents
 
@@ -518,7 +522,7 @@ If you do use it, enable it at session start. Toggling it on mid-conversation re
 
 Custom slash commands are markdown files that define parameterized procedures. They take arguments, run a specific sequence of steps, and produce a result. The commands in `commands/` were extracted from manual workflows that kept showing up in `/insights` -- if you notice yourself repeating the same multi-step sequence, it's a good candidate for a command.
 
-The `/apply-core` command installs all commands to `~/.degacore/config/commands/` and symlinks (or copies) them into each detected agent's config directory (e.g. `~/.claude/commands/`).
+The `/apply-core` command installs all commands to `~/.degacore/config/commands/` and copies them into each detected agent's config directory (e.g. `~/.claude/commands/`). Existing user commands with the same name are skipped — user versions take precedence.
 
 ### Review PR
 
