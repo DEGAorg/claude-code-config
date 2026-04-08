@@ -31,6 +31,8 @@ Files available:
 - `rules/rust.md`
 - `rules/bash.md`
 - `rules/github-actions.md`
+- `hooks/enforce-loop-mode.sh`
+- `hooks/enforce-exec-plan-naming.sh`
 - `hooks/enforce-package-manager.sh`
 - `hooks/log-gam.sh`
 - `hooks/update-exec-plan-reminder.sh`
@@ -583,37 +585,30 @@ Codex does not need an instruction shim — the codex-settings adapter
 sets `model_instructions_file = "AGENTS.md"` in `config.toml`, which
 tells Codex to read `AGENTS.md` directly.
 
-#### Commands (symlinks or copies)
+#### Commands (copy per file)
 
-If the **Commands** component was selected, link commands into each agent's
-config directory.
+If the **Commands** component was selected, copy each command file into
+each agent's config directory. This preserves any existing user commands.
 
-For each detected agent, try creating a symlink first:
+For each detected agent:
 ```bash
-ln -sfn ~/.degacore/config/commands ~/.<agent>/commands
+mkdir -p ~/.<agent>/commands
+cp ~/.degacore/config/commands/*.md ~/.<agent>/commands/
 ```
 
-If the symlink fails (e.g. the agent doesn't follow symlinks), fall back to
-copying:
-```bash
-cp -r ~/.degacore/config/commands ~/.<agent>/commands
-```
+If a file with the same name already exists, skip it and warn:
+"`<name>` already exists — skipping (user version takes precedence)."
 
-If the agent's `commands/` directory already exists and is NOT a symlink to
-`~/.degacore/config/commands`, ask the user: "~/.<agent>/commands/ exists
-and contains custom files. Replace with symlink to shared commands, merge,
-or skip?"
+#### Rules (copy per file)
 
-#### Rules (symlinks or copies)
-
-If the **Rules** component was selected, link rules into each agent's
-config directory using the same symlink-or-copy strategy as commands:
+Same strategy as commands:
 
 ```bash
-ln -sfn ~/.degacore/config/rules ~/.<agent>/rules
+mkdir -p ~/.<agent>/rules
+cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 ```
 
-Same fallback and conflict handling as commands above.
+Same skip-and-warn handling: user files with the same name take precedence.
 
 ---
 
@@ -626,9 +621,10 @@ After completing the user's selections, also install this command itself to
 https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/commands/apply-core.md
 ```
 
-Then ensure it's linked into each detected agent's commands directory
-(this happens automatically if commands/ is a symlink; if copies were used,
-copy this file to each agent's commands/ as well).
+Then copy it into each detected agent's commands directory:
+```bash
+cp ~/.degacore/config/commands/apply-core.md ~/.<agent>/commands/apply-core.md
+```
 
 This makes `/apply-core` available from any directory in future without
 needing the repo cloned.

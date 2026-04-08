@@ -1,13 +1,13 @@
-# Install DEGA Core
+# Install DEGA Core + Canon TUI
 
 ## For AI agents — bootstrap instructions
 
-You are installing DEGA Core, an AI development harness with an orchestrator,
-structured logging, safety hooks, and multi-agent support.
+You are installing DEGA Core (AI development harness) and Canon TUI (terminal
+visualization for agent activity). Follow both phases in order.
 
-**To install, fetch and execute the apply-core command from GitHub:**
+### Phase 1 — Install DEGA Core
 
-1. Fetch the installer command:
+1. Fetch the Core installer command:
    ```
    https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/commands/apply-core.md
    ```
@@ -23,7 +23,24 @@ structured logging, safety hooks, and multi-agent support.
    - Generate per-agent config (settings, commands, rules)
    - Self-install `/apply-core` so future updates work from any directory
 
-No cloning required. Everything is fetched from GitHub at install time.
+### Phase 2 — Install Canon TUI
+
+After Phase 1 completes successfully:
+
+1. Fetch the Canon TUI installer command:
+   ```
+   https://raw.githubusercontent.com/DEGAorg/canon-tui/conductor/commands/apply-canon-tui.md
+   ```
+
+2. Read the fetched content — it contains the full installation procedure.
+
+3. Execute every step in that document. It will:
+   - Check prerequisites (`uv`)
+   - Install `canon` and `canon-ctl` binaries via `uv tool install`
+   - Verify both binaries are on PATH
+   - Self-install `/apply-canon-tui` so future updates work from any directory
+
+Both phases fetch everything from GitHub — no cloning required.
 
 ---
 
@@ -36,18 +53,22 @@ Tell your AI coding agent:
 Or if you prefer manual steps:
 
 ```bash
+# Phase 1 — Core
 git clone https://github.com/DEGAorg/claude-code-config.git
 cd claude-code-config
 claude
 # inside the session:
 /apply-core
+
+# Phase 2 — Canon TUI
+uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@conductor" --force --reinstall
 ```
 
 ---
 
 ## What gets installed
 
-Shared artifacts install to `~/.degacore/` (`DEGA_CORE_HOME`):
+### Phase 1 — DEGA Core (`~/.degacore/`)
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
@@ -69,6 +90,15 @@ Per-agent config is generated into each detected agent's directory:
 | Claude Code | `~/.claude/` | `settings.json`, `CLAUDE.md` shim, `commands/` symlink, `rules/` symlink |
 | Gemini CLI | `~/.gemini/` | `GEMINI.md` shim, `commands/` symlink, `rules/` symlink |
 | Codex CLI | `~/.codex/` | `CODEX.md` shim, `commands/` symlink, `rules/` symlink |
+
+### Phase 2 — Canon TUI (`~/.local/bin/`)
+
+| Binary | Purpose |
+|--------|---------|
+| `canon` | TUI viewer for AI agent activity |
+| `canon-ctl` | Configuration utility |
+
+Installed via `uv tool install` into an isolated Python environment.
 
 ## Enable a project
 
@@ -97,9 +127,9 @@ iterates until everything passes.
 | `/fix-issue <number>` | Fix a GitHub issue end-to-end |
 | `/review-pr <number>` | Review a PR with parallel agents |
 | `/cleanup` | Scan for code quality issues |
+| `canon .` | Launch Canon TUI in current project |
 
 ## Updating
 
-Run `/apply-core` from any directory. It fetches the latest and overwrites
-engine scripts (safe — no user customization). It asks before overwriting
-agent template or settings template since those may have personal edits.
+Run `/apply-core` from any directory to update the core harness.
+Run `/apply-canon-tui` from any directory to update Canon TUI.
