@@ -15,29 +15,29 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
-	if [[ "${haystack}" == *"${needle}"* ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected to contain: ${needle}"
-		echo "    actual: ${haystack}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" haystack="$2" needle="$3"
+  if [[ "${haystack}" == *"${needle}"* ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected to contain: ${needle}"
+    echo "    actual: ${haystack}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Setup ---
@@ -46,8 +46,8 @@ TEST_SLUG="test-review-$$"
 TEST_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${TEST_SLUG}"
 
 cleanup() {
-	rm -rf "${TEST_PLAN_DIR}"
-	rm -rf "${REPO_ROOT}/.orchestrator/plans/${TEST_SLUG}"
+  rm -rf "${TEST_PLAN_DIR}"
+  rm -rf "${REPO_ROOT}/.orchestrator/plans/${TEST_SLUG}"
 }
 trap cleanup EXIT
 
@@ -77,12 +77,12 @@ source "${REPO_ROOT}/scripts/orch-state.sh"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 build_state() {
-	local max_workers="$1"
-	jq -n \
-		--argjson maxWorkers "${max_workers}" \
-		--arg slug "${TEST_SLUG}" \
-		--arg now "${NOW}" \
-		'{
+  local max_workers="$1"
+  jq -n \
+    --argjson maxWorkers "${max_workers}" \
+    --arg slug "${TEST_SLUG}" \
+    --arg now "${NOW}" \
+    '{
 		version: 1,
 		plan: $slug,
 		maxParallelWorkers: $maxWorkers,
@@ -254,7 +254,7 @@ orch_write_state "${TEST_SLUG}" "${UPDATED}"
 FAILED_IDS=$(jq -r '.items[] | select(.reviewStatus == "failed") | .id' "${STATE_FILE}")
 FAILED_ITEMS=()
 for fid in ${FAILED_IDS}; do
-	FAILED_ITEMS+=("${fid}")
+  FAILED_ITEMS+=("${fid}")
 done
 
 assert_eq "all passed — no failed items" "0" "${#FAILED_ITEMS[@]}"
@@ -262,7 +262,7 @@ assert_eq "all passed — no failed items" "0" "${#FAILED_ITEMS[@]}"
 # Write SHIP result
 AGG_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq --arg now "${AGG_NOW}" \
-	'.finalReview.status = "done" |
+  '.finalReview.status = "done" |
 	 .finalReview.result = "SHIP" |
 	 .finalReview.reworkItems = [] |
 	 .updatedAt = $now' "${STATE_FILE}")
@@ -297,7 +297,7 @@ printf 'FAIL\nItem 4 missing tests.\n' >"${REVIEW_DIR}/item-4-review.txt"
 FAILED_IDS=$(jq -r '.items[] | select(.reviewStatus == "failed") | .id' "${STATE_FILE}")
 FAILED_ITEMS=()
 for fid in ${FAILED_IDS}; do
-	FAILED_ITEMS+=("${fid}")
+  FAILED_ITEMS+=("${fid}")
 done
 
 assert_eq "2 failed items" "2" "${#FAILED_ITEMS[@]}"
@@ -307,7 +307,7 @@ REWORK_JSON=$(printf '%s\n' "${FAILED_ITEMS[@]}" | jq -R 'tonumber' | jq -s '.')
 
 AGG_NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq --arg now "${AGG_NOW}" --argjson rework "${REWORK_JSON}" \
-	'.finalReview.status = "done" |
+  '.finalReview.status = "done" |
 	 .finalReview.result = "REVISE" |
 	 .finalReview.reworkItems = $rework |
 	 .updatedAt = $now |
@@ -331,14 +331,14 @@ assert_eq "passed item 1 stays done" "done" "${S1}"
 # Write feedback file
 FEEDBACK_FILE="${TEST_PLAN_DIR}/review-feedback.txt"
 {
-	printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
-	for fid in "${FAILED_ITEMS[@]}"; do
-		review="${REVIEW_DIR}/item-${fid}-review.txt"
-		if [[ -f "${review}" ]]; then
-			printf '\n--- item %s ---\n' "${fid}"
-			tail -n +2 "${review}"
-		fi
-	done
+  printf 'REWORK_ITEMS: %s\n' "$(printf '%s\n' "${FAILED_ITEMS[@]}" | paste -sd ', ' -)"
+  for fid in "${FAILED_ITEMS[@]}"; do
+    review="${REVIEW_DIR}/item-${fid}-review.txt"
+    if [[ -f "${review}" ]]; then
+      printf '\n--- item %s ---\n' "${fid}"
+      tail -n +2 "${review}"
+    fi
+  done
 } >"${FEEDBACK_FILE}"
 
 FEEDBACK=$(cat "${FEEDBACK_FILE}")
@@ -365,7 +365,7 @@ cnt_pending=$(jq '[.items[] | select(.reviewStatus == "pending")] | length' "${S
 # The poll loop breaks when both are 0
 SHOULD_BREAK="false"
 if [[ "${cnt_reviewing}" -eq 0 ]] && [[ "${cnt_pending}" -eq 0 ]]; then
-	SHOULD_BREAK="true"
+  SHOULD_BREAK="true"
 fi
 assert_eq "poll loop terminates when all complete" "true" "${SHOULD_BREAK}"
 
@@ -396,11 +396,11 @@ assert_eq "2 items still pending" "2" "${cnt_pending}"
 # Simulate: count how many would spawn
 spawned=0
 if ((available_slots > 0 && cnt_pending > 0)); then
-	pending_ids=$(jq -r '.items[] | select(.reviewStatus == "pending") | .id' "${STATE_FILE}")
-	for _ in ${pending_ids}; do
-		if ((spawned >= available_slots)); then break; fi
-		spawned=$((spawned + 1))
-	done
+  pending_ids=$(jq -r '.items[] | select(.reviewStatus == "pending") | .id' "${STATE_FILE}")
+  for _ in ${pending_ids}; do
+    if ((spawned >= available_slots)); then break; fi
+    spawned=$((spawned + 1))
+  done
 fi
 assert_eq "0 spawned when at capacity" "0" "${spawned}"
 
@@ -412,5 +412,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

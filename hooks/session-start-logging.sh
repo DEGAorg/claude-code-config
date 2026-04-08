@@ -26,22 +26,22 @@ DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
 SOCK="${DEGA_CORE_HOME}/state/logs/log.sock"
 
 if [[ ! -S "$SOCK" ]]; then
-	SERVER="${DEGA_CORE_HOME}/scripts/log-server.py"
+  SERVER="${DEGA_CORE_HOME}/scripts/log-server.py"
 
-	mkdir -p "${DEGA_CORE_HOME}/state/logs/ralph"
-	uv run "$SERVER" >>"${DEGA_CORE_HOME}/state/logs/log-server.log" 2>&1 &
-	disown
+  mkdir -p "${DEGA_CORE_HOME}/state/logs/ralph"
+  uv run "$SERVER" >>"${DEGA_CORE_HOME}/state/logs/log-server.log" 2>&1 &
+  disown
 
-	# Wait up to 2 s (20 × 0.1 s) for the socket to appear.
-	_waited=0
-	while [[ ! -S "$SOCK" && $_waited -lt 20 ]]; do
-		sleep 0.1
-		_waited=$((_waited + 1))
-	done
+  # Wait up to 2 s (20 × 0.1 s) for the socket to appear.
+  _waited=0
+  while [[ ! -S "$SOCK" && $_waited -lt 20 ]]; do
+    sleep 0.1
+    _waited=$((_waited + 1))
+  done
 
-	if [[ ! -S "$SOCK" ]]; then
-		echo "warning: log-server did not start within 2 s" >&2
-	fi
+  if [[ ! -S "$SOCK" ]]; then
+    echo "warning: log-server did not start within 2 s" >&2
+  fi
 fi
 
 # ── Session config (interactive sessions only; idempotent) ────────────────────
@@ -53,4 +53,4 @@ CONFIG="${DEGA_CORE_HOME}/state/.session-log-config"
 
 mkdir -p "$(dirname "$CONFIG")"
 printf '{"backend":"local","configured_at":"%s"}\n' \
-	"$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$CONFIG"
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$CONFIG"

@@ -19,40 +19,40 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
-	if [[ "${haystack}" == *"${needle}"* ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected to contain: ${needle}"
-		echo "    actual: ${haystack}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" haystack="$2" needle="$3"
+  if [[ "${haystack}" == *"${needle}"* ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected to contain: ${needle}"
+    echo "    actual: ${haystack}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_file_exists() {
-	local label="$1" path="$2"
-	if [[ -f "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — file not found: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ -f "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — file not found: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Setup ---
@@ -62,8 +62,8 @@ TEST_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${TEST_SLUG}"
 ORCH_DIR="${REPO_ROOT}/.orchestrator"
 
 cleanup() {
-	rm -rf "${TEST_PLAN_DIR}"
-	rm -rf "${ORCH_DIR}"
+  rm -rf "${TEST_PLAN_DIR}"
+  rm -rf "${ORCH_DIR}"
 }
 trap cleanup EXIT
 
@@ -144,14 +144,14 @@ ITEMS_JSON=$(printf '%s' "${PARSED}" | jq --argjson maxIter 3 '[
 ]')
 
 STATE_JSON=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${TEST_SLUG}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_JSON}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${TEST_SLUG}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_JSON}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
     version: $version,
     plan: $plan,
     maxParallelWorkers: $maxWorkers,
@@ -195,8 +195,8 @@ echo "=== Test 3: PASS review file with all clauses VERIFIED ==="
 
 # Reset item to "reviewing"
 RESET=$(jq --arg now "${NOW}" \
-	'(.items[0]).reviewStatus = "reviewing" | .updatedAt = $now' \
-	"${ORCH_STATE_FILE}")
+  '(.items[0]).reviewStatus = "reviewing" | .updatedAt = $now' \
+  "${ORCH_STATE_FILE}")
 orch_write_state "${TEST_SLUG}" "${RESET}"
 
 # Overwrite review file with PASS — both clauses verified
@@ -221,11 +221,11 @@ WORKER_PROMPT="${REPO_ROOT}/agents/orch-worker.md"
 WORKER_CONTENT=$(cat "${WORKER_PROMPT}")
 
 assert_contains "worker prompt requires clause checklist" \
-	"${WORKER_CONTENT}" "Clause checklist"
+  "${WORKER_CONTENT}" "Clause checklist"
 assert_contains "worker prompt requires self-check" \
-	"${WORKER_CONTENT}" "Self-check"
+  "${WORKER_CONTENT}" "Self-check"
 assert_contains "worker prompt mentions DONE or BLOCKED" \
-	"${WORKER_CONTENT}" "DONE"
+  "${WORKER_CONTENT}" "DONE"
 
 echo ""
 echo "=== Test 5: Verifier prompt checks clause coverage ==="
@@ -234,13 +234,13 @@ VERIFIER_PROMPT="${REPO_ROOT}/agents/orch-verifier.md"
 VERIFIER_CONTENT=$(cat "${VERIFIER_PROMPT}")
 
 assert_contains "verifier has clause-coverage check" \
-	"${VERIFIER_CONTENT}" "Clause-coverage check"
+  "${VERIFIER_CONTENT}" "Clause-coverage check"
 assert_contains "verifier checks done-files for clauses" \
-	"${VERIFIER_CONTENT}" "done-file"
+  "${VERIFIER_CONTENT}" "done-file"
 assert_contains "verifier checks review files for clauses" \
-	"${VERIFIER_CONTENT}" "review file"
+  "${VERIFIER_CONTENT}" "review file"
 assert_contains "verifier reports CLAUSE-GAP on failure" \
-	"${VERIFIER_CONTENT}" "CLAUSE-GAP"
+  "${VERIFIER_CONTENT}" "CLAUSE-GAP"
 
 echo ""
 echo "=== Test 6: FAIL review triggers REVISE in aggregate decision ==="
@@ -281,14 +281,14 @@ ITEMS_JSON2=$(printf '%s' "${PARSED2}" | jq --argjson maxIter 3 '[
 ]')
 
 STATE2=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${TEST_SLUG}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_JSON2}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${TEST_SLUG}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_JSON2}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
     version: $version,
     plan: $plan,
     maxParallelWorkers: $maxWorkers,
@@ -302,21 +302,21 @@ orch_write_state "${TEST_SLUG}" "${STATE2}"
 
 # Count passed vs failed
 CNT_PASSED=$(jq '[.items[] | select(.reviewStatus == "passed")] | length' \
-	"${ORCH_STATE_FILE}")
+  "${ORCH_STATE_FILE}")
 CNT_FAILED=$(jq '[.items[] | select(.reviewStatus == "failed")] | length' \
-	"${ORCH_STATE_FILE}")
+  "${ORCH_STATE_FILE}")
 
 assert_eq "1 item passed review" "1" "${CNT_PASSED}"
 assert_eq "1 item failed review (partial clause)" "1" "${CNT_FAILED}"
 
 # The failed item should be the 2-clause one
 FAILED_ID=$(jq -r '.items[] | select(.reviewStatus == "failed") | .id' \
-	"${ORCH_STATE_FILE}")
+  "${ORCH_STATE_FILE}")
 FAILED_DESC=$(jq -r '.items[] | select(.reviewStatus == "failed") | .description' \
-	"${ORCH_STATE_FILE}")
+  "${ORCH_STATE_FILE}")
 assert_eq "failed item is item 2" "2" "${FAILED_ID}"
 assert_contains "failed item is the 2-clause item" \
-	"${FAILED_DESC}" "Add retry logic and log each attempt"
+  "${FAILED_DESC}" "Add retry logic and log each attempt"
 
 echo ""
 echo "=== Test 7: Review file format — FAIL must have CLAUSES section ==="
@@ -360,5 +360,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

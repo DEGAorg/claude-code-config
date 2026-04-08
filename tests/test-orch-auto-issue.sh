@@ -34,92 +34,92 @@ TEMP_ORCH_DIR=""
 # --- Parse args ---
 
 while [[ $# -gt 0 ]]; do
-	case "$1" in
-	--repo)
-		REPO="${2:?--repo requires a value}"
-		shift 2
-		;;
-	*)
-		echo "error: unknown option: $1" >&2
-		echo "usage: test-orch-auto-issue.sh [--repo OWNER/REPO]" >&2
-		exit 1
-		;;
-	esac
+  case "$1" in
+  --repo)
+    REPO="${2:?--repo requires a value}"
+    shift 2
+    ;;
+  *)
+    echo "error: unknown option: $1" >&2
+    echo "usage: test-orch-auto-issue.sh [--repo OWNER/REPO]" >&2
+    exit 1
+    ;;
+  esac
 done
 
 # --- Helpers ---
 
 check() {
-	local id="$1"
-	local description="$2"
-	local expected="$3"
-	local actual="$4"
-	if [[ "${actual}" -eq "${expected}" ]]; then
-		printf '  ok  %s: %s\n' "${id}" "${description}"
-		PASS=$((PASS + 1))
-	else
-		printf '  FAIL %s: %s (expected %d, got %s)\n' \
-			"${id}" "${description}" "${expected}" "${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local id="$1"
+  local description="$2"
+  local expected="$3"
+  local actual="$4"
+  if [[ "${actual}" -eq "${expected}" ]]; then
+    printf '  ok  %s: %s\n' "${id}" "${description}"
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL %s: %s (expected %d, got %s)\n' \
+      "${id}" "${description}" "${expected}" "${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 check_contains() {
-	local id="$1"
-	local description="$2"
-	local pattern="$3"
-	local output="$4"
-	if [[ "${output}" == *"${pattern}"* ]]; then
-		printf '  ok  %s: %s\n' "${id}" "${description}"
-		PASS=$((PASS + 1))
-	else
-		printf '  FAIL %s: %s (expected output to contain "%s")\n' \
-			"${id}" "${description}" "${pattern}"
-		FAIL=$((FAIL + 1))
-	fi
+  local id="$1"
+  local description="$2"
+  local pattern="$3"
+  local output="$4"
+  if [[ "${output}" == *"${pattern}"* ]]; then
+    printf '  ok  %s: %s\n' "${id}" "${description}"
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL %s: %s (expected output to contain "%s")\n' \
+      "${id}" "${description}" "${pattern}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 check_not_contains() {
-	local id="$1"
-	local description="$2"
-	local pattern="$3"
-	local output="$4"
-	if [[ "${output}" != *"${pattern}"* ]]; then
-		printf '  ok  %s: %s\n' "${id}" "${description}"
-		PASS=$((PASS + 1))
-	else
-		printf '  FAIL %s: %s (output should NOT contain "%s")\n' \
-			"${id}" "${description}" "${pattern}"
-		FAIL=$((FAIL + 1))
-	fi
+  local id="$1"
+  local description="$2"
+  local pattern="$3"
+  local output="$4"
+  if [[ "${output}" != *"${pattern}"* ]]; then
+    printf '  ok  %s: %s\n' "${id}" "${description}"
+    PASS=$((PASS + 1))
+  else
+    printf '  FAIL %s: %s (output should NOT contain "%s")\n' \
+      "${id}" "${description}" "${pattern}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 get_issue_labels() {
-	gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
-		--json labels -q '[.labels[].name] | join(",")'
+  gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
+    --json labels -q '[.labels[].name] | join(",")'
 }
 
 get_issue_state() {
-	gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
-		--json state -q '.state'
+  gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
+    --json state -q '.state'
 }
 
 get_issue_comments() {
-	gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
-		--json comments -q '[.comments[].body] | join("\n---\n")'
+  gh issue view "${ISSUE_NUMBER}" --repo "${REPO}" \
+    --json comments -q '[.comments[].body] | join("\n---\n")'
 }
 
 # --- Cleanup on exit ---
 
 cleanup() {
-	if [[ -n "${ISSUE_NUMBER}" ]]; then
-		echo "Cleaning up: closing and locking test issue #${ISSUE_NUMBER}..." >&2
-		gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" 2>/dev/null || true
-		gh issue lock "${ISSUE_NUMBER}" --repo "${REPO}" 2>/dev/null || true
-	fi
-	if [[ -n "${TEMP_ORCH_DIR}" && -d "${TEMP_ORCH_DIR}" ]]; then
-		rm -rf "${TEMP_ORCH_DIR}"
-	fi
+  if [[ -n "${ISSUE_NUMBER}" ]]; then
+    echo "Cleaning up: closing and locking test issue #${ISSUE_NUMBER}..." >&2
+    gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" 2>/dev/null || true
+    gh issue lock "${ISSUE_NUMBER}" --repo "${REPO}" 2>/dev/null || true
+  fi
+  if [[ -n "${TEMP_ORCH_DIR}" && -d "${TEMP_ORCH_DIR}" ]]; then
+    rm -rf "${TEMP_ORCH_DIR}"
+  fi
 }
 trap cleanup EXIT
 
@@ -129,26 +129,26 @@ printf 'orch-auto-issue\n'
 printf '  Preflight checks...\n'
 
 if ! command -v gh &>/dev/null; then
-	echo "SKIP: gh CLI not installed" >&2
-	exit 0
+  echo "SKIP: gh CLI not installed" >&2
+  exit 0
 fi
 
 if ! gh auth status &>/dev/null; then
-	echo "SKIP: gh not authenticated (run: gh auth login)" >&2
-	exit 0
+  echo "SKIP: gh not authenticated (run: gh auth login)" >&2
+  exit 0
 fi
 
 if ! command -v jq &>/dev/null; then
-	echo "SKIP: jq not installed" >&2
-	exit 0
+  echo "SKIP: jq not installed" >&2
+  exit 0
 fi
 
 # Resolve repo
 if [[ -z "${REPO}" ]]; then
-	cd "${REPO_ROOT}"
-	# shellcheck source=../scripts/providers/provider.sh
-	source "${REPO_ROOT}/scripts/providers/provider.sh"
-	REPO="$(provider_repo_resolve)"
+  cd "${REPO_ROOT}"
+  # shellcheck source=../scripts/providers/provider.sh
+  source "${REPO_ROOT}/scripts/providers/provider.sh"
+  REPO="$(provider_repo_resolve)"
 fi
 
 printf '  Using repo: %s\n' "${REPO}"
@@ -162,7 +162,7 @@ SLUG="auto-issue-test-$$-$(date +%s)"
 printf '\n  --- Step 1: Auto-create issue (simulating orch-run.sh) ---\n'
 
 PLAN_BODY="$(
-	cat <<'PLAN'
+  cat <<'PLAN'
 # Plan: Auto-Issue Test Plan
 
 **Status:** Draft
@@ -191,20 +191,20 @@ PLAN
 # Create the issue (what orch-run.sh does via plan-create.sh)
 exit_code=0
 ISSUE_NUMBER="$(bash "${REPO_ROOT}/scripts/plan-create.sh" \
-	--title "[Auto-Issue Test] ${SLUG}" \
-	--body "${PLAN_BODY}" \
-	--repo "${REPO}" 2>/dev/null)" || exit_code=$?
+  --title "[Auto-Issue Test] ${SLUG}" \
+  --body "${PLAN_BODY}" \
+  --repo "${REPO}" 2>/dev/null)" || exit_code=$?
 
 check create-exit \
-	"plan-create.sh exits 0" \
-	0 "${exit_code}"
+  "plan-create.sh exits 0" \
+  0 "${exit_code}"
 
 if [[ ! "${ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
-	printf '  FAIL create-number: expected numeric issue number, got "%s"\n' \
-		"${ISSUE_NUMBER}"
-	FAIL=$((FAIL + 1))
-	echo "ABORT: cannot continue without a valid issue number" >&2
-	exit 1
+  printf '  FAIL create-number: expected numeric issue number, got "%s"\n' \
+    "${ISSUE_NUMBER}"
+  FAIL=$((FAIL + 1))
+  echo "ABORT: cannot continue without a valid issue number" >&2
+  exit 1
 fi
 printf '  ok  create-number: issue number is numeric (%s)\n' "${ISSUE_NUMBER}"
 PASS=$((PASS + 1))
@@ -212,8 +212,8 @@ PASS=$((PASS + 1))
 # Verify plan:draft label at creation
 labels="$(get_issue_labels)"
 check_contains create-draft-label \
-	"issue has plan:draft label at creation" \
-	"plan:draft" "${labels}"
+  "issue has plan:draft label at creation" \
+  "plan:draft" "${labels}"
 
 # Write plan-meta.json (what orch-run.sh does after plan-create.sh)
 TEMP_ORCH_DIR="$(mktemp -d)"
@@ -222,11 +222,11 @@ mkdir -p "${PLAN_META_DIR}"
 
 PLAN_META_FILE="${PLAN_META_DIR}/plan-meta.json"
 jq -n \
-	--argjson issue "${ISSUE_NUMBER}" \
-	--arg repo "${REPO}" \
-	--arg slug "${SLUG}" \
-	--arg createdAt "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-	'{
+  --argjson issue "${ISSUE_NUMBER}" \
+  --arg repo "${REPO}" \
+  --arg slug "${SLUG}" \
+  --arg createdAt "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  '{
 		issue_number: $issue,
 		repo: $repo,
 		slug: $slug,
@@ -239,14 +239,14 @@ meta_repo=$(jq -r '.repo' "${PLAN_META_FILE}")
 meta_slug=$(jq -r '.slug' "${PLAN_META_FILE}")
 
 check meta-issue \
-	"plan-meta.json has correct issue number" \
-	"${ISSUE_NUMBER}" "${meta_issue}"
+  "plan-meta.json has correct issue number" \
+  "${ISSUE_NUMBER}" "${meta_issue}"
 check_contains meta-repo \
-	"plan-meta.json has correct repo" \
-	"${REPO}" "${meta_repo}"
+  "plan-meta.json has correct repo" \
+  "${REPO}" "${meta_repo}"
 check_contains meta-slug \
-	"plan-meta.json has correct slug" \
-	"${SLUG}" "${meta_slug}"
+  "plan-meta.json has correct slug" \
+  "${SLUG}" "${meta_slug}"
 
 # ============================================================
 # Test 2: gh-plan-sync.sh auto-discovers issue from plan-meta.json
@@ -263,27 +263,27 @@ cp "${PLAN_META_FILE}" "${REAL_META_DIR}/plan-meta.json"
 exit_code=0
 cd "${REPO_ROOT}"
 output="$(bash "${REPO_ROOT}/scripts/gh-plan-sync.sh" \
-	start "${SLUG}" \
-	--repo "${REPO}" \
-	--items 2 \
-	--max-workers 1 2>&1)" || exit_code=$?
+  start "${SLUG}" \
+  --repo "${REPO}" \
+  --items 2 \
+  --max-workers 1 2>&1)" || exit_code=$?
 
 check start-exit \
-	"gh-plan-sync.sh start exits 0 (auto-discover)" \
-	0 "${exit_code}"
+  "gh-plan-sync.sh start exits 0 (auto-discover)" \
+  0 "${exit_code}"
 
 labels="$(get_issue_labels)"
 check_contains start-active-label \
-	"label is plan:active after start" \
-	"plan:active" "${labels}"
+  "label is plan:active after start" \
+  "plan:active" "${labels}"
 check_not_contains start-no-draft \
-	"plan:draft removed after start" \
-	"plan:draft" "${labels}"
+  "plan:draft removed after start" \
+  "plan:draft" "${labels}"
 
 comments="$(get_issue_comments)"
 check_contains start-comment \
-	"start comment posted" \
-	"Plan started" "${comments}"
+  "start comment posted" \
+  "Plan started" "${comments}"
 
 # ============================================================
 # Test 3: gh-plan-sync.sh review (auto-discover)
@@ -293,24 +293,24 @@ printf '\n  --- Step 3: gh-plan-sync.sh review (auto-discover) ---\n'
 
 exit_code=0
 output="$(bash "${REPO_ROOT}/scripts/gh-plan-sync.sh" \
-	review "${SLUG}" \
-	--repo "${REPO}" \
-	--item-id 1 \
-	--item-desc "first item" \
-	--item-result SHIP \
-	--iterations 1 2>&1)" || exit_code=$?
+  review "${SLUG}" \
+  --repo "${REPO}" \
+  --item-id 1 \
+  --item-desc "first item" \
+  --item-result SHIP \
+  --iterations 1 2>&1)" || exit_code=$?
 
 check review-exit \
-	"gh-plan-sync.sh review exits 0 (auto-discover)" \
-	0 "${exit_code}"
+  "gh-plan-sync.sh review exits 0 (auto-discover)" \
+  0 "${exit_code}"
 
 labels="$(get_issue_labels)"
 check_contains review-label \
-	"label is plan:review after review" \
-	"plan:review" "${labels}"
+  "label is plan:review after review" \
+  "plan:review" "${labels}"
 check_not_contains review-no-active \
-	"plan:active removed after review" \
-	"plan:active" "${labels}"
+  "plan:active removed after review" \
+  "plan:active" "${labels}"
 
 # ============================================================
 # Test 4: Lifecycle hook auto-discovers from state.json
@@ -321,9 +321,9 @@ printf '\n  --- Step 4: 01-gh-plan-sync.sh lifecycle hook (state.json + plan-met
 # Write a minimal state.json with issueNumber (what orch-run.sh init_state writes)
 STATE_FILE="${REAL_META_DIR}/state.json"
 jq -n \
-	--argjson issueNumber "${ISSUE_NUMBER}" \
-	--arg plan "${SLUG}" \
-	'{
+  --argjson issueNumber "${ISSUE_NUMBER}" \
+  --arg plan "${SLUG}" \
+  '{
 		version: 1,
 		plan: $plan,
 		issueNumber: $issueNumber,
@@ -336,17 +336,17 @@ jq -n \
 # Call the lifecycle hook directly for review event
 exit_code=0
 output="$(bash "${REPO_ROOT}/hooks/orch-lifecycle/01-gh-plan-sync.sh" \
-	review "${SLUG}" 2>&1)" || exit_code=$?
+  review "${SLUG}" 2>&1)" || exit_code=$?
 
 check hook-review-exit \
-	"lifecycle hook review exits 0" \
-	0 "${exit_code}"
+  "lifecycle hook review exits 0" \
+  0 "${exit_code}"
 
 # The hook should have posted a review comment for item 1 (which has lastResult)
 comments="$(get_issue_comments)"
 check_contains hook-review-comment \
-	"lifecycle hook posted review comment for item 1" \
-	"Item 1" "${comments}"
+  "lifecycle hook posted review comment for item 1" \
+  "Item 1" "${comments}"
 
 # ============================================================
 # Test 5: gh-plan-sync.sh ship — label completed, issue closed
@@ -356,36 +356,36 @@ printf '\n  --- Step 5: gh-plan-sync.sh ship (auto-discover, close issue) ---\n'
 
 exit_code=0
 output="$(bash "${REPO_ROOT}/scripts/gh-plan-sync.sh" \
-	ship "${SLUG}" \
-	--repo "${REPO}" \
-	--items 2 \
-	--passed 2 \
-	--elapsed "0m 42s" 2>&1)" || exit_code=$?
+  ship "${SLUG}" \
+  --repo "${REPO}" \
+  --items 2 \
+  --passed 2 \
+  --elapsed "0m 42s" 2>&1)" || exit_code=$?
 
 check ship-exit \
-	"gh-plan-sync.sh ship exits 0 (auto-discover)" \
-	0 "${exit_code}"
+  "gh-plan-sync.sh ship exits 0 (auto-discover)" \
+  0 "${exit_code}"
 
 labels="$(get_issue_labels)"
 check_contains ship-label \
-	"label is plan:completed after ship" \
-	"plan:completed" "${labels}"
+  "label is plan:completed after ship" \
+  "plan:completed" "${labels}"
 check_not_contains ship-no-review \
-	"plan:review removed after ship" \
-	"plan:review" "${labels}"
+  "plan:review removed after ship" \
+  "plan:review" "${labels}"
 
 state="$(get_issue_state)"
 check_contains ship-closed \
-	"issue is CLOSED after ship" \
-	"CLOSED" "${state}"
+  "issue is CLOSED after ship" \
+  "CLOSED" "${state}"
 
 comments="$(get_issue_comments)"
 check_contains ship-comment \
-	"ship comment mentions Plan SHIP" \
-	"Plan SHIP" "${comments}"
+  "ship comment mentions Plan SHIP" \
+  "Plan SHIP" "${comments}"
 check_contains ship-passed \
-	"ship comment mentions 2/2 items passed" \
-	"2/2 items passed" "${comments}"
+  "ship comment mentions 2/2 items passed" \
+  "2/2 items passed" "${comments}"
 
 # ============================================================
 # Test 6: Without plan-meta.json, gh-plan-sync.sh fails gracefully
@@ -395,14 +395,14 @@ printf '\n  --- Step 6: No plan-meta.json — graceful failure ---\n'
 
 exit_code=0
 output="$(bash "${REPO_ROOT}/scripts/gh-plan-sync.sh" \
-	start "nonexistent-slug-$$" 2>&1)" || exit_code=$?
+  start "nonexistent-slug-$$" 2>&1)" || exit_code=$?
 
 check no-meta-exit \
-	"fails with exit 1 when no plan-meta.json" \
-	1 "${exit_code}"
+  "fails with exit 1 when no plan-meta.json" \
+  1 "${exit_code}"
 check_contains no-meta-msg \
-	"error mentions --issue or plan-meta.json" \
-	"--issue" "${output}"
+  "error mentions --issue or plan-meta.json" \
+  "--issue" "${output}"
 
 # ============================================================
 # Test 7: shellcheck and shfmt clean on all involved scripts
@@ -411,36 +411,36 @@ check_contains no-meta-msg \
 printf '\n  --- Step 7: Lint checks ---\n'
 
 SCRIPTS_TO_LINT=(
-	"scripts/orch-run.sh"
-	"scripts/gh-plan-sync.sh"
-	"scripts/plan-create.sh"
-	"scripts/providers/provider.sh"
-	"scripts/providers/github.sh"
-	"hooks/orch-lifecycle/01-gh-plan-sync.sh"
+  "scripts/orch-run.sh"
+  "scripts/gh-plan-sync.sh"
+  "scripts/plan-create.sh"
+  "scripts/providers/provider.sh"
+  "scripts/providers/github.sh"
+  "hooks/orch-lifecycle/01-gh-plan-sync.sh"
 )
 
 if command -v shellcheck &>/dev/null; then
-	for script in "${SCRIPTS_TO_LINT[@]}"; do
-		exit_code=0
-		shellcheck -x -e SC1091 "${REPO_ROOT}/${script}" >/dev/null 2>&1 || exit_code=$?
-		check "shellcheck-$(basename "${script}" .sh)" \
-			"shellcheck ${script}" \
-			0 "${exit_code}"
-	done
+  for script in "${SCRIPTS_TO_LINT[@]}"; do
+    exit_code=0
+    shellcheck -x -e SC1091 "${REPO_ROOT}/${script}" >/dev/null 2>&1 || exit_code=$?
+    check "shellcheck-$(basename "${script}" .sh)" \
+      "shellcheck ${script}" \
+      0 "${exit_code}"
+  done
 else
-	printf '  skip shellcheck: not installed\n'
+  printf '  skip shellcheck: not installed\n'
 fi
 
 if command -v shfmt &>/dev/null; then
-	for script in "${SCRIPTS_TO_LINT[@]}"; do
-		exit_code=0
-		shfmt -d "${REPO_ROOT}/${script}" >/dev/null 2>&1 || exit_code=$?
-		check "shfmt-$(basename "${script}" .sh)" \
-			"shfmt ${script}" \
-			0 "${exit_code}"
-	done
+  for script in "${SCRIPTS_TO_LINT[@]}"; do
+    exit_code=0
+    shfmt -d "${REPO_ROOT}/${script}" >/dev/null 2>&1 || exit_code=$?
+    check "shfmt-$(basename "${script}" .sh)" \
+      "shfmt ${script}" \
+      0 "${exit_code}"
+  done
 else
-	printf '  skip shfmt: not installed\n'
+  printf '  skip shfmt: not installed\n'
 fi
 
 # ============================================================

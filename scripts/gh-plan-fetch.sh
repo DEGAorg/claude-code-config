@@ -13,11 +13,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/providers/provider.sh"
 
 usage() {
-	echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2
-	echo "" >&2
-	echo "Fetches a GitHub Issue body and writes it to:" >&2
-	echo "  .orchestrator/plans/<slug>/plan.md" >&2
-	exit 1
+  echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2
+  echo "" >&2
+  echo "Fetches a GitHub Issue body and writes it to:" >&2
+  echo "  .orchestrator/plans/<slug>/plan.md" >&2
+  exit 1
 }
 
 # --- Parse arguments ---
@@ -27,40 +27,40 @@ slug=""
 repo=""
 
 while [[ $# -gt 0 ]]; do
-	case "$1" in
-	--repo)
-		[[ $# -lt 2 ]] && {
-			echo "error: --repo requires a value" >&2
-			exit 1
-		}
-		repo="$2"
-		shift 2
-		;;
-	--help | -h)
-		usage
-		;;
-	*)
-		if [[ -z "${issue_number}" ]]; then
-			issue_number="$1"
-		elif [[ -z "${slug}" ]]; then
-			slug="$1"
-		else
-			echo "error: unexpected argument: $1" >&2
-			usage
-		fi
-		shift
-		;;
-	esac
+  case "$1" in
+  --repo)
+    [[ $# -lt 2 ]] && {
+      echo "error: --repo requires a value" >&2
+      exit 1
+    }
+    repo="$2"
+    shift 2
+    ;;
+  --help | -h)
+    usage
+    ;;
+  *)
+    if [[ -z "${issue_number}" ]]; then
+      issue_number="$1"
+    elif [[ -z "${slug}" ]]; then
+      slug="$1"
+    else
+      echo "error: unexpected argument: $1" >&2
+      usage
+    fi
+    shift
+    ;;
+  esac
 done
 
 if [[ -z "${issue_number}" || -z "${slug}" ]]; then
-	echo "error: issue number and slug are required." >&2
-	usage
+  echo "error: issue number and slug are required." >&2
+  usage
 fi
 
 if ! [[ "${issue_number}" =~ ^[0-9]+$ ]]; then
-	echo "error: issue number must be a positive integer, got: ${issue_number}" >&2
-	exit 1
+  echo "error: issue number must be a positive integer, got: ${issue_number}" >&2
+  exit 1
 fi
 
 # --- Ensure provider CLI is available ---
@@ -74,9 +74,9 @@ provider_auth_check || exit $?
 # --- Resolve repo ---
 
 if [[ -n "${repo}" ]]; then
-	repo="$(provider_repo_resolve --repo "${repo}")"
+  repo="$(provider_repo_resolve --repo "${repo}")"
 else
-	repo="$(provider_repo_resolve)"
+  repo="$(provider_repo_resolve)"
 fi
 
 echo "Fetching issue #${issue_number} from ${repo}..." >&2
@@ -84,14 +84,14 @@ echo "Fetching issue #${issue_number} from ${repo}..." >&2
 # --- Fetch issue body ---
 
 body="$(provider_issue_view --issue "${issue_number}" --repo "${repo}" \
-	--fields body | jq -r '.body')" || {
-	echo "error: failed to fetch issue #${issue_number} from ${repo}" >&2
-	exit 1
+  --fields body | jq -r '.body')" || {
+  echo "error: failed to fetch issue #${issue_number} from ${repo}" >&2
+  exit 1
 }
 
 if [[ -z "${body}" ]]; then
-	echo "error: issue #${issue_number} has an empty body." >&2
-	exit 1
+  echo "error: issue #${issue_number} has an empty body." >&2
+  exit 1
 fi
 
 # --- Write to local plan file ---

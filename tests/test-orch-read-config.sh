@@ -33,7 +33,7 @@ assert_eq() {
 TMPDIR_TEST="$(mktemp -d)"
 trap 'rm -rf "${TMPDIR_TEST}"' EXIT
 
-cat > "${TMPDIR_TEST}/dega-core.yaml" << 'EOF'
+cat >"${TMPDIR_TEST}/dega-core.yaml" <<'EOF'
 version: 1
 max_iterations: 3
 poll_interval_seconds: 15

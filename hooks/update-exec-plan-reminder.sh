@@ -17,7 +17,7 @@ COMMAND=$(printf '%s' "${INPUT}" | jq -r '.tool_input.command // empty')
 # Skip read-only / diagnostic commands where no work step was completed
 SKIP_PATTERN='^(cat[ $]|ls[ $]|head |tail |grep |rg |fd |echo[ $]|printf |which |test |true$|false$|\[\[|git (status|log|diff|show)|shfmt -d |wc |sort |uniq )'
 if printf '%s' "${COMMAND}" | grep -qE "${SKIP_PATTERN}"; then
-	exit 0
+  exit 0
 fi
 
 # Check for active plans in the project (directory-based: active/*/plan.md)
