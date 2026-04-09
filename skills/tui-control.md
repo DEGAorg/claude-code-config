@@ -1,16 +1,16 @@
 # TUI Control via Socket
 
-When Toad (Conductor) is running, it exposes a Unix socket at `/tmp/toad-{pid}.sock`
+When Canon (Conductor) is running, it exposes a Unix socket at `/tmp/toad-{pid}.sock`
 for programmatic control. Use this to read UI state, toggle views, and update
 widgets from shell commands.
 
 ## Client
 
-Use `toad-ctl.sh` (in the conductor-view repo) or `socat` directly:
+Use `canon-ctl` (in the conductor-view repo) or `socat` directly:
 
 ```bash
 # Auto-discovers the socket
-toad-ctl.sh <command> [args...]
+canon-ctl <command> [args...]
 
 # Or with socat directly
 echo '{"cmd":"ping"}' | socat - UNIX-CONNECT:/tmp/toad-*.sock
@@ -22,49 +22,49 @@ echo '{"cmd":"ping"}' | socat - UNIX-CONNECT:/tmp/toad-*.sock
 
 ```bash
 # Check TUI is alive
-toad-ctl.sh ping
+canon-ctl ping
 
 # Get full widget tree (JSON)
-toad-ctl.sh snapshot
+canon-ctl snapshot
 
 # Query widgets by CSS selector
-toad-ctl.sh query "Button"
-toad-ctl.sh query "#project_state_pane"
+canon-ctl query "Button"
+canon-ctl query "#project_state_pane"
 ```
 
 ### Trigger actions
 
 ```bash
 # Toggle the Project State right pane (ctrl+g equivalent)
-toad-ctl.sh action "screen.toggle_project_state"
+canon-ctl action "screen.toggle_project_state"
 
 # Toggle dark mode
-toad-ctl.sh action toggle_dark
+canon-ctl action toggle_dark
 
 # Open sidebar
-toad-ctl.sh action "screen.show_sidebar"
+canon-ctl action "screen.show_sidebar"
 
 # Any action_* method on App or Screen is callable
-toad-ctl.sh action "screen.<action_name>"
+canon-ctl action "screen.<action_name>"
 ```
 
 ### Modify widgets
 
 ```bash
 # Update a widget's text content
-toad-ctl.sh update "#project-state-title" "Build Status: Passing"
+canon-ctl update "#project-state-title" "Build Status: Passing"
 
 # Focus a widget
-toad-ctl.sh focus "#project_state_pane"
+canon-ctl focus "#project_state_pane"
 
 # Simulate a keypress
-toad-ctl.sh press enter
+canon-ctl press enter
 ```
 
 ### Raw JSON
 
 ```bash
-toad-ctl.sh raw '{"cmd":"action","name":"screen.toggle_project_state"}'
+canon-ctl raw '{"cmd":"action","name":"screen.toggle_project_state"}'
 ```
 
 ## Action namespacing
@@ -102,7 +102,7 @@ import json
 import socket
 from glob import glob
 
-def toad_cmd(cmd: dict) -> dict:
+def canon_cmd(cmd: dict) -> dict:
     path = glob("/tmp/toad-*.sock")[0]
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.connect(path)
@@ -112,8 +112,8 @@ def toad_cmd(cmd: dict) -> dict:
     return json.loads(response)
 
 # Toggle project state pane
-toad_cmd({"cmd": "action", "name": "screen.toggle_project_state"})
+canon_cmd({"cmd": "action", "name": "screen.toggle_project_state"})
 
 # Read widget tree
-state = toad_cmd({"cmd": "snapshot"})
+state = canon_cmd({"cmd": "snapshot"})
 ```

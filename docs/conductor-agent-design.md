@@ -38,12 +38,12 @@ On session start, gather all relevant state:
 | Active plans | `docs/exec-plans/active/` (progress log checkboxes) |
 | Git state | Branches, worktrees, uncommitted changes |
 | Pull requests | `gh pr list`, open reviews |
-| TUI panel state | `toad-ctl.sh snapshot` |
+| TUI panel state | `canon-ctl snapshot` |
 | Canon/project state | `dega-core.yaml`, `focus.yaml`, project-specific config |
 
 ### 2. TUI Control
 
-All panel operations via the **socket CLI** (`toad-ctl.sh`). No `/panel`
+All panel operations via the **socket CLI** (`canon-ctl`). No `/panel`
 text commands.
 
 Available socket commands:
@@ -149,7 +149,7 @@ Same notification mechanism.
 - [ ] Add panel-specific socket commands (e.g.,
   `{"cmd": "panel", "id": "project_state", "action": "open"}`) so the
   socket CLI can do everything `/panel` commands did.
-- [ ] Verify `toad-ctl.sh` supports open/close for panels: `project_state`,
+- [ ] Verify `canon-ctl` supports open/close for panels: `project_state`,
   `github`.
 
 ---

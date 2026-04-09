@@ -8,7 +8,7 @@ Run `/apply-core` inside any AI agent (Claude, Gemini, Codex) and select
 **Canon Bootstrap**. This installs the Canon scripts globally.
 
 You also need one of:
-- **Toad** (recommended) — `pip install toad-tui` or see DEGAorg/conductor-view
+- **Canon TUI** (recommended) — see DEGAorg/conductor-view README
 - **tmux** — `brew install tmux`
 
 ## Steps
@@ -37,7 +37,7 @@ This checks prerequisites, fetches the Canon commands, and writes a
 ./canon.sh
 ```
 
-This opens the Canon environment. If Toad is installed, it launches
+This opens the Canon environment. If the Canon TUI is installed, it launches
 the full TUI with conversation and live dashboard. Otherwise it falls
 back to a tmux split with the agent on the left and a status dashboard
 on the right.
@@ -77,6 +77,6 @@ my-strategy/
 | Problem | Fix |
 |---------|-----|
 | `/canon-init` says prerequisites missing | Run `/apply-core` and select Canon Bootstrap + Terminal UI |
-| `./canon.sh` says neither toad nor tmux found | Install one: `pip install toad-tui` or `brew install tmux` |
+| `./canon.sh` says neither canon nor tmux found | Install the Canon TUI (see DEGAorg/conductor-view) or `brew install tmux` |
 | Scaffold fails to fetch from GitHub | Check internet connection; scaffold fetches from `raw.githubusercontent.com` |
 | Build phase hangs | Check `dega-core.yaml` has a valid `check_command` for your project |

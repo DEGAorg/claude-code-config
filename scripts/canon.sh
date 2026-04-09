@@ -19,24 +19,24 @@ else
     "$(date -u +%FT%TZ)" "$(date -u +%FT%TZ)" >"${STATE}"
 fi
 
-# ── Launch mode: Toad (preferred) or tmux (fallback) ─────────────────
-if command -v toad >/dev/null 2>&1; then
-  # Toad mode — single process, no tmux needed.
-  # Toad handles conversation + Builder/Automation views natively.
-  # TODO: add --prompt "/canon-start" once toad supports prefill
-  echo "Launching Canon in Toad. Type /canon-start to begin."
-  exec toad run "${PROJECT_DIR}"
+# ── Launch mode: Canon TUI (preferred) or tmux (fallback) ────────────
+if command -v canon >/dev/null 2>&1; then
+  # Canon TUI mode — single process, no tmux needed.
+  # Canon handles conversation + Builder/Automation views natively.
+  # TODO: add --prompt "/canon-start" once canon supports prefill
+  echo "Launching Canon TUI. Type /canon-start to begin."
+  exec canon run "${PROJECT_DIR}"
 fi
 
 # ── Fallback: tmux with agent + dashboard ────────────────────────────
 if ! command -v tmux >/dev/null 2>&1; then
-  echo "error: neither toad nor tmux found. Install one of:"
-  echo "  toad  — see DEGAorg/conductor-view README"
+  echo "error: neither canon nor tmux found. Install one of:"
+  echo "  canon — see DEGAorg/conductor-view README"
   echo "  tmux  — brew install tmux"
   exit 1
 fi
 
-# Dashboard renderer (best available without toad)
+# Dashboard renderer (best available without Canon TUI)
 _canon_dashboard_cmd() {
   if command -v terminal-ui >/dev/null 2>&1; then
     echo "terminal-ui --state ${STATE}"

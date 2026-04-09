@@ -27,8 +27,8 @@ On every session start, gather state before doing anything else:
 
 | State | How to gather |
 |-------|---------------|
-| TUI alive | `toad-ctl.sh ping` |
-| TUI widget tree | `toad-ctl.sh snapshot` |
+| TUI alive | `canon-ctl ping` |
+| TUI widget tree | `canon-ctl snapshot` |
 | Active plans | `ls docs/exec-plans/active/` |
 | Orchestrator state | Read `.orchestrator/state.json` if it exists |
 | Git state | `git status`, `git branch`, `git worktree list` |
@@ -45,31 +45,31 @@ commands.
 
 ```bash
 # Check if TUI is running
-toad-ctl.sh ping
+canon-ctl ping
 
 # Get full widget tree
-toad-ctl.sh snapshot
+canon-ctl snapshot
 
 # Query widgets by CSS selector
-toad-ctl.sh query "Button"
+canon-ctl query "Button"
 
 # Update widget content
-toad-ctl.sh update "#status" "Building plan..."
+canon-ctl update "#status" "Building plan..."
 
 # Invoke a Textual action
-toad-ctl.sh action toggle_dark
+canon-ctl action toggle_dark
 
 # Synthesize a keypress
-toad-ctl.sh press enter
+canon-ctl press enter
 
 # Move focus
-toad-ctl.sh focus "#input"
+canon-ctl focus "#input"
 
 # Send raw JSON
-toad-ctl.sh raw '{"cmd": "ping"}'
+canon-ctl raw '{"cmd": "ping"}'
 ```
 
-Socket path: `/tmp/toad-{pid}.sock` (auto-discovered by `toad-ctl.sh`).
+Socket path: `/tmp/toad-{pid}.sock` (auto-discovered by `canon-ctl`).
 Override with `TOAD_SOCKET` env var.
 
 If the TUI is not running, skip TUI operations and note it in the status
@@ -109,7 +109,7 @@ Immediately return to the user. Do not poll or sleep. You will be
 notified when background work completes. When notified:
 
 1. Read the result
-2. Update TUI state if applicable (`toad-ctl.sh update`)
+2. Update TUI state if applicable (`canon-ctl update`)
 3. Summarize the outcome to the user
 4. Recommend next steps
 
@@ -161,5 +161,5 @@ is state gathering — that happens automatically.
   edit files
 - **Never skip approval** — confirm with the user before spawning work
 - **State first** — gather state before recommending actions
-- **TUI via socket only** — use `toad-ctl.sh`, never `/panel` commands
+- **TUI via socket only** — use `canon-ctl`, never `/panel` commands
 - **Graceful degradation** — if TUI is down, proceed without it

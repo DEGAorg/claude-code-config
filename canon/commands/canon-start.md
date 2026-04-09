@@ -399,13 +399,19 @@ before re-running.
 
 ## Graceful degradation
 
-This command requires tmux — it expects to be launched via `./canon.sh`.
+This command expects to be launched via `./canon.sh`, which uses either the
+Canon TUI (`canon run`) or tmux as a fallback.
 Dashboard state writes degrade gracefully:
 
 | Component | If missing | Behavior |
 |-----------|-----------|----------|
-| tmux / `$TMUX` not set | Stop with message | User told to run `./canon.sh` first |
+| Neither Canon TUI nor tmux detected | Stop with message | User told to run `./canon.sh` first |
 | `$DEGA_CORE_HOME/scripts/terminal-ui-write.sh` | Skip state file writes | No dashboard updates, workflow still runs |
+
+**Canon TUI detection:** The session is valid if ANY of these are true:
+- `$TMUX` is set (tmux fallback)
+- `$CANON_TUI` is set (Canon TUI / conductor-view)
+- `.canon/state.json` exists and was updated within the last 5 minutes (TUI wrote init state)
 
 Every `terminal-ui-write.sh` call in this command is already guarded with
 `[[ -f "${TUI_WRITE}" ]] &&`. If the script
@@ -415,7 +421,7 @@ does not exist, the call is skipped silently — no error, no repeated warnings.
 
 ## Completion criteria
 
-- Tmux environment verified at entry — stops if not inside tmux
+- TUI environment verified at entry — stops if not inside Canon TUI or tmux
 - Phase detection correctly identifies the project's current state
 - Each phase delegates to the right sub-command logic (canon-scaffold.sh, discover, develop)
 - State file is updated at each phase transition (when terminal-ui-write.sh is available)
