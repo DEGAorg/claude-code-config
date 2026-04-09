@@ -4,6 +4,18 @@
 
 Run every step below in order. Do not stop between steps unless explicitly told to.
 
+**Output rules — STRICT:**
+- **Minimize tool calls.** Every Bash call prints output in the chat window.
+  Combine checks into single scripts. Never run individual file-existence
+  checks, ls commands, or env-var echoes as separate tool calls.
+- **Suppress noisy output.** Redirect stdout/stderr to `/dev/null` on any
+  check whose result you only need as an exit code (tests, tsc, lint).
+- **One line per phase.** No blockquotes, bullet lists, log paths, status
+  summaries, or explanatory paragraphs. The TUI dashboard shows state,
+  metrics, and logs — never duplicate that in chat.
+- **No narration.** Do not describe what you are about to do, what you just
+  did, or what you found. Just do it and print the phase name.
+
 ---
 
 ## 1. Initialize
@@ -17,45 +29,65 @@ Proceed directly to step 2.
 
 ## 2. Detect phase
 
-Assess the current project state by checking what exists. Evaluate conditions
-top-to-bottom — the first match determines the current phase.
-
-| Condition | Phase | Next action |
-|-----------|-------|-------------|
-| No `.canon/` directory | **init** | Go to step 3 |
-| `.canon/` exists but missing required files (see below) | **scaffold** | Go to step 4 |
-| No strategy spec found (see below) | **strategy** | Go to step 5 |
-| Strategy spec exists but no `src/` directory | **develop** | Go to step 6 |
-| `src/` exists but tests fail (`pnpm exec vitest run` exits non-zero) | **develop** | Go to step 6 |
-| All checks pass | **run** | Go to step 7 |
-
-**Required scaffold files** (for scaffold-complete check):
-- `.canon/config.yaml`
-- `dega-core.yaml` (project root)
-- `.canon/agents/` directory with at least one `.md` file
-- `.canon/skills/` directory with at least one `.md` file
-- `package.json`
-- `tsconfig.json`
-- `src/types/TradeSignal.ts`
-- `src/types/RiskInterface.ts`
-
-**Strategy spec detection** — a strategy spec is any of:
-- A file matching `*.strategy.md` anywhere in the project
-- A file matching `docs/strategy-*.md`
-- A design spec output from `/discover` (check `.canon/execution/` for spec files)
-
-Write the detected phase to the state file:
+Run this **single** bash block. Do NOT run individual checks — one command, one output line.
 
 ```bash
+set -euo pipefail
+
+phase="run"  # default — overridden below if earlier phase detected
+
+# Phase: init
+if [[ ! -d .canon ]]; then
+  phase="init"
+else
+  # Phase: scaffold
+  scaffold_ok=true
+  for f in .canon/config.yaml dega-core.yaml package.json tsconfig.json \
+           src/types/TradeSignal.ts src/types/RiskInterface.ts; do
+    [[ -f "$f" ]] || { scaffold_ok=false; break; }
+  done
+  ls .canon/agents/*.md &>/dev/null || scaffold_ok=false
+  ls .canon/skills/*.md &>/dev/null || scaffold_ok=false
+
+  if [[ "$scaffold_ok" == false ]]; then
+    phase="scaffold"
+  else
+    # Phase: strategy
+    strategy_found=false
+    ls docs/strategy-*.md &>/dev/null && strategy_found=true
+    find . -maxdepth 3 -name '*.strategy.md' -print -quit 2>/dev/null \
+      | grep -q . && strategy_found=true
+    ls .canon/execution/*spec* &>/dev/null && strategy_found=true
+
+    if [[ "$strategy_found" == false ]]; then
+      phase="strategy"
+    elif [[ ! -d src ]]; then
+      phase="develop"
+    else
+      # Run checks silently — any failure means develop phase
+      pnpm exec vitest run --reporter=dot &>/dev/null || phase="develop"
+      if [[ "$phase" == "run" ]]; then
+        pnpm exec tsc --noEmit &>/dev/null || phase="develop"
+      fi
+      if [[ "$phase" == "run" ]]; then
+        pnpm exec oxlint src/ &>/dev/null || phase="develop"
+      fi
+    fi
+  fi
+fi
+
+# Write state (silently)
 TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
 [[ -f "${TUI_WRITE}" ]] && \
   bash "${TUI_WRITE}" .canon/state.json \
-    phase=<detected-phase> status=running log.info="Detected phase: <detected-phase>"
+    phase="$phase" status=running log.info="Detected phase: $phase" &>/dev/null
+
+echo "$phase"
 ```
 
-Tell the user what you found:
+The only output is the phase name (e.g. `run`). Print it as:
 
-> **Phase: <phase>** — <one-sentence description of what was detected>
+Phase: <phase>
 
 Then jump to the step for that phase.
 
@@ -128,11 +160,8 @@ run the canon-init script with `--force` to regenerate them:
 bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh" --force
 ```
 
-Report what was found:
-
-> Scaffold check: <N> of <total> files present. <Missing: list, or "All present.">
-
-If any files were created, report them. Then proceed to step 5.
+Only report if files were missing or created. If all present, say nothing
+and proceed to step 5.
 
 Write state update:
 
@@ -337,63 +366,33 @@ Proceed to step 7.
 
 All checks pass and QA is approved. The strategy is ready for execution.
 
-Before launching the runner, check that the required API key is configured:
+Run this **single** bash block to check the API key, launch the runner, and confirm:
 
 ```bash
-grep -q 'THE_ODDS_API_KEY=.' .env 2>/dev/null
-```
+set -euo pipefail
 
-If the `.env` file is missing or `THE_ODDS_API_KEY` is empty, **stop and tell the user**:
+if ! grep -q 'THE_ODDS_API_KEY=.' .env 2>/dev/null; then
+  echo "NEED_KEY"
+  exit 0
+fi
 
-> The runner needs `THE_ODDS_API_KEY` to fetch sportsbook odds.
->
-> 1. Get a free key at https://the-odds-api.com/ (500 requests/month)
-> 2. Copy `.env.example` to `.env`: `cp .env.example .env`
-> 3. Add your key to `.env`: `THE_ODDS_API_KEY=your_key_here`
-> 4. Then re-run `/canon-start` to launch the runner.
-
-Do not proceed to launch the runner. Stop here and wait for the user.
-
-Once the API key is confirmed present, launch the runner using `canon-runner.sh`. This script handles all dashboard
-state management — metrics reset, live metric updates, and proper cleanup on
-stop/crash via signal traps. Run it in the background so Claude returns control.
-
-```bash
 bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" --dry-run &
 RUNNER_PID=$!
 disown
-```
-
-Wait briefly to confirm it started:
-
-```bash
 sleep 2
+
 if kill -0 "${RUNNER_PID}" 2>/dev/null; then
-  echo "Runner started (PID ${RUNNER_PID})"
+  echo "OK ${RUNNER_PID}"
 else
-  echo "Runner failed to start — check .canon/execution/runner.log"
+  echo "FAIL"
+  tail -5 .canon/execution/runner.log 2>/dev/null
 fi
 ```
 
-If the runner started successfully, print:
-
-> **Strategy running in background (PID <pid>).**
->
-> The dashboard shows live metrics (cycles, signals, errors) and log output.
-> The runner manages its own dashboard state — it updates on every cycle and
-> cleans up properly when stopped.
->
-> - View logs: `tail -f .canon/execution/runner.log`
-> - Stop runner: `kill <pid>`
-> - Decision log: `.canon/execution/<date>.jsonl`
-> - PID file: `.canon/execution/runner.pid`
->
-> You can continue working — ask questions, modify code, or run other
-> commands. The runner continues in the background.
-
-If the runner failed to start, read `.canon/execution/runner.log` and report
-the error. The user needs to fix it (missing API key, type error, etc.)
-before re-running.
+Handle the output:
+- `NEED_KEY` → tell the user: `Add THE_ODDS_API_KEY to .env, then re-run.`
+- `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>`
+- `FAIL` → print the log tail, nothing else.
 
 ---
 
