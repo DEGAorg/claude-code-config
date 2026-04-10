@@ -85,7 +85,7 @@ echo "=== Test 2: inline env prefix propagates GH_SYNC ==="
 # =====================================================================
 # Simulates the inline prefix on the engine command (orch-run.sh line 388)
 
-: > "${OUTPUT_FILE}"
+: >"${OUTPUT_FILE}"
 tmux new-window -d -t "${TEST_SESSION}" -n "inline-check" \
   "GH_SYNC='true' bash -c 'echo \"GH_SYNC=\${GH_SYNC:-unset}\" > \"${OUTPUT_FILE}\"'; sleep 1"
 
@@ -101,7 +101,7 @@ echo "=== Test 3: GH_SYNC defaults to false when not set ==="
 # =====================================================================
 # Simulates engine behavior when GH_SYNC is not in the environment
 
-: > "${OUTPUT_FILE}"
+: >"${OUTPUT_FILE}"
 # Unset GH_SYNC in the session environment
 tmux set-environment -t "${TEST_SESSION}" -u GH_SYNC
 

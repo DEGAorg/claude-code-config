@@ -88,7 +88,7 @@ check no-gh-auth \
   sync: false"
   fi
 
-  cat > dega-core.yaml << YAML
+  cat >dega-core.yaml <<YAML
 # DEGA Core config — edit to match your project
 version: 1
 max_iterations: 20
@@ -158,7 +158,7 @@ check no-sync-true \
 GATE_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}" "${FAKE_BIN}" "${GATE_DIR}"' EXIT
 
-cat > "${GATE_DIR}/dega-core.yaml" << 'YAML'
+cat >"${GATE_DIR}/dega-core.yaml" <<'YAML'
 # DEGA Core config — edit to match your project
 version: 1
 max_iterations: 20
@@ -177,7 +177,7 @@ check gate-detects-missing \
 # --- Test 9: validation gate repair adds the fallback block ---
 
 # Simulate the repair from step 6
-cat >> "${GATE_DIR}/dega-core.yaml" << 'EOF'
+cat >>"${GATE_DIR}/dega-core.yaml" <<'EOF'
 
 github:
   # ADDED BY VALIDATION GATE — github block was missing after initial write

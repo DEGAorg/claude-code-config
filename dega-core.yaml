@@ -1,5 +1,6 @@
 # Dega Core config for claude-code-config repo
 version: 1
+provider: github
 max_iterations: 3
 
 budget:
@@ -18,13 +19,12 @@ github:
   repo: DEGAorg/claude-code-config
   labels: true
   comments: true
-  close_on_ship: false
-  pr_target: ace-work
+  close_on_ship: true
+  pr_target: main
 
 timeline:
   repo: DEGAorg/claude-code-config
-  branch: develop
-  path: data/timeline.json
+  project_number: 8
 
 success_criteria:
   # Repo health — shell scripts pass shellcheck

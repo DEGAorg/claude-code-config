@@ -70,4 +70,4 @@ automating the build-test-review cycle.
 - **tmux session**: `tmux attach -t orch-<slug>`
 - **State file**: `.orchestrator/plans/<slug>/state.json`
 - **Master dashboard**: `.orchestrator/master.json`
-- **Toad TUI**: shows Builder section when orchestrator is running
+- **Canon TUI**: shows Builder section when orchestrator is running

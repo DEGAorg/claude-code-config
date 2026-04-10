@@ -21,82 +21,82 @@ TEST_DIR=""
 # --- Helpers ---
 
 assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
-	if printf '%s' "${haystack}" | grep -qF "${needle}"; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected to contain: ${needle}"
-		echo "    pane output (first 20 lines):"
-		printf '%s\n' "${haystack}" | head -20 | sed 's/^/      /'
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" haystack="$2" needle="$3"
+  if printf '%s' "${haystack}" | grep -qF "${needle}"; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected to contain: ${needle}"
+    echo "    pane output (first 20 lines):"
+    printf '%s\n' "${haystack}" | head -20 | sed 's/^/      /'
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_not_contains() {
-	local label="$1" haystack="$2" needle="$3"
-	if ! printf '%s' "${haystack}" | grep -qF "${needle}"; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected NOT to contain: ${needle}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" haystack="$2" needle="$3"
+  if ! printf '%s' "${haystack}" | grep -qF "${needle}"; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected NOT to contain: ${needle}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 cleanup() {
-	tmux kill-session -t "${TEST_SESSION}" 2>/dev/null || true
-	if [[ -n "${TEST_DIR}" && -d "${TEST_DIR}" ]]; then
-		rm -rf "${TEST_DIR}"
-	fi
+  tmux kill-session -t "${TEST_SESSION}" 2>/dev/null || true
+  if [[ -n "${TEST_DIR}" && -d "${TEST_DIR}" ]]; then
+    rm -rf "${TEST_DIR}"
+  fi
 }
 trap cleanup EXIT
 
 capture_pane() {
-	tmux capture-pane -t "${TEST_SESSION}" -p -S -50
+  tmux capture-pane -t "${TEST_SESSION}" -p -S -50
 }
 
 wait_for_pane_content() {
-	local needle="$1"
-	local max_wait="${2:-10}"
-	local elapsed=0
-	while ((elapsed < max_wait)); do
-		local content
-		content=$(capture_pane 2>/dev/null || true)
-		if printf '%s' "${content}" | grep -qF "${needle}"; then
-			return 0
-		fi
-		sleep 1
-		elapsed=$((elapsed + 1))
-	done
-	return 1
+  local needle="$1"
+  local max_wait="${2:-10}"
+  local elapsed=0
+  while ((elapsed < max_wait)); do
+    local content
+    content=$(capture_pane 2>/dev/null || true)
+    if printf '%s' "${content}" | grep -qF "${needle}"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
 }
 
 # Atomic write: write to temp file then mv to avoid partial reads by chokidar
 atomic_write_state() {
-	local target="$1"
-	local tmp="${target}.tmp.$$"
-	cat >"${tmp}"
-	mv -f "${tmp}" "${target}"
+  local target="$1"
+  local tmp="${target}.tmp.$$"
+  cat >"${tmp}"
+  mv -f "${tmp}" "${target}"
 }
 
 # --- Preflight checks ---
 
 if ! command -v tmux >/dev/null 2>&1; then
-	echo "SKIP: tmux not found"
-	exit 0
+  echo "SKIP: tmux not found"
+  exit 0
 fi
 
 if ! command -v jq >/dev/null 2>&1; then
-	echo "SKIP: jq not found"
-	exit 0
+  echo "SKIP: jq not found"
+  exit 0
 fi
 
 if ! npx tsx --version >/dev/null 2>&1; then
-	echo "SKIP: npx tsx not available"
-	exit 0
+  echo "SKIP: npx tsx not available"
+  exit 0
 fi
 
 # --- Setup fake orchestrator state ---
@@ -158,22 +158,22 @@ echo "=== Test 1: Dashboard launches and shows state ==="
 
 # Launch dashboard in a detached tmux session
 tmux new-session -d -s "${TEST_SESSION}" -x 120 -y 40 \
-	"cd '${TERMINAL_UI_DIR}' && npx tsx src/cli.tsx --orch '${STATE_FILE}' 2>'${TEST_DIR}/dash-stderr.log'"
+  "cd '${TERMINAL_UI_DIR}' && npx tsx src/cli.tsx --orch '${STATE_FILE}' 2>'${TEST_DIR}/dash-stderr.log'"
 
 # Wait for the dashboard to render the header
 if wait_for_pane_content "ORCHESTRATOR" 15; then
-	echo "  PASS: dashboard launched and shows ORCHESTRATOR header"
-	PASS=$((PASS + 1))
+  echo "  PASS: dashboard launched and shows ORCHESTRATOR header"
+  PASS=$((PASS + 1))
 else
-	echo "  FAIL: dashboard did not render ORCHESTRATOR header within 15s"
-	echo "  stderr:"
-	cat "${TEST_DIR}/dash-stderr.log" 2>/dev/null | head -10 | sed 's/^/    /'
-	FAIL=$((FAIL + 1))
-	echo ""
-	echo "================================"
-	echo "  PASS: ${PASS}  FAIL: ${FAIL}"
-	echo "================================"
-	exit 1
+  echo "  FAIL: dashboard did not render ORCHESTRATOR header within 15s"
+  echo "  stderr:"
+  cat "${TEST_DIR}/dash-stderr.log" 2>/dev/null | head -10 | sed 's/^/    /'
+  FAIL=$((FAIL + 1))
+  echo ""
+  echo "================================"
+  echo "  PASS: ${PASS}  FAIL: ${FAIL}"
+  echo "================================"
+  exit 1
 fi
 
 PANE=$(capture_pane)
@@ -199,16 +199,16 @@ echo "=== Test 3: New log lines appear in dashboard ==="
 
 # Write new lines to the worker log
 for i in $(seq 1 5); do
-	printf 'MARKER_LINE_%d: test output line %d\n' "${i}" "${i}" >>"${LOGS_DIR}/worker-1.log"
+  printf 'MARKER_LINE_%d: test output line %d\n' "${i}" "${i}" >>"${LOGS_DIR}/worker-1.log"
 done
 
 # Wait for chokidar to pick up the change and dashboard to re-render
 if wait_for_pane_content "MARKER_LINE_5" 10; then
-	echo "  PASS: new log lines appear in dashboard"
-	PASS=$((PASS + 1))
+  echo "  PASS: new log lines appear in dashboard"
+  PASS=$((PASS + 1))
 else
-	echo "  FAIL: MARKER_LINE_5 did not appear within 10s"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: MARKER_LINE_5 did not appear within 10s"
+  FAIL=$((FAIL + 1))
 fi
 
 PANE3=$(capture_pane)
@@ -317,14 +317,14 @@ atomic_write_state "${STATE_FILE}" <<EOF
 EOF
 
 if wait_for_pane_content "SHIP" 15; then
-	echo "  PASS: review result SHIP appears in dashboard"
-	PASS=$((PASS + 1))
+  echo "  PASS: review result SHIP appears in dashboard"
+  PASS=$((PASS + 1))
 else
-	PANE5=$(capture_pane)
-	echo "  FAIL: review result SHIP did not appear within 15s"
-	echo "    pane output:"
-	printf '%s\n' "${PANE5}" | head -15 | sed 's/^/      /'
-	FAIL=$((FAIL + 1))
+  PANE5=$(capture_pane)
+  echo "  FAIL: review result SHIP did not appear within 15s"
+  echo "    pane output:"
+  printf '%s\n' "${PANE5}" | head -15 | sed 's/^/      /'
+  FAIL=$((FAIL + 1))
 fi
 
 # --- Summary ---
@@ -335,5 +335,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

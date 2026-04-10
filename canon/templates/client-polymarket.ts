@@ -118,7 +118,9 @@ export async function searchMarkets(
     const noPrice = m.outcomes[1]?.price;
     if (yesPrice === undefined || noPrice === undefined) continue;
 
-    const resDate = m.resolutionDate?.toISOString();
+    const resDate = typeof m.resolutionDate === "string"
+      ? m.resolutionDate
+      : m.resolutionDate?.toISOString();
     results.push({
       conditionId: m.id,
       question: m.title,

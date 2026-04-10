@@ -21,7 +21,7 @@ echo "${FIRST_WORD}" | grep -qiE "^${READ_PATTERN}$" && exit 0
 
 # Match write verb
 ACTION=$(echo "${GAM_ARGS}" | grep -oiE "(^|[[:space:]])${WRITE_PATTERN}([[:space:]]|$)" |
-	head -1 | tr -d ' ' || true)
+  head -1 | tr -d ' ' || true)
 [[ -z "${ACTION}" ]] && exit 0
 
 # Log the mutation
@@ -31,15 +31,15 @@ LOG_FILE="${CLAUDE_PROJECT_DIR}/google/.changelog-raw.jsonl"
 mkdir -p "$(dirname "${LOG_FILE}")"
 
 jq -nc \
-	--arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-	--arg action "${ACTION}" \
-	--arg command "${COMMAND}" \
-	--arg status "${STATUS}" \
-	'{timestamp: $ts, action: $action, command: $command, status: $status}' \
-	>>"${LOG_FILE}"
+  --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  --arg action "${ACTION}" \
+  --arg command "${COMMAND}" \
+  --arg status "${STATUS}" \
+  '{timestamp: $ts, action: $action, command: $command, status: $status}' \
+  >>"${LOG_FILE}"
 
 # Remind the operator
 if [[ "${STATUS}" == "success" ]]; then
-	echo "GAM MUTATION: ${ACTION} — logged to ${LOG_FILE}"
+  echo "GAM MUTATION: ${ACTION} — logged to ${LOG_FILE}"
 fi
 exit 0

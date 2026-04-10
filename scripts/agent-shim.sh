@@ -34,9 +34,18 @@ _dega_detect_provider() {
   local ppid_name
   ppid_name="$(ps -o comm= -p "${PPID}" 2>/dev/null || true)"
   case "${ppid_name##*/}" in
-    claude*) echo "claude"; return ;;
-    gemini*) echo "gemini"; return ;;
-    codex*)  echo "codex";  return ;;
+  claude*)
+    echo "claude"
+    return
+    ;;
+  gemini*)
+    echo "gemini"
+    return
+    ;;
+  codex*)
+    echo "codex"
+    return
+    ;;
   esac
 
   # 3. Session env vars
@@ -71,10 +80,10 @@ dega_agent_command() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "claude" ;;
-    gemini) echo "gemini" ;;
-    codex)  echo "codex" ;;
-    *)      echo "${provider}" ;;
+  claude) echo "claude" ;;
+  gemini) echo "gemini" ;;
+  codex) echo "codex" ;;
+  *) echo "${provider}" ;;
   esac
 }
 
@@ -83,10 +92,10 @@ dega_agent_config_dir() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "${HOME}/.claude" ;;
-    gemini) echo "${HOME}/.gemini" ;;
-    codex)  echo "${HOME}/.codex" ;;
-    *)      echo "${HOME}/.${provider}" ;;
+  claude) echo "${HOME}/.claude" ;;
+  gemini) echo "${HOME}/.gemini" ;;
+  codex) echo "${HOME}/.codex" ;;
+  *) echo "${HOME}/.${provider}" ;;
   esac
 }
 
@@ -95,10 +104,10 @@ dega_agent_headless_flags() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "--dangerously-skip-permissions" ;;
-    gemini) echo "--yolo" ;;
-    codex)  echo "--yolo" ;;
-    *)      echo "--headless" ;;
+  claude) echo "--dangerously-skip-permissions" ;;
+  gemini) echo "--yolo" ;;
+  codex) echo "--yolo" ;;
+  *) echo "--headless" ;;
   esac
 }
 
@@ -108,10 +117,10 @@ dega_agent_session_var() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "CLAUDECODE" ;;
-    gemini) echo "GEMINI_CLI" ;;
-    codex)  echo "" ;;
-    *)      echo "" ;;
+  claude) echo "CLAUDECODE" ;;
+  gemini) echo "GEMINI_CLI" ;;
+  codex) echo "" ;;
+  *) echo "" ;;
   esac
 }
 
@@ -121,10 +130,10 @@ dega_agent_prompt_flag() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "-p" ;;
-    gemini) echo "-p" ;;
-    codex)  echo "exec" ;;
-    *)      echo "-p" ;;
+  claude) echo "-p" ;;
+  gemini) echo "-p" ;;
+  codex) echo "exec" ;;
+  *) echo "-p" ;;
   esac
 }
 
@@ -133,10 +142,10 @@ dega_agent_json_flag() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-    claude) echo "--output-format json" ;;
-    gemini) echo "--output-format json" ;;
-    codex)  echo "--json" ;;
-    *)      echo "--output-format json" ;;
+  claude) echo "--output-format json" ;;
+  gemini) echo "--output-format json" ;;
+  codex) echo "--json" ;;
+  *) echo "--output-format json" ;;
   esac
 }
 

@@ -266,3 +266,63 @@ fixes the immediate crash but the function is still fragile — it doesn't
 handle nested YAML, quoted values, or comments. A proper fix would use
 `yq` or a dedicated YAML parser, but the hotfix is sufficient for the
 current flat config format.
+
+---
+
+## Stale MEMORY.md — active plans, decisions, and preferences from March 20
+
+**Severity:** P3
+**Area:** memory/
+**Logged:** 2026-03-28
+**Context:** Memory audit
+
+`MEMORY.md` (32 lines, last updated 2026-03-20) tracks active plans in flight
+(github-issues, project-state-tui), architectural decisions (Toad fork, GitHub
+Issues as source of truth), naming conventions (Conductor vs Agent View), repo
+layout, and user preferences (autonomous, AIDD estimates). Likely stale — verify
+and update or prune.
+
+---
+
+## Orchestrator workers cannot run browser-dependent tools (Remotion render, Playwright, etc.)
+
+**Severity:** P2
+**Area:** scripts/orch-engine.sh, worker prompt
+**Logged:** 2026-03-30
+**Context:** Plan #73 (demo-video) — orchestrator completed 6/7 items but worker-7 stalled on `remotion render`
+
+The orchestrator spawns workers as headless Claude agents via
+`claude --dangerously-skip-permissions -p "..."`. These run in tmux panes
+with no display server. Remotion's `render` command needs a Chromium
+instance to rasterize React components into frames. The worker launched
+but never started rendering — no process spawned, no error surfaced, the
+worker just hung at 0% CPU until the session was killed.
+
+This affects any plan item that requires a browser runtime: Remotion
+render, Playwright tests, Puppeteer screenshots, Storybook builds.
+
+**Workaround applied:** Killed the orch session, ran `remotion render`
+interactively from the worktree (took ~15s per composition). All 8 MP4
+clips exported successfully.
+
+**Possible fixes:**
+1. Detect browser-dependent items in the plan and flag them as
+   `manual: true` — orchestrator skips them and leaves a TODO
+2. Run workers with `DISPLAY=:99` using Xvfb (Linux) or headless
+   Chromium flags
+3. Add a `check_command` pre-flight that verifies the tool can run
+   in the current environment before starting the worker
+
+---
+
+## Stale ralph-loop-issues.md — orchestrator post-mortem from March 7
+
+**Severity:** P3
+**Area:** memory/
+**Logged:** 2026-03-28
+**Context:** Memory audit
+
+`ralph-loop-issues.md` (52 lines, 2026-03-07) documents 4 root causes from a
+failed orchestrator run: reviewer can't see untracked files, phantom checkboxes
+in plan-advance.sh, token exhaustion, per-item JSON files. Most of these were
+addressed by subsequent orchestrator rewrites. Verify fixes landed and delete.

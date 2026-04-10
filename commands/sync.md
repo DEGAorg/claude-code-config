@@ -1,46 +1,60 @@
 # Sync Plan State
 
-@description Reconcile local orchestrator state with GitHub Issues — fetch open plans, flag drift, clean up stale state.
+@description Reconcile local orchestrator state with provider issues — fetch open plans, flag drift, clean up stale state.
 
-Fetch all open plan issues from GitHub and reconcile them with local
-orchestrator state. Run this at session start or when resuming work
-after a break.
+Fetch all open plan issues from the configured provider and reconcile
+them with local orchestrator state. Run this at session start or when
+resuming work after a break.
 
 Execute every step below sequentially. Do not stop or ask for
 confirmation unless a finding requires a judgment call.
 
-## 1. Check prerequisites
+## Provider setup
 
-Verify `gh` is installed and authenticated:
+Source the provider shim before any API calls:
 
 ```bash
-bash scripts/ensure-gh.sh
-gh auth status
+source scripts/providers/provider.sh
 ```
 
-If auth fails, tell the user to run `gh auth login` and stop.
+This loads the active provider configured in `dega-core.yaml` (`provider:` field).
+All issue and label operations use `provider_*` functions — never call provider
+CLIs (e.g., `gh`) directly.
 
-Read `dega-core.yaml` to check for `github.sync`. If `github.sync`
-is not `true`, inform the user that GitHub sync is not enabled for
-this project and stop. The local plan workflow still applies.
+## 1. Check prerequisites
+
+Verify the provider CLI is installed and authenticated:
+
+```bash
+provider_ensure_cli
+provider_auth_check
+```
+
+If auth fails, the provider prints instructions to stderr. Stop.
+
+Read `dega-core.yaml` to check for sync enablement. Use
+`provider_config_bool sync` to check if sync is enabled for this
+project. If not, inform the user that sync is not enabled and stop.
+The local plan workflow still applies.
 
 ## 2. Resolve repo
 
-Determine the target repo in this order:
+Use the provider's repo resolution (config fallback chain):
 
-1. `github.repo` in `dega-core.yaml`
-2. Auto-detect from `gh repo view --json nameWithOwner`
+```bash
+REPO=$(provider_repo_resolve)
+```
 
-If neither resolves, stop with an error.
+If resolution fails, stop with an error.
 
 ## 3. Fetch open plan issues
 
 List all open issues with any `plan:*` label:
 
 ```bash
-gh issue list --repo <REPO> --label "plan:draft" --json number,title,labels,updatedAt
-gh issue list --repo <REPO> --label "plan:active" --json number,title,labels,updatedAt
-gh issue list --repo <REPO> --label "plan:review" --json number,title,labels,updatedAt
+provider_issue_list --repo "${REPO}" --label "plan:draft"
+provider_issue_list --repo "${REPO}" --label "plan:active"
+provider_issue_list --repo "${REPO}" --label "plan:review"
 ```
 
 Combine results (deduplicate by issue number). Present a summary table:
@@ -64,13 +78,13 @@ what status it records (running, completed, failed).
 
 ## 5. Flag drift
 
-Compare GitHub state with local state and report discrepancies:
+Compare provider state with local state and report discrepancies:
 
 ### 5a. Orphaned local state
 
 Local plan directories in `.orchestrator/plans/` with no matching
-open GitHub Issue. These are leftover from completed or abandoned
-runs. Recommend cleanup:
+open issue in the provider. These are leftover from completed or
+abandoned runs. Recommend cleanup:
 
 ```
 Orphaned local state: .orchestrator/plans/<slug>/
@@ -81,8 +95,8 @@ Orphaned local state: .orchestrator/plans/<slug>/
 
 Issues labeled `plan:active` or `plan:review` but with no local
 orchestrator state (no `.orchestrator/plans/<slug>/` directory).
-The orchestrator finished or was interrupted without updating GitHub.
-Recommend label correction:
+The orchestrator finished or was interrupted without updating the
+provider. Recommend label correction:
 
 ```
 Stale label: Issue #42 "Add auth endpoint" is labeled plan:active but has no local state.
@@ -92,7 +106,7 @@ Stale label: Issue #42 "Add auth endpoint" is labeled plan:active but has no loc
 
 ### 5c. Closed issues with local state
 
-Issues that are closed on GitHub but still have local state
+Issues that are closed in the provider but still have local state
 directories. Recommend cleanup:
 
 ```
@@ -114,7 +128,11 @@ Clean up orphaned directories? (This removes .orchestrator/plans/<slug>/ for com
 Do not clean up automatically — ask first, since local state may
 contain useful done-files or logs the user wants to review.
 
-For stale labels, offer to update them via `gh issue edit`.
+For stale labels, offer to update them via `provider_issue_edit`:
+
+```bash
+provider_issue_edit --issue "${ISSUE_NUM}" --remove-label "plan:active" --add-label "plan:completed"
+```
 
 ## 7. Summary
 

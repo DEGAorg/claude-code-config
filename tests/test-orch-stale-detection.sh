@@ -21,23 +21,23 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Preflight: tmux must be available ---
 
 if ! command -v tmux &>/dev/null; then
-	echo "SKIP: tmux not installed"
-	exit 0
+  echo "SKIP: tmux not installed"
+  exit 0
 fi
 
 # --- Setup ---
@@ -48,8 +48,8 @@ ORCH_DIR="${REPO_ROOT}/.orchestrator"
 ORCH_STATE_FILE="${ORCH_DIR}/state.json"
 
 cleanup() {
-	tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
-	rm -rf "${ORCH_DIR}"
+  tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+  rm -rf "${ORCH_DIR}"
 }
 trap cleanup EXIT
 
@@ -65,14 +65,14 @@ source "${REPO_ROOT}/scripts/orch-state.sh"
 # --- Helper: write state with N items, all "running" ---
 
 write_running_state() {
-	local item_count="$1"
-	local max_iter="${2:-3}"
-	local items="[]"
-	for ((i = 1; i <= item_count; i++)); do
-		items=$(printf '%s' "${items}" | jq \
-			--argjson id "${i}" \
-			--argjson maxIter "${max_iter}" \
-			'. + [{
+  local item_count="$1"
+  local max_iter="${2:-3}"
+  local items="[]"
+  for ((i = 1; i <= item_count; i++)); do
+    items=$(printf '%s' "${items}" | jq \
+      --argjson id "${i}" \
+      --argjson maxIter "${max_iter}" \
+      '. + [{
 				id: $id,
 				description: ("item-" + ($id | tostring)),
 				deps: [],
@@ -84,20 +84,20 @@ write_running_state() {
 				maxIterations: $maxIter,
 				lastResult: null
 			}]')
-	done
+  done
 
-	local now
-	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-	local state
-	state=$(jq -n \
-		--argjson version 1 \
-		--arg plan "${TEST_SLUG}" \
-		--argjson maxWorkers 4 \
-		--arg mode "foreground" \
-		--argjson items "${items}" \
-		--arg startedAt "${now}" \
-		--arg updatedAt "${now}" \
-		'{
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local state
+  state=$(jq -n \
+    --argjson version 1 \
+    --arg plan "${TEST_SLUG}" \
+    --argjson maxWorkers 4 \
+    --arg mode "foreground" \
+    --argjson items "${items}" \
+    --arg startedAt "${now}" \
+    --arg updatedAt "${now}" \
+    '{
 			version: $version,
 			plan: $plan,
 			maxParallelWorkers: $maxWorkers,
@@ -107,7 +107,7 @@ write_running_state() {
 			startedAt: $startedAt,
 			updatedAt: $updatedAt
 		}')
-	orch_write_state "${state}"
+  orch_write_state "${state}"
 }
 
 # --- Create tmux session ---
@@ -202,5 +202,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

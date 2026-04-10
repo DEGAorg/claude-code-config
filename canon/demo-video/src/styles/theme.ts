@@ -1,21 +1,29 @@
-/** Terminal-aesthetic theme constants for Canon demo video */
+/** Canon unified theme — cyberpunk terminal aesthetic */
 
 export const colors = {
-  bg: "#0d1117",
-  bgLight: "#161b22",
-  border: "#30363d",
-  text: "#c9d1d9",
-  textMuted: "#8b949e",
-  green: "#3fb950",
-  cyan: "#58a6ff",
-  orange: "#d29922",
-  purple: "#bc8cff",
-  red: "#f85149",
-  cursor: "#58a6ff",
+  bg: "#000000",
+  bgSubtle: "#0a0a0a",
+  surface: "#111111",
+  panel: "#151515",
+  border: "#2a2a2a",
+  text: "#ffffff",
+  textMuted: "#a0a0a0",
+  teal: "#00fffc",
+  purple: "#7f00ff",
+  gold: "#cfaa01",
+  pink: "#ff007f",
+  tealGlow: "rgba(0, 255, 252, 0.15)",
+  purpleGlow: "rgba(127, 0, 255, 0.12)",
+  pinkGlow: "rgba(255, 0, 127, 0.10)",
+  scanLine: "rgba(0, 255, 252, 0.03)",
+  cursor: "#00fffc",
 } as const;
 
 export const fonts = {
-  mono: "JetBrains Mono, SF Mono, Menlo, monospace",
+  heading: "Orbitron, sans-serif",
+  subheading: "Rajdhani, sans-serif",
+  body: "Space Grotesk, sans-serif",
+  mono: "JetBrains Mono, SF Mono, Menlo, Consolas, monospace",
 } as const;
 
 export const sizing = {
@@ -24,11 +32,11 @@ export const sizing = {
   fps: 30,
 } as const;
 
-/** Timing in frames (at 30fps) */
+/** Timing in frames (at 30fps). Snappy for 2-3min hackathon demo. */
 export const timing = {
-  introFrames: 120,
+  introFrames: 195,
   phaseCardFrames: 90,
-  outroFrames: 90,
-  fadeFrames: 15,
-  typeDelayFrames: 2,
+  outroFrames: 165,
+  fadeFrames: 10,
+  typeDelayFrames: 1,
 } as const;

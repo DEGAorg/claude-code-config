@@ -12,8 +12,8 @@ set -euo pipefail
 
 # Guard: jq is required to parse tool input — degrade gracefully if missing
 if ! command -v jq >/dev/null 2>&1; then
-	echo "warn: orch-done-sync.sh: jq not found — skipping hook" >&2
-	exit 0
+  echo "warn: orch-done-sync.sh: jq not found — skipping hook" >&2
+  exit 0
 fi
 
 INPUT=$(cat)
@@ -26,16 +26,16 @@ FILE_PATH=$(printf '%s' "${INPUT}" | jq -r '.tool_input.file_path // empty')
 
 # Only trigger for done-file writes: .orchestrator/done/<slug>/item-<ID>.txt
 if ! printf '%s\n' "${FILE_PATH}" | grep -qE '\.orchestrator/done/[^/]+/item-[0-9]+\.txt$'; then
-	exit 0
+  exit 0
 fi
 
 # Extract slug and item ID from path
 SLUG=$(printf '%s\n' "${FILE_PATH}" |
-	grep -oE '\.orchestrator/done/[^/]+/' |
-	sed 's|\.orchestrator/done/||; s|/$||')
+  grep -oE '\.orchestrator/done/[^/]+/' |
+  sed 's|\.orchestrator/done/||; s|/$||')
 ITEM_ID=$(printf '%s\n' "${FILE_PATH}" |
-	grep -oE 'item-[0-9]+\.txt' |
-	sed 's/item-//; s/\.txt//')
+  grep -oE 'item-[0-9]+\.txt' |
+  sed 's/item-//; s/\.txt//')
 
 [[ -z "${SLUG}" || -z "${ITEM_ID}" ]] && exit 0
 
@@ -45,18 +45,18 @@ SCRIPTS_DIR="${HOOK_DIR}/../scripts"
 STATE_LIB="${SCRIPTS_DIR}/orch-state.sh"
 
 if [[ ! -f "${STATE_LIB}" ]]; then
-	echo "orch-done-sync: warning: ${STATE_LIB} not found, skipping state sync" >&2
-	exit 0
+  echo "orch-done-sync: warning: ${STATE_LIB} not found, skipping state sync" >&2
+  exit 0
 fi
 
 # Locate state.json — walk up from the written file path to find .orchestrator/
 ORCH_DIR=$(printf '%s\n' "${FILE_PATH}" |
-	grep -oE '.*/\.orchestrator' |
-	head -1)
+  grep -oE '.*/\.orchestrator' |
+  head -1)
 
 if [[ -z "${ORCH_DIR}" || ! -f "${ORCH_DIR}/state.json" ]]; then
-	echo "orch-done-sync: warning: state.json not found, skipping" >&2
-	exit 0
+  echo "orch-done-sync: warning: state.json not found, skipping" >&2
+  exit 0
 fi
 
 export ORCH_STATE_DIR="${ORCH_DIR}"

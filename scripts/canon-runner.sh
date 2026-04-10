@@ -27,36 +27,36 @@ TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Guard: must be in a Canon project ────────────────────────────────────────
 if [[ ! -f "src/runner.ts" ]]; then
-	echo "error: src/runner.ts not found — run from Canon project root" >&2
-	exit 1
+  echo "error: src/runner.ts not found — run from Canon project root" >&2
+  exit 1
 fi
 
 mkdir -p .canon/execution
 
 # ── Guard: check for already-running instance ────────────────────────────────
 if [[ -f "${PID_FILE}" ]]; then
-	OLD_PID=$(cat "${PID_FILE}")
-	if kill -0 "${OLD_PID}" 2>/dev/null; then
-		echo "error: runner already running (PID ${OLD_PID})" >&2
-		echo "  stop it first: kill ${OLD_PID}" >&2
-		exit 1
-	fi
-	rm -f "${PID_FILE}"
+  OLD_PID=$(cat "${PID_FILE}")
+  if kill -0 "${OLD_PID}" 2>/dev/null; then
+    echo "error: runner already running (PID ${OLD_PID})" >&2
+    echo "  stop it first: kill ${OLD_PID}" >&2
+    exit 1
+  fi
+  rm -f "${PID_FILE}"
 fi
 
 # ── Dashboard helper ─────────────────────────────────────────────────────────
 tui() {
-	if [[ -f "${TUI_WRITE}" ]]; then
-		bash "${TUI_WRITE}" "${STATE}" "$@" || true
-	fi
+  if [[ -f "${TUI_WRITE}" ]]; then
+    bash "${TUI_WRITE}" "${STATE}" "$@" || true
+  fi
 }
 
 # ── Flags ────────────────────────────────────────────────────────────────────
 DRY_RUN_FLAG=""
 MODE="live"
 if [[ "${1:-}" == "--dry-run" ]]; then
-	DRY_RUN_FLAG="--dry-run"
-	MODE="dry-run"
+  DRY_RUN_FLAG="--dry-run"
+  MODE="dry-run"
 fi
 
 # ── Counters ─────────────────────────────────────────────────────────────────
@@ -70,18 +70,18 @@ _MARKETS=0
 # Node.js does not auto-load .env files. Export vars so the runner child
 # process inherits them.
 if [[ -f ".env" ]]; then
-	set -a
-	# shellcheck disable=SC1091
-	source .env
-	set +a
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
 fi
 
 # ── Reset dashboard for execution phase ──────────────────────────────────────
 tui phase=run status=executing metrics=reset \
-	"metric.mode=${MODE}" \
-	metric.cycles=0 metric.signals=0 metric.errors=0 \
-	metric.games=0 metric.markets=0 \
-	log.info="Launching strategy runner (${MODE})..."
+  "metric.mode=${MODE}" \
+  metric.cycles=0 metric.signals=0 metric.errors=0 \
+  metric.games=0 metric.markets=0 \
+  log.info="Launching strategy runner (${MODE})..."
 
 # ── Cleanup trap — always fires on exit/signal ───────────────────────────────
 RUNNER_PID=""
@@ -89,33 +89,33 @@ TAIL_PID=""
 WATCHER_PID=""
 
 cleanup() {
-	local exit_code=$?
+  local exit_code=$?
 
-	# Kill monitoring processes
-	if [[ -n "${TAIL_PID}" ]] && kill -0 "${TAIL_PID}" 2>/dev/null; then
-		kill "${TAIL_PID}" 2>/dev/null || true
-	fi
-	if [[ -n "${WATCHER_PID}" ]] && kill -0 "${WATCHER_PID}" 2>/dev/null; then
-		kill "${WATCHER_PID}" 2>/dev/null || true
-	fi
-	rm -f "${TAIL_FIFO}"
+  # Kill monitoring processes
+  if [[ -n "${TAIL_PID}" ]] && kill -0 "${TAIL_PID}" 2>/dev/null; then
+    kill "${TAIL_PID}" 2>/dev/null || true
+  fi
+  if [[ -n "${WATCHER_PID}" ]] && kill -0 "${WATCHER_PID}" 2>/dev/null; then
+    kill "${WATCHER_PID}" 2>/dev/null || true
+  fi
+  rm -f "${TAIL_FIFO}"
 
-	# Kill runner if still alive
-	if [[ -n "${RUNNER_PID}" ]] && kill -0 "${RUNNER_PID}" 2>/dev/null; then
-		kill "${RUNNER_PID}" 2>/dev/null || true
-		wait "${RUNNER_PID}" 2>/dev/null || true
-	fi
+  # Kill runner if still alive
+  if [[ -n "${RUNNER_PID}" ]] && kill -0 "${RUNNER_PID}" 2>/dev/null; then
+    kill "${RUNNER_PID}" 2>/dev/null || true
+    wait "${RUNNER_PID}" 2>/dev/null || true
+  fi
 
-	rm -f "${PID_FILE}"
+  rm -f "${PID_FILE}"
 
-	# Signal exits (INT=130, TERM=143) are clean stops, not crashes
-	if [[ ${exit_code} -eq 0 || ${exit_code} -eq 130 || ${exit_code} -eq 143 ]]; then
-		tui status=idle \
-			log.warn="Runner stopped — ${_CYCLES} cycles, ${_SIGNALS} signals, ${_ERRORS} errors"
-	else
-		tui status=error \
-			log.error="Runner crashed (exit ${exit_code}) — ${_CYCLES} cycles, ${_SIGNALS} signals, ${_ERRORS} errors"
-	fi
+  # Signal exits (INT=130, TERM=143) are clean stops, not crashes
+  if [[ ${exit_code} -eq 0 || ${exit_code} -eq 130 || ${exit_code} -eq 143 ]]; then
+    tui status=idle \
+      log.warn="Runner stopped — ${_CYCLES} cycles, ${_SIGNALS} signals, ${_ERRORS} errors"
+  else
+    tui status=error \
+      log.error="Runner crashed (exit ${exit_code}) — ${_CYCLES} cycles, ${_SIGNALS} signals, ${_ERRORS} errors"
+  fi
 }
 trap cleanup EXIT
 
@@ -132,10 +132,10 @@ echo "${RUNNER_PID}" >"${PID_FILE}"
 # Verify it started
 sleep 1
 if ! kill -0 "${RUNNER_PID}" 2>/dev/null; then
-	echo "error: runner failed to start — check ${RUNNER_LOG}" >&2
-	tui status=error log.error="Runner failed to start"
-	rm -f "${PID_FILE}"
-	exit 1
+  echo "error: runner failed to start — check ${RUNNER_LOG}" >&2
+  tui status=error log.error="Runner failed to start"
+  rm -f "${PID_FILE}"
+  exit 1
 fi
 
 echo "canon-runner: started (PID ${RUNNER_PID}, ${MODE})"
@@ -159,48 +159,48 @@ TAIL_PID=$!
 
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
 (
-	while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
-	kill "${TAIL_PID}" 2>/dev/null || true
+  while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
+  kill "${TAIL_PID}" 2>/dev/null || true
 ) &
 WATCHER_PID=$!
 
 while IFS= read -r line; do
-	# Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
-	tag="${line%% *}"
-	msg="${line#* }"
-	level="info"
+  # Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
+  tag="${line%% *}"
+  msg="${line#* }"
+  level="info"
 
-	case "${tag}" in
-	SCAN) ;; # cycle started, just log it
-	NO_EDGE)
-		_CYCLES=$((_CYCLES + 1))
-		# Extract games/markets counts from message if present
-		# Format: "Cycle N — X games, Y markets, Z matched, no edges"
-		if [[ "${msg}" =~ ([0-9]+)\ games ]]; then
-			_GAMES="${BASH_REMATCH[1]}"
-		fi
-		if [[ "${msg}" =~ ([0-9]+)\ markets ]]; then
-			_MARKETS="${BASH_REMATCH[1]}"
-		fi
-		;;
-	SIGNAL)
-		_SIGNALS=$((_SIGNALS + 1))
-		level="warn"
-		;;
-	SCAN_ERROR)
-		_CYCLES=$((_CYCLES + 1))
-		_ERRORS=$((_ERRORS + 1))
-		level="error"
-		;;
-	STOP) level="warn" ;;
-	esac
+  case "${tag}" in
+  SCAN) ;; # cycle started, just log it
+  NO_EDGE)
+    _CYCLES=$((_CYCLES + 1))
+    # Extract games/markets counts from message if present
+    # Format: "Cycle N — X games, Y markets, Z matched, no edges"
+    if [[ "${msg}" =~ ([0-9]+)\ games ]]; then
+      _GAMES="${BASH_REMATCH[1]}"
+    fi
+    if [[ "${msg}" =~ ([0-9]+)\ markets ]]; then
+      _MARKETS="${BASH_REMATCH[1]}"
+    fi
+    ;;
+  SIGNAL)
+    _SIGNALS=$((_SIGNALS + 1))
+    level="warn"
+    ;;
+  SCAN_ERROR)
+    _CYCLES=$((_CYCLES + 1))
+    _ERRORS=$((_ERRORS + 1))
+    level="error"
+    ;;
+  STOP) level="warn" ;;
+  esac
 
-	tui "log.${level}=${msg}" \
-		"metric.cycles=${_CYCLES}" \
-		"metric.signals=${_SIGNALS}" \
-		"metric.errors=${_ERRORS}" \
-		"metric.games=${_GAMES}" \
-		"metric.markets=${_MARKETS}"
+  tui "log.${level}=${msg}" \
+    "metric.cycles=${_CYCLES}" \
+    "metric.signals=${_SIGNALS}" \
+    "metric.errors=${_ERRORS}" \
+    "metric.games=${_GAMES}" \
+    "metric.markets=${_MARKETS}"
 done <"${TAIL_FIFO}"
 
 # Clean up monitoring processes
