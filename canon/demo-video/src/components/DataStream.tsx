@@ -57,7 +57,7 @@ export const DataStream: React.FC<DataStreamProps> = ({
               top: c.y,
               fontFamily: fonts.mono,
               fontSize: 11,
-              color: colors.green,
+              color: colors.teal,
               opacity: c.opacity,
             }}
           >

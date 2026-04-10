@@ -5,21 +5,19 @@ set -euo pipefail
 # Usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]
 #
 # Writes to: .orchestrator/plans/<slug>/plan.md
-# Requires: gh CLI (auto-installed via ensure-gh.sh), authenticated session
+# Requires: provider CLI (auto-installed via provider_ensure_cli), authenticated session
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=scripts/ensure-gh.sh
-source "${SCRIPT_DIR}/ensure-gh.sh"
-# shellcheck source=scripts/read-github-config.sh
-source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=scripts/providers/provider.sh
+source "${SCRIPT_DIR}/providers/provider.sh"
 
 usage() {
-	echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2
-	echo "" >&2
-	echo "Fetches a GitHub Issue body and writes it to:" >&2
-	echo "  .orchestrator/plans/<slug>/plan.md" >&2
-	exit 1
+  echo "usage: gh-plan-fetch.sh <issue-number> <slug> [--repo OWNER/REPO]" >&2
+  echo "" >&2
+  echo "Fetches a GitHub Issue body and writes it to:" >&2
+  echo "  .orchestrator/plans/<slug>/plan.md" >&2
+  exit 1
 }
 
 # --- Parse arguments ---
@@ -29,70 +27,71 @@ slug=""
 repo=""
 
 while [[ $# -gt 0 ]]; do
-	case "$1" in
-	--repo)
-		[[ $# -lt 2 ]] && {
-			echo "error: --repo requires a value" >&2
-			exit 1
-		}
-		repo="$2"
-		shift 2
-		;;
-	--help | -h)
-		usage
-		;;
-	*)
-		if [[ -z "${issue_number}" ]]; then
-			issue_number="$1"
-		elif [[ -z "${slug}" ]]; then
-			slug="$1"
-		else
-			echo "error: unexpected argument: $1" >&2
-			usage
-		fi
-		shift
-		;;
-	esac
+  case "$1" in
+  --repo)
+    [[ $# -lt 2 ]] && {
+      echo "error: --repo requires a value" >&2
+      exit 1
+    }
+    repo="$2"
+    shift 2
+    ;;
+  --help | -h)
+    usage
+    ;;
+  *)
+    if [[ -z "${issue_number}" ]]; then
+      issue_number="$1"
+    elif [[ -z "${slug}" ]]; then
+      slug="$1"
+    else
+      echo "error: unexpected argument: $1" >&2
+      usage
+    fi
+    shift
+    ;;
+  esac
 done
 
 if [[ -z "${issue_number}" || -z "${slug}" ]]; then
-	echo "error: issue number and slug are required." >&2
-	usage
+  echo "error: issue number and slug are required." >&2
+  usage
 fi
 
 if ! [[ "${issue_number}" =~ ^[0-9]+$ ]]; then
-	echo "error: issue number must be a positive integer, got: ${issue_number}" >&2
-	exit 1
+  echo "error: issue number must be a positive integer, got: ${issue_number}" >&2
+  exit 1
 fi
 
-# --- Ensure gh is available ---
+# --- Ensure provider CLI is available ---
 
-ensure_gh
+provider_ensure_cli || exit 1
 
 # --- Check authentication ---
 
-if ! gh auth status &>/dev/null; then
-	echo "error: gh is not authenticated. Run: gh auth login" >&2
-	echo "Then re-run this command." >&2
-	exit 2
-fi
+provider_auth_check || exit $?
 
 # --- Resolve repo ---
 
-repo="$(gh_resolve_repo "${repo}")"
+if [[ -n "${repo}" ]]; then
+  repo="$(provider_repo_resolve --repo "${repo}")"
+else
+  repo="$(provider_repo_resolve)"
+fi
 
 echo "Fetching issue #${issue_number} from ${repo}..." >&2
 
 # --- Fetch issue body ---
 
-body="$(gh issue view "${issue_number}" --repo "${repo}" --json body --jq '.body')" || {
-	echo "error: failed to fetch issue #${issue_number} from ${repo}" >&2
-	exit 1
+body="$(provider_issue_view --issue "${issue_number}" --repo "${repo}" \
+  --fields body | jq -r '.body')" || {
+  echo "error: failed to fetch issue #${issue_number} from ${repo}" >&2
+  exit 1
 }
 
 if [[ -z "${body}" ]]; then
-	echo "error: issue #${issue_number} has an empty body." >&2
-	exit 1
+  echo "error: issue #${issue_number} has an empty body." >&2
+  exit 1
 fi
 
 # --- Write to local plan file ---

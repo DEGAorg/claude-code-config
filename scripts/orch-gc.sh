@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
 
-STALE_THRESHOLD=600  # 10 minutes in seconds
+STALE_THRESHOLD=600 # 10 minutes in seconds
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
@@ -75,8 +75,8 @@ while IFS= read -r session; do
   if [[ -f "${heartbeat_file}" ]]; then
     heartbeat_epoch=$(cat "${heartbeat_file}")
     if [[ "${heartbeat_epoch}" =~ ^[0-9]+$ ]]; then
-      heartbeat_age=$(( now - heartbeat_epoch ))
-      if (( heartbeat_age > STALE_THRESHOLD )); then
+      heartbeat_age=$((now - heartbeat_epoch))
+      if ((heartbeat_age > STALE_THRESHOLD)); then
         is_stale=true
         if [[ -n "${reason}" ]]; then
           reason="${reason} + heartbeat stale (${heartbeat_age}s)"
@@ -124,7 +124,7 @@ while IFS= read -r session; do
       echo "orch-gc: WARN — failed to kill session ${session}" >&2
     }
   fi
-done <<< "${sessions}"
+done <<<"${sessions}"
 
 if [[ "${DRY_RUN}" == true ]]; then
   echo "orch-gc: found ${stale_count}/${total_count} stale session(s) (dry-run, nothing killed)"

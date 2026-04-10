@@ -3,6 +3,7 @@ import { AbsoluteFill, Composition, Series } from "remotion";
 import { Intro } from "./Intro";
 import { PhaseCard, phases } from "./PhaseCard";
 import { Outro } from "./components/Outro";
+import { Thumbnail } from "./Thumbnail";
 import { colors, sizing, timing } from "./styles/theme";
 
 const { width, height, fps } = sizing;
@@ -70,6 +71,15 @@ export const RemotionRoot: React.FC = () => {
         id="Outro"
         component={Outro}
         durationInFrames={outroFrames}
+        fps={fps}
+        width={width}
+        height={height}
+      />
+
+      <Composition
+        id="Thumbnail"
+        component={Thumbnail}
+        durationInFrames={1}
         fps={fps}
         width={width}
         height={height}

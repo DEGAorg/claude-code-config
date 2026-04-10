@@ -17,38 +17,38 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_file_exists() {
-	local label="$1" path="$2"
-	if [[ -f "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — file not found: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ -f "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — file not found: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_dir_not_exists() {
-	local label="$1" path="$2"
-	if [[ ! -d "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — directory exists: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ ! -d "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — directory exists: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Setup synthetic test plan ---
@@ -59,8 +59,8 @@ ORCH_DIR="${REPO_ROOT}/.orchestrator"
 ORCH_STATE="${ORCH_DIR}/state.json"
 
 cleanup() {
-	rm -rf "${TEST_PLAN_DIR}"
-	rm -rf "${ORCH_DIR}"
+  rm -rf "${TEST_PLAN_DIR}"
+  rm -rf "${ORCH_DIR}"
 }
 trap cleanup EXIT
 
@@ -243,14 +243,14 @@ ITEMS_JSON=$(printf '%s' "${ITEMS_JSON}" | jq '[
 ]')
 
 STATE_JSON=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${TEST_SLUG}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_JSON}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${TEST_SLUG}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_JSON}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
     version: $version,
     plan: $plan,
     maxParallelWorkers: $maxWorkers,
@@ -330,14 +330,14 @@ ITEMS_JSON4=$(printf '%s' "${ITEMS_JSON4}" | jq '[
 ]')
 
 STATE4=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${TEST_SLUG}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_JSON4}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${TEST_SLUG}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_JSON4}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
     version: $version,
     plan: $plan,
     maxParallelWorkers: $maxWorkers,
@@ -417,14 +417,14 @@ ITEMS_JSON5=$(printf '%s' "${PARSED5}" | jq --argjson maxIter 3 '[
 ]')
 
 STATE5=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${TEST_SLUG}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_JSON5}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${TEST_SLUG}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_JSON5}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
     version: $version, plan: $plan, maxParallelWorkers: $maxWorkers,
     mode: $mode, items: $items,
     finalReview: { status: "pending", result: null, reworkItems: [] },
@@ -439,28 +439,28 @@ DONE_DIR="${ORCH_DIR}/done/${TEST_SLUG}"
 
 # resolve_deps mirrors orch-loop.sh — promotes queued→ready when deps are done
 resolve_deps() {
-	local state
-	state=$(cat "${ORCH_STATE_FILE}")
-	local queued_ids
-	queued_ids=$(printf '%s' "${state}" | jq -r '.items[] | select(.status == "queued") | .id')
-	for item_id in ${queued_ids}; do
-		local all_deps_done
-		all_deps_done=$(printf '%s' "${state}" | jq --argjson id "${item_id}" '
+  local state
+  state=$(cat "${ORCH_STATE_FILE}")
+  local queued_ids
+  queued_ids=$(printf '%s' "${state}" | jq -r '.items[] | select(.status == "queued") | .id')
+  for item_id in ${queued_ids}; do
+    local all_deps_done
+    all_deps_done=$(printf '%s' "${state}" | jq --argjson id "${item_id}" '
       . as $root |
       ($root.items[] | select(.id == $id) | .deps) as $deps |
       if ($deps | length) == 0 then true
       else [$root.items[] | select(.id == ($deps[])) | .status] | all(. == "done")
       end')
-		if [[ "${all_deps_done}" == "true" ]]; then
-			local now_ts
-			now_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-			state=$(printf '%s' "${state}" | jq \
-				--argjson id "${item_id}" \
-				--arg now "${now_ts}" \
-				'(.items[] | select(.id == $id)).status = "ready" | .updatedAt = $now')
-		fi
-	done
-	orch_write_state "${state}"
+    if [[ "${all_deps_done}" == "true" ]]; then
+      local now_ts
+      now_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      state=$(printf '%s' "${state}" | jq \
+        --argjson id "${item_id}" \
+        --arg now "${now_ts}" \
+        '(.items[] | select(.id == $id)).status = "ready" | .updatedAt = $now')
+    fi
+  done
+  orch_write_state "${state}"
 }
 
 # --- Wave 1: items 1,2 are ready ---
@@ -554,19 +554,19 @@ echo "=== Test 7: orch-worker.sh arg validation ==="
 
 # Missing args should fail
 if bash "${REPO_ROOT}/scripts/orch-worker.sh" 2>/dev/null; then
-	echo "  FAIL: orch-worker.sh should fail with no args"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: orch-worker.sh should fail with no args"
+  FAIL=$((FAIL + 1))
 else
-	echo "  PASS: orch-worker.sh rejects no args"
-	PASS=$((PASS + 1))
+  echo "  PASS: orch-worker.sh rejects no args"
+  PASS=$((PASS + 1))
 fi
 
 if bash "${REPO_ROOT}/scripts/orch-worker.sh" "${TEST_SLUG}" 2>/dev/null; then
-	echo "  FAIL: orch-worker.sh should fail without --item"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: orch-worker.sh should fail without --item"
+  FAIL=$((FAIL + 1))
 else
-	echo "  PASS: orch-worker.sh rejects missing --item"
-	PASS=$((PASS + 1))
+  echo "  PASS: orch-worker.sh rejects missing --item"
+  PASS=$((PASS + 1))
 fi
 
 echo ""
@@ -574,22 +574,22 @@ echo "=== Test 8: orch-review.sh blocks if items not all done ==="
 
 # Item 5 is still queued — review should fail
 if bash "${REPO_ROOT}/scripts/orch-review.sh" "${TEST_SLUG}" 2>/dev/null; then
-	echo "  FAIL: orch-review.sh should fail when items not all done"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: orch-review.sh should fail when items not all done"
+  FAIL=$((FAIL + 1))
 else
-	echo "  PASS: orch-review.sh blocks when items not all done"
-	PASS=$((PASS + 1))
+  echo "  PASS: orch-review.sh blocks when items not all done"
+  PASS=$((PASS + 1))
 fi
 
 echo ""
 echo "=== Test 9: orch-status.sh runs without error ==="
 
 if bash "${REPO_ROOT}/scripts/orch-status.sh" "${TEST_SLUG}" >/dev/null 2>&1; then
-	echo "  PASS: orch-status.sh runs cleanly"
-	PASS=$((PASS + 1))
+  echo "  PASS: orch-status.sh runs cleanly"
+  PASS=$((PASS + 1))
 else
-	echo "  FAIL: orch-status.sh exited with error"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: orch-status.sh exited with error"
+  FAIL=$((FAIL + 1))
 fi
 
 echo ""
@@ -618,5 +618,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

@@ -1,9 +1,21 @@
 # Update Timeline
 
-@description Update project timeline statuses in the shared repo file.
-@arguments $UPDATE: Status changes to apply (e.g. "mark Conductor as done, MCP Server is active")
+@description View or update project timeline via the provider abstraction (Issues and Project board).
+@arguments $UPDATE: Status changes to apply (e.g. "mark Conductor as done, MCP Server is active"), or "status" to show current state
 
-Update the project timeline based on the user's instructions in $UPDATE.
+View or update the project timeline based on the user's instructions in $UPDATE.
+
+## Provider setup
+
+Source the provider shim before any API calls:
+
+```bash
+source scripts/providers/provider.sh
+```
+
+This loads the active provider configured in `dega-core.yaml` (`provider:` field).
+All issue, milestone, and project board operations use `provider_*` functions —
+never call provider CLIs (e.g., `gh`) directly.
 
 ## Source of truth
 
@@ -11,9 +23,8 @@ Read `timeline` config from `dega-core.yaml` in the project root:
 
 ```yaml
 timeline:
-  repo: DEGAorg/claude-code-config   # GitHub repo
-  branch: develop                     # branch where timeline lives
-  path: data/timeline.json            # file path in repo
+  repo: DEGAorg/claude-code-config   # repo (resolved via provider)
+  project_number: 8                  # project board number
 ```
 
 If `dega-core.yaml` is missing or has no `timeline` block, abort with an
@@ -23,51 +34,93 @@ error telling the user to add the config.
 
 ### 1. Read config
 
-Parse `dega-core.yaml` from the project root. Extract `timeline.repo`,
-`timeline.branch`, and `timeline.path`.
+Parse `dega-core.yaml` from the project root. Extract `timeline.repo` and
+`timeline.project_number`.
 
 ### 2. Fetch current timeline
 
-```bash
-gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.content' | base64 -d > /tmp/timeline.json
-```
-
-Read the JSON to understand the current state.
-
-### 3. Apply status updates
-
-Parse $UPDATE and modify the `status` field on matching items in both
-`components` and `ganttBars` arrays. Valid statuses:
-
-| Status | Meaning |
-|--------|---------|
-| `done` | Completed |
-| `active` | Currently in progress |
-| `pending` | Not started |
-
-Match items by name/label (fuzzy — "Conductor" matches "Conductor + TUI",
-"TOAD TUI + Conductor", etc.). Update both `components` (by `name`) and
-`ganttBars` (by `label`) when they refer to the same item.
-
-### 4. Update metadata
-
-Set `meta.generated` to today's date (YYYY-MM-DD format).
-
-### 5. Push update
+Retrieve milestones and their issues using provider functions:
 
 ```bash
-SHA=$(gh api "repos/${REPO}/contents/${PATH}?ref=${BRANCH}" --jq '.sha')
+# List all milestones with open/closed counts
+provider_milestone_list --repo "${REPO}" --state all
 
-gh api "repos/${REPO}/contents/${PATH}" \
-  -X PUT \
-  -f message="timeline: update statuses" \
-  -f branch="${BRANCH}" \
-  -f sha="$SHA" \
-  -f content="$(base64 < /tmp/timeline.json)"
+# List all issues with their labels, milestone, and assignees
+provider_issue_list --repo "${REPO}" --state all --limit 200
 ```
 
-### 6. Confirm
+Retrieve project board item statuses:
+
+```bash
+# Get the org/owner from the repo
+ORG="${REPO%%/*}"
+
+# Query project items with Status field values
+provider_project_items_list --project "${PROJECT_NUMBER}" --owner "${ORG}" \
+  --limit 200
+```
+
+### 3. Display current status (if $UPDATE is "status")
+
+If the user asked for status, display a summary table:
+
+| Milestone | Done | Active | Todo | Target |
+|-----------|------|--------|------|--------|
+
+For each milestone, count issues by their project board Status field
+(Done / In Progress / Todo). Show the milestone due date as Target.
+
+Then list any issues with `risk:medium` or `risk:high` labels as flagged
+items.
+
+Stop here if $UPDATE is "status" — do not modify anything.
+
+### 4. Apply status updates
+
+Parse $UPDATE and identify which issues to update. Match items by
+name (fuzzy — "Conductor" matches "TOAD TUI + Conductor", etc.).
+
+Valid status transitions map to the project board Status field:
+
+| User says | Project Status field |
+|-----------|---------------------|
+| `done` | Done |
+| `active` | In Progress |
+| `pending` | Todo |
+
+For each matched issue:
+
+#### a. Update project board Status field
+
+```bash
+# Get the item ID and Status field ID from the project items list
+ITEMS_JSON=$(provider_project_items_list --project "${PROJECT_NUMBER}" \
+  --owner "${ORG}" --limit 200)
+ITEM_ID=$(echo "${ITEMS_JSON}" | jq -r \
+  '.items[] | select(.content.number == ISSUE_NUM) | .id')
+
+# Field and option IDs still require project field metadata (provider-
+# specific — the provider_project_field_edit function handles the write)
+provider_project_field_edit \
+  --project-id "${PROJECT_ID}" \
+  --item-id "${ITEM_ID}" \
+  --field-id "${STATUS_FIELD_ID}" \
+  --value "${OPTION_ID}"
+```
+
+#### b. Close or reopen the issue if needed
+
+```bash
+# If status is "done", close the issue
+provider_issue_close --issue "${ISSUE_NUM}" --repo "${REPO}"
+
+# If status is "active" or "pending" and issue is closed, reopen it
+# (use provider_issue_edit to add/remove labels or change state as needed)
+provider_issue_edit --issue "${ISSUE_NUM}" --repo "${REPO}"
+```
+
+### 5. Confirm
 
 Report what changed:
-- Which items were updated and to what status
-- Current summary: N done, N active, N pending
+- Which issues were updated and to what status (include issue numbers)
+- Current summary per milestone: N done, N active, N todo

@@ -58,17 +58,17 @@ export const Intro: React.FC = () => {
           <GlowText
             text="CANON"
             fontSize={120}
-            color={colors.green}
-            glowColor={colors.greenGlow}
+            color={colors.teal}
+            glowColor={colors.tealGlow}
             enterFrame={15}
             stagger={3}
             spacing={16}
           />
 
-          <HorizontalRule enterFrame={40} width={30} color={colors.green} />
+          <HorizontalRule enterFrame={40} width={30} color={colors.teal} />
 
           <TypeWriter
-            text="AI-powered prediction market research"
+            text="AI-powered prediction market strategy"
             startFrame={50}
             fontSize={26}
             color={colors.textMuted}

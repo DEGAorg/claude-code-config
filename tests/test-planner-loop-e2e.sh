@@ -17,39 +17,39 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_contains() {
-	local label="$1" haystack="$2" needle="$3"
-	if echo "${haystack}" | grep -qF "${needle}"; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected to contain: ${needle}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" haystack="$2" needle="$3"
+  if echo "${haystack}" | grep -qF "${needle}"; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected to contain: ${needle}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_file_exists() {
-	local label="$1" path="$2"
-	if [[ -f "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — file not found: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ -f "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — file not found: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Setup temp repo ---
@@ -58,7 +58,7 @@ TMPDIR_ROOT=$(mktemp -d)
 FAKE_REPO="${TMPDIR_ROOT}/repo"
 
 cleanup() {
-	rm -rf "${TMPDIR_ROOT}"
+  rm -rf "${TMPDIR_ROOT}"
 }
 trap cleanup EXIT
 
@@ -231,7 +231,7 @@ assert_contains "PLAN completed" "${output}" "PLAN complete"
 
 # 3. Plan file was created
 assert_file_exists "plan.md written" \
-	"${FAKE_REPO}/docs/exec-plans/active/${MOCK_DATE_SLUG}/plan.md"
+  "${FAKE_REPO}/docs/exec-plans/active/${MOCK_DATE_SLUG}/plan.md"
 
 # 4. COMMIT phase ran
 assert_contains "COMMIT phase logged" "${output}" "COMMIT — committing plan"
@@ -259,5 +259,5 @@ echo ""
 echo "=== Results: ${PASS} passed, ${FAIL} failed ==="
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi

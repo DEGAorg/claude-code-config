@@ -61,14 +61,14 @@ export const Outro: React.FC = () => {
           <GlowText
             text="Agents build. You decide."
             fontSize={64}
-            color={colors.green}
-            glowColor={colors.greenGlow}
+            color={colors.teal}
+            glowColor={colors.tealGlow}
             enterFrame={10}
             stagger={1}
             spacing={2}
           />
 
-          <HorizontalRule enterFrame={35} width={25} color={colors.blue} />
+          <HorizontalRule enterFrame={35} width={25} color={colors.purple} />
 
           {/* Stats line */}
           <div
@@ -82,10 +82,10 @@ export const Outro: React.FC = () => {
             }}
           >
             <span>
-              agents <span style={{ color: colors.blue }}>+</span> skills{" "}
-              <span style={{ color: colors.blue }}>+</span> strategies
+              agents <span style={{ color: colors.purple }}>+</span> skills{" "}
+              <span style={{ color: colors.purple }}>+</span> strategies
             </span>
-            <span style={{ color: colors.green }}>
+            <span style={{ color: colors.teal }}>
               no code knowledge required
             </span>
           </div>
@@ -97,7 +97,7 @@ export const Outro: React.FC = () => {
               opacity: linkOpacity,
               fontFamily: fonts.mono,
               fontSize: 14,
-              color: colors.blue,
+              color: colors.purple,
               letterSpacing: 2,
             }}
           >

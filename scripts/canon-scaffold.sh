@@ -24,21 +24,21 @@ TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Helper: write state to dashboard (no-op if writer not installed) ─────────
 state() {
-	if [[ -f "${TUI_WRITE}" ]]; then
-		bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
-	fi
+  if [[ -f "${TUI_WRITE}" ]]; then
+    bash "${TUI_WRITE}" "${STATE_FILE}" "$@" || true
+  fi
 }
 
 # ── Guard: don't run inside claude-code-config itself ─────────────────────────
 if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null; then
-	echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
-	exit 1
+  echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
+  exit 1
 fi
 
 # ── Guard: check for existing .canon/ ─────────────────────────────────────────
 if [[ -d ".canon" && "${FORCE}" != "true" ]]; then
-	echo "error: .canon/ already exists. Use --force to overwrite." >&2
-	exit 1
+  echo "error: .canon/ already exists. Use --force to overwrite." >&2
+  exit 1
 fi
 
 echo "canon-init: initializing '${PROJECT_NAME}' in ${PROJECT_DIR}"
@@ -48,19 +48,19 @@ state phase=init status=running log.info="Canon init starting for '${PROJECT_NAM
 
 # ── Helper: fetch a file from GitHub ──────────────────────────────────────────
 fetch() {
-	local src="$1" dst="$2"
-	mkdir -p "$(dirname "${dst}")"
-	if ! curl -sfL "${BASE_URL}/${src}" -o "${dst}"; then
-		echo "error: failed to fetch ${src}" >&2
-		exit 1
-	fi
+  local src="$1" dst="$2"
+  mkdir -p "$(dirname "${dst}")"
+  if ! curl -sfL "${BASE_URL}/${src}" -o "${dst}"; then
+    echo "error: failed to fetch ${src}" >&2
+    exit 1
+  fi
 }
 
 # ── 0. Ensure git repo exists (orchestrator needs it for worktree isolation)
 if [[ ! -d ".git" ]]; then
-	echo "→ initializing git repo..."
-	git init -q
-	state log.info="Git repo initialized"
+  echo "→ initializing git repo..."
+  git init -q
+  state log.info="Git repo initialized"
 fi
 
 # ── 1. Create directory tree ──────────────────────────────────────────────────
@@ -73,7 +73,7 @@ mkdir -p src/types src/clients src/config src/service src/__tests__
 echo "→ fetching agents..."
 state log.info="Fetching 6 agent personas..."
 for agent in strategy-architect risk-analyst market-analyst dev qa deployment-ops; do
-	fetch "canon/agents/${agent}.md" ".canon/agents/${agent}.md"
+  fetch "canon/agents/${agent}.md" ".canon/agents/${agent}.md"
 done
 state log.info="Agents fetched"
 
@@ -81,8 +81,8 @@ state log.info="Agents fetched"
 echo "→ fetching skills..."
 state log.info="Fetching 8 domain skills..."
 for skill in prediction-markets polymarket risk-management strategy-patterns \
-	backtesting arena-tracking orchestrator canon-conventions; do
-	fetch "canon/skills/${skill}.md" ".canon/skills/${skill}.md"
+  backtesting arena-tracking orchestrator canon-conventions; do
+  fetch "canon/skills/${skill}.md" ".canon/skills/${skill}.md"
 done
 state log.info="Skills fetched"
 
@@ -90,7 +90,7 @@ state log.info="Skills fetched"
 echo "→ fetching commands..."
 state log.info="Fetching 6 slash commands..."
 for cmd in develop ralph-cycle discover register quick-dev canon-start; do
-	fetch "canon/commands/${cmd}.md" ".claude/commands/${cmd}.md"
+  fetch "canon/commands/${cmd}.md" ".claude/commands/${cmd}.md"
 done
 state log.info="Commands fetched"
 
@@ -113,7 +113,7 @@ state log.info="Templates fetched"
 echo "→ fetching API client scaffolds..."
 state log.info="Fetching API client scaffolds..."
 for client_file in client-polymarket client-sportsbook; do
-	fetch "canon/templates/${client_file}.ts" "src/clients/${client_file#client-}.ts"
+  fetch "canon/templates/${client_file}.ts" "src/clients/${client_file#client-}.ts"
 done
 state log.info="API clients scaffolded"
 
@@ -122,13 +122,13 @@ echo "→ generating template files..."
 state log.info="Generating template files..."
 
 write_if_missing() {
-	local path="$1"
-	if [[ -f "${path}" && "${FORCE}" != "true" ]]; then
-		echo "  skip: ${path} (already exists)"
-		return
-	fi
-	cat >"${path}"
-	echo "  wrote: ${path}"
+  local path="$1"
+  if [[ -f "${path}" && "${FORCE}" != "true" ]]; then
+    echo "  skip: ${path} (already exists)"
+    return
+  fi
+  cat >"${path}"
+  echo "  wrote: ${path}"
 }
 
 write_if_missing "package.json" <<EOF
@@ -360,12 +360,12 @@ EOF
 # ── 9b. Write provider shims (CLAUDE.md, GEMINI.md, .cursorrules) ────────────
 echo "→ writing provider shims..."
 for shim in CLAUDE.md GEMINI.md; do
-	cat >"${shim}" <<'SHIMEOF'
+  cat >"${shim}" <<'SHIMEOF'
 # Agent Configuration
 
 Read and follow all instructions in [AGENTS.md](AGENTS.md).
 SHIMEOF
-	echo "  wrote: ${shim}"
+  echo "  wrote: ${shim}"
 done
 
 cat >".cursorrules" <<'SHIMEOF'
@@ -381,37 +381,37 @@ echo "→ verifying..."
 state log.info="Verifying all files..."
 ERRORS=0
 for f in \
-	.canon/agents/dev.md \
-	.canon/agents/strategy-architect.md \
-	.canon/skills/prediction-markets.md \
-	.canon/skills/canon-conventions.md \
-	.canon/config.yaml \
-	dega-core.yaml \
-	.canon/templates/nba-momentum/strategy.md \
-	.canon/templates/nba-momentum/plan.md \
-	.claude/commands/canon-start.md \
-	.claude/commands/develop.md \
-	src/types/TradeSignal.ts \
-	src/types/RiskInterface.ts \
-	src/clients/polymarket.ts \
-	src/clients/sportsbook.ts \
-	package.json \
-	tsconfig.json \
-	AGENTS.md \
-	CLAUDE.md \
-	GEMINI.md \
-	.cursorrules; do
-	if [[ ! -f "${f}" ]]; then
-		echo "  MISSING: ${f}" >&2
-		ERRORS=$((ERRORS + 1))
-	fi
+  .canon/agents/dev.md \
+  .canon/agents/strategy-architect.md \
+  .canon/skills/prediction-markets.md \
+  .canon/skills/canon-conventions.md \
+  .canon/config.yaml \
+  dega-core.yaml \
+  .canon/templates/nba-momentum/strategy.md \
+  .canon/templates/nba-momentum/plan.md \
+  .claude/commands/canon-start.md \
+  .claude/commands/develop.md \
+  src/types/TradeSignal.ts \
+  src/types/RiskInterface.ts \
+  src/clients/polymarket.ts \
+  src/clients/sportsbook.ts \
+  package.json \
+  tsconfig.json \
+  AGENTS.md \
+  CLAUDE.md \
+  GEMINI.md \
+  .cursorrules; do
+  if [[ ! -f "${f}" ]]; then
+    echo "  MISSING: ${f}" >&2
+    ERRORS=$((ERRORS + 1))
+  fi
 done
 
 if [[ ${ERRORS} -gt 0 ]]; then
-	echo ""
-	echo "error: ${ERRORS} file(s) missing — init incomplete" >&2
-	state status=error error="${ERRORS} file(s) missing" log.error="Init incomplete: ${ERRORS} file(s) missing"
-	exit 1
+  echo ""
+  echo "error: ${ERRORS} file(s) missing — init incomplete" >&2
+  state status=error error="${ERRORS} file(s) missing" log.error="Init incomplete: ${ERRORS} file(s) missing"
+  exit 1
 fi
 
 state log.info="Verification passed — all files present"

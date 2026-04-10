@@ -12,16 +12,16 @@ set -euo pipefail
 SLUG="${1:-}"
 
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: scripts/create-exec-plan.sh <slug>" >&2
-	echo "example: scripts/create-exec-plan.sh add-auth-endpoint" >&2
-	exit 1
+  echo "error: usage: scripts/create-exec-plan.sh <slug>" >&2
+  echo "example: scripts/create-exec-plan.sh add-auth-endpoint" >&2
+  exit 1
 fi
 
 # If slug already has a YYYYMMDD- prefix, use it as-is
 if printf '%s\n' "${SLUG}" | grep -qE '^[0-9]{8}-'; then
-	DIR_NAME="${SLUG}"
+  DIR_NAME="${SLUG}"
 else
-	DIR_NAME="$(date +%Y%m%d)-${SLUG}"
+  DIR_NAME="$(date +%Y%m%d)-${SLUG}"
 fi
 
 PLAN_DIR="docs/exec-plans/active/${DIR_NAME}"

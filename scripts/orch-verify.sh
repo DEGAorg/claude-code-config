@@ -26,8 +26,8 @@ source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
-	echo "error: usage: orch-verify.sh <slug>" >&2
-	exit 1
+  echo "error: usage: orch-verify.sh <slug>" >&2
+  exit 1
 fi
 
 PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-verifier.md"
@@ -42,26 +42,26 @@ WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # Use worktree plan path; in GH mode resolve from .orchestrator/
 if [[ "${GH_SYNC}" == true ]]; then
-	PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
+  PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
 elif [[ -d "${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}" ]]; then
-	PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
+  PLAN_DIR="${WORKTREE_DIR}/docs/exec-plans/active/${SLUG}"
 else
-	PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+  PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 fi
 
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
-	echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
-	exit 1
+  echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
+  exit 1
 fi
 
 if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
-	echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
-	exit 1
+  echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
+  exit 1
 fi
 
 if [[ ! -f "${PROMPT_TEMPLATE}" ]]; then
-	echo "error: verifier prompt template not found: ${PROMPT_TEMPLATE}" >&2
-	exit 1
+  echo "error: verifier prompt template not found: ${PROMPT_TEMPLATE}" >&2
+  exit 1
 fi
 
 # --- Extract unchecked completion criteria ---
@@ -75,8 +75,8 @@ UNCHECKED_CRITERIA=$(awk '
 ' "${PLAN_DIR}/plan.md")
 
 if [[ -z "${UNCHECKED_CRITERIA}" ]]; then
-	echo "orch-verify: all completion criteria already checked — PASS"
-	exit 0
+  echo "orch-verify: all completion criteria already checked — PASS"
+  exit 0
 fi
 
 UNCHECKED_COUNT=$(printf '%s\n' "${UNCHECKED_CRITERIA}" | wc -l | tr -d ' ')
@@ -86,9 +86,9 @@ echo "orch-verify: ${UNCHECKED_COUNT} unchecked completion criteria found"
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq \
-	--arg now "${NOW}" \
-	--argjson count "${UNCHECKED_COUNT}" \
-	'.verification.status = "running" |
+  --arg now "${NOW}" \
+  --argjson count "${UNCHECKED_COUNT}" \
+  '.verification.status = "running" |
 	 .verification.uncheckedCount = $count |
 	 .verification.iteration = ((.verification.iteration // 0) + 1) |
 	 .updatedAt = $now' "${ORCH_STATE_FILE}")
@@ -125,7 +125,7 @@ printf '%s\n' "${VERIFIER_PROMPT}" >"${PROMPT_FILE}"
 
 VERIFY_CWD="${REPO_ROOT}"
 if [[ -d "${WORKTREE_DIR}" ]]; then
-	VERIFY_CWD="${WORKTREE_DIR}"
+  VERIFY_CWD="${WORKTREE_DIR}"
 fi
 
 # --- Spawn verifier in tmux window ---
@@ -141,11 +141,11 @@ AGENT_CMD_STR="${CMD_TEMPLATE/DEGA_PROMPT_MARKER/\"\$(cat '${PROMPT_FILE}')\"}"
 SESSION_VAR="$(dega_agent_session_var)"
 ENV_PREFIX=""
 if [[ -n "${SESSION_VAR}" ]]; then
-	ENV_PREFIX="env -u '${SESSION_VAR}'"
+  ENV_PREFIX="env -u '${SESSION_VAR}'"
 fi
 
 tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
-	"cd '${VERIFY_CWD}' && \
+  "cd '${VERIFY_CWD}' && \
 	 RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
 	 ${ENV_PREFIX} ${AGENT_CMD_STR} ; \
 	 echo '--- verifier exited ---'; \
@@ -153,7 +153,7 @@ tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
 
 # Stream verifier output to log file
 tmux pipe-pane -t "${TMUX_SESSION}:${WINDOW_NAME}" \
-	-o "cat >> '${LOG_DIR}/verifier.log'"
+  -o "cat >> '${LOG_DIR}/verifier.log'"
 
 echo "orch-verify: spawned verifier in tmux window '${WINDOW_NAME}'"
 
@@ -163,36 +163,36 @@ MAX_POLLS=120 # 120 * 10s = 20 minutes default timeout
 poll_count=0
 
 while true; do
-	if [[ -f "${VERIFY_RESULT_FILE}" ]]; then
-		RESULT=$(head -1 "${VERIFY_RESULT_FILE}" | tr -d '[:space:]')
-		echo "orch-verify: verify-result.txt found — decision: ${RESULT}"
-		break
-	fi
+  if [[ -f "${VERIFY_RESULT_FILE}" ]]; then
+    RESULT=$(head -1 "${VERIFY_RESULT_FILE}" | tr -d '[:space:]')
+    echo "orch-verify: verify-result.txt found — decision: ${RESULT}"
+    break
+  fi
 
-	# Detect dead verifier (window gone, no result file)
-	if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-		LIVE_WINDOWS=$(tmux list-windows -t "${TMUX_SESSION}" \
-			-F '#{window_name} #{pane_dead}' 2>/dev/null || true)
-		IS_ALIVE=false
-		if printf '%s\n' "${LIVE_WINDOWS}" | grep -q "^${WINDOW_NAME} 0$"; then
-			IS_ALIVE=true
-		fi
-		if [[ "${IS_ALIVE}" == false ]]; then
-			echo "orch-verify: verifier exited without writing result — FAIL"
-			RESULT="FAIL"
-			break
-		fi
-	fi
+  # Detect dead verifier (window gone, no result file)
+  if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
+    LIVE_WINDOWS=$(tmux list-windows -t "${TMUX_SESSION}" \
+      -F '#{window_name} #{pane_dead}' 2>/dev/null || true)
+    IS_ALIVE=false
+    if printf '%s\n' "${LIVE_WINDOWS}" | grep -q "^${WINDOW_NAME} 0$"; then
+      IS_ALIVE=true
+    fi
+    if [[ "${IS_ALIVE}" == false ]]; then
+      echo "orch-verify: verifier exited without writing result — FAIL"
+      RESULT="FAIL"
+      break
+    fi
+  fi
 
-	poll_count=$((poll_count + 1))
-	if ((poll_count >= MAX_POLLS)); then
-		echo "orch-verify: timeout after $((MAX_POLLS * POLL_INTERVAL))s — FAIL"
-		tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
-		RESULT="FAIL"
-		break
-	fi
+  poll_count=$((poll_count + 1))
+  if ((poll_count >= MAX_POLLS)); then
+    echo "orch-verify: timeout after $((MAX_POLLS * POLL_INTERVAL))s — FAIL"
+    tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
+    RESULT="FAIL"
+    break
+  fi
 
-	sleep "${POLL_INTERVAL}"
+  sleep "${POLL_INTERVAL}"
 done
 
 # --- Kill verifier window ---
@@ -215,22 +215,22 @@ REMAINING=$(awk '
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 if [[ "${RESULT}" == "PASS" ]] && [[ "${REMAINING}" -eq 0 ]]; then
-	echo "orch-verify: PASS — all completion criteria verified"
-	UPDATED=$(jq \
-		--arg now "${NOW}" \
-		'.verification.status = "passed" |
+  echo "orch-verify: PASS — all completion criteria verified"
+  UPDATED=$(jq \
+    --arg now "${NOW}" \
+    '.verification.status = "passed" |
 		 .verification.uncheckedCount = 0 |
 		 .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${SLUG}" "${UPDATED}"
-	exit 0
+  orch_write_state "${SLUG}" "${UPDATED}"
+  exit 0
 else
-	echo "orch-verify: FAIL — ${REMAINING} criteria remain unchecked"
-	UPDATED=$(jq \
-		--arg now "${NOW}" \
-		--argjson remaining "${REMAINING}" \
-		'.verification.status = "failed" |
+  echo "orch-verify: FAIL — ${REMAINING} criteria remain unchecked"
+  UPDATED=$(jq \
+    --arg now "${NOW}" \
+    --argjson remaining "${REMAINING}" \
+    '.verification.status = "failed" |
 		 .verification.uncheckedCount = $remaining |
 		 .updatedAt = $now' "${ORCH_STATE_FILE}")
-	orch_write_state "${SLUG}" "${UPDATED}"
-	exit 1
+  orch_write_state "${SLUG}" "${UPDATED}"
+  exit 1
 fi

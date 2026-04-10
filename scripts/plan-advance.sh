@@ -9,18 +9,18 @@ PLAN_FILE="${1:-}"
 STATE_FILE="${2:-}"
 
 if [[ -z "${PLAN_FILE}" || -z "${STATE_FILE}" ]]; then
-	echo "error: usage: scripts/plan-advance.sh <plan.md> <state.json>" >&2
-	exit 1
+  echo "error: usage: scripts/plan-advance.sh <plan.md> <state.json>" >&2
+  exit 1
 fi
 
 if [[ ! -f "${PLAN_FILE}" ]]; then
-	echo "error: plan file not found: ${PLAN_FILE}" >&2
-	exit 1
+  echo "error: plan file not found: ${PLAN_FILE}" >&2
+  exit 1
 fi
 
 if [[ ! -f "${STATE_FILE}" ]]; then
-	echo "error: state file not found: ${STATE_FILE}" >&2
-	exit 1
+  echo "error: state file not found: ${STATE_FILE}" >&2
+  exit 1
 fi
 
 # Extract the LAST ## Progress log section (skip examples in earlier sections).
@@ -37,7 +37,7 @@ PROGRESS_SECTION=$(awk '
 
 # Find the next unchecked item — exit 1 (no more items) if none remain
 if ! LINE=$(printf '%s\n' "${PROGRESS_SECTION}" | grep -m1 '^[[:space:]]*- \[ \]'); then
-	exit 1
+  exit 1
 fi
 
 ITEM=$(printf '%s' "${LINE}" | sed 's/^[[:space:]]*- \[ \] //')
@@ -45,6 +45,6 @@ ITEM=$(printf '%s' "${LINE}" | sed 's/^[[:space:]]*- \[ \] //')
 # Write current_task into state
 TMP=$(mktemp)
 jq --arg text "${ITEM}" \
-	'.current_task.text = $text | .current_task.claimed_complete = false' \
-	"${STATE_FILE}" >"${TMP}"
+  '.current_task.text = $text | .current_task.claimed_complete = false' \
+  "${STATE_FILE}" >"${TMP}"
 mv "${TMP}" "${STATE_FILE}"

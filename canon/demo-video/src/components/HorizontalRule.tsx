@@ -16,7 +16,7 @@ interface HorizontalRuleProps {
 export const HorizontalRule: React.FC<HorizontalRuleProps> = ({
   enterFrame = 0,
   width = 40,
-  color = colors.green,
+  color = colors.teal,
 }) => {
   const frame = useCurrentFrame();
   const elapsed = frame - enterFrame;

@@ -30,7 +30,7 @@ Do not stop at the first failure — check all of them so the user gets one comp
 
 | Check | Command | If missing |
 |-------|---------|-----------|
-| toad or tmux | `command -v toad \|\| command -v tmux` | "Install toad (preferred): see DEGAorg/conductor-view README, or tmux: `brew install tmux`" |
+| canon or tmux | `command -v canon \|\| command -v tmux` | "Install canon (preferred): see DEGAorg/conductor-view README, or tmux: `brew install tmux`" |
 | agent-shim.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/agent-shim.sh" ]]` | "Run `/apply-core` to install the agent shim" |
 | canon-scaffold.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh" ]]` | "Run `/apply-core` and select Canon Scaffold" |
 
@@ -98,17 +98,17 @@ else
     "$(date -u +%FT%TZ)" "$(date -u +%FT%TZ)" >"${STATE}"
 fi
 
-# ── Launch mode: Toad (preferred) or tmux (fallback) ─────────────────
-if command -v toad >/dev/null 2>&1; then
-  # TODO: add --prompt "/canon-start" once toad supports prefill
-  echo "Launching Canon in Toad. Type /canon-start to begin."
-  exec toad run "${PROJECT_DIR}"
+# ── Launch mode: Canon TUI (preferred) or tmux (fallback) ────────────
+if command -v canon >/dev/null 2>&1; then
+  # TODO: add --prompt "/canon-start" once canon supports prefill
+  echo "Launching Canon TUI. Type /canon-start to begin."
+  exec canon run "${PROJECT_DIR}"
 fi
 
 # ── Fallback: tmux with agent + dashboard ────────────────────────────
 if ! command -v tmux >/dev/null 2>&1; then
-  echo "error: neither toad nor tmux found. Install one of:"
-  echo "  toad  — see DEGAorg/conductor-view README"
+  echo "error: neither canon nor tmux found. Install one of:"
+  echo "  canon — see DEGAorg/conductor-view README"
   echo "  tmux  — brew install tmux"
   exit 1
 fi

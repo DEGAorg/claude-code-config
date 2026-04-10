@@ -16,38 +16,38 @@ FAIL=0
 # --- Helpers ---
 
 assert_eq() {
-	local label="$1" expected="$2" actual="$3"
-	if [[ "${expected}" == "${actual}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label}"
-		echo "    expected: ${expected}"
-		echo "    actual:   ${actual}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" expected="$2" actual="$3"
+  if [[ "${expected}" == "${actual}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label}"
+    echo "    expected: ${expected}"
+    echo "    actual:   ${actual}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_file_exists() {
-	local label="$1" path="$2"
-	if [[ -f "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — file not found: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ -f "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — file not found: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 assert_dir_exists() {
-	local label="$1" path="$2"
-	if [[ -d "${path}" ]]; then
-		echo "  PASS: ${label}"
-		PASS=$((PASS + 1))
-	else
-		echo "  FAIL: ${label} — directory not found: ${path}"
-		FAIL=$((FAIL + 1))
-	fi
+  local label="$1" path="$2"
+  if [[ -d "${path}" ]]; then
+    echo "  PASS: ${label}"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL: ${label} — directory not found: ${path}"
+    FAIL=$((FAIL + 1))
+  fi
 }
 
 # --- Setup ---
@@ -57,7 +57,7 @@ SLUG_B="test-plan-beta-$$"
 ORCH_DIR="${REPO_ROOT}/.orchestrator-test-$$"
 
 cleanup() {
-	rm -rf "${ORCH_DIR}"
+  rm -rf "${ORCH_DIR}"
 }
 trap cleanup EXIT
 
@@ -72,16 +72,16 @@ source "${REPO_ROOT}/scripts/orch-state.sh"
 # --- Helper: build a minimal state.json for a plan ---
 
 build_plan_state() {
-	local slug="$1"
-	local item_count="$2"
-	local now
-	now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local slug="$1"
+  local item_count="$2"
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-	local items="[]"
-	for ((i = 1; i <= item_count; i++)); do
-		items=$(printf '%s' "${items}" | jq \
-			--argjson id "${i}" \
-			'. + [{
+  local items="[]"
+  for ((i = 1; i <= item_count; i++)); do
+    items=$(printf '%s' "${items}" | jq \
+      --argjson id "${i}" \
+      '. + [{
 				id: $id,
 				description: ("task-" + ($id | tostring)),
 				deps: [],
@@ -93,17 +93,17 @@ build_plan_state() {
 				maxIterations: 3,
 				lastResult: null
 			}]')
-	done
+  done
 
-	jq -n \
-		--argjson version 1 \
-		--arg plan "${slug}" \
-		--argjson maxWorkers 4 \
-		--arg mode "foreground" \
-		--argjson items "${items}" \
-		--arg startedAt "${now}" \
-		--arg updatedAt "${now}" \
-		'{
+  jq -n \
+    --argjson version 1 \
+    --arg plan "${slug}" \
+    --argjson maxWorkers 4 \
+    --arg mode "foreground" \
+    --argjson items "${items}" \
+    --arg startedAt "${now}" \
+    --arg updatedAt "${now}" \
+    '{
 			version: $version,
 			plan: $plan,
 			maxParallelWorkers: $maxWorkers,
@@ -132,11 +132,11 @@ assert_dir_exists "plan B review dir" "$(orch_plan_review_dir "${SLUG_B}")"
 STATE_A=$(orch_plan_state_file "${SLUG_A}")
 STATE_B=$(orch_plan_state_file "${SLUG_B}")
 if [[ "${STATE_A}" != "${STATE_B}" ]]; then
-	echo "  PASS: state file paths are distinct"
-	PASS=$((PASS + 1))
+  echo "  PASS: state file paths are distinct"
+  PASS=$((PASS + 1))
 else
-	echo "  FAIL: state file paths collide: ${STATE_A}"
-	FAIL=$((FAIL + 1))
+  echo "  FAIL: state file paths collide: ${STATE_A}"
+  FAIL=$((FAIL + 1))
 fi
 
 echo ""
@@ -198,21 +198,21 @@ orch_master_update_progress "${SLUG_A}"
 orch_master_update_progress "${SLUG_B}"
 
 PROG_A_DONE=$(jq '.plans[] | select(.slug == "'"${SLUG_A}"'") | .progress.done' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 PROG_A_RUNNING=$(jq '.plans[] | select(.slug == "'"${SLUG_A}"'") | .progress.running' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 PROG_A_TOTAL=$(jq '.plans[] | select(.slug == "'"${SLUG_A}"'") | .progress.total' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 assert_eq "plan A progress: done=1" "1" "${PROG_A_DONE}"
 assert_eq "plan A progress: running=1" "1" "${PROG_A_RUNNING}"
 assert_eq "plan A progress: total=3" "3" "${PROG_A_TOTAL}"
 
 PROG_B_DONE=$(jq '.plans[] | select(.slug == "'"${SLUG_B}"'") | .progress.done' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 PROG_B_RUNNING=$(jq '.plans[] | select(.slug == "'"${SLUG_B}"'") | .progress.running' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 PROG_B_TOTAL=$(jq '.plans[] | select(.slug == "'"${SLUG_B}"'") | .progress.total' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 assert_eq "plan B progress: done=0" "0" "${PROG_B_DONE}"
 assert_eq "plan B progress: running=3" "3" "${PROG_B_RUNNING}"
 assert_eq "plan B progress: total=5" "5" "${PROG_B_TOTAL}"
@@ -254,9 +254,9 @@ echo "=== Test 6: Deregister one plan — other remains ==="
 orch_master_deregister "${SLUG_A}" "completed"
 
 A_MASTER_STATUS=$(jq -r '.plans[] | select(.slug == "'"${SLUG_A}"'") | .status' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 B_MASTER_STATUS=$(jq -r '.plans[] | select(.slug == "'"${SLUG_B}"'") | .status' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 assert_eq "plan A deregistered as completed" "completed" "${A_MASTER_STATUS}"
 assert_eq "plan B still running in master" "running" "${B_MASTER_STATUS}"
 
@@ -268,7 +268,7 @@ echo "=== Test 7: Re-register replaces stale entry ==="
 
 orch_master_register "${SLUG_A}"
 A_STATUS_AFTER=$(jq -r '.plans[] | select(.slug == "'"${SLUG_A}"'") | .status' \
-	"${ORCH_MASTER_FILE}")
+  "${ORCH_MASTER_FILE}")
 assert_eq "re-registered plan A is running" "running" "${A_STATUS_AFTER}"
 
 PLAN_COUNT=$(jq '.plans | length' "${ORCH_MASTER_FILE}")
@@ -301,14 +301,14 @@ ITEMS_C=$(jq -n '[
 	  lastResult: null }
 ]')
 STATE_C=$(jq -n \
-	--argjson version 1 \
-	--arg plan "${SLUG_C}" \
-	--argjson maxWorkers 4 \
-	--arg mode "foreground" \
-	--argjson items "${ITEMS_C}" \
-	--arg startedAt "${NOW}" \
-	--arg updatedAt "${NOW}" \
-	'{
+  --argjson version 1 \
+  --arg plan "${SLUG_C}" \
+  --argjson maxWorkers 4 \
+  --arg mode "foreground" \
+  --argjson items "${ITEMS_C}" \
+  --arg startedAt "${NOW}" \
+  --arg updatedAt "${NOW}" \
+  '{
 		version: $version, plan: $plan,
 		maxParallelWorkers: $maxWorkers, mode: $mode,
 		items: $items,
@@ -320,7 +320,7 @@ orch_write_state "${SLUG_C}" "${STATE_C}"
 # Promote plan C — item 2 should become ready (dep 1 is done)
 orch_promote_ready_items "${SLUG_C}"
 C2_STATUS=$(jq -r '.items[] | select(.id == 2) | .status' \
-	"$(orch_plan_state_file "${SLUG_C}")")
+  "$(orch_plan_state_file "${SLUG_C}")")
 assert_eq "plan C item 2 promoted to ready" "ready" "${C2_STATUS}"
 
 # Verify plan B was not affected by plan C promotion
@@ -335,5 +335,5 @@ echo "  PASS: ${PASS}  FAIL: ${FAIL}"
 echo "================================"
 
 if [[ ${FAIL} -gt 0 ]]; then
-	exit 1
+  exit 1
 fi
