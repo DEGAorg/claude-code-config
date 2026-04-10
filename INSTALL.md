@@ -29,7 +29,7 @@ After Phase 1 completes successfully:
 
 1. Fetch the Canon TUI installer command:
    ```
-   https://raw.githubusercontent.com/DEGAorg/canon-tui/conductor/commands/apply-canon-tui.md
+   https://raw.githubusercontent.com/DEGAorg/canon-tui/canon/commands/apply-canon-tui.md
    ```
 
 2. Read the fetched content — it contains the full installation procedure.
@@ -61,7 +61,7 @@ claude
 /apply-core
 
 # Phase 2 — Canon TUI
-uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@conductor" --force --reinstall
+uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@canon" --force --reinstall
 ```
 
 ---
