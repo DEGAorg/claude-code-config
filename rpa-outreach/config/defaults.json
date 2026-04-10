@@ -1,7 +1,0 @@
-{
-  "delay_min_ms": 30000,
-  "delay_max_ms": 90000,
-  "rate_cap_per_hour": 25,
-  "batch_limit_per_session": 125,
-  "scrape_delay_ms": 2000
-}
