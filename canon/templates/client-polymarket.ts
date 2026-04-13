@@ -56,6 +56,25 @@ export interface AccountBalance {
   locked: number;
 }
 
+/** A single trade from the authenticated user's trade history. */
+export interface UserTrade {
+  id: string;
+  price: number;
+  amount: number;
+  side: string;
+  timestamp: number;
+  orderId?: string;
+  outcomeId?: string;
+  marketId?: string;
+}
+
+/** Parameters for filtering trade history. */
+export interface FetchMyTradesParams {
+  marketId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
 let client: Polymarket | undefined;
 
 function getClient(): Polymarket {
@@ -208,6 +227,43 @@ export async function fetchBalance(): Promise<AccountBalance[]> {
     available: b.available,
     locked: b.locked,
   }));
+}
+
+/**
+ * Fetch trade history for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ *
+ * @param params - Optional filtering/pagination parameters.
+ */
+export async function fetchMyTrades(
+  params?: FetchMyTradesParams,
+): Promise<UserTrade[]> {
+  const poly = getClient();
+  const trades = await poly.fetchMyTrades(params);
+
+  return trades.map(
+    (t: {
+      id: string;
+      price: number;
+      amount: number;
+      side: string;
+      timestamp: number;
+      orderId?: string;
+      outcomeId?: string;
+      marketId?: string;
+    }): UserTrade => ({
+      id: t.id,
+      price: t.price,
+      amount: t.amount,
+      side: t.side,
+      timestamp: t.timestamp,
+      ...(t.orderId !== undefined ? { orderId: t.orderId } : {}),
+      ...(t.outcomeId !== undefined ? { outcomeId: t.outcomeId } : {}),
+      ...(t.marketId !== undefined ? { marketId: t.marketId } : {}),
+    }),
+  );
 }
 
 /** Parameters for creating or building an order. */
