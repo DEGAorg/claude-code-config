@@ -132,8 +132,17 @@ export async function fetchMarketPrice(
   conditionId: string,
 ): Promise<MarketPrice> {
   const poly = getClient();
-  const markets = await poly.fetchMarkets({ query: conditionId });
-  const market = markets[0];
+  let markets = await poly.fetchMarkets({ query: conditionId });
+  let market = markets[0];
+
+  // Text search may not match numeric marketIds; fall back to
+  // fetching recent markets and filtering by ID.
+  if (!market) {
+    markets = await poly.fetchMarkets({ limit: 100 });
+    market = markets.find(
+      (m) => String(m.marketId) === String(conditionId),
+    );
+  }
 
   if (!market) {
     throw new Error(`Market ${conditionId} not found`);
@@ -481,11 +490,10 @@ export async function fetchOHLCV(
   tokenId: string,
   options?: FetchOHLCVOptions,
 ): Promise<PriceCandle[]> {
-  const args: unknown[] = [tokenId];
-  if (options !== undefined) {
-    args.push(options);
-  }
-  return callSidecar<PriceCandle[]>("fetchOHLCV", args);
+  const resolved = {
+    resolution: options?.timeframe ?? "1h",
+  };
+  return callSidecar<PriceCandle[]>("fetchOHLCV", [tokenId, resolved]);
 }
 
 /**

@@ -58,7 +58,7 @@ describe("fetchOHLCV", () => {
 
     expect(mockCallSidecar).toHaveBeenCalledWith(
       "fetchOHLCV",
-      ["token-123"],
+      ["token-123", { resolution: "1h" }],
     );
     expect(result).toEqual(candles);
     expect(result).toHaveLength(2);
@@ -66,14 +66,14 @@ describe("fetchOHLCV", () => {
     expect(result[1]?.volume).toBeNull();
   });
 
-  it("forwards options to callSidecar args", async () => {
+  it("forwards timeframe as resolution to callSidecar args", async () => {
     mockCallSidecar.mockResolvedValueOnce([]);
 
-    await fetchOHLCV("token-456", { timeframe: "1h" });
+    await fetchOHLCV("token-456", { timeframe: "5m" });
 
     expect(mockCallSidecar).toHaveBeenCalledWith(
       "fetchOHLCV",
-      ["token-456", { timeframe: "1h" }],
+      ["token-456", { resolution: "5m" }],
     );
   });
 

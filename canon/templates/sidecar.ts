@@ -97,6 +97,10 @@ export async function callSidecar<T>(
     throw new SidecarRequestError(method, response.status, body);
   }
 
-  const result: unknown = await response.json();
+  const json = (await response.json()) as Record<string, unknown>;
+
+  // The sidecar wraps responses in { success, data }; unwrap if present.
+  const result: unknown =
+    json["success"] !== undefined ? json["data"] : json;
   return result as T;
 }

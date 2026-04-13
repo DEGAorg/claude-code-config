@@ -52,6 +52,9 @@ describe("fetchMarketPrice", () => {
   });
 
   it("throws when market is not found (empty array)", async () => {
+    // First call: text search returns nothing
+    mockFetchMarkets.mockResolvedValueOnce([]);
+    // Second call: fallback by limit also returns nothing
     mockFetchMarkets.mockResolvedValueOnce([]);
 
     await expect(fetchMarketPrice("missing")).rejects.toThrow(
