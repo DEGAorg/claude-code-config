@@ -62,7 +62,7 @@ export async function fetchMarketPrice(
   conditionId: string,
 ): Promise<MarketPrice> {
   const poly = getClient();
-  const markets = await poly.getMarketsBySlug(conditionId);
+  const markets = await poly.fetchMarkets({ query: conditionId });
   const market = markets[0];
 
   if (!market) {
@@ -87,7 +87,7 @@ export async function fetchMarketPrice(
   }
 
   return {
-    conditionId: market.id,
+    conditionId: market.marketId,
     yes: yesPrice,
     no: noPrice,
     timestamp: new Date(),
@@ -106,7 +106,7 @@ export async function searchMarkets(
   query: string,
 ): Promise<PolymarketMatch[]> {
   const poly = getClient();
-  const markets = await poly.searchMarkets(query);
+  const markets = await poly.fetchMarkets({ query });
   const results: PolymarketMatch[] = [];
 
   for (const m of markets) {
@@ -118,11 +118,9 @@ export async function searchMarkets(
     const noPrice = m.outcomes[1]?.price;
     if (yesPrice === undefined || noPrice === undefined) continue;
 
-    const resDate = typeof m.resolutionDate === "string"
-      ? m.resolutionDate
-      : m.resolutionDate?.toISOString();
+    const resDate = m.resolutionDate?.toISOString();
     results.push({
-      conditionId: m.id,
+      conditionId: m.marketId,
       question: m.title,
       yesPrice,
       noPrice,

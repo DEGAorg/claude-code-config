@@ -5,14 +5,12 @@ import type {
   fetchOrderBook as FetchOrderBookFn,
 } from "../client-polymarket.js";
 
-const mockGetMarketsBySlug = vi.fn();
-const mockSearchMarkets = vi.fn();
+const mockFetchMarkets = vi.fn();
 const mockFetchOrderBook = vi.fn();
 
 vi.mock("pmxtjs", () => {
   class MockPolymarket {
-    getMarketsBySlug = mockGetMarketsBySlug;
-    searchMarkets = mockSearchMarkets;
+    fetchMarkets = mockFetchMarkets;
     fetchOrderBook = mockFetchOrderBook;
   }
   return { Polymarket: MockPolymarket };
@@ -37,9 +35,9 @@ beforeEach(async () => {
 // ---------------------------------------------------------------------------
 describe("fetchMarketPrice", () => {
   it("returns a MarketPrice for a valid binary market", async () => {
-    mockGetMarketsBySlug.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "cond-abc",
+        marketId: "cond-abc",
         outcomes: [{ price: 0.65 }, { price: 0.35 }],
       },
     ]);
@@ -50,11 +48,11 @@ describe("fetchMarketPrice", () => {
     expect(result.yes).toBe(0.65);
     expect(result.no).toBe(0.35);
     expect(result.timestamp).toBeInstanceOf(Date);
-    expect(mockGetMarketsBySlug).toHaveBeenCalledWith("some-slug");
+    expect(mockFetchMarkets).toHaveBeenCalledWith({ query: "some-slug" });
   });
 
   it("throws when market is not found (empty array)", async () => {
-    mockGetMarketsBySlug.mockResolvedValueOnce([]);
+    mockFetchMarkets.mockResolvedValueOnce([]);
 
     await expect(fetchMarketPrice("missing")).rejects.toThrow(
       "Market missing not found",
@@ -62,9 +60,9 @@ describe("fetchMarketPrice", () => {
   });
 
   it("throws when market has non-binary outcomes", async () => {
-    mockGetMarketsBySlug.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "cond-xyz",
+        marketId: "cond-xyz",
         outcomes: [{ price: 0.3 }, { price: 0.3 }, { price: 0.4 }],
       },
     ]);
@@ -75,9 +73,9 @@ describe("fetchMarketPrice", () => {
   });
 
   it("throws when outcome prices are missing", async () => {
-    mockGetMarketsBySlug.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "cond-bad",
+        marketId: "cond-bad",
         outcomes: [{}, {}],
       },
     ]);
@@ -93,15 +91,15 @@ describe("fetchMarketPrice", () => {
 // ---------------------------------------------------------------------------
 describe("searchMarkets", () => {
   it("returns matching binary markets with prices", async () => {
-    mockSearchMarkets.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "m-1",
+        marketId: "m-1",
         title: "Will the Lakers win?",
         outcomes: [{ price: 0.55 }, { price: 0.45 }],
-        resolutionDate: "2026-06-01",
+        resolutionDate: new Date("2026-06-01"),
       },
       {
-        id: "m-2",
+        marketId: "m-2",
         title: "Will the Celtics win?",
         outcomes: [{ price: 0.7 }, { price: 0.3 }],
         resolutionDate: new Date("2026-06-15"),
@@ -116,22 +114,22 @@ describe("searchMarkets", () => {
       question: "Will the Lakers win?",
       yesPrice: 0.55,
       noPrice: 0.45,
-      resolutionDate: "2026-06-01",
+      resolutionDate: "2026-06-01T00:00:00.000Z",
     });
     expect(results[1]?.conditionId).toBe("m-2");
     expect(results[1]?.resolutionDate).toBe("2026-06-15T00:00:00.000Z");
-    expect(mockSearchMarkets).toHaveBeenCalledWith("NBA");
+    expect(mockFetchMarkets).toHaveBeenCalledWith({ query: "NBA" });
   });
 
   it("filters out non-binary markets", async () => {
-    mockSearchMarkets.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "m-bin",
+        marketId: "m-bin",
         title: "Binary",
         outcomes: [{ price: 0.6 }, { price: 0.4 }],
       },
       {
-        id: "m-tri",
+        marketId: "m-tri",
         title: "Ternary",
         outcomes: [{ price: 0.3 }, { price: 0.3 }, { price: 0.4 }],
       },
@@ -144,14 +142,14 @@ describe("searchMarkets", () => {
   });
 
   it("filters out markets with missing prices", async () => {
-    mockSearchMarkets.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "m-ok",
+        marketId: "m-ok",
         title: "Has prices",
         outcomes: [{ price: 0.5 }, { price: 0.5 }],
       },
       {
-        id: "m-no-price",
+        marketId: "m-no-price",
         title: "Missing price",
         outcomes: [{}, { price: 0.5 }],
       },
@@ -164,7 +162,7 @@ describe("searchMarkets", () => {
   });
 
   it("returns empty array when no markets match", async () => {
-    mockSearchMarkets.mockResolvedValueOnce([]);
+    mockFetchMarkets.mockResolvedValueOnce([]);
 
     const results = await searchMarkets("nonexistent");
 
@@ -172,9 +170,9 @@ describe("searchMarkets", () => {
   });
 
   it("omits resolutionDate when not provided", async () => {
-    mockSearchMarkets.mockResolvedValueOnce([
+    mockFetchMarkets.mockResolvedValueOnce([
       {
-        id: "m-no-date",
+        marketId: "m-no-date",
         title: "No date",
         outcomes: [{ price: 0.5 }, { price: 0.5 }],
       },
