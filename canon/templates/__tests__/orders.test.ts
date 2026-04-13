@@ -141,6 +141,24 @@ describe("createOrder", () => {
       createOrder(validParams()),
     ).rejects.toThrow(/invalid price/i);
   });
+
+  it("rejects invalid side", async () => {
+    await expect(
+      createOrder(
+        validParams({ side: "hold" as "buy" }),
+      ),
+    ).rejects.toThrow(/side/i);
+    expect(mockCreateOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid orderType", async () => {
+    await expect(
+      createOrder(
+        validParams({ orderType: "stop" as "limit" }),
+      ),
+    ).rejects.toThrow(/orderType/i);
+    expect(mockCreateOrder).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

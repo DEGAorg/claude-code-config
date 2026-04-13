@@ -249,6 +249,9 @@ export interface BuildOrderResult {
   raw: unknown;
 }
 
+const VALID_SIDES = ["buy", "sell"] as const;
+const VALID_ORDER_TYPES = ["market", "limit"] as const;
+
 function validateOrderParams(params: OrderParams): void {
   if (params.price < 0 || params.price > 1) {
     throw new Error(
@@ -260,6 +263,18 @@ function validateOrderParams(params: OrderParams): void {
     throw new Error(
       `Invalid size ${String(params.size)}: ` +
         "must be greater than 0",
+    );
+  }
+  if (!VALID_SIDES.includes(params.side)) {
+    throw new Error(
+      `Invalid side "${String(params.side)}": ` +
+        "must be \"buy\" or \"sell\"",
+    );
+  }
+  if (!VALID_ORDER_TYPES.includes(params.orderType)) {
+    throw new Error(
+      `Invalid orderType "${String(params.orderType)}": ` +
+        "must be \"market\" or \"limit\"",
     );
   }
 }
