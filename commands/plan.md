@@ -88,13 +88,45 @@ files. Use `(deps: none)` for the first item or truly independent items. Chain
 sequential items: `(deps: 1)`, `(deps: 2)`, etc. For parallel branches that
 rejoin, use multiple deps: `(deps: 3, 4)`.
 
-## 4. Resolve open questions
+## 4. Validate scope
+
+Before creating the issue, validate the plan against the scope guardrails
+in `rules/exec-plans.md`. Run every check below. If any check fails,
+rewrite the failing section in place — do not prompt the user.
+
+### Checks
+
+1. **Item count:** Count progress log items. If >10, split into phases —
+   each phase becomes its own issue with ≤10 items. Create a parent issue
+   linking the phases.
+2. **Files per item:** For each progress item, count backtick-quoted file
+   paths in its description. If any item references >3 files, split it
+   into smaller items scoped to ≤3 files each.
+3. **Shell-verifiable criteria:** Each completion criterion must contain a
+   concrete shell command (backtick-quoted) that returns 0 on success.
+   Rewrite vague criteria like "tests pass" into specific commands
+   (e.g., `` `vitest run tests/auth.test.ts` exits 0 ``).
+4. **Dependency chain depth:** Compute the longest path through the
+   dependency DAG. If depth >5, restructure the progress log for more
+   parallelism or split into phases.
+5. **TDD ordering:** Scan the "Files to touch" table for application code
+   extensions (`.ts`, `.tsx`, `.py`, `.rs`, `.go`). If found, verify the
+   progress log contains test-writing items that are dependencies of (or
+   run alongside) the implementation items — not after them. If tests are
+   missing or misordered, rewrite the progress log to follow TDD ordering:
+   write test → implement → verify. Shell-only plans (`.sh` files) are
+   exempt.
+6. **Single retry:** If any check triggered a rewrite, re-run all five
+   checks once. If the plan still fails validation after the retry,
+   stop and report the failing checks to the user — do not loop.
+
+## 5. Resolve open questions
 
 If there are P1 open questions (blocking decisions), resolve them before
 proceeding. Ask the user or investigate the codebase as needed. Record
 the decision in the Decision log section of the plan.
 
-## 5. Create or update the GitHub Issue
+## 6. Create or update the GitHub Issue
 
 Write the plan body to a temporary file, then call the appropriate script.
 
@@ -131,7 +163,7 @@ gh issue edit N --add-label "plan:draft"
 rm -f "${plan_body_file}"
 ```
 
-## 6. Hand off
+## 7. Hand off
 
 Once the issue is created or updated, **stop**. Do not begin implementation.
 
