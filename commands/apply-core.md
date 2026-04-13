@@ -80,6 +80,7 @@ Files available:
 - `scripts/orch-review.sh`
 - `scripts/orch-engine.sh`
 - `scripts/orch-verify.sh`
+- `scripts/ralph-item-reviewer-prompt.md`
 - `agents/orch-worker.md`
 - `agents/orch-verifier.md`
 - `hooks/orch-done-sync.sh`
@@ -166,6 +167,7 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/orch-state.sh`
 - `~/.degacore/scripts/orch-review.sh`
 - `~/.degacore/scripts/orch-verify.sh`
+- `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
 - `~/.degacore/scripts/planner-loop.sh`
 - `~/.degacore/scripts/canon-scaffold.sh`
 - `~/.degacore/scripts/canon.sh`
@@ -452,6 +454,7 @@ Write each shell script to `~/.degacore/scripts/`:
 - `scripts/orch-state.sh` -> `~/.degacore/scripts/orch-state.sh`
 - `scripts/orch-review.sh` -> `~/.degacore/scripts/orch-review.sh`
 - `scripts/orch-verify.sh` -> `~/.degacore/scripts/orch-verify.sh`
+- `scripts/ralph-item-reviewer-prompt.md` -> `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
 
 Run `chmod +x ~/.degacore/scripts/orch-*.sh` after writing.
 
