@@ -209,3 +209,152 @@ export async function fetchBalance(): Promise<AccountBalance[]> {
     locked: b.locked,
   }));
 }
+
+/** Parameters for creating or building an order. */
+export interface OrderParams {
+  marketId: string;
+  tokenId: string;
+  side: "buy" | "sell";
+  size: number;
+  price: number;
+  orderType: "market" | "limit";
+}
+
+/** Order response from createOrder or cancelOrder. */
+export interface OrderResponse {
+  id: string;
+  marketId: string;
+  outcomeId: string;
+  side: "buy" | "sell";
+  type: "market" | "limit";
+  amount: number;
+  price: number;
+  status: string;
+  filled: number;
+  remaining: number;
+}
+
+/** Dry-run result from buildOrder. */
+export interface BuildOrderResult {
+  exchange: string;
+  params: {
+    marketId: string;
+    outcomeId: string;
+    side: string;
+    type: string;
+    amount: number;
+    price: number;
+  };
+  signedOrder?: Record<string, unknown>;
+  raw: unknown;
+}
+
+function validateOrderParams(params: OrderParams): void {
+  if (params.price < 0 || params.price > 1) {
+    throw new Error(
+      `Invalid price ${String(params.price)}: ` +
+        "must be between 0 and 1",
+    );
+  }
+  if (params.size <= 0) {
+    throw new Error(
+      `Invalid size ${String(params.size)}: ` +
+        "must be greater than 0",
+    );
+  }
+}
+
+/**
+ * Create a new order on the exchange.
+ *
+ * Validates price (0-1) and size (> 0) before delegating to pmxtjs.
+ *
+ * @param params - Order parameters.
+ */
+export async function createOrder(
+  params: OrderParams,
+): Promise<OrderResponse> {
+  validateOrderParams(params);
+  const poly = getClient();
+  const order = await poly.createOrder({
+    marketId: params.marketId,
+    outcomeId: params.tokenId,
+    side: params.side,
+    type: params.orderType,
+    amount: params.size,
+    price: params.price,
+  });
+  return {
+    id: order.id,
+    marketId: order.marketId,
+    outcomeId: order.outcomeId,
+    side: order.side,
+    type: order.type,
+    amount: order.amount,
+    price: order.price ?? params.price,
+    status: order.status,
+    filled: order.filled,
+    remaining: order.remaining,
+  };
+}
+
+/**
+ * Cancel an existing order.
+ *
+ * @param orderId - The order ID to cancel.
+ */
+export async function cancelOrder(
+  orderId: string,
+): Promise<OrderResponse> {
+  const poly = getClient();
+  const order = await poly.cancelOrder(orderId);
+  return {
+    id: order.id,
+    marketId: order.marketId,
+    outcomeId: order.outcomeId,
+    side: order.side,
+    type: order.type,
+    amount: order.amount,
+    price: order.price ?? 0,
+    status: order.status,
+    filled: order.filled,
+    remaining: order.remaining,
+  };
+}
+
+/**
+ * Build an order payload without submitting.
+ *
+ * Validates params (same as createOrder) before delegating to pmxtjs.
+ *
+ * @param params - Order parameters.
+ */
+export async function buildOrder(
+  params: OrderParams,
+): Promise<BuildOrderResult> {
+  validateOrderParams(params);
+  const poly = getClient();
+  const built = await poly.buildOrder({
+    marketId: params.marketId,
+    outcomeId: params.tokenId,
+    side: params.side,
+    type: params.orderType,
+    amount: params.size,
+    price: params.price,
+  });
+  return {
+    exchange: built.exchange,
+    params: {
+      marketId: built.params.marketId,
+      outcomeId: built.params.outcomeId,
+      side: built.params.side,
+      type: built.params.type,
+      amount: built.params.amount,
+      price: built.params.price ?? params.price,
+    },
+    ...(built.signedOrder !== undefined
+      ? { signedOrder: built.signedOrder }
+      : {}),
+    raw: built.raw,
+  };
+}
