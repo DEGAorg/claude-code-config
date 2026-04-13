@@ -37,6 +37,25 @@ export interface OrderBook {
   asks: PriceLevel[];
 }
 
+/** A current position in a Polymarket market. */
+export interface Position {
+  marketId: string;
+  outcomeId: string;
+  outcomeLabel: string;
+  size: number;
+  entryPrice: number;
+  currentPrice: number;
+  unrealizedPnL: number;
+}
+
+/** Account balance entry for a Polymarket account. */
+export interface AccountBalance {
+  currency: string;
+  total: number;
+  available: number;
+  locked: number;
+}
+
 let client: Polymarket | undefined;
 
 function getClient(): Polymarket {
@@ -150,4 +169,43 @@ export async function fetchOrderBook(tokenId: string): Promise<OrderBook> {
     bids: book.bids.map(mapLevel),
     asks: book.asks.map(mapLevel),
   };
+}
+
+/**
+ * Fetch current positions for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ */
+export async function fetchPositions(): Promise<Position[]> {
+  const poly = getClient();
+  const positions = await poly.fetchPositions();
+
+  return positions.map((p) => ({
+    marketId: p.marketId,
+    outcomeId: p.outcomeId,
+    outcomeLabel: p.outcomeLabel,
+    size: p.size,
+    entryPrice: p.entryPrice,
+    currentPrice: p.currentPrice,
+    unrealizedPnL: p.unrealizedPnL,
+  }));
+}
+
+/**
+ * Fetch account balances for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ */
+export async function fetchBalance(): Promise<AccountBalance[]> {
+  const poly = getClient();
+  const balances = await poly.fetchBalance();
+
+  return balances.map((b) => ({
+    currency: b.currency,
+    total: b.total,
+    available: b.available,
+    locked: b.locked,
+  }));
 }
