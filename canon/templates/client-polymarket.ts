@@ -6,6 +6,7 @@
  */
 
 import { Polymarket } from "pmxtjs";
+import { callSidecar } from "./sidecar.js";
 
 /** YES/NO price snapshot for a Polymarket condition. */
 export interface MarketPrice {
@@ -73,6 +74,37 @@ export interface FetchMyTradesParams {
   marketId?: string;
   limit?: number;
   cursor?: string;
+}
+
+/** OHLCV price candle from the pmxt sidecar. */
+export interface PriceCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+}
+
+/** Options for fetchOHLCV. */
+export interface FetchOHLCVOptions {
+  timeframe?: string;
+}
+
+/** Order book snapshot from the pmxt sidecar. */
+export interface SidecarOrderBook {
+  bids: PriceLevel[];
+  asks: PriceLevel[];
+  timestamp: number | null;
+}
+
+/** A single trade from the pmxt sidecar. */
+export interface Trade {
+  id: string;
+  price: number;
+  size: number;
+  side: string;
+  timestamp: number;
 }
 
 let client: Polymarket | undefined;
@@ -428,4 +460,58 @@ export async function buildOrder(
       : {}),
     raw: built.raw,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Sidecar-dependent methods
+// ---------------------------------------------------------------------------
+// These methods bypass the pmxtjs SDK to work around the header-clobbering
+// bug in pmxtjs v2.22.1. They call the pmxt sidecar HTTP API directly via
+// the callSidecar helper.
+
+/**
+ * Fetch OHLCV candle data for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ * @param options - Optional parameters (e.g. timeframe).
+ */
+export async function fetchOHLCV(
+  tokenId: string,
+  options?: FetchOHLCVOptions,
+): Promise<PriceCandle[]> {
+  const args: unknown[] = [tokenId];
+  if (options !== undefined) {
+    args.push(options);
+  }
+  return callSidecar<PriceCandle[]>("fetchOHLCV", args);
+}
+
+/**
+ * Watch the order book for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ * Returns a snapshot with bids, asks, and a nullable timestamp.
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ */
+export async function watchOrderBook(
+  tokenId: string,
+): Promise<SidecarOrderBook> {
+  return callSidecar<SidecarOrderBook>("watchOrderBook", [tokenId]);
+}
+
+/**
+ * Watch recent trades for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ * May block until a trade occurs on low-activity markets.
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ */
+export async function watchTrades(
+  tokenId: string,
+): Promise<Trade[]> {
+  return callSidecar<Trade[]>("watchTrades", [tokenId]);
 }
