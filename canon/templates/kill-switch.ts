@@ -1,11 +1,16 @@
 /**
  * Kill switch — emergency cancellation of all open orders and
  * optional closure of all positions.
- *
- * Stub — implementation in item 10.
  */
 
+import {
+  cancelOrder,
+  createOrder,
+  fetchPositions,
+} from "./client-polymarket.js";
 import type { RiskInterface } from "./types/RiskInterface.js";
+
+const DEFAULT_MAX_RETRIES = 3;
 
 /** Result of cancelling all open orders. */
 export interface CancelAllResult {
@@ -49,10 +54,32 @@ export interface KillSwitchOptions {
  * @param options - Retry configuration.
  */
 export async function cancelAllOrders(
-  _orderIds: string[],
-  _options?: { maxRetries?: number | undefined } | undefined,
+  orderIds: string[],
+  options?: { maxRetries?: number | undefined } | undefined,
 ): Promise<CancelAllResult> {
-  throw new Error("Not implemented — see item 10");
+  const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const cancelled: string[] = [];
+  const failed: string[] = [];
+
+  for (const orderId of orderIds) {
+    let success = false;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        await cancelOrder(orderId);
+        success = true;
+        break;
+      } catch {
+        // Retry until maxRetries exhausted
+      }
+    }
+    if (success) {
+      cancelled.push(orderId);
+    } else {
+      failed.push(orderId);
+    }
+  }
+
+  return { cancelled, failed };
 }
 
 /**
@@ -62,7 +89,28 @@ export async function cancelAllOrders(
  * market sell orders for each position with size > 0.
  */
 export async function closeAllPositions(): Promise<CloseAllResult> {
-  throw new Error("Not implemented — see item 10");
+  const positions = await fetchPositions();
+  const closed: string[] = [];
+  const failed: string[] = [];
+
+  for (const pos of positions) {
+    if (pos.size === 0) continue;
+    try {
+      await createOrder({
+        marketId: pos.marketId,
+        tokenId: pos.outcomeId,
+        side: "sell",
+        size: pos.size,
+        price: pos.currentPrice,
+        orderType: "market",
+      });
+      closed.push(pos.outcomeId);
+    } catch {
+      failed.push(pos.outcomeId);
+    }
+  }
+
+  return { closed, failed };
 }
 
 /**
@@ -73,8 +121,23 @@ export async function closeAllPositions(): Promise<CloseAllResult> {
  * @param options - Kill switch configuration.
  */
 export async function activateKillSwitch(
-  _orderIds: string[],
-  _options?: KillSwitchOptions | undefined,
+  orderIds: string[],
+  options?: KillSwitchOptions | undefined,
 ): Promise<KillSwitchResult> {
-  throw new Error("Not implemented — see item 10");
+  const cancelResult = await cancelAllOrders(orderIds, {
+    maxRetries: options?.maxRetries,
+  });
+
+  let closeResult: CloseAllResult | null = null;
+  if (options?.closePositions === true) {
+    closeResult = await closeAllPositions();
+  }
+
+  let circuitBreakerTriggered = false;
+  if (options?.riskInterface) {
+    options.riskInterface.onCircuitBreaker(options.reason ?? "Kill switch activated");
+    circuitBreakerTriggered = true;
+  }
+
+  return { cancelResult, closeResult, circuitBreakerTriggered };
 }
