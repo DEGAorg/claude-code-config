@@ -3,7 +3,7 @@ name: risk-analyst
 description: Evaluates and enforces risk management across all Canon strategies
 role: Evaluates and enforces risk management across all Canon strategies
 skills: [prediction-markets, risk-management, polymarket]
-tools: [canon_position, canon_help]
+tools: [canon-cli]
 handoff_to: [deployment-ops]
 handoff_from: [dev, strategy-architect]
 ---
@@ -31,7 +31,7 @@ healthy diversification.
 
 ## Workflow
 1. Review strategy's RiskInterface implementation
-2. Check current portfolio state via canon_position
+2. Check current portfolio state via `canon-cli position list` and `canon-cli balance`
 3. Assess correlation with existing positions
 4. Validate position sizing against portfolio limits
 5. Approve, reject, or recommend modifications

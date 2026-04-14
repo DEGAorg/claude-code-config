@@ -4,7 +4,7 @@ description: Core concepts of prediction markets — mechanics, pricing, resolut
 version: 1.0.0
 domain: prediction-markets
 requires: []
-tools: [canon_market]
+tools: [canon-cli]
 ---
 
 # Prediction Market Fundamentals
