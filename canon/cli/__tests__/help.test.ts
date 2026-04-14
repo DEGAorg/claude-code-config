@@ -52,7 +52,7 @@ description: Polymarket-specific knowledge
 version: 1.0.0
 domain: platform
 requires: [prediction-markets]
-tools: [canon_market, canon_position]
+tools: [canon-cli]
 ---
 
 # Polymarket Platform Knowledge
@@ -89,10 +89,7 @@ describe("parseFrontmatter", () => {
     expect(result?.meta.domain).toBe("platform");
     expect(result?.meta.version).toBe("1.0.0");
     expect(result?.meta.requires).toEqual(["prediction-markets"]);
-    expect(result?.meta.tools).toEqual([
-      "canon_market",
-      "canon_position",
-    ]);
+    expect(result?.meta.tools).toEqual(["canon-cli"]);
   });
 
   it("parses empty arrays", () => {
@@ -260,10 +257,7 @@ describe("help <topic>", () => {
     expect(parsed.data.domain).toBe("platform");
     expect(parsed.data.version).toBe("1.0.0");
     expect(parsed.data.requires).toEqual(["prediction-markets"]);
-    expect(parsed.data.tools).toEqual([
-      "canon_market",
-      "canon_position",
-    ]);
+    expect(parsed.data.tools).toEqual(["canon-cli"]);
     expect(parsed.data.content).toContain(
       "Polymarket Platform Knowledge",
     );

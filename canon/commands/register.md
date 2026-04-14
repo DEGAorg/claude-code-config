@@ -20,7 +20,7 @@ Steps:
    - Correlated exposure limit ≤15% of portfolio
    - Daily loss limit trigger at -3%
    - Maximum drawdown halt at -10%
-2. Check current portfolio state: `canon_position --action portfolio`
+2. Check current portfolio state: `canon-cli position list` and `canon-cli balance`
 3. Assess correlation with existing positions
 4. Validate position sizing is within portfolio limits
 
@@ -51,12 +51,7 @@ If any item fails, stop and resolve before proceeding.
 
 ## 3. Register
 
-Register the strategy on Canon Arena:
-
-```
-canon_register
-```
-
+Register the strategy on Canon Arena via the Arena dashboard.
 Record the registration confirmation (strategy ID, Arena URL).
 
 ## 4. Verify and monitor
@@ -64,7 +59,7 @@ Record the registration confirmation (strategy ID, Arena URL).
 Verify registration and set up monitoring:
 
 1. Confirm strategy is visible on Arena leaderboard with correct metadata
-2. Verify P&L tracking is active: `canon_position --action pnl`
+2. Verify P&L tracking is active: `canon-cli position list`
 3. Configure alert thresholds:
    - Daily loss alert at -2% (warning before -3% circuit breaker)
    - API error alert at >3 errors/hour (warning before 5-error auto-pause)

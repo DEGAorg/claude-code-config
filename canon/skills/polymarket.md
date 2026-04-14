@@ -4,7 +4,7 @@ description: Polymarket-specific knowledge — API, fees, resolution, mechanics
 version: 1.0.0
 domain: platform
 requires: [prediction-markets]
-tools: [canon_market, canon_position]
+tools: [canon-cli]
 ---
 
 # Polymarket Platform Knowledge
@@ -54,8 +54,8 @@ Polymarket has platform-specific mechanics that affect strategy design.
 - FOK (Fill or Kill): When partial fills would unbalance your position
 
 ### Monitoring Positions
-- Check positions via `canon_position --action list`
-- Monitor P&L via `canon_position --action pnl`
+- Check positions via `canon-cli position list`
+- Monitor P&L via `canon-cli position list` (includes PnL summary)
 - Watch for resolution approaching — exit or hold decision
 - Set alerts for price movements >10% (potential information event)
 
