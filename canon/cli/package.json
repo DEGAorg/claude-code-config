@@ -17,6 +17,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "canon-templates": "file:../templates",
     "pmxtjs": "2.22.1"
   },
   "devDependencies": {
