@@ -2,9 +2,6 @@
  * Strategy runner — configurable poll loop that integrates strategy
  * signal generation, risk checks, order execution, position management,
  * and structured execution logging.
- *
- * Stub: tests in __tests__/runner.test.ts define the contract.
- * Implementation: plan item 12.
  */
 
 import type { TradeSignal } from "./types/TradeSignal.js";
@@ -60,6 +57,21 @@ export interface Runner {
   readonly isRunning: boolean;
 }
 
+function logEntry(
+  type: ExecutionLogEntry["type"],
+  automationId: string,
+  marketId: string,
+  data: Record<string, unknown>,
+): ExecutionLogEntry {
+  return {
+    timestamp: new Date().toISOString(),
+    type,
+    automation_id: automationId,
+    market_id: marketId,
+    data,
+  };
+}
+
 /**
  * Create a new strategy runner.
  *
@@ -71,8 +83,136 @@ export interface Runner {
  * Registers a SIGINT handler for graceful shutdown.
  */
 export function createRunner(
-  _config: RunnerConfig,
-  _deps: RunnerDeps,
+  config: RunnerConfig,
+  deps: RunnerDeps,
 ): Runner {
-  throw new Error("Not implemented — see plan item 12");
+  let running = false;
+  let stopRequested = false;
+  let sigintHandler: (() => void) | null = null;
+
+  async function processSignal(
+    signal: TradeSignal,
+    portfolio: Portfolio,
+  ): Promise<void> {
+    deps.log(
+      logEntry("signal", signal.automation_id, signal.market.market_id, {
+        direction: signal.direction,
+        size: signal.size,
+        confidence: signal.confidence,
+      }),
+    );
+
+    const decision = deps.risk.preTradeCheck(signal, portfolio);
+
+    deps.log(
+      logEntry(
+        "risk_check",
+        signal.automation_id,
+        signal.market.market_id,
+        {
+          approved: decision.approved,
+          rejection_reason: decision.rejection_reason,
+          modified_size: decision.modified_size,
+        },
+      ),
+    );
+
+    if (!decision.approved) {
+      return;
+    }
+
+    const submittable =
+      decision.modified_size !== undefined
+        ? { ...signal, size: decision.modified_size }
+        : signal;
+
+    if (config.dryRun) {
+      return;
+    }
+
+    try {
+      const result = await deps.executor.submit(submittable);
+      deps.log(
+        logEntry(
+          "order_submit",
+          signal.automation_id,
+          signal.market.market_id,
+          { order_id: result.id, status: result.status },
+        ),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : String(err);
+      deps.log(
+        logEntry(
+          "error",
+          signal.automation_id,
+          signal.market.market_id,
+          { error: message, stage: "order_submit" },
+        ),
+      );
+    }
+  }
+
+  async function cycle(): Promise<void> {
+    const portfolio = await deps.positions.reconcile();
+    const signals = await deps.strategy();
+
+    for (const signal of signals) {
+      await processSignal(signal, portfolio);
+    }
+  }
+
+  function stop(): void {
+    stopRequested = true;
+  }
+
+  async function start(): Promise<void> {
+    running = true;
+    stopRequested = false;
+
+    sigintHandler = () => {
+      stop();
+    };
+    process.on("SIGINT", sigintHandler);
+
+    try {
+      while (!stopRequested) {
+        try {
+          await cycle();
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : String(err);
+          deps.log(
+            logEntry("error", "runner", "", {
+              error: message,
+              stage: "cycle",
+            }),
+          );
+        }
+
+        if (stopRequested) {
+          break;
+        }
+
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, config.pollIntervalMs);
+        });
+      }
+    } finally {
+      running = false;
+      if (sigintHandler) {
+        process.removeListener("SIGINT", sigintHandler);
+        sigintHandler = null;
+      }
+    }
+  }
+
+  return {
+    start,
+    stop,
+    get isRunning() {
+      return running;
+    },
+  };
 }
