@@ -1,0 +1,218 @@
+/**
+ * Strategy runner — configurable poll loop that integrates strategy
+ * signal generation, risk checks, order execution, position management,
+ * and structured execution logging.
+ */
+
+import type { TradeSignal } from "./types/TradeSignal.js";
+import type { RiskInterface, Portfolio } from "./types/RiskInterface.js";
+import type { ExecutionLogEntry } from "./execution-log.js";
+
+/** Runner configuration. */
+export interface RunnerConfig {
+  /** Milliseconds between poll cycles. */
+  pollIntervalMs: number;
+  /** When true, signals are logged but orders are not submitted. */
+  dryRun: boolean;
+  /** Base directory for execution log files. */
+  baseDir: string;
+  /** Path to the local JSON state file. */
+  statePath: string;
+}
+
+/** Order executor dependency — submits signals as orders. */
+export interface ExecutorDeps {
+  submit(
+    signal: TradeSignal,
+  ): Promise<{ id: string; status: string }>;
+}
+
+/** Position manager dependency — reconciles and exposes portfolio. */
+export interface PositionDeps {
+  reconcile(): Promise<Portfolio>;
+  getPortfolio(): Portfolio;
+}
+
+/** All injectable dependencies for the runner. */
+export interface RunnerDeps {
+  /** Strategy function — returns signals for the current cycle. */
+  strategy: () => Promise<TradeSignal[]>;
+  /** Risk interface — approves or rejects signals. */
+  risk: RiskInterface;
+  /** Order executor — submits approved signals. */
+  executor: ExecutorDeps;
+  /** Position manager — provides portfolio state. */
+  positions: PositionDeps;
+  /** Execution log — records every pipeline decision. */
+  log: (entry: ExecutionLogEntry) => void;
+}
+
+/** Strategy runner instance. */
+export interface Runner {
+  /** Start the poll loop. Resolves when the runner stops. */
+  start(): Promise<void>;
+  /** Signal the runner to stop after the current cycle. */
+  stop(): void;
+  /** Whether the poll loop is currently running. */
+  readonly isRunning: boolean;
+}
+
+function logEntry(
+  type: ExecutionLogEntry["type"],
+  automationId: string,
+  marketId: string,
+  data: Record<string, unknown>,
+): ExecutionLogEntry {
+  return {
+    timestamp: new Date().toISOString(),
+    type,
+    automation_id: automationId,
+    market_id: marketId,
+    data,
+  };
+}
+
+/**
+ * Create a new strategy runner.
+ *
+ * The runner polls the strategy function at `config.pollIntervalMs`,
+ * passes each signal through `deps.risk.preTradeCheck`, submits
+ * approved signals via `deps.executor.submit` (skipped in dry-run),
+ * and logs every decision via `deps.log`.
+ *
+ * Registers a SIGINT handler for graceful shutdown.
+ */
+export function createRunner(
+  config: RunnerConfig,
+  deps: RunnerDeps,
+): Runner {
+  let running = false;
+  let stopRequested = false;
+  let sigintHandler: (() => void) | null = null;
+
+  async function processSignal(
+    signal: TradeSignal,
+    portfolio: Portfolio,
+  ): Promise<void> {
+    deps.log(
+      logEntry("signal", signal.automation_id, signal.market.market_id, {
+        direction: signal.direction,
+        size: signal.size,
+        confidence: signal.confidence,
+      }),
+    );
+
+    const decision = deps.risk.preTradeCheck(signal, portfolio);
+
+    deps.log(
+      logEntry(
+        "risk_check",
+        signal.automation_id,
+        signal.market.market_id,
+        {
+          approved: decision.approved,
+          rejection_reason: decision.rejection_reason,
+          modified_size: decision.modified_size,
+        },
+      ),
+    );
+
+    if (!decision.approved) {
+      return;
+    }
+
+    const submittable =
+      decision.modified_size !== undefined
+        ? { ...signal, size: decision.modified_size }
+        : signal;
+
+    if (config.dryRun) {
+      return;
+    }
+
+    try {
+      const result = await deps.executor.submit(submittable);
+      deps.log(
+        logEntry(
+          "order_submit",
+          signal.automation_id,
+          signal.market.market_id,
+          { order_id: result.id, status: result.status },
+        ),
+      );
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : String(err);
+      deps.log(
+        logEntry(
+          "error",
+          signal.automation_id,
+          signal.market.market_id,
+          { error: message, stage: "order_submit" },
+        ),
+      );
+    }
+  }
+
+  async function cycle(): Promise<void> {
+    const portfolio = await deps.positions.reconcile();
+    const signals = await deps.strategy();
+
+    for (const signal of signals) {
+      await processSignal(signal, portfolio);
+    }
+  }
+
+  function stop(): void {
+    stopRequested = true;
+  }
+
+  async function start(): Promise<void> {
+    running = true;
+    stopRequested = false;
+
+    sigintHandler = () => {
+      stop();
+    };
+    process.on("SIGINT", sigintHandler);
+
+    try {
+      while (!stopRequested) {
+        try {
+          await cycle();
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : String(err);
+          deps.log(
+            logEntry("error", "runner", "", {
+              error: message,
+              stage: "cycle",
+            }),
+          );
+        }
+
+        if (stopRequested) {
+          break;
+        }
+
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, config.pollIntervalMs);
+        });
+      }
+    } finally {
+      running = false;
+      if (sigintHandler) {
+        process.removeListener("SIGINT", sigintHandler);
+        sigintHandler = null;
+      }
+    }
+  }
+
+  return {
+    start,
+    stop,
+    get isRunning() {
+      return running;
+    },
+  };
+}
