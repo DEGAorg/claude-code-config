@@ -307,6 +307,33 @@ export async function fetchMyTrades(
   );
 }
 
+/**
+ * Fetch all open orders for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ *
+ * @param marketId - Optional market ID to filter orders.
+ */
+export async function fetchOpenOrders(
+  marketId?: string,
+): Promise<OrderResponse[]> {
+  const poly = getClient();
+  const orders = await poly.fetchOpenOrders(marketId);
+  return orders.map((o) => ({
+    id: o.id,
+    marketId: o.marketId,
+    outcomeId: o.outcomeId,
+    side: o.side,
+    type: o.type,
+    amount: o.amount,
+    price: o.price ?? 0,
+    status: o.status,
+    filled: o.filled,
+    remaining: o.remaining,
+  }));
+}
+
 /** Parameters for creating or building an order. */
 export interface OrderParams {
   marketId: string;
