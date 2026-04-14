@@ -4,14 +4,14 @@ description: Common prediction market strategy archetypes and when to use them
 version: 1.0.0
 domain: prediction-markets
 requires: [prediction-markets, risk-management]
-tools: [canon_init, canon_test]
+tools: [canon-cli]
 ---
 
 # Strategy Patterns
 
 ## Context
 Load this skill when designing a new strategy or helping a user choose an approach.
-Each pattern maps to a canon_init template.
+Each pattern maps to a `/canon-init` template.
 
 ## Core Knowledge
 
@@ -20,7 +20,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Information takes time to fully price in
 - **Signal:** Odds velocity (rate of price change over time window)
 - **Risk:** False breakouts, mean reversion after overextension
-- **Template:** `canon_init --template momentum-trader`
+- **Template:** `/canon-init --template momentum-trader`
 - **Best for:** High-volume markets with frequent information events
 
 ### Pattern 2: Contrarian / Mean Reversion
@@ -28,7 +28,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Crowd overreaction to news events
 - **Signal:** Price deviates >15% from 7-day moving average
 - **Risk:** Markets can stay irrational — "the trend is real, not an overreaction"
-- **Template:** `canon_init --template contrarian-fade`
+- **Template:** `/canon-init --template contrarian-fade`
 - **Best for:** Markets with high volatility and strong anchor points
 
 ### Pattern 3: Arbitrage
@@ -36,7 +36,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Pure mathematical — no prediction needed
 - **Signal:** Cross-market price discrepancy exceeds transaction costs
 - **Risk:** Execution risk (one leg fills, other doesn't), resolution risk
-- **Template:** `canon_init --template arbitrage-scanner`
+- **Template:** `/canon-init --template arbitrage-scanner`
 - **Best for:** When same event trades on multiple platforms or in related markets
 
 ### Pattern 4: News / Sentiment
@@ -44,7 +44,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Speed of information processing
 - **Signal:** Sentiment shift detected in news/social media before price moves
 - **Risk:** Fake news, misinterpretation, already priced in
-- **Template:** `canon_init --template news-sentiment`
+- **Template:** `/canon-init --template news-sentiment`
 - **Best for:** Markets sensitive to breaking news (politics, current events)
 
 ### Pattern 5: Portfolio Rebalancing
@@ -52,7 +52,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Discipline and diversification
 - **Signal:** Portfolio drift from target weights
 - **Risk:** Rebalancing into losing positions (systematic value trap)
-- **Template:** `canon_init --template portfolio-rebalancer`
+- **Template:** `/canon-init --template portfolio-rebalancer`
 - **Best for:** Conservative, long-term strategies with multiple active markets
 
 ### Pattern 6: Volatility Harvesting
@@ -60,7 +60,7 @@ Each pattern maps to a canon_init template.
 - **Edge:** Markets oscillate around fair value — buy dips, sell rips
 - **Signal:** Price touches upper/lower band of recent range
 - **Risk:** Breakout (price leaves range permanently)
-- **Template:** `canon_init --template volatility-harvester`
+- **Template:** `/canon-init --template volatility-harvester`
 - **Best for:** Range-bound markets with high trading volume
 
 ## Decision Frameworks

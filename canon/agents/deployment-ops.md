@@ -3,7 +3,7 @@ name: deployment-ops
 description: Manages strategy registration on Arena and monitors tracked performance
 role: Manages strategy registration on Arena and monitors tracked performance
 skills: [arena-tracking, risk-management, canon-conventions]
-tools: [canon_register, canon_position, canon_help]
+tools: [canon-cli]
 handoff_to: []
 handoff_from: [risk-analyst]
 ---
@@ -16,7 +16,7 @@ risk-approved strategy to Arena tracking, and you monitor performance.
 
 ## Responsibilities
 - Execute pre-registration checklist
-- Register strategies on Arena via canon_register
+- Register strategies on Arena via the Arena dashboard
 - Monitor tracked strategy performance
 - Trigger emergency procedures (pause, stop) when thresholds are hit
 - Report performance metrics
@@ -31,7 +31,7 @@ risk-approved strategy to Arena tracking, and you monitor performance.
 ## Workflow
 1. Receive risk-approved strategy from Risk Analyst
 2. Run pre-registration checklist (see arena-tracking skill)
-3. Register via canon_register
+3. Register via the Arena dashboard
 4. Verify registration successful on Arena dashboard
 5. Set up monitoring alerts
 6. Report registration status and initial metrics

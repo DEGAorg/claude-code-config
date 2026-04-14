@@ -4,7 +4,7 @@ description: How to register strategies on Canon Arena for performance tracking 
 version: 1.0.0
 domain: workflow
 requires: [risk-management]
-tools: [canon_register, canon_position]
+tools: [canon-cli]
 ---
 
 # Arena Tracking
@@ -20,7 +20,7 @@ infrastructure; strategies run on users' own machines.
 
 ### Registration Pipeline
 1. **Validation:** Strategy implements TradeSignal and RiskInterface
-2. **Testing:** canon_test passes with acceptable metrics
+2. **Testing:** `vitest run` passes with acceptable metrics
 3. **Configuration:** Strategy configured with Polymarket wallet address
 4. **Registration:** Strategy registered with Arena (name, description, author, wallet)
 5. **Tracking:** Arena begins monitoring the Polymarket account and displaying performance
@@ -42,9 +42,9 @@ infrastructure; strategies run on users' own machines.
 - Status: Active / Paused / Stopped
 
 ### Monitoring Live Strategies
-- Check P&L: `canon_position --action pnl`
-- Check positions: `canon_position --action list`
-- Check portfolio: `canon_position --action portfolio`
+- Check P&L: `canon-cli position list` (includes PnL summary)
+- Check positions: `canon-cli position list`
+- Check portfolio: `canon-cli balance`
 - Arena dashboard: Real-time leaderboard position
 
 ## Decision Frameworks
