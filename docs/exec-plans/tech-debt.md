@@ -326,3 +326,47 @@ clips exported successfully.
 failed orchestrator run: reviewer can't see untracked files, phantom checkboxes
 in plan-advance.sh, token exhaustion, per-item JSON files. Most of these were
 addressed by subsequent orchestrator rewrites. Verify fixes landed and delete.
+
+---
+
+## Missing reviewer prompt template breaks orch review phase
+
+**Severity:** P1
+**Area:** scripts/orch-review.sh
+**Logged:** 2026-04-13
+**Context:** Plan #162 (scope guardrails) — all 3 items completed successfully but review phase failed with `error: reviewer prompt template not found: /Users/cerratoa/.degacore/scripts/ralph-item-reviewer-prompt.md`
+
+`orch-review.sh` expects a reviewer prompt template at
+`~/.degacore/scripts/ralph-item-reviewer-prompt.md` but the file does not exist.
+This means **no plan can complete the review phase**, so every orch run ends with
+all items done but no SHIP decision. The orchestrator silently exits after the
+error — no retry, no fallback.
+
+This may be a missing file from `/apply-core` (the template exists in the repo
+but isn't installed) or a path mismatch after the `~/.claude/` → `~/.degacore/`
+migration.
+
+**Impact:** Every orchestrator run is blocked from completing review and SHIP.
+Workers do the work, but no PR is created and no issue is closed.
+
+---
+
+## Orch SHIP cleanup proceeds after failed push — deletes branch with all work
+
+**Severity:** P1
+**Area:** scripts/orch-engine.sh
+**Logged:** 2026-04-14
+**Context:** Plan #166 (Polymarket Trading Client) — push failed (rate limit), engine deleted local branch and worktree anyway, reported 0 errors
+
+`orch-engine.sh` step 8/9 (push + PR creation) treats push failure as non-fatal:
+it logs "WARN — git push failed, skipping PR creation" then continues to step 9
+which deletes the worktree and the local branch. The branch contained all 15 items
+of committed work. The engine then reported "SHIP COMPLETE / Errors: 0".
+
+In this case the push actually succeeded (branch was on remote) but the engine
+misdetected it as a failure. Either way, the cleanup logic should not destroy the
+only copy of the work when the push/PR step fails.
+
+**Fix:** Step 9 (worktree cleanup + branch delete) must be gated on step 8 success.
+If push or PR creation fails, preserve the worktree and branch, increment the error
+count, and print recovery instructions (`git push origin <branch>` + `gh pr create`).

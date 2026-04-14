@@ -26,3 +26,7 @@ focus.yaml
 poc/*/node_modules/
 poc/*/dist/
 poc/*/.env
+
+# Canon template artifacts
+canon/templates/node_modules/
+canon/templates/.vite/
