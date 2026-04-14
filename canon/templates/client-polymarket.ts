@@ -320,18 +320,31 @@ export async function fetchOpenOrders(
 ): Promise<OrderResponse[]> {
   const poly = getClient();
   const orders = await poly.fetchOpenOrders(marketId);
-  return orders.map((o) => ({
-    id: o.id,
-    marketId: o.marketId,
-    outcomeId: o.outcomeId,
-    side: o.side,
-    type: o.type,
-    amount: o.amount,
-    price: o.price ?? 0,
-    status: o.status,
-    filled: o.filled,
-    remaining: o.remaining,
-  }));
+  return orders.map(
+    (o: {
+      id: string;
+      marketId: string;
+      outcomeId: string;
+      side: "buy" | "sell";
+      type: "market" | "limit";
+      amount: number;
+      price?: number;
+      status: string;
+      filled: number;
+      remaining: number;
+    }): OrderResponse => ({
+      id: o.id,
+      marketId: o.marketId,
+      outcomeId: o.outcomeId,
+      side: o.side,
+      type: o.type,
+      amount: o.amount,
+      price: o.price ?? 0,
+      status: o.status,
+      filled: o.filled,
+      remaining: o.remaining,
+    }),
+  );
 }
 
 /** Parameters for creating or building an order. */
