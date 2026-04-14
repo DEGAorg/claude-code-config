@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Polymarket Trading Execution Pipeline (`20260414-polymarket-trading-pipeline`) — 2026-04-14
+
 - Polymarket Trading Client (`20260413-polymarket-trading-client`) — 2026-04-14
 
 - RPA DoraHacks — Multi-Account Session Management (`20260404-rpa-multi-account`) — 2026-04-04
