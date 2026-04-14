@@ -1,13 +1,11 @@
 /**
  * Order executor — converts TradeSignal → Polymarket order,
  * submits via client, and tracks lifecycle until terminal state.
- *
- * Stub: type exports and function signatures define the TDD contract.
- * Item 6 replaces the throw bodies with real implementations.
  */
 
 import type { TradeSignal } from "./types/TradeSignal.js";
 import type { OrderParams, OrderResponse } from "./client-polymarket.js";
+import { createOrder } from "./client-polymarket.js";
 
 /** Token IDs for the YES and NO outcomes of a binary market. */
 export interface TokenIds {
@@ -44,6 +42,21 @@ export interface TrackResult {
   remaining: number;
 }
 
+const DIRECTION_MAP: Record<
+  TradeSignal["direction"],
+  { side: "buy" | "sell"; token: "yes" | "no" }
+> = {
+  buy_yes: { side: "buy", token: "yes" },
+  buy_no: { side: "buy", token: "no" },
+  sell_yes: { side: "sell", token: "yes" },
+  sell_no: { side: "sell", token: "no" },
+};
+
+const TERMINAL_STATUSES = new Set(["filled", "cancelled"]);
+
+const DEFAULT_POLL_INTERVAL_MS = 5000;
+const DEFAULT_TIMEOUT_MS = 60_000;
+
 /**
  * Convert a TradeSignal into OrderParams for the Polymarket client.
  *
@@ -61,11 +74,33 @@ export interface TrackResult {
  * Validates: price in [0, 1], size > 0.
  */
 export function signalToOrderParams(
-  _signal: TradeSignal,
-  _tokenIds: TokenIds,
-  _price: number,
+  signal: TradeSignal,
+  tokenIds: TokenIds,
+  price: number,
 ): OrderParams {
-  throw new Error("Not implemented — see plan item 6");
+  if (price < 0 || price > 1) {
+    throw new Error(
+      `Invalid price ${String(price)}: must be between 0 and 1`,
+    );
+  }
+  if (signal.size <= 0) {
+    throw new Error(
+      `Invalid size ${String(signal.size)}: must be greater than 0`,
+    );
+  }
+
+  const { side, token } = DIRECTION_MAP[signal.direction];
+  const orderType: "market" | "limit" =
+    signal.urgency === "immediate" ? "market" : "limit";
+
+  return {
+    marketId: signal.market.market_id,
+    tokenId: tokenIds[token],
+    side,
+    size: signal.size,
+    price,
+    orderType,
+  };
 }
 
 /**
@@ -75,11 +110,24 @@ export function signalToOrderParams(
  * from the Polymarket client.
  */
 export async function submitOrder(
-  _signal: TradeSignal,
-  _tokenIds: TokenIds,
-  _price: number,
+  signal: TradeSignal,
+  tokenIds: TokenIds,
+  price: number,
 ): Promise<SubmitResult> {
-  throw new Error("Not implemented — see plan item 6");
+  const params = signalToOrderParams(signal, tokenIds, price);
+  const response = await createOrder(params);
+
+  return {
+    orderId: response.id,
+    marketId: response.marketId,
+    side: params.side,
+    size: params.size,
+    price: params.price,
+    status: response.status,
+    filled: response.filled,
+    remaining: response.remaining,
+    submittedAt: new Date(),
+  };
 }
 
 /**
@@ -94,9 +142,38 @@ export async function submitOrder(
  * @param config - Optional polling configuration.
  */
 export async function trackOrder(
-  _orderId: string,
-  _fetchStatus: (orderId: string) => Promise<OrderResponse>,
-  _config?: Partial<OrderExecutorConfig>,
+  orderId: string,
+  fetchStatus: (orderId: string) => Promise<OrderResponse>,
+  config?: Partial<OrderExecutorConfig>,
 ): Promise<TrackResult> {
-  throw new Error("Not implemented — see plan item 6");
+  const pollIntervalMs =
+    config?.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  const timeoutMs = config?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const start = Date.now();
+
+  for (;;) {
+    const response = await fetchStatus(orderId);
+
+    if (TERMINAL_STATUSES.has(response.status)) {
+      return {
+        orderId,
+        status: response.status as "filled" | "cancelled",
+        filled: response.filled,
+        remaining: response.remaining,
+      };
+    }
+
+    if (Date.now() - start >= timeoutMs) {
+      return {
+        orderId,
+        status: "timeout",
+        filled: response.filled,
+        remaining: response.remaining,
+      };
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, pollIntervalMs);
+    });
+  }
 }
