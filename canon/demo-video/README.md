@@ -37,18 +37,46 @@ pnpm exec remotion render
 pnpm exec remotion upgrade
 ```
 
-## Docs
+## Workshop banners
 
-Get started with Remotion by reading the [fundamentals page](https://www.remotion.dev/docs/the-fundamentals).
+Each workshop gets a YouTube Live thumbnail (1280x720 PNG). All banners
+use the same layout so the series looks consistent.
 
-## Help
+### Creating a new banner
 
-We provide help on our [Discord server](https://discord.gg/6VzzNDwUwV).
+1. Copy `src/Workshop2Banner.tsx` to `src/Workshop<N>Banner.tsx`.
+2. Change only these strings:
+   - Workshop number: `Workshop 2` → `Workshop <N>`
+   - Workshop title: `Canon Setup` → new title
+   - Date line: `APRIL 14TH | 10:00 AM ET` → new date/time
+3. Register in `src/Root.tsx`:
+   ```tsx
+   import { Workshop<N>Banner } from "./Workshop<N>Banner";
+   // ...
+   <Still
+     id="Workshop<N>Banner"
+     component={Workshop<N>Banner}
+     width={1280}
+     height={720}
+   />
+   ```
+4. Render:
+   ```bash
+   pnpm exec remotion still Workshop<N>Banner out/workshop-<n>-banner.png
+   ```
 
-## Issues
+### Workshop schedule
 
-Found an issue with Remotion? [File an issue here](https://github.com/remotion-dev/remotion/issues/new).
+| # | Title | Date |
+|---|-------|------|
+| 1 | Prediction Markets & NBA Playoffs Overview | Apr 9 |
+| 2 | Canon Setup | Apr 14 |
+| 3 | TBD | Apr 17 |
+| 4 | TBD | Apr 22 |
+| 5 | TBD | Apr 24 |
 
-## License
+### What NOT to change
 
-Note that for some entities a company license is needed. [Read the terms here](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md).
+- Layout, spacing, fonts, colors, orbs, grid, or bottom bar
+- Logo size/position
+- Composition dimensions (1280x720)

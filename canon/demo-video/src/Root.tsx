@@ -1,9 +1,13 @@
 import "./index.css";
-import { AbsoluteFill, Composition, Series } from "remotion";
+import { AbsoluteFill, Composition, Series, Still } from "remotion";
 import { Intro } from "./Intro";
 import { PhaseCard, phases } from "./PhaseCard";
 import { Outro } from "./components/Outro";
 import { Thumbnail } from "./Thumbnail";
+import { Workshop1Banner } from "./Workshop1Banner";
+import { Workshop2Banner } from "./Workshop2Banner";
+import { Workshop3Banner } from "./Workshop3Banner";
+import { Workshop4Banner } from "./Workshop4Banner";
 import { colors, sizing, timing } from "./styles/theme";
 
 const { width, height, fps } = sizing;
@@ -83,6 +87,34 @@ export const RemotionRoot: React.FC = () => {
         fps={fps}
         width={width}
         height={height}
+      />
+
+      <Still
+        id="Workshop1Banner"
+        component={Workshop1Banner}
+        width={1280}
+        height={720}
+      />
+
+      <Still
+        id="Workshop2Banner"
+        component={Workshop2Banner}
+        width={1280}
+        height={720}
+      />
+
+      <Still
+        id="Workshop3Banner"
+        component={Workshop3Banner}
+        width={1280}
+        height={720}
+      />
+
+      <Still
+        id="Workshop4Banner"
+        component={Workshop4Banner}
+        width={1280}
+        height={720}
       />
     </>
   );

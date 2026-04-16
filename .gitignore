@@ -26,3 +26,14 @@ focus.yaml
 poc/*/node_modules/
 poc/*/dist/
 poc/*/.env
+
+# Canon template artifacts
+canon/templates/node_modules/
+canon/templates/.vite/
+
+# Canon CLI artifacts
+canon/cli/node_modules/
+canon/cli/dist/
+
+# Strategy source docs (local reference, not committed)
+/templates/

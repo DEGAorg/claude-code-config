@@ -80,6 +80,7 @@ Files available:
 - `scripts/orch-review.sh`
 - `scripts/orch-engine.sh`
 - `scripts/orch-verify.sh`
+- `scripts/ralph-item-reviewer-prompt.md`
 - `agents/orch-worker.md`
 - `agents/orch-verifier.md`
 - `hooks/orch-done-sync.sh`
@@ -105,6 +106,18 @@ Files available:
 - `scripts/read-github-config.sh`
 - `scripts/create-exec-plan.sh`
 - `hooks/orch-lifecycle/01-gh-plan-sync.sh`
+- `canon/cli/package.json`
+- `canon/cli/tsconfig.json`
+- `canon/cli/canon-cli.ts`
+- `canon/cli/output.ts`
+- `canon/cli/auth.ts`
+- `canon/cli/commands/market.ts`
+- `canon/cli/commands/position.ts`
+- `canon/cli/commands/balance.ts`
+- `canon/cli/commands/order.ts`
+- `canon/cli/commands/kill.ts`
+- `canon/cli/commands/help.ts`
+- `canon/skills/canon-cli.md`
 
 ---
 
@@ -166,6 +179,7 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/orch-state.sh`
 - `~/.degacore/scripts/orch-review.sh`
 - `~/.degacore/scripts/orch-verify.sh`
+- `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
 - `~/.degacore/scripts/planner-loop.sh`
 - `~/.degacore/scripts/canon-scaffold.sh`
 - `~/.degacore/scripts/canon.sh`
@@ -179,6 +193,8 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/sounds/` (any files)
 - `~/.degacore/state/logs/`
 - `~/.degacore/state/planner/`
+- `~/.degacore/bin/canon-cli`
+- `~/.degacore/canon-cli/` (any files)
 
 Also detect installed agents by checking for their CLI binaries:
 
@@ -268,10 +284,14 @@ Components:
   Requires Orchestrator. Invoke via
   `~/.degacore/scripts/planner-loop.sh`.
   (opt-in; recommended when `~/.degacore/scripts/planner-loop.sh` is missing)
-- **Canon Bootstrap** — launcher and scaffold scripts for Canon prediction
-  market projects. Installs `canon-scaffold.sh` (deterministic project
-  scaffolder called by `/canon-start`) and `canon.sh` (reference copy of
-  the local tmux launcher written by `/canon-init`).
+- **Canon Bootstrap** — launcher, scaffold scripts, and CLI for Canon
+  prediction market projects. Installs `canon-scaffold.sh` (deterministic
+  project scaffolder called by `/canon-start`), `canon.sh` (reference copy
+  of the local tmux launcher written by `/canon-init`), and the Canon CLI
+  (`canon-cli`) — an agent-callable TypeScript tool for querying markets,
+  managing positions, and executing trades on Polymarket. The CLI is built
+  with `pnpm install` and linked to `~/.degacore/bin/canon-cli`. Add
+  `~/.degacore/bin` to your `PATH` to use `canon-cli` from any directory.
   (opt-in; recommended when `~/.degacore/scripts/canon-scaffold.sh` is missing)
 
 ---
@@ -288,7 +308,7 @@ the GitHub URLs above. Extract the raw file content from each response.
 Create the `~/.degacore/` directory tree if it doesn't exist:
 
 ```bash
-mkdir -p ~/.degacore/{config/{commands,skills,rules,agents},scripts/{adapters,hooks/orch-lifecycle,terminal-ui/src},state/{logs,planner},sounds}
+mkdir -p ~/.degacore/{bin,config/{commands,skills,rules,agents},scripts/{adapters,hooks/orch-lifecycle,terminal-ui/src},state/{logs,planner},sounds,canon-cli/commands}
 ```
 
 Also install the agent-shim and adapter scripts (always, regardless of
@@ -452,6 +472,7 @@ Write each shell script to `~/.degacore/scripts/`:
 - `scripts/orch-state.sh` -> `~/.degacore/scripts/orch-state.sh`
 - `scripts/orch-review.sh` -> `~/.degacore/scripts/orch-review.sh`
 - `scripts/orch-verify.sh` -> `~/.degacore/scripts/orch-verify.sh`
+- `scripts/ralph-item-reviewer-prompt.md` -> `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
 
 Run `chmod +x ~/.degacore/scripts/orch-*.sh` after writing.
 
@@ -517,6 +538,49 @@ Write each file to `~/.degacore/scripts/`:
 Run `chmod +x ~/.degacore/scripts/canon-scaffold.sh ~/.degacore/scripts/canon.sh` after writing.
 
 Safe to overwrite — these are engine scripts with no user customization.
+
+#### Canon CLI
+
+Write each source file to `~/.degacore/canon-cli/`:
+- `canon/cli/package.json` -> `~/.degacore/canon-cli/package.json`
+- `canon/cli/tsconfig.json` -> `~/.degacore/canon-cli/tsconfig.json`
+- `canon/cli/canon-cli.ts` -> `~/.degacore/canon-cli/canon-cli.ts`
+- `canon/cli/output.ts` -> `~/.degacore/canon-cli/output.ts`
+- `canon/cli/auth.ts` -> `~/.degacore/canon-cli/auth.ts`
+- `canon/cli/commands/market.ts` -> `~/.degacore/canon-cli/commands/market.ts`
+- `canon/cli/commands/position.ts` -> `~/.degacore/canon-cli/commands/position.ts`
+- `canon/cli/commands/balance.ts` -> `~/.degacore/canon-cli/commands/balance.ts`
+- `canon/cli/commands/order.ts` -> `~/.degacore/canon-cli/commands/order.ts`
+- `canon/cli/commands/kill.ts` -> `~/.degacore/canon-cli/commands/kill.ts`
+- `canon/cli/commands/help.ts` -> `~/.degacore/canon-cli/commands/help.ts`
+
+Write the agent discovery skill:
+- `canon/skills/canon-cli.md` -> `~/.degacore/config/skills/canon-cli.md`
+
+Safe to overwrite — these are CLI source files and skills with no user
+customization.
+
+Then install dependencies and create the bin link:
+```bash
+cd ~/.degacore/canon-cli && pnpm install
+chmod +x ~/.degacore/canon-cli/canon-cli.ts
+ln -sf ~/.degacore/canon-cli/canon-cli.ts ~/.degacore/bin/canon-cli
+```
+
+If `pnpm` is not available, fall back to `npm install`.
+
+Verify the install works:
+```bash
+~/.degacore/bin/canon-cli --help
+```
+
+If the user does not have `~/.degacore/bin` on their `PATH`, advise them
+to add it:
+```bash
+export PATH="$HOME/.degacore/bin:$PATH"
+```
+
+Add this line to `~/.zshrc` or `~/.bashrc` for persistence.
 
 ---
 
@@ -709,12 +773,14 @@ Installed to ~/.degacore/:
   Orchestrator -> scripts/orch-*.sh + config/agents/ + scripts/hooks/
   Planner -> scripts/planner-loop.sh + config/agents/
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
+  Canon CLI -> canon-cli/ (built) + bin/canon-cli (linked)
 
 Agents configured:
   Claude Code — $HOME/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
 
-Canon layer is separate. Run /apply-canon from a Canon strategy project to add the
-prediction-market layer on top of Core.
+Canon Bootstrap installs the CLI globally. Run /apply-canon from a Canon strategy
+project to add the prediction-market layer (templates, strategies) on top of Core.
+Ensure ~/.degacore/bin is on your PATH to use canon-cli from any directory.
 ```
 
 Adapt to what the user actually selected — omit components that were skipped.

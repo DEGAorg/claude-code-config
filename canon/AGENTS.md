@@ -86,14 +86,26 @@ for how to write and extend these rules.
 | risk-analyst | Evaluates risk and portfolio impact | Before registration |
 | deployment-ops | Registers on Arena, monitors tracked performance | Registering a strategy |
 
-## Available Tools (MCP)
-- `canon_init` — Scaffold strategy from template
-- `canon_register` — Register strategy on Arena for performance tracking
-- `canon_test` — Run against historical data
-- `canon_market` — Query market data (Polymarket, Kalshi)
-- `canon_position` — Check positions, P&L, portfolio
-- `canon_ralph` — Run Ralph Loop iteration
-- `canon_help` — Get contextual guidance
+## Available Tools (CLI)
+
+The Canon CLI (`canon-cli`) wraps Polymarket APIs into shell commands
+that return structured JSON. Install via `/apply-core`.
+
+| Command | Description | Auth |
+|---------|-------------|------|
+| `canon-cli market search <query>` | Search markets by keyword | No |
+| `canon-cli market price <id>` | Fetch current outcome prices | No |
+| `canon-cli market orderbook <id>` | Fetch order book depth | No |
+| `canon-cli market ohlcv <id>` | Fetch OHLCV candlestick data | No |
+| `canon-cli position list` | List open positions with PnL | Yes |
+| `canon-cli balance` | Fetch wallet balances | Yes |
+| `canon-cli order create` | Place a new order | Yes |
+| `canon-cli order cancel <id>` | Cancel a specific order | Yes |
+| `canon-cli order list` | List recent trades | Yes |
+| `canon-cli kill [--yes]` | Cancel all open orders | Yes |
+| `canon-cli help [skill]` | Show skill reference | No |
+
+Full reference: `canon/skills/canon-cli.md`
 
 ## Key Workflows
 1. **Discover** (`/discover`): Market analysis → opportunity → strategy design

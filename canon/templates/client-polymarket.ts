@@ -6,6 +6,7 @@
  */
 
 import { Polymarket } from "pmxtjs";
+import { callSidecar } from "./sidecar.js";
 
 /** YES/NO price snapshot for a Polymarket condition. */
 export interface MarketPrice {
@@ -37,6 +38,75 @@ export interface OrderBook {
   asks: PriceLevel[];
 }
 
+/** A current position in a Polymarket market. */
+export interface Position {
+  marketId: string;
+  outcomeId: string;
+  outcomeLabel: string;
+  size: number;
+  entryPrice: number;
+  currentPrice: number;
+  unrealizedPnL: number;
+}
+
+/** Account balance entry for a Polymarket account. */
+export interface AccountBalance {
+  currency: string;
+  total: number;
+  available: number;
+  locked: number;
+}
+
+/** A single trade from the authenticated user's trade history. */
+export interface UserTrade {
+  id: string;
+  price: number;
+  amount: number;
+  side: string;
+  timestamp: number;
+  orderId?: string;
+  outcomeId?: string;
+  marketId?: string;
+}
+
+/** Parameters for filtering trade history. */
+export interface FetchMyTradesParams {
+  marketId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+/** OHLCV price candle from the pmxt sidecar. */
+export interface PriceCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+}
+
+/** Options for fetchOHLCV. */
+export interface FetchOHLCVOptions {
+  timeframe?: string;
+}
+
+/** Order book snapshot from the pmxt sidecar. */
+export interface SidecarOrderBook {
+  bids: PriceLevel[];
+  asks: PriceLevel[];
+  timestamp: number | null;
+}
+
+/** A single trade from the pmxt sidecar. */
+export interface Trade {
+  id: string;
+  price: number;
+  size: number;
+  side: string;
+  timestamp: number;
+}
+
 let client: Polymarket | undefined;
 
 function getClient(): Polymarket {
@@ -62,8 +132,17 @@ export async function fetchMarketPrice(
   conditionId: string,
 ): Promise<MarketPrice> {
   const poly = getClient();
-  const markets = await poly.getMarketsBySlug(conditionId);
-  const market = markets[0];
+  let markets = await poly.fetchMarkets({ query: conditionId });
+  let market = markets[0];
+
+  // Text search may not match numeric marketIds; fall back to
+  // fetching recent markets and filtering by ID.
+  if (!market) {
+    markets = await poly.fetchMarkets({ limit: 100 });
+    market = markets.find(
+      (m) => String(m.marketId) === String(conditionId),
+    );
+  }
 
   if (!market) {
     throw new Error(`Market ${conditionId} not found`);
@@ -87,7 +166,7 @@ export async function fetchMarketPrice(
   }
 
   return {
-    conditionId: market.id,
+    conditionId: market.marketId,
     yes: yesPrice,
     no: noPrice,
     timestamp: new Date(),
@@ -106,7 +185,7 @@ export async function searchMarkets(
   query: string,
 ): Promise<PolymarketMatch[]> {
   const poly = getClient();
-  const markets = await poly.searchMarkets(query);
+  const markets = await poly.fetchMarkets({ query });
   const results: PolymarketMatch[] = [];
 
   for (const m of markets) {
@@ -118,11 +197,9 @@ export async function searchMarkets(
     const noPrice = m.outcomes[1]?.price;
     if (yesPrice === undefined || noPrice === undefined) continue;
 
-    const resDate = typeof m.resolutionDate === "string"
-      ? m.resolutionDate
-      : m.resolutionDate?.toISOString();
+    const resDate = m.resolutionDate?.toISOString();
     results.push({
-      conditionId: m.id,
+      conditionId: m.marketId,
       question: m.title,
       yesPrice,
       noPrice,
@@ -152,4 +229,337 @@ export async function fetchOrderBook(tokenId: string): Promise<OrderBook> {
     bids: book.bids.map(mapLevel),
     asks: book.asks.map(mapLevel),
   };
+}
+
+/**
+ * Fetch current positions for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ */
+export async function fetchPositions(): Promise<Position[]> {
+  const poly = getClient();
+  const positions = await poly.fetchPositions();
+
+  return positions.map((p) => ({
+    marketId: p.marketId,
+    outcomeId: p.outcomeId,
+    outcomeLabel: p.outcomeLabel,
+    size: p.size,
+    entryPrice: p.entryPrice,
+    currentPrice: p.currentPrice,
+    unrealizedPnL: p.unrealizedPnL,
+  }));
+}
+
+/**
+ * Fetch account balances for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ */
+export async function fetchBalance(): Promise<AccountBalance[]> {
+  const poly = getClient();
+  const balances = await poly.fetchBalance();
+
+  return balances.map((b) => ({
+    currency: b.currency,
+    total: b.total,
+    available: b.available,
+    locked: b.locked,
+  }));
+}
+
+/**
+ * Fetch trade history for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ *
+ * @param params - Optional filtering/pagination parameters.
+ */
+export async function fetchMyTrades(
+  params?: FetchMyTradesParams,
+): Promise<UserTrade[]> {
+  const poly = getClient();
+  const trades = await poly.fetchMyTrades(params);
+
+  return trades.map(
+    (t: {
+      id: string;
+      price: number;
+      amount: number;
+      side: string;
+      timestamp: number;
+      orderId?: string;
+      outcomeId?: string;
+      marketId?: string;
+    }): UserTrade => ({
+      id: t.id,
+      price: t.price,
+      amount: t.amount,
+      side: t.side,
+      timestamp: t.timestamp,
+      ...(t.orderId !== undefined ? { orderId: t.orderId } : {}),
+      ...(t.outcomeId !== undefined ? { outcomeId: t.outcomeId } : {}),
+      ...(t.marketId !== undefined ? { marketId: t.marketId } : {}),
+    }),
+  );
+}
+
+/**
+ * Fetch all open orders for the authenticated Polymarket account.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * pmxtjs propagate to the caller.
+ *
+ * @param marketId - Optional market ID to filter orders.
+ */
+export async function fetchOpenOrders(
+  marketId?: string,
+): Promise<OrderResponse[]> {
+  const poly = getClient();
+  const orders = await poly.fetchOpenOrders(marketId);
+  return orders.map(
+    (o: {
+      id: string;
+      marketId: string;
+      outcomeId: string;
+      side: "buy" | "sell";
+      type: "market" | "limit";
+      amount: number;
+      price?: number;
+      status: string;
+      filled: number;
+      remaining: number;
+    }): OrderResponse => ({
+      id: o.id,
+      marketId: o.marketId,
+      outcomeId: o.outcomeId,
+      side: o.side,
+      type: o.type,
+      amount: o.amount,
+      price: o.price ?? 0,
+      status: o.status,
+      filled: o.filled,
+      remaining: o.remaining,
+    }),
+  );
+}
+
+/** Parameters for creating or building an order. */
+export interface OrderParams {
+  marketId: string;
+  tokenId: string;
+  side: "buy" | "sell";
+  size: number;
+  price: number;
+  orderType: "market" | "limit";
+}
+
+/** Order response from createOrder or cancelOrder. */
+export interface OrderResponse {
+  id: string;
+  marketId: string;
+  outcomeId: string;
+  side: "buy" | "sell";
+  type: "market" | "limit";
+  amount: number;
+  price: number;
+  status: string;
+  filled: number;
+  remaining: number;
+}
+
+/** Dry-run result from buildOrder. */
+export interface BuildOrderResult {
+  exchange: string;
+  params: {
+    marketId: string;
+    outcomeId: string;
+    side: string;
+    type: string;
+    amount: number;
+    price: number;
+  };
+  signedOrder?: Record<string, unknown>;
+  raw: unknown;
+}
+
+const VALID_SIDES = ["buy", "sell"] as const;
+const VALID_ORDER_TYPES = ["market", "limit"] as const;
+
+function validateOrderParams(params: OrderParams): void {
+  if (params.price < 0 || params.price > 1) {
+    throw new Error(
+      `Invalid price ${String(params.price)}: ` +
+        "must be between 0 and 1",
+    );
+  }
+  if (params.size <= 0) {
+    throw new Error(
+      `Invalid size ${String(params.size)}: ` +
+        "must be greater than 0",
+    );
+  }
+  if (!VALID_SIDES.includes(params.side)) {
+    throw new Error(
+      `Invalid side "${String(params.side)}": ` +
+        "must be \"buy\" or \"sell\"",
+    );
+  }
+  if (!VALID_ORDER_TYPES.includes(params.orderType)) {
+    throw new Error(
+      `Invalid orderType "${String(params.orderType)}": ` +
+        "must be \"market\" or \"limit\"",
+    );
+  }
+}
+
+/**
+ * Create a new order on the exchange.
+ *
+ * Validates price (0-1) and size (> 0) before delegating to pmxtjs.
+ *
+ * @param params - Order parameters.
+ */
+export async function createOrder(
+  params: OrderParams,
+): Promise<OrderResponse> {
+  validateOrderParams(params);
+  const poly = getClient();
+  const order = await poly.createOrder({
+    marketId: params.marketId,
+    outcomeId: params.tokenId,
+    side: params.side,
+    type: params.orderType,
+    amount: params.size,
+    price: params.price,
+  });
+  return {
+    id: order.id,
+    marketId: order.marketId,
+    outcomeId: order.outcomeId,
+    side: order.side,
+    type: order.type,
+    amount: order.amount,
+    price: order.price ?? params.price,
+    status: order.status,
+    filled: order.filled,
+    remaining: order.remaining,
+  };
+}
+
+/**
+ * Cancel an existing order.
+ *
+ * @param orderId - The order ID to cancel.
+ */
+export async function cancelOrder(
+  orderId: string,
+): Promise<OrderResponse> {
+  const poly = getClient();
+  const order = await poly.cancelOrder(orderId);
+  return {
+    id: order.id,
+    marketId: order.marketId,
+    outcomeId: order.outcomeId,
+    side: order.side,
+    type: order.type,
+    amount: order.amount,
+    price: order.price ?? 0,
+    status: order.status,
+    filled: order.filled,
+    remaining: order.remaining,
+  };
+}
+
+/**
+ * Build an order payload without submitting.
+ *
+ * Validates params (same as createOrder) before delegating to pmxtjs.
+ *
+ * @param params - Order parameters.
+ */
+export async function buildOrder(
+  params: OrderParams,
+): Promise<BuildOrderResult> {
+  validateOrderParams(params);
+  const poly = getClient();
+  const built = await poly.buildOrder({
+    marketId: params.marketId,
+    outcomeId: params.tokenId,
+    side: params.side,
+    type: params.orderType,
+    amount: params.size,
+    price: params.price,
+  });
+  return {
+    exchange: built.exchange,
+    params: {
+      marketId: built.params.marketId,
+      outcomeId: built.params.outcomeId,
+      side: built.params.side,
+      type: built.params.type,
+      amount: built.params.amount,
+      price: built.params.price ?? params.price,
+    },
+    ...(built.signedOrder !== undefined
+      ? { signedOrder: built.signedOrder }
+      : {}),
+    raw: built.raw,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sidecar-dependent methods
+// ---------------------------------------------------------------------------
+// These methods bypass the pmxtjs SDK to work around the header-clobbering
+// bug in pmxtjs v2.22.1. They call the pmxt sidecar HTTP API directly via
+// the callSidecar helper.
+
+/**
+ * Fetch OHLCV candle data for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ * @param options - Optional parameters (e.g. timeframe).
+ */
+export async function fetchOHLCV(
+  tokenId: string,
+  options?: FetchOHLCVOptions,
+): Promise<PriceCandle[]> {
+  const resolved = {
+    resolution: options?.timeframe ?? "1h",
+  };
+  return callSidecar<PriceCandle[]>("fetchOHLCV", [tokenId, resolved]);
+}
+
+/**
+ * Watch the order book for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ * Returns a snapshot with bids, asks, and a nullable timestamp.
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ */
+export async function watchOrderBook(
+  tokenId: string,
+): Promise<SidecarOrderBook> {
+  return callSidecar<SidecarOrderBook>("watchOrderBook", [tokenId]);
+}
+
+/**
+ * Watch recent trades for a Polymarket outcome token.
+ *
+ * Uses the pmxt sidecar directly (SDK header-clobbering workaround).
+ * May block until a trade occurs on low-activity markets.
+ *
+ * @param tokenId - CLOB token ID for the outcome.
+ */
+export async function watchTrades(
+  tokenId: string,
+): Promise<Trade[]> {
+  return callSidecar<Trade[]>("watchTrades", [tokenId]);
 }
