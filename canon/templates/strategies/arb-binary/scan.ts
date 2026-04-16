@@ -41,8 +41,50 @@ export async function scanMarkets(
   config: ArbBinaryConfig,
   deps: ScanDeps,
 ): Promise<MarketData[]> {
-  // TDD stub — implementation satisfies tests in item 6
-  void config;
-  void deps;
-  return [];
+  const markets = await deps.searchMarkets(config.category);
+
+  const results: MarketData[] = [];
+
+  for (const market of markets) {
+    const [yesBook, noBook] = await Promise.all([
+      deps.fetchOrderBook(market.yesTokenId),
+      deps.fetchOrderBook(market.noTokenId),
+    ]);
+
+    if (yesBook.asks.length === 0 || noBook.asks.length === 0) {
+      continue;
+    }
+
+    const yesAsk = Math.min(
+      ...yesBook.asks.map((a) => a.price),
+    );
+    const noAsk = Math.min(
+      ...noBook.asks.map((a) => a.price),
+    );
+
+    const yesBid =
+      yesBook.bids.length > 0
+        ? Math.max(...yesBook.bids.map((b) => b.price))
+        : 0;
+    const noBid =
+      noBook.bids.length > 0
+        ? Math.max(...noBook.bids.map((b) => b.price))
+        : 0;
+
+    const yesSpread = (yesAsk - yesBid) / yesAsk;
+    const noSpread = (noAsk - noBid) / noAsk;
+
+    results.push({
+      conditionId: market.conditionId,
+      question: market.question,
+      category: config.category,
+      yesAsk,
+      noAsk,
+      yesTokenId: market.yesTokenId,
+      noTokenId: market.noTokenId,
+      estimatedSlippage: Math.max(yesSpread, noSpread),
+    });
+  }
+
+  return results;
 }
