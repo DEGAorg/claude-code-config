@@ -4,6 +4,8 @@
  * and structured execution logging.
  */
 
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import type { TradeSignal } from "./types/TradeSignal.js";
 import type { RiskInterface, Portfolio } from "./types/RiskInterface.js";
 import type { ExecutionLogEntry } from "./execution-log.js";
@@ -97,6 +99,31 @@ export function createRunner(
     process.stdout.write(`${tag} ${msg}\n`);
   }
 
+  const flowPath = join(
+    config.baseDir.replace(/\/execution$/, ""),
+    "flow.json",
+  );
+
+  function updateFlow(
+    active: string,
+    completed: string[],
+  ): void {
+    if (!existsSync(flowPath)) return;
+    try {
+      const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as {
+        steps: string[];
+        labels: Record<string, string>;
+        active: string;
+        completed: string[];
+      };
+      flow.active = active;
+      flow.completed = completed;
+      writeFileSync(flowPath, JSON.stringify(flow, null, 2) + "\n");
+    } catch {
+      // flow.json missing or malformed — skip silently
+    }
+  }
+
   async function processSignal(
     signal: TradeSignal,
     portfolio: Portfolio,
@@ -144,6 +171,7 @@ export function createRunner(
       return;
     }
 
+    updateFlow("execute", ["scan", "signal", "risk"]);
     try {
       const result = await deps.executor.submit(submittable);
       deps.log(
@@ -170,14 +198,20 @@ export function createRunner(
 
   async function cycle(): Promise<void> {
     cycleCount++;
+    updateFlow("scan", []);
     out("SCAN", `Cycle ${String(cycleCount)}`);
 
     const portfolio = await deps.positions.reconcile();
+
+    updateFlow("signal", ["scan"]);
     const signals = await deps.strategy();
 
     for (const signal of signals) {
+      updateFlow("risk", ["scan", "signal"]);
       await processSignal(signal, portfolio);
     }
+
+    updateFlow("log", ["scan", "signal", "risk", "execute"]);
 
     if (signals.length === 0) {
       out(
@@ -185,6 +219,8 @@ export function createRunner(
         `Cycle ${String(cycleCount)} — 0 signals, no edges`,
       );
     }
+
+    updateFlow("", ["scan", "signal", "risk", "execute", "log"]);
   }
 
   function stop(): void {

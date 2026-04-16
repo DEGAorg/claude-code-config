@@ -229,6 +229,12 @@ mkdir -p src
 cp strategies/<name>/entry.ts src/main.ts
 ```
 
+3. Copy the strategy's flow definition for the TUI pipeline diagram:
+
+```bash
+cp strategies/<name>/flow.json .canon/flow.json 2>/dev/null || true
+```
+
 4. Verify the entry point compiles:
 
 ```bash
