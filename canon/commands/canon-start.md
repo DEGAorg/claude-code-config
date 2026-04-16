@@ -399,13 +399,18 @@ Proceed to step 7.
 
 All checks pass and QA is approved. The strategy is ready for execution.
 
-Run this **single** bash block to check the API key, launch the runner, and confirm:
+Run this **single** bash block to verify the entry point exists, launch the runner, and confirm:
 
 ```bash
 set -euo pipefail
 
-if ! grep -q 'THE_ODDS_API_KEY=.' .env 2>/dev/null; then
-  echo "NEED_KEY"
+if [[ ! -f "src/main.ts" ]]; then
+  echo "NO_ENTRY"
+  exit 0
+fi
+
+if [[ ! -s .env ]]; then
+  echo "NEED_ENV"
   exit 0
 fi
 
@@ -423,7 +428,8 @@ fi
 ```
 
 Handle the output:
-- `NEED_KEY` → tell the user: `Add THE_ODDS_API_KEY to .env, then re-run.`
+- `NO_ENTRY` → tell the user: `No entry point at src/main.ts — run strategy selection first (phase 5).`
+- `NEED_ENV` → tell the user: `Create a .env file with the API keys your strategy requires, then re-run.`
 - `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>`
 - `FAIL` → print the log tail, nothing else.
 
