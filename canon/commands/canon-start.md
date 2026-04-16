@@ -220,34 +220,13 @@ mkdir -p docs
 cp strategies/<name>/strategy.md docs/strategy-<name>.md
 ```
 
-2. Generate `src/main.ts` — a thin entry point that wires the strategy into
-   the shared runner. The entry point must:
-
-   - Import the strategy's factory function from `../strategies/<name>/main.js`
-   - Import the strategy's default config from `../strategies/<name>/config.js`
-   - Read `--dry-run` from `process.argv`
-   - Set runner config: poll interval from `POLL_INTERVAL_MS` env var (default
-     30 000 ms), base dir `.canon/execution`, state path `.canon/state.json`
-   - Create stub deps for executor and positions (dry-run safe)
-   - Wire scan deps from the project's API clients
-   - Call the factory to create the runner, then call `runner.start()`
-
-   Example structure (arb-binary):
-
-   ```typescript
-   import { createArbBinaryRunner } from "../strategies/arb-binary/main.js";
-   import { DEFAULT_ARB_BINARY_CONFIG } from "../strategies/arb-binary/config.js";
-   // ... config, stub deps, runner.start()
-   ```
-
-   The `strategies/<name>/main.ts` already imports `../../runner.js` — this
-   resolves correctly since the strategy dir is two levels below the project
-   root where `runner.ts` lives.
-
-3. Create the `src/` directory and write the entry point:
+2. Copy the strategy's pre-built entry point to `src/main.ts`. Each strategy
+   directory includes an `entry.ts` that wires the real API clients, config
+   defaults, and runner deps — no generation needed:
 
 ```bash
 mkdir -p src
+cp strategies/<name>/entry.ts src/main.ts
 ```
 
 4. Verify the entry point compiles:
@@ -409,10 +388,8 @@ if [[ ! -f "src/main.ts" ]]; then
   exit 0
 fi
 
-if [[ ! -s .env ]]; then
-  echo "NEED_ENV"
-  exit 0
-fi
+# Create empty .env if missing (some strategies run without auth)
+touch .env
 
 bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" --dry-run &
 RUNNER_PID=$!
@@ -429,7 +406,6 @@ fi
 
 Handle the output:
 - `NO_ENTRY` → tell the user: `No entry point at src/main.ts — run strategy selection first (phase 5).`
-- `NEED_ENV` → tell the user: `Create a .env file with the API keys your strategy requires, then re-run.`
 - `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>`
 - `FAIL` → print the log tail, nothing else.
 
