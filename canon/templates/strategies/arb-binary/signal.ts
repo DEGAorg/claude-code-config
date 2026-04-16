@@ -4,7 +4,7 @@
  * Pure function: takes pre-fetched market data and config,
  * returns TradeSignal[] for markets with arbitrage edges.
  *
- * TDD stub — implementation replaces this body (Item 3).
+ * Implements the edge-detection algorithm for ARB-01 binary arbitrage.
  */
 
 import type { TradeSignal } from "../../types/TradeSignal.js";
@@ -55,17 +55,79 @@ export interface ArbBinaryConfig {
  * Detect binary arbitrage opportunities in market data.
  *
  * For each market matching the config category:
- * 1. Check if YES_ask + NO_ask < $1.00 (edge exists)
- * 2. Deduct fees (platform fee + gas)
- * 3. Verify net return >= hurdle rate
- * 4. Verify estimated slippage < abort threshold
- * 5. Emit buy_yes + buy_no TradeSignal pair
- *
- * TDD stub — throws until Item 3 implements.
+ * 1. Category filter — skip markets outside target category
+ * 2. Slippage abort — skip if estimated slippage >= abort threshold
+ * 3. Edge detection — YES_ask + NO_ask must be < $1.00
+ * 4. Fee deduction — platform fee on cost + flat gas cost
+ * 5. Hurdle rate — net return must meet minimum threshold
+ * 6. Sizing — quarter-Kelly capped at max exposure
+ * 7. Emit buy_yes + buy_no TradeSignal pair
  */
 export function detectSignals(
-  _markets: MarketData[],
-  _config: ArbBinaryConfig,
+  markets: MarketData[],
+  config: ArbBinaryConfig,
 ): TradeSignal[] {
-  throw new Error("Not implemented — TDD stub");
+  const signals: TradeSignal[] = [];
+
+  for (const market of markets) {
+    if (market.category !== config.category) continue;
+    if (market.estimatedSlippage >= config.slippageAbort) continue;
+
+    const cost = market.yesAsk + market.noAsk;
+    if (cost >= 1.0) continue;
+
+    const grossEdge = 1.0 - cost;
+    const totalFees = cost * config.feeRate + config.gasCost;
+    const netEdge = grossEdge - totalFees;
+    const netReturn = netEdge / cost;
+
+    if (netReturn < config.hurdleRate) continue;
+
+    const rawSize = config.bankroll * netReturn * config.kellyFraction;
+    const maxSize = config.bankroll * config.maxExposure;
+    const numContracts = Math.min(rawSize, maxSize) / cost;
+    const confidence = Math.min(netReturn, 1.0);
+    const now = new Date();
+
+    const metadata: Record<string, unknown> = {
+      grossEdge,
+      totalFees,
+      netEdge,
+      netReturn,
+      cost,
+      yesAsk: market.yesAsk,
+      noAsk: market.noAsk,
+      estimatedSlippage: market.estimatedSlippage,
+    };
+
+    const marketRef: TradeSignal["market"] = {
+      platform: "polymarket",
+      market_id: market.conditionId,
+      question: market.question,
+    };
+
+    signals.push({
+      automation_id: "arb-binary",
+      timestamp: now,
+      market: marketRef,
+      direction: "buy_yes",
+      size: numContracts,
+      confidence,
+      urgency: "immediate",
+      metadata,
+    });
+
+    signals.push({
+      automation_id: "arb-binary",
+      timestamp: now,
+      market: { ...marketRef },
+      direction: "buy_no",
+      size: numContracts,
+      confidence,
+      urgency: "immediate",
+      metadata: { ...metadata },
+    });
+  }
+
+  return signals;
 }
