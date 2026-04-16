@@ -141,6 +141,7 @@ for f in \
   runner.ts \
   strategies/arb-binary/signal.ts \
   strategies/arb-binary/main.ts \
+  strategies/arb-binary/entry.ts \
   package.json \
   tsconfig.json \
   vitest.config.ts \

@@ -388,10 +388,8 @@ if [[ ! -f "src/main.ts" ]]; then
   exit 0
 fi
 
-if [[ ! -s .env ]]; then
-  echo "NEED_ENV"
-  exit 0
-fi
+# Create empty .env if missing (some strategies run without auth)
+touch .env
 
 bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" --dry-run &
 RUNNER_PID=$!
@@ -408,7 +406,6 @@ fi
 
 Handle the output:
 - `NO_ENTRY` → tell the user: `No entry point at src/main.ts — run strategy selection first (phase 5).`
-- `NEED_ENV` → tell the user: `Create a .env file with the API keys your strategy requires, then re-run.`
 - `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>`
 - `FAIL` → print the log tail, nothing else.
 
