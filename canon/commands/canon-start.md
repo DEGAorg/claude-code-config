@@ -43,7 +43,7 @@ else
   # Phase: scaffold
   scaffold_ok=true
   for f in .canon/config.yaml dega-core.yaml package.json tsconfig.json \
-           src/types/TradeSignal.ts src/types/RiskInterface.ts; do
+           types/TradeSignal.ts types/RiskInterface.ts; do
     [[ -f "$f" ]] || { scaffold_ok=false; break; }
   done
   ls .canon/agents/*.md &>/dev/null || scaffold_ok=false
@@ -70,7 +70,7 @@ else
         pnpm exec tsc --noEmit &>/dev/null || phase="develop"
       fi
       if [[ "$phase" == "run" ]]; then
-        pnpm exec oxlint src/ &>/dev/null || phase="develop"
+        pnpm run lint &>/dev/null || phase="develop"
       fi
     fi
   fi
@@ -120,10 +120,10 @@ Run the canon-init script:
 bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh"
 ```
 
-The script fetches all agents, skills, and commands from GitHub, generates
-template files (package.json, tsconfig.json, types, configs), and verifies
-every file is present before reporting success. It writes dashboard state
-updates as it progresses (if terminal-ui-write.sh is installed).
+The script copies `canon/templates/` wholesale as the project root (runner,
+types, strategies, configs), fetches agents, skills, and commands from GitHub,
+and verifies every file is present before reporting success. It writes dashboard
+state updates as it progresses (if terminal-ui-write.sh is installed).
 
 **If the script exits non-zero**, stop and report the error to the user. Do not
 attempt to fix or retry — the script already gives a clear error message.
@@ -187,18 +187,18 @@ TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
     phase=strategy status=running log.info="Looking for strategy specification..."
 ```
 
-First, check for available starter template bundles:
+First, check for available strategy directories (already in place from scaffold):
 
 ```bash
-ls .canon/templates/*/strategy.md 2>/dev/null
+ls strategies/*/strategy.md 2>/dev/null
 ```
 
 **You MUST use the `AskUserQuestion` tool** to present the strategy choice.
-Build the options list dynamically based on discovered templates:
+Build the options list dynamically based on discovered strategies:
 
-- For each template bundle found (directory with `strategy.md`), add an option
-  with label `Use template: <name>` and description from the first line of
-  the strategy.md file. Mention it includes bootstrapped code.
+- For each strategy directory found (has `strategy.md` and `main.ts`), add an
+  option with label `Use strategy: <name>` and description from the first line
+  of the strategy.md file. Mention it includes ready-to-run code.
 - Always add option: label `Run /discover`, description `Scan prediction markets,
   identify opportunities, and generate a strategy spec automatically`.
 - Always add option: label `Provide a spec`, description `Point to an existing
@@ -207,23 +207,56 @@ Build the options list dynamically based on discovered templates:
 Use header `Strategy` and question `Which strategy approach do you want to use?`.
 Do NOT print the options as markdown text — always use `AskUserQuestion`.
 
-**If the user chooses a starter template:**
+**If the user chooses a strategy:**
 
-Template bundles include bootstrapped code (runner, types, test harness) and a
-pre-filled exec plan. Copy the full bundle into the project:
+The strategy directory is already at `strategies/<name>/` from the scaffold step —
+no file copying is needed. Generate a thin entry point that imports the selected
+strategy's main module and starts the runner.
+
+1. Copy the strategy spec to docs:
 
 ```bash
-# Copy strategy spec
-cp .canon/templates/<name>/strategy.md docs/strategy-<name>.md
-
-# Copy bootstrapped source files (don't overwrite existing)
-cp -n .canon/templates/<name>/src/types/game.ts src/types/game.ts 2>/dev/null || true
-cp -n .canon/templates/<name>/src/runner.ts src/runner.ts 2>/dev/null || true
-mkdir -p src/__tests__
-cp -n .canon/templates/<name>/src/__tests__/strategy.test.ts src/__tests__/strategy.test.ts 2>/dev/null || true
+mkdir -p docs
+cp strategies/<name>/strategy.md docs/strategy-<name>.md
 ```
 
-Read the copied spec and print a brief summary (market, archetype, edge thesis).
+2. Generate `src/main.ts` — a thin entry point that wires the strategy into
+   the shared runner. The entry point must:
+
+   - Import the strategy's factory function from `../strategies/<name>/main.js`
+   - Import the strategy's default config from `../strategies/<name>/config.js`
+   - Read `--dry-run` from `process.argv`
+   - Set runner config: poll interval from `POLL_INTERVAL_MS` env var (default
+     30 000 ms), base dir `.canon/execution`, state path `.canon/state.json`
+   - Create stub deps for executor and positions (dry-run safe)
+   - Wire scan deps from the project's API clients
+   - Call the factory to create the runner, then call `runner.start()`
+
+   Example structure (arb-binary):
+
+   ```typescript
+   import { createArbBinaryRunner } from "../strategies/arb-binary/main.js";
+   import { DEFAULT_ARB_BINARY_CONFIG } from "../strategies/arb-binary/config.js";
+   // ... config, stub deps, runner.start()
+   ```
+
+   The `strategies/<name>/main.ts` already imports `../../runner.js` — this
+   resolves correctly since the strategy dir is two levels below the project
+   root where `runner.ts` lives.
+
+3. Create the `src/` directory and write the entry point:
+
+```bash
+mkdir -p src
+```
+
+4. Verify the entry point compiles:
+
+```bash
+pnpm exec tsc --noEmit &>/dev/null
+```
+
+Read the strategy spec and print a brief summary (market, archetype, edge thesis).
 
 Write state update:
 
@@ -231,7 +264,7 @@ Write state update:
 TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
 [[ -f "${TUI_WRITE}" ]] && \
   bash "${TUI_WRITE}" .canon/state.json \
-    log.info="Template bundle installed — bootstrapped files in place"
+    log.info="Strategy <name> selected — entry point generated"
 ```
 
 **If the user chooses /discover:**
