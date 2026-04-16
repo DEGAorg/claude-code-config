@@ -7,7 +7,7 @@
 # Usage:
 #   bash "$DEGA_CORE_HOME/scripts/canon-runner.sh" [--dry-run]
 #
-# Must be run from a Canon project root (where src/runner.ts and
+# Must be run from a Canon project root (where src/main.ts and
 # .canon/state.json exist).
 #
 # Writes:
@@ -26,8 +26,8 @@ DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
 TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 
 # ── Guard: must be in a Canon project ────────────────────────────────────────
-if [[ ! -f "src/runner.ts" ]]; then
-  echo "error: src/runner.ts not found — run from Canon project root" >&2
+if [[ ! -f "src/main.ts" ]]; then
+  echo "error: src/main.ts not found — run from Canon project root" >&2
   exit 1
 fi
 
@@ -125,7 +125,7 @@ trap 'exit 143' TERM
 
 # ── Launch runner ────────────────────────────────────────────────────────────
 # shellcheck disable=SC2086
-pnpm exec tsx src/runner.ts ${DRY_RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
+pnpm exec tsx src/main.ts ${DRY_RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
 RUNNER_PID=$!
 echo "${RUNNER_PID}" >"${PID_FILE}"
 
