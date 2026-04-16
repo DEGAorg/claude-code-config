@@ -19,7 +19,7 @@ into `canon/templates/` as runnable strategy directories.
 
 | ID | Name | Risk | Complexity | Scanner-ready? | Status | Notes |
 |----|------|------|------------|----------------|--------|-------|
-| ARB-01 | Binary Arb Buy (YES+NO < $1) | Very Low | Low | Yes | Planned | Simplest arb — sum check only |
+| ARB-01 | Binary Arb Buy (YES+NO < $1) | Very Low | Low | Yes | Ported | `strategies/arb-binary/` — scanner + risk checks |
 | ARB-02 | Binary Arb Sell / Mint | Very Low | Medium | Yes | Planned | Requires CTF mint tx (4-6s latency) |
 | ARB-03 | NegRisk Multi-condition Buy | Low | Medium | Yes | Planned | Multi-leg, all YES sum < $1 |
 | ARB-04 | NegRisk Multi-condition Sell | Medium | High | No | Deferred | Mint set + parallel sell, ~5% of markets |
@@ -58,12 +58,12 @@ into `canon/templates/` as runnable strategy directories.
 | Template | Source strategy | Status |
 |----------|---------------|--------|
 | `nba-momentum/` | Custom (cross-venue arb scanner) | Ported, dry-run only |
+| `arb-binary/` | Binary Arb Buy (from C2 spec) | Ported, scanner + risk checks |
 
 ## Easiest to implement next (scanner-capable, low complexity)
 
-1. **ARB-01** — Binary arb buy scanner. Just checks YES_ask + NO_ask < threshold. One market, two prices, one comparison. No execution needed for scanner mode.
-2. **TRADE-02** — Momentum scanner. Watches price velocity + volume. Similar structure to nba-momentum (poll loop + signal detection).
-3. **ARB-03** — NegRisk multi-condition scanner. Sums all YES prices in a NegRisk market, flags when sum < threshold.
+1. **TRADE-02** — Momentum scanner. Watches price velocity + volume. Similar structure to nba-momentum (poll loop + signal detection).
+2. **ARB-03** — NegRisk multi-condition scanner. Sums all YES prices in a NegRisk market, flags when sum < threshold.
 
 ## Implementation path
 
