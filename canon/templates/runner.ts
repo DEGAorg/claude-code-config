@@ -89,6 +89,13 @@ export function createRunner(
   let running = false;
   let stopRequested = false;
   let sigintHandler: (() => void) | null = null;
+  let cycleCount = 0;
+  let signalCount = 0;
+  let errorCount = 0;
+
+  function out(tag: string, msg: string): void {
+    process.stdout.write(`${tag} ${msg}\n`);
+  }
 
   async function processSignal(
     signal: TradeSignal,
@@ -100,6 +107,13 @@ export function createRunner(
         size: signal.size,
         confidence: signal.confidence,
       }),
+    );
+
+    signalCount++;
+    out(
+      "SIGNAL",
+      `${signal.automation_id} ${signal.market.market_id} ` +
+        `${signal.direction} confidence=${String(signal.confidence)}`,
     );
 
     const decision = deps.risk.preTradeCheck(signal, portfolio);
@@ -155,11 +169,21 @@ export function createRunner(
   }
 
   async function cycle(): Promise<void> {
+    cycleCount++;
+    out("SCAN", `Cycle ${String(cycleCount)}`);
+
     const portfolio = await deps.positions.reconcile();
     const signals = await deps.strategy();
 
     for (const signal of signals) {
       await processSignal(signal, portfolio);
+    }
+
+    if (signals.length === 0) {
+      out(
+        "NO_EDGE",
+        `Cycle ${String(cycleCount)} — 0 signals, no edges`,
+      );
     }
   }
 
@@ -172,6 +196,11 @@ export function createRunner(
     stopRequested = false;
 
     sigintHandler = () => {
+      out(
+        "STOP",
+        `Shutting down — ${String(cycleCount)} cycles, ` +
+          `${String(signalCount)} signals, ${String(errorCount)} errors`,
+      );
       stop();
     };
     process.on("SIGINT", sigintHandler);
@@ -181,8 +210,10 @@ export function createRunner(
         try {
           await cycle();
         } catch (err: unknown) {
+          errorCount++;
           const message =
             err instanceof Error ? err.message : String(err);
+          out("SCAN_ERROR", `Cycle ${String(cycleCount)} — ${message}`);
           deps.log(
             logEntry("error", "runner", "", {
               error: message,
