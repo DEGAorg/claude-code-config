@@ -9,7 +9,7 @@ import type { ArbBinaryConfig } from "./signal.js";
 
 /** C2 production defaults for ARB-01 binary arbitrage. */
 export const DEFAULT_ARB_BINARY_CONFIG: ArbBinaryConfig = {
-  category: "NBA",
+  category: "NBA Champion",
   kellyFraction: 0.25,
   maxExposure: 0.08,
   hurdleRate: 0.015,

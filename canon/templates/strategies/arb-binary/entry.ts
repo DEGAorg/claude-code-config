@@ -33,16 +33,21 @@ const risk = createRiskChecker({
 
 const strategy = async () => {
   const markets = await polySearchMarkets(strategyConfig.category);
-  const marketData: MarketData[] = markets.map((m) => ({
-    conditionId: m.conditionId,
-    question: m.question,
-    category: strategyConfig.category,
-    yesAsk: m.yesPrice,
-    noAsk: m.noPrice,
-    yesTokenId: m.yesTokenId ?? "",
-    noTokenId: m.noTokenId ?? "",
-    estimatedSlippage: 0,
-  }));
+  const marketData: MarketData[] = [];
+  for (const m of markets) {
+    // Skip dead markets with no liquidity
+    if (m.yesPrice <= 0 || m.noPrice <= 0) continue;
+    marketData.push({
+      conditionId: m.conditionId,
+      question: m.question,
+      category: strategyConfig.category,
+      yesAsk: m.yesPrice,
+      noAsk: m.noPrice,
+      yesTokenId: m.yesTokenId ?? "",
+      noTokenId: m.noTokenId ?? "",
+      estimatedSlippage: 0,
+    });
+  }
   return detectSignals(marketData, strategyConfig);
 };
 
