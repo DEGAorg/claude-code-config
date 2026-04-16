@@ -1,35 +1,54 @@
 /**
  * ARB-01 Binary Arbitrage — Project Entry Point
  *
- * This file is copied to src/main.ts by canon-start when the user
- * selects the arb-binary strategy. It wires the real Polymarket
- * client into the strategy's scan layer.
+ * Wires the real Polymarket client into the arb-binary strategy.
+ * Uses search result prices directly for signal detection — same
+ * pattern as the nba-momentum template. No order book calls needed
+ * for dry-run scanning.
  */
 
-import { createArbBinaryRunner } from "../strategies/arb-binary/main.js";
+import { createRunner } from "../runner.js";
+import { appendEntry } from "../execution-log.js";
+import { searchMarkets as polySearchMarkets } from "../client-polymarket.js";
+import { detectSignals } from "../strategies/arb-binary/signal.js";
 import { DEFAULT_ARB_BINARY_CONFIG } from "../strategies/arb-binary/config.js";
-import {
-  searchMarkets as polySearchMarkets,
-  fetchOrderBook as polyFetchOrderBook,
-} from "../client-polymarket.js";
-import type { ArbBinaryRunnerConfig } from "../strategies/arb-binary/main.js";
-import type { ScanSearchResult } from "../strategies/arb-binary/scan.js";
+import { createRiskChecker } from "../strategies/arb-binary/risk.js";
+import type { MarketData } from "../strategies/arb-binary/signal.js";
 import type { ExecutorDeps, PositionDeps } from "../runner.js";
 import type { Portfolio } from "../types/RiskInterface.js";
+import type { ExecutionLogEntry } from "../execution-log.js";
 
 const dryRun = process.argv.includes("--dry-run");
 const pollIntervalMs =
   Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
 
-const config: ArbBinaryRunnerConfig = {
-  strategy: DEFAULT_ARB_BINARY_CONFIG,
-  runner: {
-    pollIntervalMs,
-    dryRun,
-    baseDir: ".canon/execution",
-    statePath: ".canon/state.json",
-  },
+const strategyConfig = DEFAULT_ARB_BINARY_CONFIG;
+
+const risk = createRiskChecker({
+  bankroll: strategyConfig.bankroll,
+  kellyFraction: strategyConfig.kellyFraction,
+  maxExposure: strategyConfig.maxExposure,
   maxConsecutiveLosses: 3,
+});
+
+const strategy = async () => {
+  const markets = await polySearchMarkets(strategyConfig.category);
+  const marketData: MarketData[] = [];
+  for (const m of markets) {
+    // Skip dead markets with no liquidity
+    if (m.yesPrice <= 0 || m.noPrice <= 0) continue;
+    marketData.push({
+      conditionId: m.conditionId,
+      question: m.question,
+      category: strategyConfig.category,
+      yesAsk: m.yesPrice,
+      noAsk: m.noPrice,
+      yesTokenId: m.yesTokenId ?? "",
+      noTokenId: m.noTokenId ?? "",
+      estimatedSlippage: 0,
+    });
+  }
+  return detectSignals(marketData, strategyConfig);
 };
 
 const stubExecutor: ExecutorDeps = {
@@ -40,7 +59,7 @@ const stubExecutor: ExecutorDeps = {
 };
 
 const emptyPortfolio: Portfolio = {
-  total_value: config.strategy.bankroll,
+  total_value: strategyConfig.bankroll,
   positions: [],
   daily_pnl: 0,
 };
@@ -54,22 +73,17 @@ const stubPositions: PositionDeps = {
   },
 };
 
-const runner = createArbBinaryRunner(config, {
-  scan: {
-    async searchMarkets(query: string): Promise<ScanSearchResult[]> {
-      const markets = await polySearchMarkets(query);
-      return markets.map((m) => ({
-        conditionId: m.conditionId,
-        question: m.question,
-        yesTokenId: m.yesTokenId,
-        noTokenId: m.noTokenId,
-      }));
-    },
-    fetchOrderBook: polyFetchOrderBook,
+const runner = createRunner(
+  { pollIntervalMs, dryRun, baseDir: ".canon/execution", statePath: ".canon/state.json" },
+  {
+    strategy,
+    risk,
+    executor: stubExecutor,
+    positions: stubPositions,
+    log: (entry: ExecutionLogEntry) =>
+      appendEntry(".canon/execution", entry),
   },
-  executor: stubExecutor,
-  positions: stubPositions,
-});
+);
 
 process.stdout.write(
   `START ARB-01 scanner (${dryRun ? "dry-run" : "live"}) poll=${String(pollIntervalMs)}ms\n`,
