@@ -4,15 +4,15 @@
     "subtitle": "Internal planning view",
     "generated": "2026-04-17",
     "startDate": "2026-03-19",
-    "hackathonDate": "2026-04-18",
+    "hackathonDate": "2026-05-04",
     "finaleDate": "2026-05-11",
     "totalDays": 54
   },
   "stats": [
     {
-      "value": "1",
-      "label": "Days to hackathon",
-      "color": "red"
+      "value": "17",
+      "label": "Days to hackathon (May 4)",
+      "color": "yellow"
     },
     {
       "value": "17",
@@ -312,10 +312,10 @@
     },
     {
       "label": "Hackathon",
-      "startDay": 30,
-      "days": 21,
+      "startDay": 46,
+      "days": 7,
       "color": "yellow",
-      "text": "3 weeks — NBA Playoffs",
+      "text": "May 4–11 — NBA Playoffs",
       "status": "pending"
     },
     {
@@ -323,7 +323,7 @@
       "startDay": 52,
       "days": 2,
       "color": "red",
-      "text": "Livestream",
+      "text": "Livestream — May 11",
       "status": "pending"
     }
   ],
@@ -334,8 +334,8 @@
       "type": "gate"
     },
     {
-      "day": 30,
-      "label": "KICKOFF",
+      "day": 46,
+      "label": "HACKATHON START (May 4)",
       "type": "event"
     },
     {
@@ -377,7 +377,7 @@
     },
     {
       "name": "HACKATHON",
-      "timing": "Apr 18",
+      "timing": "May 4",
       "type": "event"
     }
   ],
@@ -525,44 +525,40 @@
     },
     {
       "num": 5,
-      "dates": "Apr 13 – 18",
-      "theme": "Final Testing + Launch",
+      "dates": "Apr 13 – May 3",
+      "theme": "Final Build + Workshops + Launch Prep",
       "current": true,
       "tasks": [
         {
-          "text": "Final testing + fixes",
+          "text": "Arena MVP build + testing",
           "type": "product"
         },
         {
-          "text": "Deploy stable version",
+          "text": "Canon CLI remaining commands",
           "type": "product"
         },
         {
-          "text": "Final outreach + workshops wrap up",
+          "text": "Integration tests + deploy stable",
+          "type": "product"
+        },
+        {
+          "text": "Workshop 4 (Apr 17), Workshop 5 (Apr 22/24)",
           "type": "marketing"
         },
         {
-          "text": "Apr 18 — KICKOFF",
-          "type": "event"
+          "text": "DM outreach continues",
+          "type": "marketing"
         }
       ]
     },
     {
       "num": "6-8",
-      "dates": "Apr 18 – May 11",
+      "dates": "May 4 – May 11",
       "theme": "Hackathon Live",
       "current": false,
       "tasks": [
         {
-          "text": "Week 1 checkpoint (Apr 24)",
-          "type": "event"
-        },
-        {
-          "text": "WS5 content + Workshop 5 (Apr 29)",
-          "type": "event"
-        },
-        {
-          "text": "Week 2 checkpoint (May 1)",
+          "text": "May 4 — HACKATHON STARTS",
           "type": "event"
         },
         {
