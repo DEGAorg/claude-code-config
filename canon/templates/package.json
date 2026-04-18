@@ -14,7 +14,8 @@
     "node": ">=22"
   },
   "dependencies": {
-    "pmxtjs": "2.22.1"
+    "pmxtjs": "2.22.1",
+    "pmxt-core": "2.22.1"
   },
   "devDependencies": {
     "oxlint": "1.60.0",

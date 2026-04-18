@@ -16,5 +16,5 @@
     "declaration": true
   },
   "include": ["*.ts", "**/*.ts"],
-  "exclude": ["dist", "node_modules", "nba-momentum"]
+  "exclude": ["dist", "node_modules", "nba-momentum", "strategies/*/entry.ts"]
 }

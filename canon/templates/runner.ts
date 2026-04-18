@@ -4,6 +4,8 @@
  * and structured execution logging.
  */
 
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import type { TradeSignal } from "./types/TradeSignal.js";
 import type { RiskInterface, Portfolio } from "./types/RiskInterface.js";
 import type { ExecutionLogEntry } from "./execution-log.js";
@@ -89,6 +91,38 @@ export function createRunner(
   let running = false;
   let stopRequested = false;
   let sigintHandler: (() => void) | null = null;
+  let cycleCount = 0;
+  let signalCount = 0;
+  let errorCount = 0;
+
+  function out(tag: string, msg: string): void {
+    process.stdout.write(`${tag} ${msg}\n`);
+  }
+
+  const flowPath = join(
+    config.baseDir.replace(/\/execution$/, ""),
+    "flow.json",
+  );
+
+  function updateFlow(
+    active: string,
+    completed: string[],
+  ): void {
+    if (!existsSync(flowPath)) return;
+    try {
+      const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as {
+        steps: string[];
+        labels: Record<string, string>;
+        active: string;
+        completed: string[];
+      };
+      flow.active = active;
+      flow.completed = completed;
+      writeFileSync(flowPath, JSON.stringify(flow, null, 2) + "\n");
+    } catch {
+      // flow.json missing or malformed — skip silently
+    }
+  }
 
   async function processSignal(
     signal: TradeSignal,
@@ -100,6 +134,13 @@ export function createRunner(
         size: signal.size,
         confidence: signal.confidence,
       }),
+    );
+
+    signalCount++;
+    out(
+      "SIGNAL",
+      `${signal.automation_id} ${signal.market.market_id} ` +
+        `${signal.direction} confidence=${String(signal.confidence)}`,
     );
 
     const decision = deps.risk.preTradeCheck(signal, portfolio);
@@ -130,6 +171,7 @@ export function createRunner(
       return;
     }
 
+    updateFlow("execute", ["scan", "signal", "risk"]);
     try {
       const result = await deps.executor.submit(submittable);
       deps.log(
@@ -155,12 +197,30 @@ export function createRunner(
   }
 
   async function cycle(): Promise<void> {
+    cycleCount++;
+    updateFlow("scan", []);
+    out("SCAN", `Cycle ${String(cycleCount)}`);
+
     const portfolio = await deps.positions.reconcile();
+
+    updateFlow("signal", ["scan"]);
     const signals = await deps.strategy();
 
     for (const signal of signals) {
+      updateFlow("risk", ["scan", "signal"]);
       await processSignal(signal, portfolio);
     }
+
+    updateFlow("log", ["scan", "signal", "risk", "execute"]);
+
+    if (signals.length === 0) {
+      out(
+        "NO_EDGE",
+        `Cycle ${String(cycleCount)} — 0 signals, no edges`,
+      );
+    }
+
+    updateFlow("", ["scan", "signal", "risk", "execute", "log"]);
   }
 
   function stop(): void {
@@ -172,6 +232,11 @@ export function createRunner(
     stopRequested = false;
 
     sigintHandler = () => {
+      out(
+        "STOP",
+        `Shutting down — ${String(cycleCount)} cycles, ` +
+          `${String(signalCount)} signals, ${String(errorCount)} errors`,
+      );
       stop();
     };
     process.on("SIGINT", sigintHandler);
@@ -181,8 +246,10 @@ export function createRunner(
         try {
           await cycle();
         } catch (err: unknown) {
+          errorCount++;
           const message =
             err instanceof Error ? err.message : String(err);
+          out("SCAN_ERROR", `Cycle ${String(cycleCount)} — ${message}`);
           deps.log(
             logEntry("error", "runner", "", {
               error: message,

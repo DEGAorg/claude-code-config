@@ -119,6 +119,7 @@ Files available:
 - `canon/cli/commands/help.ts`
 - `canon/skills/canon-cli.md`
 - `canon/skills/polymarket.md`
+- `canon/templates/` (entire directory — project shell copied wholesale by scaffold)
 
 ---
 
@@ -285,10 +286,11 @@ Components:
   Requires Orchestrator. Invoke via
   `~/.degacore/scripts/planner-loop.sh`.
   (opt-in; recommended when `~/.degacore/scripts/planner-loop.sh` is missing)
-- **Canon Bootstrap** — launcher, scaffold scripts, and CLI for Canon
-  prediction market projects. Installs `canon-scaffold.sh` (deterministic
-  project scaffolder called by `/canon-start`), `canon.sh` (reference copy
-  of the local tmux launcher written by `/canon-init`), and the Canon CLI
+- **Canon Bootstrap** — launcher, scaffold scripts, project templates, and CLI
+  for Canon prediction market projects. Installs `canon-scaffold.sh`
+  (deterministic project scaffolder called by `/canon-start`), `canon.sh`
+  (tmux launcher), `canon/templates/` (complete project shell with shared
+  runner, types, clients, and strategy modules like arb-binary), and the Canon CLI
   (`canon-cli`) — an agent-callable TypeScript tool for querying markets,
   managing positions, and executing trades on Polymarket. The CLI is built
   with `pnpm install` and linked to `~/.degacore/bin/canon-cli`. Add
@@ -538,7 +540,30 @@ Write each file to `~/.degacore/scripts/`:
 
 Run `chmod +x ~/.degacore/scripts/canon-scaffold.sh ~/.degacore/scripts/canon.sh` after writing.
 
-Safe to overwrite — these are engine scripts with no user customization.
+Clone the `canon/templates/` directory to `~/.degacore/canon/templates/`. This is
+the project shell that `canon-scaffold.sh` copies wholesale into new projects.
+Instead of fetching files individually, use `gh` to download the directory:
+
+```bash
+rm -rf ~/.degacore/canon/templates
+mkdir -p ~/.degacore/canon
+cd /tmp && rm -rf _canon_tpl && mkdir _canon_tpl && cd _canon_tpl
+gh api repos/DEGAorg/claude-code-config/tarball/develop \
+  --header 'Accept: application/vnd.github+json' > repo.tar.gz
+tar xzf repo.tar.gz --strip-components=1
+cp -R canon/templates ~/.degacore/canon/templates
+cd / && rm -rf /tmp/_canon_tpl
+```
+
+Verify the templates are present:
+```bash
+test -f ~/.degacore/canon/templates/runner.ts && \
+test -f ~/.degacore/canon/templates/package.json && \
+test -d ~/.degacore/canon/templates/strategies/arb-binary && \
+echo "templates OK" || echo "templates MISSING"
+```
+
+Safe to overwrite — these are template files with no user customization.
 
 #### Canon CLI
 
