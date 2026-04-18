@@ -370,3 +370,17 @@ only copy of the work when the push/PR step fails.
 **Fix:** Step 9 (worktree cleanup + branch delete) must be gated on step 8 success.
 If push or PR creation fails, preserve the worktree and branch, increment the error
 count, and print recovery instructions (`git push origin <branch>` + `gh pr create`).
+
+---
+
+<!-- Resolved 2026-04-18: shipped `swapToUsdce()` + `canon-cli onboard`. -->
+<!-- See canon/templates/client-polymarket.ts and canon/cli/commands/onboard.ts. -->
+
+## Polymarket onboarding — ETH-from-bridge path
+
+**Severity:** P3
+**Area:** canon/cli/commands/onboard.ts
+**Logged:** 2026-04-18
+**Context:** Autoswap shipped for native USDC / USDT / POL. Users bridging ETH from L1 land with POS-bridged WETH on Polygon, not covered by the current onboard plan.
+
+**Fix:** add WETH as a `SwapSource`. Same Uniswap v3 quoter-driven pattern; pool exists at 0.05%.
