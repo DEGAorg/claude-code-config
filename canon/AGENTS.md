@@ -98,10 +98,12 @@ that return structured JSON. Install via `/apply-core`.
 | `canon-cli market orderbook <id>` | Fetch order book depth | No |
 | `canon-cli market ohlcv <id>` | Fetch OHLCV candlestick data | No |
 | `canon-cli position list` | List open positions with PnL | Yes |
-| `canon-cli balance` | Fetch wallet balances | Yes |
-| `canon-cli order create` | Place a new order | Yes |
+| `canon-cli balance` | On-chain balance (USDC.e tradeable, USDC/USDT/POL with swap hints) | Yes |
+| `canon-cli onboard [--execute]` | Swap non-USDC.e assets to USDC.e via Uniswap v3 | Yes |
+| `canon-cli order create` | Place a new order (min size: 5 shares) | Yes |
 | `canon-cli order cancel <id>` | Cancel a specific order | Yes |
-| `canon-cli order list` | List recent trades | Yes |
+| `canon-cli order open` | List currently-open orders | Yes |
+| `canon-cli order trades` | List trade history | Yes |
 | `canon-cli kill [--yes]` | Cancel all open orders | Yes |
 | `canon-cli help [skill]` | Show skill reference | No |
 
