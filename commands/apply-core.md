@@ -116,6 +116,7 @@ Files available:
 - `canon/cli/commands/balance.ts`
 - `canon/cli/commands/order.ts`
 - `canon/cli/commands/kill.ts`
+- `canon/cli/commands/onboard.ts`
 - `canon/cli/commands/help.ts`
 - `canon/skills/canon-cli.md`
 - `canon/skills/polymarket.md`
@@ -578,6 +579,7 @@ Write each source file to `~/.degacore/canon-cli/`:
 - `canon/cli/commands/balance.ts` -> `~/.degacore/canon-cli/commands/balance.ts`
 - `canon/cli/commands/order.ts` -> `~/.degacore/canon-cli/commands/order.ts`
 - `canon/cli/commands/kill.ts` -> `~/.degacore/canon-cli/commands/kill.ts`
+- `canon/cli/commands/onboard.ts` -> `~/.degacore/canon-cli/commands/onboard.ts`
 - `canon/cli/commands/help.ts` -> `~/.degacore/canon-cli/commands/help.ts`
 
 Write the agent discovery skills:
