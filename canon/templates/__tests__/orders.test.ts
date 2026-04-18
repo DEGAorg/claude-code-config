@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type {
   createOrder as CreateOrderFn,
   cancelOrder as CancelOrderFn,
@@ -6,18 +6,14 @@ import type {
   OrderParams,
 } from "../client-polymarket.js";
 
-const mockCreateOrder = vi.fn();
-const mockCancelOrder = vi.fn();
-const mockBuildOrder = vi.fn();
+const mockCallSidecar = vi.fn();
+const mockCreateOrder = mockCallSidecar;
+const mockCancelOrder = mockCallSidecar;
+const mockBuildOrder = mockCallSidecar;
 
-vi.mock("pmxtjs", () => {
-  class MockPolymarket {
-    createOrder = mockCreateOrder;
-    cancelOrder = mockCancelOrder;
-    buildOrder = mockBuildOrder;
-  }
-  return { Polymarket: MockPolymarket };
-});
+vi.mock("../sidecar.js", () => ({
+  callSidecar: mockCallSidecar,
+}));
 
 let createOrder: typeof CreateOrderFn;
 let cancelOrder: typeof CancelOrderFn;
@@ -26,10 +22,15 @@ let buildOrder: typeof BuildOrderFn;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
+  process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest";
   const mod = await import("../client-polymarket.js");
   createOrder = mod.createOrder;
   cancelOrder = mod.cancelOrder;
   buildOrder = mod.buildOrder;
+});
+
+afterEach(() => {
+  delete process.env["POLYMARKET_PRIVATE_KEY"];
 });
 
 function validParams(
@@ -177,7 +178,11 @@ describe("cancelOrder", () => {
       id: "order-001",
       status: "cancelled",
     });
-    expect(mockCancelOrder).toHaveBeenCalledWith("order-001");
+    expect(mockCancelOrder).toHaveBeenCalledWith(
+      "cancelOrder",
+      ["order-001"],
+      expect.objectContaining({ privateKey: "0xtest" }),
+    );
   });
 
   it("propagates error for unknown order", async () => {
@@ -206,7 +211,11 @@ describe("buildOrder", () => {
     });
     expect(result.signedOrder).toBeDefined();
     expect(mockBuildOrder).toHaveBeenCalledOnce();
-    expect(mockCreateOrder).not.toHaveBeenCalled();
+    expect(mockBuildOrder).toHaveBeenCalledWith(
+      "buildOrder",
+      expect.any(Array),
+      expect.objectContaining({ privateKey: "0xtest" }),
+    );
   });
 
   it("validates price same as createOrder", async () => {

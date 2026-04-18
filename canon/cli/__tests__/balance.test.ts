@@ -8,13 +8,12 @@ import {
 } from "vitest";
 
 vi.mock("canon-templates/client-polymarket.js", () => ({
-  fetchBalance: vi.fn(),
+  fetchOnChainBalances: vi.fn(),
 }));
 
 const mockClient = await import("canon-templates/client-polymarket.js");
-const fetchBalance = vi.mocked(mockClient.fetchBalance);
+const fetchOnChainBalances = vi.mocked(mockClient.fetchOnChainBalances);
 
-// Capture stdout/stderr writes
 let stdoutData: string;
 let stderrData: string;
 
@@ -49,52 +48,65 @@ afterEach(() => {
 const { run } = await import("../commands/balance.js");
 
 describe("balance", () => {
-  it("returns wallet balances", async () => {
-    fetchBalance.mockResolvedValueOnce([
+  it("returns on-chain balances with USDC.e tradeable", async () => {
+    fetchOnChainBalances.mockResolvedValueOnce([
       {
-        currency: "USDC",
-        total: 1000,
-        available: 750,
-        locked: 250,
+        currency: "USDC.e",
+        address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        amount: 9.88,
+        tradeable: true,
+      },
+      {
+        currency: "POL",
+        address: "native",
+        amount: 21.5,
+        tradeable: false,
+        note: "for gas only",
       },
     ]);
 
     await run([]);
 
-    expect(fetchBalance).toHaveBeenCalled();
-
+    expect(fetchOnChainBalances).toHaveBeenCalled();
     const parsed = JSON.parse(stdoutData) as {
       ok: boolean;
       data: Array<{
         currency: string;
-        total: number;
-        available: number;
-        locked: number;
+        address: string;
+        amount: number;
+        tradeable: boolean;
+        note?: string;
       }>;
     };
     expect(parsed.ok).toBe(true);
-    expect(parsed.data).toHaveLength(1);
-    expect(parsed.data[0]).toEqual({
-      currency: "USDC",
-      total: 1000,
-      available: 750,
-      locked: 250,
-    });
+    expect(parsed.data).toHaveLength(2);
+    expect(parsed.data[0]?.currency).toBe("USDC.e");
+    expect(parsed.data[0]?.tradeable).toBe(true);
+    expect(parsed.data[1]?.currency).toBe("POL");
+    expect(parsed.data[1]?.tradeable).toBe(false);
   });
 
-  it("returns multiple currencies", async () => {
-    fetchBalance.mockResolvedValueOnce([
+  it("includes native USDC with swap hint when present", async () => {
+    fetchOnChainBalances.mockResolvedValueOnce([
       {
-        currency: "USDC",
-        total: 500,
-        available: 400,
-        locked: 100,
+        currency: "USDC.e",
+        address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        amount: 0,
+        tradeable: true,
       },
       {
-        currency: "ETH",
-        total: 2.5,
-        available: 2.0,
-        locked: 0.5,
+        currency: "USDC",
+        address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+        amount: 5.0,
+        tradeable: false,
+        note: "native USDC — swap to USDC.e to trade on Polymarket",
+      },
+      {
+        currency: "POL",
+        address: "native",
+        amount: 1.0,
+        tradeable: false,
+        note: "for gas only",
       },
     ]);
 
@@ -102,23 +114,12 @@ describe("balance", () => {
 
     const parsed = JSON.parse(stdoutData) as {
       ok: boolean;
-      data: unknown[];
+      data: Array<{ currency: string; tradeable: boolean; note?: string }>;
     };
-    expect(parsed.ok).toBe(true);
-    expect(parsed.data).toHaveLength(2);
-  });
-
-  it("returns empty array when no balances", async () => {
-    fetchBalance.mockResolvedValueOnce([]);
-
-    await run([]);
-
-    const parsed = JSON.parse(stdoutData) as {
-      ok: boolean;
-      data: unknown[];
-    };
-    expect(parsed.ok).toBe(true);
-    expect(parsed.data).toHaveLength(0);
+    expect(parsed.data).toHaveLength(3);
+    const native = parsed.data.find((b) => b.currency === "USDC");
+    expect(native?.tradeable).toBe(false);
+    expect(native?.note).toContain("swap");
   });
 
   it("requires auth", async () => {
@@ -129,26 +130,26 @@ describe("balance", () => {
     const parsed = JSON.parse(stderrData) as { ok: boolean; error: string };
     expect(parsed.ok).toBe(false);
     expect(parsed.error).toMatch(/requires authentication/);
-    expect(fetchBalance).not.toHaveBeenCalled();
+    expect(fetchOnChainBalances).not.toHaveBeenCalled();
   });
 
-  it("handles API errors", async () => {
-    fetchBalance.mockRejectedValueOnce(new Error("Wallet not found"));
+  it("handles RPC errors", async () => {
+    fetchOnChainBalances.mockRejectedValueOnce(new Error("RPC unreachable"));
 
     await run([]);
 
     const parsed = JSON.parse(stderrData) as { ok: boolean; error: string };
     expect(parsed.ok).toBe(false);
-    expect(parsed.error).toBe("Wallet not found");
+    expect(parsed.error).toBe("RPC unreachable");
   });
 
   it("supports --pretty flag", async () => {
-    fetchBalance.mockResolvedValueOnce([
+    fetchOnChainBalances.mockResolvedValueOnce([
       {
-        currency: "USDC",
-        total: 100,
-        available: 80,
-        locked: 20,
+        currency: "USDC.e",
+        address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        amount: 100,
+        tradeable: true,
       },
     ]);
 

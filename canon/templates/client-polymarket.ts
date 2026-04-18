@@ -57,6 +57,20 @@ export interface AccountBalance {
   locked: number;
 }
 
+/** On-chain balance entry with product metadata for the user. */
+export interface OnChainBalance {
+  /** Display symbol (e.g. "USDC.e", "USDC", "POL"). */
+  currency: string;
+  /** Token contract address, or "native" for POL. */
+  address: string;
+  /** Human-readable balance (decimal-adjusted). */
+  amount: number;
+  /** True if this token can be used directly on Polymarket. */
+  tradeable: boolean;
+  /** Optional hint for the user about what to do with this balance. */
+  note?: string;
+}
+
 /** A single trade from the authenticated user's trade history. */
 export interface UserTrade {
   id: string;
@@ -271,6 +285,74 @@ export async function fetchBalance(): Promise<AccountBalance[]> {
 }
 
 /**
+ * Fetch on-chain balances for the authenticated EOA on Polygon.
+ *
+ * Returns USDC.e (tradeable), native USDC (swap needed), and POL (gas).
+ * This is the user-facing balance — what `canon-cli balance` should show.
+ *
+ * Requires `POLYMARKET_PRIVATE_KEY`. Uses a public Polygon RPC.
+ */
+export async function fetchOnChainBalances(): Promise<OnChainBalance[]> {
+  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
+  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+
+  const { ethers } = await import("ethers");
+  const rpc = process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
+  const provider = new ethers.providers.StaticJsonRpcProvider(
+    rpc,
+    { name: "polygon", chainId: 137 },
+  );
+  const address = new ethers.Wallet(privateKey).address;
+
+  const USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+  const USDC_NATIVE = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
+  const abi = ["function balanceOf(address) view returns (uint256)"];
+  const usdcE = new ethers.Contract(USDC_E, abi, provider);
+  const usdcNative = new ethers.Contract(USDC_NATIVE, abi, provider);
+
+  const [polRaw, usdcERaw, usdcNativeRaw] = await Promise.all([
+    provider.getBalance(address),
+    usdcE["balanceOf"](address),
+    usdcNative["balanceOf"](address),
+  ]);
+
+  const fmt6 = (v: { toString(): string }): number =>
+    Number(ethers.utils.formatUnits(v.toString(), 6));
+  const fmt18 = (v: { toString(): string }): number =>
+    Number(ethers.utils.formatUnits(v.toString(), 18));
+
+  const out: OnChainBalance[] = [
+    {
+      currency: "USDC.e",
+      address: USDC_E,
+      amount: fmt6(usdcERaw),
+      tradeable: true,
+    },
+  ];
+
+  const nativeAmt = fmt6(usdcNativeRaw);
+  if (nativeAmt > 0) {
+    out.push({
+      currency: "USDC",
+      address: USDC_NATIVE,
+      amount: nativeAmt,
+      tradeable: false,
+      note: "native USDC — swap to USDC.e to trade on Polymarket",
+    });
+  }
+
+  out.push({
+    currency: "POL",
+    address: "native",
+    amount: fmt18(polRaw),
+    tradeable: false,
+    note: "for gas only",
+  });
+
+  return out;
+}
+
+/**
  * Fetch trade history for the authenticated Polymarket account.
  *
  * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
@@ -427,15 +509,31 @@ export async function createOrder(
   params: OrderParams,
 ): Promise<OrderResponse> {
   validateOrderParams(params);
-  const poly = getClient();
-  const order = await poly.createOrder({
-    marketId: params.marketId,
-    outcomeId: params.tokenId,
-    side: params.side,
-    type: params.orderType,
-    amount: params.size,
-    price: params.price,
-  });
+  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
+  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const order = await callSidecar<{
+    id: string;
+    marketId: string;
+    outcomeId: string;
+    side: "buy" | "sell";
+    type: "market" | "limit";
+    amount: number;
+    price?: number;
+    status: string;
+    filled: number;
+    remaining: number;
+  }>(
+    "createOrder",
+    [{
+      marketId: params.marketId,
+      outcomeId: params.tokenId,
+      side: params.side,
+      type: params.orderType,
+      amount: params.size,
+      price: params.price,
+    }],
+    { privateKey, signatureType: "eoa" },
+  );
   return {
     id: order.id,
     marketId: order.marketId,
@@ -458,8 +556,20 @@ export async function createOrder(
 export async function cancelOrder(
   orderId: string,
 ): Promise<OrderResponse> {
-  const poly = getClient();
-  const order = await poly.cancelOrder(orderId);
+  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
+  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const order = await callSidecar<{
+    id: string;
+    marketId: string;
+    outcomeId: string;
+    side: "buy" | "sell";
+    type: "market" | "limit";
+    amount: number;
+    price?: number;
+    status: string;
+    filled: number;
+    remaining: number;
+  }>("cancelOrder", [orderId], { privateKey, signatureType: "eoa" });
   return {
     id: order.id,
     marketId: order.marketId,
@@ -485,15 +595,32 @@ export async function buildOrder(
   params: OrderParams,
 ): Promise<BuildOrderResult> {
   validateOrderParams(params);
-  const poly = getClient();
-  const built = await poly.buildOrder({
-    marketId: params.marketId,
-    outcomeId: params.tokenId,
-    side: params.side,
-    type: params.orderType,
-    amount: params.size,
-    price: params.price,
-  });
+  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
+  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const built = await callSidecar<{
+    exchange: string;
+    params: {
+      marketId: string;
+      outcomeId: string;
+      side: string;
+      type: string;
+      amount: number;
+      price?: number;
+    };
+    signedOrder?: Record<string, unknown>;
+    raw: unknown;
+  }>(
+    "buildOrder",
+    [{
+      marketId: params.marketId,
+      outcomeId: params.tokenId,
+      side: params.side,
+      type: params.orderType,
+      amount: params.size,
+      price: params.price,
+    }],
+    { privateKey, signatureType: "eoa" },
+  );
   return {
     exchange: built.exchange,
     params: {

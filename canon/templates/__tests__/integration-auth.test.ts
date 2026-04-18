@@ -113,7 +113,7 @@ describe.runIf(HAS_AUTH)(
         marketId: testMarketId,
         tokenId: testTokenId,
         side: "buy",
-        size: 1,
+        size: 200,
         price: 0.01,
         orderType: "limit",
       };
@@ -125,7 +125,7 @@ describe.runIf(HAS_AUTH)(
       expect(result.params.outcomeId).toBe(testTokenId);
       expect(result.params.side).toBe("buy");
       expect(result.params.type).toBe("limit");
-      expect(result.params.amount).toBe(1);
+      expect(result.params.amount).toBe(200);
       expect(result.params.price).toBe(0.01);
     }, 15_000);
 
@@ -139,7 +139,7 @@ describe.runIf(HAS_AUTH)(
           marketId: testMarketId,
           tokenId: testTokenId,
           side: "buy",
-          size: 1,
+          size: 200,
           price: 0.01,
           orderType: "limit",
         };
@@ -153,9 +153,9 @@ describe.runIf(HAS_AUTH)(
         expect(created.outcomeId).toBe(testTokenId);
         expect(created.side).toBe("buy");
         expect(created.type).toBe("limit");
-        expect(created.amount).toBe(1);
+        expect(created.amount).toBe(200);
         expect(created.filled).toBe(0);
-        expect(created.remaining).toBe(1);
+        expect(created.remaining).toBe(200);
 
         // Cancel immediately
         const cancelled = await cancelOrder(created.id);
