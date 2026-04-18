@@ -373,23 +373,14 @@ count, and print recovery instructions (`git push origin <branch>` + `gh pr crea
 
 ---
 
-## Polymarket onboarding — auto-swap non-USDC.e deposits
+<!-- Resolved 2026-04-18: shipped `swapToUsdce()` + `canon-cli onboard`. -->
+<!-- See canon/templates/client-polymarket.ts and canon/cli/commands/onboard.ts. -->
 
-**Severity:** P2
-**Area:** canon/templates/client-polymarket.ts, canon/cli
-**Logged:** 2026-04-17
-**Context:** #112 integration-test session. User funded burner with native USDC (0x3c49…) instead of bridged USDC.e (0x2791…) because the two addresses look similar and Polymarket silently uses the bridged one. One-off manual Uniswap v3 swap unblocked the test.
+## Polymarket onboarding — ETH-from-bridge path
 
-Polymarket CTFExchange is hardcoded to USDC.e. Users sending native USDC, USDT,
-POL, or ETH see `balance: 0` on Polymarket with no hint why.
+**Severity:** P3
+**Area:** canon/cli/commands/onboard.ts
+**Logged:** 2026-04-18
+**Context:** Autoswap shipped for native USDC / USDT / POL. Users bridging ETH from L1 land with POS-bridged WETH on Polygon, not covered by the current onboard plan.
 
-**Fix:** onboarding helper that detects non-USDC.e deposits on the EOA and offers
-a one-click swap to USDC.e via Uniswap v3 (0.01% fee pool for stables, 0.05%/0.3%
-for POL/ETH). Pattern implemented once in `canon/templates/__tests__/swap-to-usdce.ts`
-for reference — needs productization into the wrapper and CLI.
-
-**Scope suggestion:**
-- `canon/templates/client-polymarket.ts` — export `swapToUsdce(tokenIn, amountIn)` helper
-- `canon/cli/commands/balance.ts` — already shows multi-token balance (#112 follow-up);
-  add a `--swap-to-usdce` flag or a distinct `canon-cli onboard` command
-- Handle the 3 common paths: native USDC / USDT / POL → USDC.e
+**Fix:** add WETH as a `SwapSource`. Same Uniswap v3 quoter-driven pattern; pool exists at 0.05%.

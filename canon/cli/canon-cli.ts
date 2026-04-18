@@ -14,6 +14,7 @@ const COMMANDS: Record<string, string> = {
   balance: "Fetch wallet balance",
   order: "Create, cancel, or list orders",
   kill: "Cancel all open orders (kill switch)",
+  onboard: "Swap non-USDC.e assets to USDC.e (plan or --execute)",
   help: "Show help for a topic or list available skills",
 };
 

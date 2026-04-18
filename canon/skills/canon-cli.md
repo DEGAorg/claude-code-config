@@ -1,7 +1,7 @@
 ---
 name: canon-cli
 description: Command reference for the Canon CLI — agent-callable trading tools for Polymarket
-version: 0.0.0
+version: 0.1.0
 domain: tools
 requires: [polymarket]
 tools: [canon-cli]
@@ -12,9 +12,24 @@ tools: [canon-cli]
 ## Context
 
 Load this skill when the user asks to interact with Polymarket — searching
-markets, checking positions, placing orders, or monitoring a portfolio.
-The Canon CLI wraps Polymarket APIs into shell commands that return
-structured JSON.
+markets, checking balances, placing orders, onboarding a new wallet, or
+monitoring a portfolio. The Canon CLI wraps Polymarket APIs and on-chain
+Polygon calls into shell commands that return structured JSON.
+
+Natural-language requests map to commands as follows:
+
+| User intent | Command |
+|---|---|
+| "How much can I trade with?" / "What's my balance?" | `canon-cli balance` |
+| "I sent USDC but Polymarket shows $0" | `canon-cli onboard` (then `--execute`) |
+| "Find markets about X" | `canon-cli market search "X"` |
+| "What's the price of market X?" | `canon-cli market price <conditionId>` |
+| "How deep is the book for X?" | `canon-cli market orderbook <tokenId>` |
+| "Buy/sell N shares of X at price P" | `canon-cli order create ...` |
+| "What orders do I have open?" | `canon-cli order open` |
+| "What have I traded recently?" | `canon-cli order trades` |
+| "Cancel order X" / "Cancel everything" | `canon-cli order cancel <id>` / `canon-cli kill --yes` |
+| "Show my positions and PnL" | `canon-cli position list` |
 
 ## How to Use
 
@@ -43,7 +58,7 @@ Add `--pretty` to any command for indented JSON (human-readable).
 ### Authentication
 
 Read-only commands (`market`, `help`) work without auth.
-Write commands (`position`, `balance`, `order`, `kill`) require:
+Write / account commands (`balance`, `position`, `order`, `kill`, `onboard`) require:
 
 ```bash
 export POLYMARKET_PRIVATE_KEY=<private-key>
@@ -62,101 +77,100 @@ canon-cli market search "bitcoin"
 canon-cli market search NBA playoffs
 ```
 
-Returns: array of matching market objects.
+Returns an array of binary (2-outcome) markets with YES/NO prices and token IDs.
 
 ```json
-{"ok": true, "data": [{"conditionId": "0x...", "question": "Will Bitcoin hit $100k?", "outcomes": ["Yes", "No"], "volume": 1500000}]}
+{"ok": true, "data": [{"conditionId": "553856", "question": "...", "yesPrice": 0.455, "noPrice": 0.545, "yesTokenId": "495002...", "noTokenId": "449144...", "resolutionDate": "2026-07-01T00:00:00Z"}]}
 ```
 
 ### market price
 
-Fetch current price for a market. No auth required.
+Fetch current YES/NO price for a market. No auth required.
 
 ```bash
 canon-cli market price <condition-id>
 ```
 
-Returns: price object with outcome prices.
-
-```json
-{"ok": true, "data": {"conditionId": "0x...", "outcomes": [{"label": "Yes", "price": 0.65}, {"label": "No", "price": 0.35}]}}
-```
-
 ### market orderbook
 
-Fetch order book for a token. No auth required.
+Fetch the order book for one outcome token. No auth required.
 
 ```bash
 canon-cli market orderbook <token-id>
 ```
 
-Returns: bids and asks arrays.
-
-```json
-{"ok": true, "data": {"bids": [{"price": 0.64, "size": 500}], "asks": [{"price": 0.66, "size": 300}]}}
-```
+Returns `bids` and `asks` arrays, each with `{price, size}`.
 
 ### market ohlcv
 
-Fetch OHLCV candlestick data for a token. No auth required.
+Fetch OHLCV candles for a token. No auth required. Sidecar-based path.
 
 ```bash
 canon-cli market ohlcv <token-id>
 canon-cli market ohlcv <token-id> --timeframe 1h
 ```
 
-Returns: array of candle objects.
-
-```json
-{"ok": true, "data": [{"open": 0.60, "high": 0.68, "low": 0.58, "close": 0.65, "volume": 12000, "timestamp": 1713100800}]}
-```
-
-### position list
-
-List all open positions with PnL summary. Auth required.
-
-```bash
-canon-cli position list
-```
-
-Returns: positions array and portfolio summary.
-
-```json
-{
-  "ok": true,
-  "data": {
-    "positions": [
-      {
-        "marketId": "0x...",
-        "outcomeId": "0x...",
-        "outcomeLabel": "Yes",
-        "size": 100,
-        "entryPrice": 0.45,
-        "currentPrice": 0.65,
-        "unrealizedPnL": 20.0
-      }
-    ],
-    "summary": {
-      "totalValue": 1500.0,
-      "dailyPnL": 42.5,
-      "positionCount": 3
-    }
-  }
-}
-```
-
 ### balance
 
-Fetch wallet balance. Auth required. No subcommands.
+On-chain balance scan: USDC.e (tradeable on Polymarket), native USDC (needs swap),
+USDT (needs swap), POL (gas). Auth required.
 
 ```bash
 canon-cli balance
 ```
 
-Returns: array of currency balances.
+```json
+{"ok": true, "data": [
+  {"currency": "USDC.e", "address": "0x2791...", "amount": 9.88, "tradeable": true},
+  {"currency": "POL",    "address": "native",  "amount": 21.5, "tradeable": false, "note": "for gas; excess can be swapped to USDC.e"}
+]}
+```
+
+**Key fact:** Polymarket only accepts USDC.e. If `balance` shows native USDC, USDT,
+or excess POL with `tradeable: false`, run `canon-cli onboard` to convert them.
+
+### onboard
+
+Convert non-USDC.e assets to USDC.e via Uniswap v3 so the user can trade. Auth required.
+
+Three modes:
+
+```bash
+# 1. Dry run — show the swap plan based on current balances
+canon-cli onboard
+
+# 2. Execute the full plan
+canon-cli onboard --execute
+
+# 3. Single-asset explicit swap
+canon-cli onboard --asset POL  --amount 1    --execute
+canon-cli onboard --asset USDC --amount 10   --execute
+canon-cli onboard --asset USDT --amount 5    --execute
+```
+
+Plan response:
 
 ```json
-{"ok": true, "data": [{"currency": "USDC", "total": 5000.0, "available": 3500.0, "locked": 1500.0}]}
+{"ok": true, "data": {"plan": [{"from": "USDC", "amount": 5, "reason": "..."}], "executed": false, "note": "run with --execute to swap these on-chain"}}
+```
+
+Execution response:
+
+```json
+{"ok": true, "data": {"executed": true, "swaps": [{"from": "USDC", "amountIn": 5, "amountOut": 4.998, "txHash": "0x..."}]}}
+```
+
+Env vars:
+- `ONBOARD_POL_GAS_RESERVE` (default `1`) — POL to keep for gas when auto-swapping.
+- `SWAP_SLIPPAGE_BPS` (default `50`) — max slippage in basis points (0.5%).
+- `POLYGON_RPC_URL` (default `https://polygon.drpc.org`) — RPC endpoint.
+
+### position list
+
+List open positions with PnL summary. Auth required.
+
+```bash
+canon-cli position list
 ```
 
 ### order create
@@ -165,83 +179,54 @@ Place a new order. Auth required.
 
 ```bash
 canon-cli order create \
+  --market-id <id> \
   --token-id <id> \
   --side buy \
   --size 50 \
   --price 0.45 \
-  --type limit \
-  --market-id <id>
+  --type limit
 ```
 
-Required flags: `--token-id`, `--side` (buy|sell), `--size` (>0), `--price` (0-1).
-Optional flags: `--type` (market|limit, default: limit), `--market-id`.
+Required: `--token-id`, `--side` (buy|sell), `--size` (>0), `--price` (0-1). `--market-id` recommended.
+Optional: `--type` (market|limit, default limit).
 
-Returns: order confirmation object.
-
-```json
-{"ok": true, "data": {"orderId": "abc123", "status": "placed", "tokenId": "0x...", "side": "buy", "size": 50, "price": 0.45}}
-```
+Polymarket **minimum order size is 5 shares**. Size below that is rejected by the exchange.
 
 ### order cancel
 
-Cancel a specific order. Auth required.
+Cancel a specific order. Auth required. Returns a sparse `{id, status}` — the sidecar confirms the cancel but doesn't echo the full order.
 
 ```bash
 canon-cli order cancel <order-id>
 ```
 
-Returns: cancellation result.
+### order open
 
-```json
-{"ok": true, "data": {"orderId": "abc123", "status": "cancelled"}}
-```
-
-### order list
-
-List recent trades. Auth required.
+List currently-open orders (not yet filled or cancelled). Auth required.
 
 ```bash
-canon-cli order list
-canon-cli order list --market-id <id> --limit 10
+canon-cli order open
+canon-cli order open --market-id <id>
 ```
 
-Optional flags: `--market-id` (filter by market), `--limit` (max results).
+### order trades
 
-Returns: array of trade objects.
+List trade history (historical fills). Auth required.
 
-```json
-{"ok": true, "data": [{"orderId": "abc123", "side": "buy", "size": 50, "price": 0.45, "status": "filled", "timestamp": 1713100800}]}
+```bash
+canon-cli order trades
+canon-cli order trades --market-id <id> --limit 10
 ```
+
+Optional: `--market-id`, `--limit`.
 
 ### kill
 
-Cancel all open orders (kill switch). Auth required.
-Without `--yes`, performs a dry run showing what would be cancelled.
+Cancel all open orders (kill switch). Auth required. Dry-run without `--yes`.
 
 ```bash
-# Dry run — inspect open orders first
-canon-cli kill
-
-# Execute — cancel all open orders
-canon-cli kill --yes
-```
-
-Dry-run response:
-
-```json
-{"ok": true, "data": {"dryRun": true, "orderCount": 3, "orders": [...], "message": "Found 3 open order(s). Re-run with --yes to cancel all."}}
-```
-
-Execution response:
-
-```json
-{"ok": true, "data": {"cancelled": ["id1", "id2"], "failed": []}}
-```
-
-No open orders:
-
-```json
-{"ok": true, "data": {"cancelled": [], "failed": [], "message": "No open orders"}}
+canon-cli kill           # dry-run: lists what would be cancelled
+canon-cli kill --yes     # actually cancel everything
 ```
 
 ### help
@@ -249,75 +234,67 @@ No open orders:
 List available skills or show skill details. No auth required.
 
 ```bash
-# List all skills
 canon-cli help
-
-# Show details for a specific skill
 canon-cli help polymarket
-```
-
-List response:
-
-```json
-{"ok": true, "data": {"skills": [{"name": "polymarket", "description": "...", "domain": "platform"}]}}
-```
-
-Detail response:
-
-```json
-{"ok": true, "data": {"name": "polymarket", "description": "...", "domain": "platform", "version": "1.0.0", "requires": ["prediction-markets"], "tools": ["canon-cli"], "content": "# Polymarket Platform Knowledge\n..."}}
 ```
 
 ## Agent Workflow Examples
 
-### Research a market before trading
+### Onboard a freshly-funded wallet
+
+```bash
+# 1. Check on-chain balances
+canon-cli balance
+
+# 2. If anything is not tradeable, preview the swap plan
+canon-cli onboard
+
+# 3. Execute
+canon-cli onboard --execute
+
+# 4. Confirm USDC.e is now available
+canon-cli balance
+```
+
+### Research a market and place a trade
 
 ```bash
 # 1. Find the market
-canon-cli market search "Will Biden win 2024"
+canon-cli market search "NBA champion"
 
-# 2. Check current price (use conditionId from search)
-canon-cli market price 0x1234...
+# 2. Check price (use conditionId from search result)
+canon-cli market price 553856
 
-# 3. Check liquidity (use tokenId from price response)
-canon-cli market orderbook 0x5678...
+# 3. Check liquidity (use yesTokenId or noTokenId from search)
+canon-cli market orderbook 49500299...
 
-# 4. Check price history
-canon-cli market ohlcv 0x5678... --timeframe 1d
-```
-
-### Place a trade and monitor
-
-```bash
-# 1. Check available funds
+# 4. Verify balance before trading
 canon-cli balance
 
-# 2. Place a limit buy order
-canon-cli order create --token-id 0x5678... --side buy --size 100 --price 0.45
+# 5. Place limit order (size >= 5)
+canon-cli order create \
+  --market-id 553856 \
+  --token-id 49500299... \
+  --side buy --size 10 --price 0.40 --type limit
 
-# 3. Check if it filled
-canon-cli order list --limit 1
-
-# 4. Monitor position
-canon-cli position list
+# 6. Watch open orders
+canon-cli order open
 ```
 
-### Emergency: cancel everything
+### Monitor and close out
 
 ```bash
-# 1. See what's open (dry run)
-canon-cli kill
-
-# 2. Cancel all
-canon-cli kill --yes
-
-# 3. Verify positions
-canon-cli position list
+canon-cli position list        # current positions + PnL
+canon-cli order open           # anything still resting?
+canon-cli order trades --limit 20   # recent fills
+canon-cli kill --yes           # cancel all resting orders
 ```
 
 ## Common Mistakes
 
-- **Wrong ID type:** `market price` takes a condition ID, `market orderbook` and `market ohlcv` take a token ID. These are different identifiers from the search results.
-- **Missing --yes on kill:** Without `--yes`, `kill` only lists orders (dry run). Always inspect before confirming.
-- **Price range:** `--price` for orders must be between 0 and 1 (probability). Not a dollar amount.
-- **Limit vs market orders:** Default is `limit`. Use `--type market` only when speed matters more than price. Limit orders avoid taker fees.
+- **Wrong ID type.** `market price` takes a **conditionId**; `market orderbook` and `market ohlcv` take a **tokenId** (one per outcome). Both are on the result of `market search`.
+- **Using native USDC.** Polymarket only accepts **USDC.e** (bridged, `0x2791…`). Native USDC (`0x3c49…`) shows `tradeable: false` on `balance` — run `onboard` to convert.
+- **Missing `--yes` on kill.** Without `--yes`, `kill` only prints the dry run.
+- **`--price` is a probability,** 0–1, not a dollar amount.
+- **Order size below 5** is rejected by the exchange.
+- **`order cancel` echoes a sparse object** (`{id, status}`). The cancel is real; the sidecar just doesn't return the full order shape.
