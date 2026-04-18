@@ -98,8 +98,6 @@ describe("market subcommand", () => {
         question: "Will Bitcoin hit $100k?",
         yesPrice: 0.65,
         noPrice: 0.35,
-        yesTokenId: "yes-token-abc",
-        noTokenId: "no-token-abc",
         resolutionDate: "2026-12-31T00:00:00.000Z",
       },
     ];
