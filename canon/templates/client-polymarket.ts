@@ -22,6 +22,8 @@ export interface PolymarketMatch {
   question: string;
   yesPrice: number;
   noPrice: number;
+  yesTokenId: string;
+  noTokenId: string;
   resolutionDate?: string;
 }
 
@@ -219,16 +221,19 @@ export async function searchMarkets(
     // "Not Indiana Pacers"), not "Yes"/"No". Any 2-outcome market is
     // binary: first outcome = affirmative, second = negative.
     if (m.outcomes.length !== 2) continue;
-    const yesPrice = m.outcomes[0]?.price;
-    const noPrice = m.outcomes[1]?.price;
-    if (yesPrice === undefined || noPrice === undefined) continue;
+    const yesOutcome = m.outcomes[0];
+    const noOutcome = m.outcomes[1];
+    if (!yesOutcome || !noOutcome) continue;
+    if (yesOutcome.price === undefined || noOutcome.price === undefined) continue;
 
     const resDate = m.resolutionDate?.toISOString();
     results.push({
       conditionId: m.marketId,
       question: m.title,
-      yesPrice,
-      noPrice,
+      yesPrice: yesOutcome.price,
+      noPrice: noOutcome.price,
+      yesTokenId: yesOutcome.outcomeId,
+      noTokenId: noOutcome.outcomeId,
       ...(resDate !== undefined ? { resolutionDate: resDate } : {}),
     });
   }
