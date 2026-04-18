@@ -257,6 +257,14 @@ Active work:
 
 ## Working Conventions
 
+### Operating mode (read first every session)
+
+**Read `docs/agent-operating-mode.md`.** It defines the defaults for any agent working here: decide-and-move on reversible actions, self-verify before shipping (tsc + tests + lint + live smoke), cite with links, keep PRs focused, log follow-ups to `docs/exec-plans/tech-debt.md`. These rules hold across all sessions — do not re-derive them and do not ask the user to re-confirm them. If a rule is wrong for a situation, say so and propose an update to that doc.
+
+### Canon TUI wiring
+
+The Canon TUI (`DEGAorg/conductor-view`, separate repo) is not auto-wired to this repo's knowledge. See `docs/canon-tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
+
 ### Commit and push — prohibited
 
 - **Never push directly to `main` or `master`** — use feature branches and PRs.
@@ -287,9 +295,9 @@ Active work:
 
 ### Session start
 
-Check `docs/exec-plans/active/` for in-progress plans before starting new work.
-Each plan is a directory — read `active/<slug>/plan.md`, find the first unchecked
-`[ ]` in the Progress log, and continue from there.
+1. Read `docs/agent-operating-mode.md` — the defaults for how to work here.
+2. Check `docs/exec-plans/active/` for in-progress plans. Each plan is a directory — read `active/<slug>/plan.md`, find the first unchecked `[ ]` in the Progress log, and continue from there.
+3. If the session is picking up a specific task (a GitHub issue, a PR review, a user request), proceed directly; do not re-plan from scratch.
 
 ### Orchestrator
 
