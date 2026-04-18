@@ -439,7 +439,7 @@ export interface OrderParams {
   orderType: "market" | "limit";
 }
 
-/** Order response from createOrder or cancelOrder. */
+/** Order response from createOrder. */
 export interface OrderResponse {
   id: string;
   marketId: string;
@@ -451,6 +451,12 @@ export interface OrderResponse {
   status: string;
   filled: number;
   remaining: number;
+}
+
+/** Result of a cancelOrder call — sparse response from the exchange. */
+export interface CancelResult {
+  id: string;
+  status: string;
 }
 
 /** Dry-run result from buildOrder. */
@@ -555,32 +561,17 @@ export async function createOrder(
  */
 export async function cancelOrder(
   orderId: string,
-): Promise<OrderResponse> {
+): Promise<CancelResult> {
   const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
   if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
-  const order = await callSidecar<{
-    id: string;
-    marketId: string;
-    outcomeId: string;
-    side: "buy" | "sell";
-    type: "market" | "limit";
-    amount: number;
-    price?: number;
-    status: string;
-    filled: number;
-    remaining: number;
-  }>("cancelOrder", [orderId], { privateKey, signatureType: "eoa" });
+  const order = await callSidecar<{ id?: string; status?: string }>(
+    "cancelOrder",
+    [orderId],
+    { privateKey, signatureType: "eoa" },
+  );
   return {
-    id: order.id,
-    marketId: order.marketId,
-    outcomeId: order.outcomeId,
-    side: order.side,
-    type: order.type,
-    amount: order.amount,
-    price: order.price ?? 0,
-    status: order.status,
-    filled: order.filled,
-    remaining: order.remaining,
+    id: order.id ?? orderId,
+    status: order.status ?? "cancelled",
   };
 }
 
