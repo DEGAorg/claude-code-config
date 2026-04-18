@@ -57,10 +57,35 @@ If a gate fails, debug and fix. Do not ask the user to debug for you — diagnos
 
 Each PR: one intent, one scope. Do not commingle unrelated commits just because they happen to be on the same branch.
 
-- When starting new work, branch from `main` (or the last merged PR's base), not from whatever branch happens to be checked out.
+- **Never assume `main` is the PR target.** Resolve it dynamically every time — see the section below. Use the resolved base for both `git checkout -b <new> origin/<base>` and `gh pr create --base <base>`.
 - When cherry-picking onto a fresh branch, verify the test suite still passes on the new base before pushing — cherry-picks can silently lose context (interface changes, prior refactors) that existed on the source branch.
 - Stack related PRs explicitly: PR B "based on #A" in the description, so the reviewer knows the dependency.
 - If a PR needs "while I'm here" cleanup, log it to `docs/exec-plans/tech-debt.md` instead of growing the diff.
+
+### PR target resolution
+
+Never hardcode `main`. For every new branch and every `gh pr create`, resolve the target in this order:
+
+1. **`github.pr_target` from `dega-core.yaml`** at the repo root, if the key is present. This is the authoritative per-repo setting.
+   ```bash
+   PR_TARGET=$(grep '^\s*pr_target:' dega-core.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ')
+   ```
+2. **`develop`** if `origin/develop` exists on the remote and step 1 returned nothing.
+   ```bash
+   git ls-remote --exit-code --heads origin develop >/dev/null 2>&1 && echo develop
+   ```
+3. **`main`** as the last-resort fallback.
+
+One-liner that captures the whole rule:
+
+```bash
+PR_TARGET=$(grep '^\s*pr_target:' dega-core.yaml 2>/dev/null | awk '{print $2}' | tr -d ' ')
+: "${PR_TARGET:=$(git ls-remote --exit-code --heads origin develop >/dev/null 2>&1 && echo develop || echo main)}"
+```
+
+Then: `git checkout -b <branch> "origin/${PR_TARGET}"` and `gh pr create --base "${PR_TARGET}" ...`.
+
+If `pr_target` points at a user/integration branch (e.g. `ace-work`) rather than a trunk, that means the user reviews PRs into that branch first and promotes to `main` themselves. Do not "correct" this by targeting `main` — respect the config.
 
 ---
 
@@ -100,7 +125,7 @@ Do not leave follow-ups buried in PR descriptions, commit messages, or conversat
 
 ## Memory and persistence
 
-This file and `docs/canon-tui-wiring.md` are the permanent behavior spec. **Do not re-derive this from scratch in future sessions.** Read it at session start if needed, then apply.
+This file and `canon/docs/tui-wiring.md` are the permanent behavior spec. **Do not re-derive this from scratch in future sessions.** Read it at session start if needed, then apply.
 
 `~/.claude/projects/.../memory/` is for user-level and temporary context (current work, user preferences, references). Repo-level behavior rules live here in the repo.
 

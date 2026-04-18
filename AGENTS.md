@@ -267,10 +267,16 @@ The Canon TUI (`DEGAorg/conductor-view`, separate repo) is not auto-wired to thi
 
 ### Commit and push — prohibited
 
-- **Never push directly to `main` or `master`** — use feature branches and PRs.
+- **Never push directly to the project's trunk** (`main` / `master`, or whatever `github.pr_target` resolves to in this repo) — always open a PR.
 - **Never force-push** — no `git push --force` or `git push -f`.
 - **Never run `git reset --hard`** — use `git reset --soft` or revert instead.
 - Hooks in `settings.json` block these patterns; do not attempt them.
+
+### PR target
+
+**Never hardcode `main`.** Resolve the PR target dynamically: `github.pr_target` from `dega-core.yaml` → `develop` if the remote has it → `main`. See `docs/agent-operating-mode.md` § "PR target resolution" for the exact shell recipe.
+
+In this repo, `github.pr_target` is currently `ace-work`: open PRs against `ace-work`; the user promotes to `main` on their own schedule. Do not override this.
 
 ### Plans vs references
 
