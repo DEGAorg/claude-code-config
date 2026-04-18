@@ -294,15 +294,7 @@ describe("order cancel", () => {
   it("cancels an order by ID", async () => {
     cancelOrder.mockResolvedValueOnce({
       id: "ord-1",
-      marketId: "mkt-1",
-      outcomeId: "tok-1",
-      side: "buy",
-      type: "limit",
-      amount: 10,
-      price: 0.65,
       status: "cancelled",
-      filled: 3,
-      remaining: 7,
     });
 
     await run(["cancel", "ord-1"]);
@@ -347,7 +339,7 @@ describe("order cancel", () => {
   });
 });
 
-describe("order list", () => {
+describe("order trades", () => {
   it("lists trades", async () => {
     fetchMyTrades.mockResolvedValueOnce([
       {
@@ -367,7 +359,7 @@ describe("order list", () => {
       },
     ]);
 
-    await run(["list"]);
+    await run(["trades"]);
 
     expect(fetchMyTrades).toHaveBeenCalledWith({});
     const parsed = JSON.parse(stdoutData) as {
@@ -381,7 +373,7 @@ describe("order list", () => {
   it("passes --market-id filter", async () => {
     fetchMyTrades.mockResolvedValueOnce([]);
 
-    await run(["list", "--market-id", "mkt-42"]);
+    await run(["trades", "--market-id", "mkt-42"]);
 
     expect(fetchMyTrades).toHaveBeenCalledWith({ marketId: "mkt-42" });
   });
@@ -389,7 +381,7 @@ describe("order list", () => {
   it("passes --limit filter", async () => {
     fetchMyTrades.mockResolvedValueOnce([]);
 
-    await run(["list", "--limit", "5"]);
+    await run(["trades", "--limit", "5"]);
 
     expect(fetchMyTrades).toHaveBeenCalledWith({ limit: 5 });
   });
@@ -397,7 +389,7 @@ describe("order list", () => {
   it("passes both filters", async () => {
     fetchMyTrades.mockResolvedValueOnce([]);
 
-    await run(["list", "--market-id", "mkt-1", "--limit", "10"]);
+    await run(["trades", "--market-id", "mkt-1", "--limit", "10"]);
 
     expect(fetchMyTrades).toHaveBeenCalledWith({
       marketId: "mkt-1",
@@ -406,7 +398,7 @@ describe("order list", () => {
   });
 
   it("errors on invalid limit", async () => {
-    await run(["list", "--limit", "abc"]);
+    await run(["trades", "--limit", "abc"]);
 
     const parsed = JSON.parse(stderrData) as { ok: boolean; error: string };
     expect(parsed.ok).toBe(false);
@@ -417,7 +409,7 @@ describe("order list", () => {
   it("requires auth", async () => {
     delete process.env["POLYMARKET_PRIVATE_KEY"];
 
-    await run(["list"]);
+    await run(["trades"]);
 
     const parsed = JSON.parse(stderrData) as { ok: boolean; error: string };
     expect(parsed.ok).toBe(false);
@@ -428,7 +420,7 @@ describe("order list", () => {
   it("handles API errors", async () => {
     fetchMyTrades.mockRejectedValueOnce(new Error("Network error"));
 
-    await run(["list"]);
+    await run(["trades"]);
 
     const parsed = JSON.parse(stderrData) as { ok: boolean; error: string };
     expect(parsed.ok).toBe(false);

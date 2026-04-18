@@ -6,7 +6,8 @@
  * Usage:
  *   canon-cli order create --token-id <id> --side <buy|sell> --size <n> --price <n> [--type <market|limit>] [--market-id <id>]
  *   canon-cli order cancel <order-id>
- *   canon-cli order list [--market-id <id>] [--limit <n>]
+ *   canon-cli order open [--market-id <id>]
+ *   canon-cli order trades [--market-id <id>] [--limit <n>]
  */
 
 import { requireAuth, AuthError } from "../auth.js";
@@ -137,9 +138,9 @@ async function handleCancel(rawArgs: readonly string[]): Promise<void> {
   }
 }
 
-async function handleList(rawArgs: readonly string[]): Promise<void> {
+async function handleTrades(rawArgs: readonly string[]): Promise<void> {
   try {
-    requireAuth("order list");
+    requireAuth("order trades");
   } catch (err: unknown) {
     if (err instanceof AuthError) {
       writeError(err.message, rawArgs);
@@ -177,13 +178,40 @@ async function handleList(rawArgs: readonly string[]): Promise<void> {
   }
 }
 
+async function handleOpen(rawArgs: readonly string[]): Promise<void> {
+  try {
+    requireAuth("order open");
+  } catch (err: unknown) {
+    if (err instanceof AuthError) {
+      writeError(err.message, rawArgs);
+      return;
+    }
+    throw err;
+  }
+
+  const args = stripFormatFlags(rawArgs);
+  const marketId = getFlag(args, "--market-id");
+
+  try {
+    const { fetchOpenOrders } = await import("canon-templates/client-polymarket.js");
+    const orders = await fetchOpenOrders(marketId);
+    writeSuccess(orders, rawArgs);
+  } catch (err: unknown) {
+    writeError(
+      err instanceof Error ? err.message : String(err),
+      rawArgs,
+    );
+  }
+}
+
 const SUBCOMMANDS: Record<
   string,
   (args: readonly string[]) => Promise<void>
 > = {
   create: handleCreate,
   cancel: handleCancel,
-  list: handleList,
+  open: handleOpen,
+  trades: handleTrades,
 };
 
 export async function run(args: string[]): Promise<void> {
@@ -192,7 +220,7 @@ export async function run(args: string[]): Promise<void> {
   if (!subcommand || !(subcommand in SUBCOMMANDS)) {
     writeError(
       `Unknown order subcommand "${subcommand ?? ""}". ` +
-        "Available: create, cancel, list",
+        "Available: create, cancel, open, trades",
       args,
     );
     return;
