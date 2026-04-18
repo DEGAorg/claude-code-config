@@ -79,17 +79,20 @@ async function readLockFile(): Promise<SidecarLockData> {
 export async function callSidecar<T>(
   method: string,
   args: ReadonlyArray<unknown>,
+  credentials?: { privateKey: string; signatureType?: string },
 ): Promise<T> {
   const lock = await readLockFile();
 
   const url = `http://localhost:${String(lock.port)}/api/polymarket/${method}`;
+  const body: Record<string, unknown> = { args };
+  if (credentials) body["credentials"] = credentials;
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-pmxt-access-token": lock.accessToken,
     },
-    body: JSON.stringify({ args }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

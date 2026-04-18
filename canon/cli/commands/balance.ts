@@ -1,10 +1,15 @@
 /**
- * Balance subcommand — fetch wallet balance.
+ * Balance subcommand — fetch on-chain balances for the EOA on Polygon.
  *
  * Requires POLYMARKET_PRIVATE_KEY.
  *
  * Usage:
  *   canon-cli balance [--pretty]
+ *
+ * Reports three assets:
+ *   - USDC.e (bridged) — tradeable on Polymarket
+ *   - USDC (native)    — needs swap to USDC.e (only shown if non-zero)
+ *   - POL              — for gas
  */
 
 import { requireAuth, AuthError } from "../auth.js";
@@ -22,10 +27,10 @@ export async function run(args: string[]): Promise<void> {
   }
 
   try {
-    const { fetchBalance } = await import(
+    const { fetchOnChainBalances } = await import(
       "canon-templates/client-polymarket.js"
     );
-    const balances = await fetchBalance();
+    const balances = await fetchOnChainBalances();
     writeSuccess(balances, args);
   } catch (err: unknown) {
     writeError(

@@ -370,3 +370,26 @@ only copy of the work when the push/PR step fails.
 **Fix:** Step 9 (worktree cleanup + branch delete) must be gated on step 8 success.
 If push or PR creation fails, preserve the worktree and branch, increment the error
 count, and print recovery instructions (`git push origin <branch>` + `gh pr create`).
+
+---
+
+## Polymarket onboarding — auto-swap non-USDC.e deposits
+
+**Severity:** P2
+**Area:** canon/templates/client-polymarket.ts, canon/cli
+**Logged:** 2026-04-17
+**Context:** #112 integration-test session. User funded burner with native USDC (0x3c49…) instead of bridged USDC.e (0x2791…) because the two addresses look similar and Polymarket silently uses the bridged one. One-off manual Uniswap v3 swap unblocked the test.
+
+Polymarket CTFExchange is hardcoded to USDC.e. Users sending native USDC, USDT,
+POL, or ETH see `balance: 0` on Polymarket with no hint why.
+
+**Fix:** onboarding helper that detects non-USDC.e deposits on the EOA and offers
+a one-click swap to USDC.e via Uniswap v3 (0.01% fee pool for stables, 0.05%/0.3%
+for POL/ETH). Pattern implemented once in `canon/templates/__tests__/swap-to-usdce.ts`
+for reference — needs productization into the wrapper and CLI.
+
+**Scope suggestion:**
+- `canon/templates/client-polymarket.ts` — export `swapToUsdce(tokenIn, amountIn)` helper
+- `canon/cli/commands/balance.ts` — already shows multi-token balance (#112 follow-up);
+  add a `--swap-to-usdce` flag or a distinct `canon-cli onboard` command
+- Handle the 3 common paths: native USDC / USDT / POL → USDC.e
