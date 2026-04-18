@@ -107,6 +107,28 @@ that return structured JSON. Install via `/apply-core`.
 
 Full reference: `canon/skills/canon-cli.md`
 
+### Where skill knowledge lives
+
+Canon skills (`canon-cli.md`, `polymarket.md`) have **two on-disk
+locations** that agents read from:
+
+| Location | Who writes it | Who reads it |
+|---|---|---|
+| `canon/skills/*.md` (this repo) | PRs to this repo | Agents running **inside this repo** (e.g. Conductor workers in worktrees) |
+| `~/.degacore/config/skills/*.md` | `/apply-core` installer | Agents running **anywhere on the machine** (Claude Code's global skill loader, `canon-cli help` fallback, other Canon projects) |
+
+**Edit rule:** always edit `canon/skills/*.md` in this repo. `/apply-core`
+copies them to the global location. Never edit the installed copy — it
+gets overwritten on the next install.
+
+**`canon-cli help` resolution:** reads project-local `canon/skills/` when
+the binary lives inside a checkout of this repo; falls back to
+`~/.degacore/config/skills/` otherwise. See `canon/cli/commands/help.ts`.
+
+**Canon TUI (`DEGAorg/conductor-view`, Toad fork):** separate repo. It
+does not automatically inherit these skills. Wire it to read from
+`~/.degacore/config/skills/` when agent-facing knowledge is needed there.
+
 ## Key Workflows
 1. **Discover** (`/discover`): Market analysis → opportunity → strategy design
 2. **Develop** (`/develop`): Scaffold → implement → test → iterate (Ralph Loop)

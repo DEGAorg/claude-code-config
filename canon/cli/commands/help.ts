@@ -6,13 +6,37 @@
  *   canon-cli help <topic>        Show skill content for a topic
  */
 
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripFormatFlags, writeError, writeSuccess } from "../output.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SKILLS_DIR = resolve(HERE, "../../skills");
+const PROJECT_SKILLS_DIR = resolve(HERE, "../../skills");
+const GLOBAL_SKILLS_DIR = join(
+  homedir(),
+  ".degacore",
+  "config",
+  "skills",
+);
+
+/**
+ * Resolve which skills directory to read from.
+ *
+ * Project-local `canon/skills/` wins when it exists (latest-in-repo
+ * knowledge). Falls back to the globally-installed copy under
+ * `~/.degacore/config/skills/` so the CLI works from any directory
+ * after `/apply-core`.
+ */
+async function resolveSkillsDir(): Promise<string> {
+  try {
+    await access(PROJECT_SKILLS_DIR);
+    return PROJECT_SKILLS_DIR;
+  } catch {
+    return GLOBAL_SKILLS_DIR;
+  }
+}
 
 interface SkillFrontmatter {
   name: string;
@@ -97,7 +121,8 @@ export function parseFrontmatter(
 async function loadSkillFiles(): Promise<
   Array<{ filename: string; raw: string }>
 > {
-  const entries = await readdir(SKILLS_DIR);
+  const skillsDir = await resolveSkillsDir();
+  const entries = await readdir(skillsDir);
   const mdFiles = entries
     .filter((f) => f.endsWith(".md"))
     .sort();
@@ -105,7 +130,7 @@ async function loadSkillFiles(): Promise<
   const results: Array<{ filename: string; raw: string }> = [];
   for (const filename of mdFiles) {
     const raw = await readFile(
-      join(SKILLS_DIR, filename),
+      join(skillsDir, filename),
       "utf-8",
     );
     results.push({ filename, raw });
