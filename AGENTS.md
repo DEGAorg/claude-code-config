@@ -257,12 +257,26 @@ Active work:
 
 ## Working Conventions
 
+### Operating mode (read first every session)
+
+**Read `docs/agent-operating-mode.md`.** It defines the defaults for any agent working here: decide-and-move on reversible actions, self-verify before shipping (tsc + tests + lint + live smoke), cite with links, keep PRs focused, log follow-ups to `docs/exec-plans/tech-debt.md`. These rules hold across all sessions — do not re-derive them and do not ask the user to re-confirm them. If a rule is wrong for a situation, say so and propose an update to that doc.
+
+### Canon TUI wiring
+
+The Canon TUI (`DEGAorg/conductor-view`, separate repo) is not auto-wired to this repo's knowledge. See `canon/docs/tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
+
 ### Commit and push — prohibited
 
-- **Never push directly to `main` or `master`** — use feature branches and PRs.
+- **Never push directly to the project's trunk** (`main` / `master`, or whatever `github.pr_target` resolves to in this repo) — always open a PR.
 - **Never force-push** — no `git push --force` or `git push -f`.
 - **Never run `git reset --hard`** — use `git reset --soft` or revert instead.
 - Hooks in `settings.json` block these patterns; do not attempt them.
+
+### PR target
+
+**Never hardcode `main`.** Resolve the PR target dynamically: `github.pr_target` from `dega-core.yaml` → `develop` if the remote has it → `main`. See `docs/agent-operating-mode.md` § "PR target resolution" for the exact shell recipe.
+
+In this repo, `github.pr_target` is currently `ace-work`: open PRs against `ace-work`; the user promotes to `main` on their own schedule. Do not override this.
 
 ### Plans vs references
 
@@ -287,9 +301,9 @@ Active work:
 
 ### Session start
 
-Check `docs/exec-plans/active/` for in-progress plans before starting new work.
-Each plan is a directory — read `active/<slug>/plan.md`, find the first unchecked
-`[ ]` in the Progress log, and continue from there.
+1. Read `docs/agent-operating-mode.md` — the defaults for how to work here.
+2. Check `docs/exec-plans/active/` for in-progress plans. Each plan is a directory — read `active/<slug>/plan.md`, find the first unchecked `[ ]` in the Progress log, and continue from there.
+3. If the session is picking up a specific task (a GitHub issue, a PR review, a user request), proceed directly; do not re-plan from scratch.
 
 ### Orchestrator
 

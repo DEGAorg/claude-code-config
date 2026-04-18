@@ -2,16 +2,16 @@
   "meta": {
     "title": "Canon Hackathon Dashboard",
     "subtitle": "Internal planning view",
-    "generated": "2026-04-02",
+    "generated": "2026-04-17",
     "startDate": "2026-03-19",
-    "hackathonDate": "2026-04-18",
+    "hackathonDate": "2026-05-04",
     "finaleDate": "2026-05-11",
     "totalDays": 54
   },
   "stats": [
     {
-      "value": "16",
-      "label": "Days to hackathon",
+      "value": "17",
+      "label": "Days to hackathon (May 4)",
       "color": "yellow"
     },
     {
@@ -138,7 +138,7 @@
         "orch"
       ],
       "startDay": 15,
-      "description": "Strategy-specific template configs built on TS/Python base. Half done \u2014 selecting from Sampson's 18 types.",
+      "description": "Strategy-specific template configs built on TS/Python base. Half done — selecting from Sampson's 18 types.",
       "status": "active"
     },
     {
@@ -179,7 +179,7 @@
       "startDay": 0,
       "days": 3,
       "color": "green",
-      "text": "Canon TUI \u2014 done",
+      "text": "Canon TUI — done",
       "status": "done"
     },
     {
@@ -203,7 +203,7 @@
       "startDay": 5,
       "days": 3,
       "color": "green",
-      "text": "init + start \u2014 done",
+      "text": "init + start — done",
       "status": "done"
     },
     {
@@ -219,7 +219,7 @@
       "startDay": 0,
       "days": 4,
       "color": "green",
-      "text": "Sampson \u2014 18 types reviewed",
+      "text": "Sampson — 18 types reviewed",
       "status": "done"
     },
     {
@@ -227,7 +227,7 @@
       "startDay": 8,
       "days": 1,
       "color": "green",
-      "text": "TS base \u2014 done",
+      "text": "TS base — done",
       "status": "done"
     },
     {
@@ -243,7 +243,7 @@
       "startDay": 15,
       "days": 2,
       "color": "accent",
-      "text": "Half done \u2014 Apr 3 start",
+      "text": "Half done — Apr 3 start",
       "status": "active"
     },
     {
@@ -259,7 +259,7 @@
       "startDay": 11,
       "days": 1,
       "color": "green",
-      "text": "YouTube \u2014 recorded Mar 30",
+      "text": "YouTube — recorded Mar 30",
       "status": "done"
     },
     {
@@ -291,31 +291,31 @@
       "startDay": 15,
       "days": 21,
       "color": "green",
-      "text": "Listing Apr 3, DMs Apr 4-24 (3 weeks)",
-      "status": "pending"
+      "text": "Tested + sending — DMs active",
+      "status": "active"
     },
     {
       "label": "Content Tracking",
       "startDay": 17,
       "days": 7,
-      "color": "orange",
-      "text": "WS content due Apr 5\u201311",
-      "status": "pending"
+      "color": "green",
+      "text": "WS1-4 content done",
+      "status": "done"
     },
     {
       "label": "Workshops",
       "startDay": 20,
       "days": 22,
-      "color": "cyan",
-      "text": "5 sessions: Apr 8, 10, 15, 17, 29",
-      "status": "pending"
+      "color": "accent",
+      "text": "WS3 done, WS4 today — 5 sessions",
+      "status": "active"
     },
     {
       "label": "Hackathon",
-      "startDay": 30,
-      "days": 21,
+      "startDay": 46,
+      "days": 7,
       "color": "yellow",
-      "text": "3 weeks \u2014 NBA Playoffs",
+      "text": "May 4–11 — NBA Playoffs",
       "status": "pending"
     },
     {
@@ -323,7 +323,7 @@
       "startDay": 52,
       "days": 2,
       "color": "red",
-      "text": "Livestream",
+      "text": "Livestream — May 11",
       "status": "pending"
     }
   ],
@@ -334,8 +334,8 @@
       "type": "gate"
     },
     {
-      "day": 30,
-      "label": "KICKOFF",
+      "day": 46,
+      "label": "HACKATHON START (May 4)",
       "type": "event"
     },
     {
@@ -377,7 +377,7 @@
     },
     {
       "name": "HACKATHON",
-      "timing": "Apr 18",
+      "timing": "May 4",
       "type": "event"
     }
   ],
@@ -401,7 +401,7 @@
   "weeks": [
     {
       "num": 1,
-      "dates": "Mar 19 \u2013 23",
+      "dates": "Mar 19 – 23",
       "theme": "Foundation + Conductor",
       "current": false,
       "tasks": [
@@ -426,19 +426,19 @@
           "type": "planning"
         },
         {
-          "text": "pmxt result \u2192 CLI approach",
+          "text": "pmxt result → CLI approach",
           "type": "gate"
         }
       ]
     },
     {
       "num": 2,
-      "dates": "Mar 24 \u2013 29",
+      "dates": "Mar 24 – 29",
       "theme": "Canon CLI",
       "current": false,
       "tasks": [
         {
-          "text": "Canon CLI \u2014 build through Conductor",
+          "text": "Canon CLI — build through Conductor",
           "type": "product"
         },
         {
@@ -454,23 +454,23 @@
           "type": "marketing"
         },
         {
-          "text": "Mar 25 \u2014 budget locked",
+          "text": "Mar 25 — budget locked",
           "type": "gate"
         }
       ]
     },
     {
       "num": 3,
-      "dates": "Mar 30 \u2013 Apr 5",
+      "dates": "Mar 30 – Apr 5",
       "theme": "Arena MVP",
-      "current": true,
+      "current": false,
       "tasks": [
         {
-          "text": "Arena \u2014 scaffold, API, leaderboard, Polymarket data",
+          "text": "Arena — scaffold, API, leaderboard, Polymarket data",
           "type": "product"
         },
         {
-          "text": "Canon CLI \u2194 Arena integration",
+          "text": "Canon CLI ↔ Arena integration",
           "type": "product"
         },
         {
@@ -497,12 +497,12 @@
     },
     {
       "num": 4,
-      "dates": "Apr 6 \u2013 12",
+      "dates": "Apr 6 – 12",
       "theme": "Testing + GO/NO-GO",
       "current": false,
       "tasks": [
         {
-          "text": "Heavy testing \u2014 all modules",
+          "text": "Heavy testing — all modules",
           "type": "product"
         },
         {
@@ -525,44 +525,40 @@
     },
     {
       "num": 5,
-      "dates": "Apr 13 \u2013 18",
-      "theme": "Final Testing + Launch",
-      "current": false,
+      "dates": "Apr 13 – May 3",
+      "theme": "Final Build + Workshops + Launch Prep",
+      "current": true,
       "tasks": [
         {
-          "text": "Final testing + fixes",
+          "text": "Arena MVP build + testing",
           "type": "product"
         },
         {
-          "text": "Deploy stable version",
+          "text": "Canon CLI remaining commands",
           "type": "product"
         },
         {
-          "text": "Final outreach + workshops wrap up",
+          "text": "Integration tests + deploy stable",
+          "type": "product"
+        },
+        {
+          "text": "Workshop 4 (Apr 17), Workshop 5 (Apr 22/24)",
           "type": "marketing"
         },
         {
-          "text": "Apr 18 \u2014 KICKOFF",
-          "type": "event"
+          "text": "DM outreach continues",
+          "type": "marketing"
         }
       ]
     },
     {
       "num": "6-8",
-      "dates": "Apr 18 \u2013 May 11",
+      "dates": "May 4 – May 11",
       "theme": "Hackathon Live",
       "current": false,
       "tasks": [
         {
-          "text": "Week 1 checkpoint (Apr 24)",
-          "type": "event"
-        },
-        {
-          "text": "WS5 content + Workshop 5 (Apr 29)",
-          "type": "event"
-        },
-        {
-          "text": "Week 2 checkpoint (May 1)",
+          "text": "May 4 — HACKATHON STARTS",
           "type": "event"
         },
         {

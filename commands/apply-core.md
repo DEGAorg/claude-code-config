@@ -116,8 +116,10 @@ Files available:
 - `canon/cli/commands/balance.ts`
 - `canon/cli/commands/order.ts`
 - `canon/cli/commands/kill.ts`
+- `canon/cli/commands/onboard.ts`
 - `canon/cli/commands/help.ts`
 - `canon/skills/canon-cli.md`
+- `canon/skills/polymarket.md`
 - `canon/templates/` (entire directory — project shell copied wholesale by scaffold)
 
 ---
@@ -577,10 +579,12 @@ Write each source file to `~/.degacore/canon-cli/`:
 - `canon/cli/commands/balance.ts` -> `~/.degacore/canon-cli/commands/balance.ts`
 - `canon/cli/commands/order.ts` -> `~/.degacore/canon-cli/commands/order.ts`
 - `canon/cli/commands/kill.ts` -> `~/.degacore/canon-cli/commands/kill.ts`
+- `canon/cli/commands/onboard.ts` -> `~/.degacore/canon-cli/commands/onboard.ts`
 - `canon/cli/commands/help.ts` -> `~/.degacore/canon-cli/commands/help.ts`
 
-Write the agent discovery skill:
+Write the agent discovery skills:
 - `canon/skills/canon-cli.md` -> `~/.degacore/config/skills/canon-cli.md`
+- `canon/skills/polymarket.md` -> `~/.degacore/config/skills/polymarket.md`
 
 Safe to overwrite — these are CLI source files and skills with no user
 customization.
@@ -791,7 +795,7 @@ Installed to ~/.degacore/:
   Commands -> config/commands/ (fix-issue, review-pr, plan, cleanup, doc-garden, core-init)
   Rules -> config/rules/ (python, node-typescript, rust, bash, github-actions)
   Hooks -> scripts/hooks/ (enforce-loop-mode, enforce-exec-plan-naming, enforce-package-manager, log-gam)
-  Skills -> config/skills/ (custom-linter-authoring, app-legibility, sound-notifications)
+  Skills -> config/skills/ (custom-linter-authoring, app-legibility, sound-notifications, canon-cli, polymarket)
   Logging -> scripts/log-server.py + scripts/hooks/ (local-only; add gcp-sa.json to enable GCP)
   Sounds -> sounds/ (MP3 + OGG) + scripts/hooks/play-sound.sh
   Terminal UI -> scripts/terminal-ui/ (built with pnpm)
