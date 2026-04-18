@@ -126,8 +126,9 @@ the binary lives inside a checkout of this repo; falls back to
 `~/.degacore/config/skills/` otherwise. See `canon/cli/commands/help.ts`.
 
 **Canon TUI (`DEGAorg/conductor-view`, Toad fork):** separate repo. It
-does not automatically inherit these skills. Wire it to read from
-`~/.degacore/config/skills/` when agent-facing knowledge is needed there.
+does not automatically inherit these skills. See `canon/docs/tui-wiring.md`
+for the wiring contract (`canon-cli` subprocess + JSON envelope, skill
+file locations, what not to vendor/reimplement).
 
 ## Key Workflows
 1. **Discover** (`/discover`): Market analysis → opportunity → strategy design
