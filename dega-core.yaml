@@ -20,7 +20,7 @@ github:
   labels: true
   comments: true
   close_on_ship: true
-  pr_target: ace-work
+  pr_target: develop
 
 timeline:
   repo: DEGAorg/claude-code-config
