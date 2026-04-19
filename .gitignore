@@ -34,3 +34,6 @@ canon/templates/.vite/
 # Canon CLI artifacts
 canon/cli/node_modules/
 canon/cli/dist/
+
+# Strategy source docs (local reference, not committed)
+/templates/

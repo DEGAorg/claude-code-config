@@ -4,8 +4,9 @@
 # Usage: bash "$DEGA_CORE_HOME/scripts/canon-scaffold.sh" [--force]
 #
 # Run from inside the target project directory (must be empty or use --force).
-# Fetches agents, skills, and commands from GitHub, generates config and
-# template files. Deterministic, idempotent, zero agent guesswork.
+# Copies canon/templates/ wholesale as the project root, then fetches agents,
+# skills, and commands from GitHub. Deterministic, idempotent, zero agent
+# guesswork.
 
 set -euo pipefail
 
@@ -21,6 +22,7 @@ PROJECT_NAME="$(basename "${PROJECT_DIR}")"
 STATE_FILE="${PROJECT_DIR}/.canon/state.json"
 DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
 TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
+TEMPLATE_DIR="${DEGA_CORE_HOME}/canon/templates"
 
 # ── Helper: write state to dashboard (no-op if writer not installed) ─────────
 state() {
@@ -29,15 +31,22 @@ state() {
   fi
 }
 
-# ── Guard: don't run inside claude-code-config itself ─────────────────────────
+# ── Guard: don't run inside claude-code-config itself ────────────────────────
 if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null; then
   echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
   exit 1
 fi
 
-# ── Guard: check for existing .canon/ ─────────────────────────────────────────
+# ── Guard: check for existing .canon/ ────────────────────────────────────────
 if [[ -d ".canon" && "${FORCE}" != "true" ]]; then
   echo "error: .canon/ already exists. Use --force to overwrite." >&2
+  exit 1
+fi
+
+# ── Guard: templates directory must exist ────────────────────────────────────
+if [[ ! -d "${TEMPLATE_DIR}" ]]; then
+  echo "error: templates not found at ${TEMPLATE_DIR}" >&2
+  echo "  ensure DEGA_CORE_HOME is set correctly (current: ${DEGA_CORE_HOME})" >&2
   exit 1
 fi
 
@@ -46,7 +55,7 @@ echo ""
 
 state phase=init status=running log.info="Canon init starting for '${PROJECT_NAME}'"
 
-# ── Helper: fetch a file from GitHub ──────────────────────────────────────────
+# ── Helper: fetch a file from GitHub ─────────────────────────────────────────
 fetch() {
   local src="$1" dst="$2"
   mkdir -p "$(dirname "${dst}")"
@@ -56,6 +65,13 @@ fetch() {
   fi
 }
 
+# ── Helper: portable in-place sed (avoids macOS/Linux -i difference) ─────────
+sed_inplace() {
+  local expr="$1" file="$2"
+  local tmp="${file}.tmp.$$"
+  sed "${expr}" "${file}" > "${tmp}" && mv "${tmp}" "${file}"
+}
+
 # ── 0. Ensure git repo exists (orchestrator needs it for worktree isolation)
 if [[ ! -d ".git" ]]; then
   echo "→ initializing git repo..."
@@ -63,13 +79,21 @@ if [[ ! -d ".git" ]]; then
   state log.info="Git repo initialized"
 fi
 
-# ── 1. Create directory tree ──────────────────────────────────────────────────
-echo "→ creating directories..."
-mkdir -p .canon/agents .canon/skills .canon/execution .canon/workflows .canon/templates
-mkdir -p .claude/commands
-mkdir -p src/types src/clients src/config src/service src/__tests__
+# ── 1. Copy templates as project root ────────────────────────────────────────
+echo "→ copying project templates..."
+cp -a "${TEMPLATE_DIR}/." "${PROJECT_DIR}/"
 
-# ── 2. Fetch agents ──────────────────────────────────────────────────────────
+# Stamp the actual project name into package.json and dega-core.yaml
+sed_inplace "s/\"name\": \"canon-templates\"/\"name\": \"${PROJECT_NAME}\"/" package.json
+sed_inplace "s/strategy: canon-templates/strategy: ${PROJECT_NAME}/" dega-core.yaml
+
+state log.info="Project templates copied"
+
+# ── 2. Create runtime directories ────────────────────────────────────────────
+mkdir -p .canon/execution .canon/workflows
+touch .canon/execution/.gitkeep
+
+# ── 3. Fetch agents ─────────────────────────────────────────────────────────
 echo "→ fetching agents..."
 state log.info="Fetching 6 agent personas..."
 for agent in strategy-architect risk-analyst market-analyst dev qa deployment-ops; do
@@ -77,7 +101,7 @@ for agent in strategy-architect risk-analyst market-analyst dev qa deployment-op
 done
 state log.info="Agents fetched"
 
-# ── 3. Fetch skills ──────────────────────────────────────────────────────────
+# ── 4. Fetch skills ─────────────────────────────────────────────────────────
 echo "→ fetching skills..."
 state log.info="Fetching 8 domain skills..."
 for skill in prediction-markets polymarket risk-management strategy-patterns \
@@ -86,7 +110,7 @@ for skill in prediction-markets polymarket risk-management strategy-patterns \
 done
 state log.info="Skills fetched"
 
-# ── 4. Fetch commands ────────────────────────────────────────────────────────
+# ── 5. Fetch commands ───────────────────────────────────────────────────────
 echo "→ fetching commands..."
 state log.info="Fetching 6 slash commands..."
 for cmd in develop ralph-cycle discover register quick-dev canon-start; do
@@ -94,288 +118,7 @@ for cmd in develop ralph-cycle discover register quick-dev canon-start; do
 done
 state log.info="Commands fetched"
 
-# ── 4b. Fetch strategy template bundles ──────────────────────────────────────
-echo "→ fetching strategy template bundles..."
-state log.info="Fetching strategy template bundles..."
-
-# NBA Momentum bundle — spec + bootstrapped code + pre-filled plan
-NBA_BUNDLE=".canon/templates/nba-momentum"
-mkdir -p "${NBA_BUNDLE}/src/types" "${NBA_BUNDLE}/src/__tests__"
-fetch "canon/templates/nba-momentum/strategy.md" "${NBA_BUNDLE}/strategy.md"
-fetch "canon/templates/nba-momentum/plan.md" "${NBA_BUNDLE}/plan.md"
-fetch "canon/templates/nba-momentum/src/types/game.ts" "${NBA_BUNDLE}/src/types/game.ts"
-fetch "canon/templates/nba-momentum/src/runner.ts" "${NBA_BUNDLE}/src/runner.ts"
-fetch "canon/templates/nba-momentum/src/__tests__/strategy.test.ts" "${NBA_BUNDLE}/src/__tests__/strategy.test.ts"
-
-state log.info="Templates fetched"
-
-# ── 4c. Fetch API client scaffolds ────────────────────────────────────────────
-echo "→ fetching API client scaffolds..."
-state log.info="Fetching API client scaffolds..."
-for client_file in client-polymarket client-sportsbook; do
-  fetch "canon/templates/${client_file}.ts" "src/clients/${client_file#client-}.ts"
-done
-state log.info="API clients scaffolded"
-
-# ── 5. Generate template files (skip if they exist) ──────────────────────────
-echo "→ generating template files..."
-state log.info="Generating template files..."
-
-write_if_missing() {
-  local path="$1"
-  if [[ -f "${path}" && "${FORCE}" != "true" ]]; then
-    echo "  skip: ${path} (already exists)"
-    return
-  fi
-  cat >"${path}"
-  echo "  wrote: ${path}"
-}
-
-write_if_missing "package.json" <<EOF
-{
-  "name": "${PROJECT_NAME}",
-  "version": "0.1.0",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "build": "tsc",
-    "check": "tsc --noEmit",
-    "lint": "oxlint src/",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-  "dependencies": {
-    "pmxtjs": "1.1.2"
-  },
-  "devDependencies": {
-    "typescript": "5.9.3",
-    "vitest": "4.0.18",
-    "oxlint": "1.51.0",
-    "tsx": "4.21.0"
-  }
-}
-EOF
-
-write_if_missing "tsconfig.json" <<EOF
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "outDir": "dist",
-    "rootDir": "src",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
-}
-EOF
-
-write_if_missing "src/types/TradeSignal.ts" <<'EOF'
-export interface TradeSignal {
-  marketId: string;
-  direction: "buy" | "sell";
-  confidence: number;
-  reasoning: string;
-  timestamp: Date;
-}
-EOF
-
-write_if_missing "src/types/RiskInterface.ts" <<'EOF'
-export interface RiskInterface {
-  maxPositionSize: number;
-  maxPortfolioExposure: number;
-  stopLossPercent: number;
-  validate(signal: unknown): { approved: boolean; reason: string };
-}
-EOF
-
-write_if_missing ".env.example" <<'EOF'
-# API keys — copy to .env and fill in values
-# Polymarket (optional — public data works without auth)
-POLYMARKET_PRIVATE_KEY=
-POLYMARKET_PROXY_ADDRESS=
-# The Odds API — get a free key at https://the-odds-api.com/
-THE_ODDS_API_KEY=
-EOF
-
-write_if_missing ".gitignore" <<'EOF'
-node_modules/
-dist/
-.env
-.canon/execution/
-*.tsbuildinfo
-EOF
-
-# ── 6. Write .canon/config.yaml ──────────────────────────────────────────────
-echo "→ writing .canon/config.yaml..."
-cat >".canon/config.yaml" <<EOF
-# Canon Agent Framework Configuration
-version: "1.0"
-
-default_agent: dev
-
-agents:
-  strategy-architect: .canon/agents/strategy-architect.md
-  risk-analyst: .canon/agents/risk-analyst.md
-  market-analyst: .canon/agents/market-analyst.md
-  dev: .canon/agents/dev.md
-  qa: .canon/agents/qa.md
-  deployment-ops: .canon/agents/deployment-ops.md
-
-skills:
-  prediction-markets: .canon/skills/prediction-markets.md
-  polymarket: .canon/skills/polymarket.md
-  risk-management: .canon/skills/risk-management.md
-  strategy-patterns: .canon/skills/strategy-patterns.md
-  backtesting: .canon/skills/backtesting.md
-  arena-tracking: .canon/skills/arena-tracking.md
-  orchestrator: .canon/skills/orchestrator.md
-  canon-conventions: .canon/skills/canon-conventions.md
-
-workflows:
-  discover: .canon/workflows/discover.yaml
-  develop: .canon/workflows/develop.yaml
-  register: .canon/workflows/register.yaml
-  ralph-cycle: .canon/workflows/ralph-cycle.yaml
-  quick-dev: .canon/workflows/quick-dev.yaml
-
-context_routing:
-  strategy_design:
-    agent: strategy-architect
-    auto_skills: [prediction-markets, strategy-patterns, risk-management]
-    workflow: discover
-  strategy_implementation:
-    agent: dev
-    auto_skills: [canon-conventions, backtesting, risk-management]
-    workflow: develop
-  registration:
-    agent: deployment-ops
-    auto_skills: [arena-tracking, risk-management]
-    workflow: register
-  risk_review:
-    agent: risk-analyst
-    auto_skills: [risk-management, prediction-markets]
-  market_analysis:
-    agent: market-analyst
-    auto_skills: [prediction-markets, polymarket]
-    workflow: discover
-  iteration:
-    agent: dev
-    auto_skills: [orchestrator, canon-conventions]
-    workflow: develop
-
-standards:
-  always_load: [canon-conventions]
-  enforce:
-    - "All strategies must implement TradeSignal and RiskInterface"
-    - "Position size never exceeds 5% of portfolio"
-    - "Domain layering: Types > Config > Repo > Service > Runtime > UI"
-    - "Error messages include what/why/how"
-    - "If it is not in the repo, it does not exist"
-EOF
-
-# ── 7. Write dega-core.yaml (project root — orchestrator config) ─────────────
-echo "→ writing dega-core.yaml..."
-cat >"dega-core.yaml" <<EOF
-version: 1
-strategy: ${PROJECT_NAME}
-
-success_criteria:
-  - id: types_compile
-    description: TypeScript compiles with no errors
-    check: "pnpm exec tsc --noEmit"
-    required: true
-
-  - id: lint_clean
-    description: Linter reports zero errors
-    check: "pnpm exec oxlint src/"
-    required: true
-
-  - id: tests_pass
-    description: All tests pass
-    check: "pnpm exec vitest run"
-    required: true
-
-max_iterations: 5
-warn_at_iteration: 4
-EOF
-
-# ── 8. Create .canon/execution/.gitkeep ───────────────────────────────────────
-touch ".canon/execution/.gitkeep"
-
-# ── 9. Write AGENTS.md ───────────────────────────────────────────────────────
-echo "→ writing AGENTS.md..."
-cat >"AGENTS.md" <<'EOF'
-# Canon Strategy Development
-
-## Quick Reference
-- Framework config: `.canon/config.yaml`
-- Ralph Loop config: `dega-core.yaml`
-- Agent personas: `.canon/agents/`
-- Skills (domain knowledge): `.canon/skills/`
-
-## Available Agents
-
-| Agent | Role | Load When |
-|-------|------|-----------|
-| strategy-architect | Designs strategies from market analysis | Starting a new strategy |
-| market-analyst | Interprets market data, finds opportunities | Exploring markets |
-| dev | Implements strategies in TypeScript | Writing code |
-| qa | Validates quality and standards compliance | Reviewing before registration |
-| risk-analyst | Evaluates risk and portfolio impact | Before registration |
-| deployment-ops | Registers on Arena, monitors tracked performance | Registering a strategy |
-
-## Available Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/canon-start` | Guided workflow — detects project state, drives full pipeline |
-| `/develop` | Scaffold, implement, test, iterate (full build cycle) |
-| `/ralph-cycle` | Execute success criteria checks and iterate until SHIP |
-| `/discover` | Market analysis, opportunity identification, strategy design |
-| `/register` | Risk review, pre-registration checks, Arena tracking |
-| `/quick-dev` | Small changes with lightweight validation |
-
-## Non-Negotiable Rules
-1. All strategies implement TradeSignal + RiskInterface
-2. Position size never >5% of portfolio
-3. Domain layering: Types -> Config -> Repo -> Service -> Runtime -> UI
-4. Error messages include what/why/how
-5. "If it's not in the repo, it doesn't exist"
-EOF
-
-# ── 9b. Write provider shims (CLAUDE.md, GEMINI.md, .cursorrules) ────────────
-echo "→ writing provider shims..."
-for shim in CLAUDE.md GEMINI.md; do
-  cat >"${shim}" <<'SHIMEOF'
-# Agent Configuration
-
-Read and follow all instructions in [AGENTS.md](AGENTS.md).
-SHIMEOF
-  echo "  wrote: ${shim}"
-done
-
-cat >".cursorrules" <<'SHIMEOF'
-# Agent Configuration
-
-Read and follow all instructions in AGENTS.md.
-SHIMEOF
-echo "  wrote: .cursorrules"
-
-# ── 10. Verify ────────────────────────────────────────────────────────────────
+# ── 6. Verify ───────────────────────────────────────────────────────────────
 echo ""
 echo "→ verifying..."
 state log.info="Verifying all files..."
@@ -387,16 +130,21 @@ for f in \
   .canon/skills/canon-conventions.md \
   .canon/config.yaml \
   dega-core.yaml \
-  .canon/templates/nba-momentum/strategy.md \
-  .canon/templates/nba-momentum/plan.md \
+  nba-momentum/strategy.md \
+  nba-momentum/plan.md \
   .claude/commands/canon-start.md \
   .claude/commands/develop.md \
-  src/types/TradeSignal.ts \
-  src/types/RiskInterface.ts \
-  src/clients/polymarket.ts \
-  src/clients/sportsbook.ts \
+  types/TradeSignal.ts \
+  types/RiskInterface.ts \
+  client-polymarket.ts \
+  client-sportsbook.ts \
+  runner.ts \
+  strategies/arb-binary/signal.ts \
+  strategies/arb-binary/main.ts \
+  strategies/arb-binary/entry.ts \
   package.json \
   tsconfig.json \
+  vitest.config.ts \
   AGENTS.md \
   CLAUDE.md \
   GEMINI.md \
@@ -410,15 +158,24 @@ done
 if [[ ${ERRORS} -gt 0 ]]; then
   echo ""
   echo "error: ${ERRORS} file(s) missing — init incomplete" >&2
-  state status=error error="${ERRORS} file(s) missing" log.error="Init incomplete: ${ERRORS} file(s) missing"
+  state status=error error="${ERRORS} file(s) missing" \
+    log.error="Init incomplete: ${ERRORS} file(s) missing"
   exit 1
 fi
 
 state log.info="Verification passed — all files present"
 
-# ── 11. Summary ───────────────────────────────────────────────────────────────
+# ── 7. Summary ──────────────────────────────────────────────────────────────
 echo ""
 echo "Canon initialized in ${PROJECT_DIR}/"
+echo ""
+echo "  Project (from canon/templates/):"
+echo "    runner.ts          — configurable strategy poll loop"
+echo "    types/             — TradeSignal, RiskInterface"
+echo "    client-*.ts        — Polymarket, sportsbook API clients"
+echo "    strategies/        — arb-binary + STRATEGY-INDEX.md"
+echo "    __tests__/         — full test suite"
+echo "    package.json, tsconfig.json, vitest.config.ts"
 echo ""
 echo "  .canon/"
 echo "    agents/    — 6 agent personas"
@@ -431,19 +188,13 @@ echo ""
 echo "  .claude/commands/"
 echo "    canon-start, develop, ralph-cycle, discover, register, quick-dev"
 echo ""
-echo "  src/types/"
-echo "    TradeSignal.ts, RiskInterface.ts"
-echo ""
-echo "  src/clients/"
-echo "    polymarket.ts, sportsbook.ts"
-echo ""
 echo "  AGENTS.md          <- project configuration (source of truth)"
 echo "  CLAUDE.md          <- shim → AGENTS.md"
 echo "  GEMINI.md          <- shim → AGENTS.md"
 echo "  .cursorrules       <- shim → AGENTS.md"
-echo "  package.json, tsconfig.json, .env.example, .gitignore"
 echo ""
-# ── 12. Initial git commit (orchestrator needs at least one commit) ──────────
+
+# ── 8. Initial git commit (orchestrator needs at least one commit) ──────────
 echo "→ creating initial commit..."
 git add -A
 git commit -q -m "scaffold: Canon framework initialized"
@@ -454,4 +205,5 @@ echo "Next steps:"
 echo "  1. pnpm install"
 echo "  2. Start claude and run /canon-start"
 
-state phase=init status=running log.info="Canon framework initialized — ready for next phase"
+state phase=init status=running \
+  log.info="Canon framework initialized — ready for next phase"
