@@ -33,7 +33,7 @@ function makeSignal(
     direction: "buy_yes",
     size: 1_000,
     confidence: 0.9,
-    urgency: "patient",
+    urgency: "opportunistic",
     metadata: {
       offsetC: 0.0075,
       projectedNet: 13.575,

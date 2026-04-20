@@ -61,7 +61,7 @@ export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
   hurdleRate: 0.0133,
   feeRate: 0.0017,
   gasCost: 0.05,
-  lpRebate: 0.275,
+  lpRebate: 0.325,
   grossPerCycle: 15,
   cycleCapital: 1_000,
   offsetDefaultC: 0.0075,
@@ -82,7 +82,7 @@ export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
 /**
  * Projected net profit per $1,000 cycle at default offset, in USD.
  *
- * bruto ($15) − fees ($1.70) − gas ($0.05) + lp ($0.275) = $13.575.
+ * bruto ($15) − fees ($1.70) − gas ($0.05) + lp ($0.325) = $13.575.
  * Fees are quoted flat per $1,000 in the source spec, so they are scaled
  * linearly by cycle capital and converted to USD here.
  */
