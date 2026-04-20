@@ -4,8 +4,7 @@
  * Pure, statistical fair-value scanner. Given a per-market snapshot and
  * a pluggable `ProbabilityModel`, compute a fair probability and emit
  * divergence candidates when |fair − market| clears the configured
- * threshold. Inputs are numeric only — no news, NLP, sentiment, or
- * LLM calls.
+ * threshold. Inputs are numeric only — purely statistical.
  */
 
 import type { TradeSignal } from "../../types/TradeSignal.js";

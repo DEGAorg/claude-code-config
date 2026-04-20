@@ -10,7 +10,7 @@
  * tiering, confluence, sizing, and risk gates.
  *
  * Purely statistical — the injected model receives numeric snapshots
- * plus history only; no news/NLP/sentiment/LLM inputs.
+ * plus history only.
  */
 
 import type { FairValueConfig } from "./config.js";
