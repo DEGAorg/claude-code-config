@@ -188,7 +188,7 @@ export function evaluateMomentumOpportunity(
     priceHistory.length > 1
       ? computeRSI(priceHistory.slice(0, -1), config.rsiWindow)
       : rsi;
-  const rsiRising = rsi > rsiPrev;
+  const rsiRising = rsi >= rsiPrev;
 
   const macd = computeMACD(
     priceHistory,
