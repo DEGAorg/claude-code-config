@@ -1,19 +1,18 @@
 /**
  * ARB-01 Binary Arbitrage — Project Entry Point
  *
- * Wires the real Polymarket client into the arb-binary strategy.
- * Uses search result prices directly for signal detection — same
- * pattern as the nba-momentum template. No order book calls needed
- * for dry-run scanning.
+ * Wires the real Polymarket client into the arb-binary strategy via
+ * scanMarkets(), which fetches order books and derives best-ask prices
+ * from CLOB depth before running signal detection.
  */
 
 import { createRunner } from "../runner.js";
 import { appendEntry } from "../execution-log.js";
-import { searchMarkets as polySearchMarkets } from "../client-polymarket.js";
+import { searchMarkets, fetchOrderBook } from "../client-polymarket.js";
+import { scanMarkets } from "../strategies/arb-binary/scan.js";
 import { detectSignals } from "../strategies/arb-binary/signal.js";
 import { DEFAULT_ARB_BINARY_CONFIG } from "../strategies/arb-binary/config.js";
 import { createRiskChecker } from "../strategies/arb-binary/risk.js";
-import type { MarketData } from "../strategies/arb-binary/signal.js";
 import type { ExecutorDeps, PositionDeps } from "../runner.js";
 import type { Portfolio } from "../types/RiskInterface.js";
 import type { ExecutionLogEntry } from "../execution-log.js";
@@ -32,22 +31,10 @@ const risk = createRiskChecker({
 });
 
 const strategy = async () => {
-  const markets = await polySearchMarkets(strategyConfig.category);
-  const marketData: MarketData[] = [];
-  for (const m of markets) {
-    // Skip dead markets with no liquidity
-    if (m.yesPrice <= 0 || m.noPrice <= 0) continue;
-    marketData.push({
-      conditionId: m.conditionId,
-      question: m.question,
-      category: strategyConfig.category,
-      yesAsk: m.yesPrice,
-      noAsk: m.noPrice,
-      yesTokenId: m.yesTokenId ?? "",
-      noTokenId: m.noTokenId ?? "",
-      estimatedSlippage: 0,
-    });
-  }
+  const marketData = await scanMarkets(strategyConfig, {
+    searchMarkets,
+    fetchOrderBook,
+  });
   return detectSignals(marketData, strategyConfig);
 };
 
