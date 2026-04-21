@@ -40,7 +40,7 @@ into `canon/templates/` as runnable strategy directories.
 
 | ID | Name | Risk | Complexity | Scanner-ready? | Status | Notes |
 |----|------|------|------------|----------------|--------|-------|
-| TRADE-02 | Momentum Trading | Medium | Medium | Yes | Planned | Buy rising (10-30%), sell at ~50% |
+| TRADE-02 | Momentum Trading | Medium | Medium | Yes | Ported | Buy rising (10-30%), sell at ~50% |
 
 ## Group 4 — AI & Advanced Automation
 
