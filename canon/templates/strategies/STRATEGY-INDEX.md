@@ -21,7 +21,7 @@ into `canon/templates/` as runnable strategy directories.
 |----|------|------|------------|----------------|--------|-------|
 | ARB-01 | Binary Arb Buy (YES+NO < $1) | Very Low | Low | Yes | Ported | `strategies/arb-binary/` — scanner + risk checks |
 | ARB-02 | Binary Arb Sell / Mint | Very Low | Medium | Yes | Planned | Requires CTF mint tx (4-6s latency) |
-| ARB-03 | NegRisk Multi-condition Buy | Low | Medium | Yes | Planned | Multi-leg, all YES sum < $1 |
+| ARB-03 | NegRisk Multi-condition Buy | Low | Medium | Yes | Ported | `strategies/arb-negrisk-buy/` — multi-leg scanner + risk checks |
 | ARB-04 | NegRisk Multi-condition Sell | Medium | High | No | Deferred | Mint set + parallel sell, ~5% of markets |
 | ARB-05 | Cross-Market Combinatorial | Medium | Very High | No | Deferred | LLM + IP Solver, $500k+ capital, Phase 3 |
 
