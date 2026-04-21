@@ -475,7 +475,6 @@ orch_detect_stale_workers() {
 
 orch_master_register() {
   local slug="$1"
-  local tmux_session="orch-${slug}"
   local now
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -497,14 +496,12 @@ orch_master_register() {
     --arg slug "${slug}" \
     --arg status "running" \
     --arg statePath "${state_path}" \
-    --arg tmux "${tmux_session}" \
     --arg worktree "${worktree_path}" \
     --arg now "${now}" \
     '.plans += [{
 			slug: $slug,
 			status: $status,
 			statePath: $statePath,
-			tmuxSession: $tmux,
 			worktree: $worktree,
 			startedAt: $now,
 			updatedAt: $now,

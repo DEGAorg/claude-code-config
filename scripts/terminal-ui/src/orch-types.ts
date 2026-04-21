@@ -132,7 +132,6 @@ export interface PlanEntry {
   readonly status: PlanStatus;
   /** Relative path from `.orchestrator/` to the plan's state file. */
   readonly statePath: string;
-  readonly tmuxSession: string;
   /** Relative path from `.orchestrator/` to the plan's worktree. */
   readonly worktree: string;
   /** ISO 8601 — when the plan was started. */
