@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Final per-item review — runs after all items settle (done or failed).
-# Spawns reviewer agents in parallel via tmux windows, polls for review
-# files, respects max-workers concurrency. Failed work items are skipped.
+# Spawns reviewer agents in parallel via the Harness capability contract
+# (detached background processes + PID files under plans/<slug>/pids/).
+# Respects max-workers concurrency. Failed work items are skipped.
 # All reviewed items must PASS for SHIP; any failures trigger REVISE.
 #
 # Usage: scripts/orch-review.sh <slug>
 #
-# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh
+# Requires: jq, agent CLI (claude/gemini/codex), orch-state.sh, harness.
 
 set -euo pipefail
 
@@ -17,6 +18,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=agent-shim.sh
 source "${SCRIPT_DIR}/agent-shim.sh"
+# shellcheck source=harness/dispatcher.sh
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -34,6 +37,7 @@ ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
+PID_DIR="$(orch_plan_dir "${SLUG}")/pids"
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # Use worktree plan path; in GH mode resolve from .orchestrator/
@@ -59,6 +63,8 @@ if [[ ! -f "${PROMPT_TEMPLATE}" ]]; then
   echo "error: reviewer prompt template not found: ${PROMPT_TEMPLATE}" >&2
   exit 1
 fi
+
+mkdir -p "${PID_DIR}" "${LOG_DIR}"
 
 # --- Structural check: all items settled (done or failed) ---
 
@@ -110,27 +116,11 @@ orch_write_state "${SLUG}" "${UPDATED}"
 
 mkdir -p "${REVIEW_DIR}"
 
-# --- Tmux session ---
-
-TMUX_SESSION="orch-${SLUG}"
-
-# --- Helper: spawn a reviewer in a tmux window ---
+# --- Helper: spawn a reviewer via the harness ---
 
 spawn_reviewer() {
   local item_id="$1"
   local item_desc="$2"
-  local window_name="reviewer-${item_id}"
-
-  # Mark reviewStatus as "reviewing"
-  local now
-  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  local updated
-  updated=$(jq \
-    --argjson id "${item_id}" \
-    --arg now "${now}" \
-    '(.items[] | select(.id == $id)).reviewStatus = "reviewing" |
-		 .updatedAt = $now' "${ORCH_STATE_FILE}")
-  orch_write_state "${SLUG}" "${updated}"
 
   # Read done-file as handoff context
   local done_file="${DONE_DIR}/item-${item_id}.txt"
@@ -149,7 +139,7 @@ spawn_reviewer() {
   review_prompt="${review_prompt//\{REVIEW_DIR\}/${REVIEW_DIR}}"
   review_prompt="${review_prompt//\{ITEM_NUM\}/${item_id}}"
 
-  # Write prompt to temp file (tmux send-keys has length limits)
+  # Write prompt to a temp file (agent CLIs read from disk)
   local prompt_file
   prompt_file=$(mktemp "${ORCH_STATE_DIR}/reviewer-prompt-${item_id}-XXXXXX")
   mv "${prompt_file}" "${prompt_file}.md"
@@ -165,9 +155,6 @@ spawn_reviewer() {
     review_cwd="${WORKTREE_DIR}"
   fi
 
-  # Kill stale window from previous iteration if it exists
-  tmux kill-window -t "${TMUX_SESSION}:${window_name}" 2>/dev/null || true
-
   # Build agent command using shim helper (handles Codex exec pattern)
   local cmd_template agent_cmd_str
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
@@ -181,69 +168,109 @@ spawn_reviewer() {
     env_prefix="env -u '${session_var}'"
   fi
 
-  tmux new-window -d -t "${TMUX_SESSION}" -n "${window_name}" \
-    "cd '${review_cwd}' && \
-		 GH_SYNC='${GH_SYNC}' \
-		 RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-		 ${env_prefix} ${agent_cmd_str} ; \
-		 echo '--- reviewer ${item_id} exited ---'; \
-		 sleep 2"
+  local log_file="${LOG_DIR}/reviewer-${item_id}.log"
+  local started_at_file="${PID_DIR}/reviewer-${item_id}.lstart"
 
-  # Stream reviewer output to log file
-  tmux pipe-pane -t "${TMUX_SESSION}:${window_name}" \
-    -o "cat >> '${LOG_DIR}/reviewer-${item_id}.log'"
+  # Compose the reviewer command. The harness cds into cwd before running.
+  local cmd
+  cmd="GH_SYNC='${GH_SYNC}' RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 ${env_prefix} ${agent_cmd_str}; echo '--- reviewer ${item_id} exited ---'"
 
-  echo "orch-review: spawned ${window_name} for item ${item_id}: ${item_desc}"
+  # Clear any stale PID file from a prior iteration before spawning
+  rm -f "${PID_DIR}/reviewer-${item_id}.pid" "${started_at_file}"
+
+  local pid
+  if ! pid=$(harness::spawn_process \
+    role=reviewer \
+    id="${item_id}" \
+    cwd="${review_cwd}" \
+    cmd="${cmd}" \
+    logfile="${log_file}" \
+    pid_dir="${PID_DIR}" \
+    started_at_file="${started_at_file}"); then
+    echo "orch-review: ERROR — failed to spawn reviewer for item ${item_id}" >&2
+    return 1
+  fi
+
+  local started_at=""
+  if [[ -f "${started_at_file}" ]]; then
+    started_at=$(cat "${started_at_file}")
+  fi
+
+  # Record reviewer handle + log path + start time so the poll loop can
+  # check liveness via harness::query_status and surface the log to the TUI.
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local updated
+  updated=$(jq \
+    --argjson id "${item_id}" \
+    --arg now "${now}" \
+    --arg pid "${pid}" \
+    --arg log "${log_file}" \
+    --arg started_at "${started_at}" \
+    '(.items[] | select(.id == $id)) |= (
+			.reviewStatus = "reviewing" |
+			.reviewerPid = $pid |
+			.reviewerLogPath = $log |
+			.reviewerStartedAt = $started_at
+		) |
+		.updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+
+  echo "orch-review: spawned reviewer for item ${item_id} (pid ${pid}): ${item_desc}"
 }
 
-# --- Helper: kill finished reviewer windows ---
+# --- Helper: terminate reviewers for items that have settled (pass/fail) ---
 
 kill_done_reviewers() {
-  if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-    return 0
-  fi
-
-  local done_statuses
-  done_statuses=$(jq -r \
-    '.items[] | select(.reviewStatus == "passed" or .reviewStatus == "failed") | .id' \
+  local settled
+  settled=$(jq -r \
+    '.items[] |
+       select(.reviewStatus == "passed" or .reviewStatus == "failed") |
+       select(.reviewerPid // "" != "") |
+       "\(.id) \(.reviewerPid)"' \
     "${ORCH_STATE_FILE}")
 
-  if [[ -z "${done_statuses}" ]]; then
+  if [[ -z "${settled}" ]]; then
     return 0
   fi
 
-  local live_windows
-  live_windows=$(tmux list-windows -t "${TMUX_SESSION}" \
-    -F '#{window_name}' 2>/dev/null || true)
+  local item_id pid line
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    item_id="${line% *}"
+    pid="${line#* }"
+    harness::terminate handle="${pid}" grace=2 || true
+    rm -f "${PID_DIR}/reviewer-${item_id}.pid" \
+      "${PID_DIR}/reviewer-${item_id}.lstart"
 
-  for item_id in ${done_statuses}; do
-    local window_name="reviewer-${item_id}"
-    if printf '%s\n' "${live_windows}" | grep -qx "${window_name}"; then
-      tmux kill-window -t "${TMUX_SESSION}:${window_name}" 2>/dev/null || true
-      echo "orch-review: killed finished reviewer window ${window_name}"
-    fi
-  done
+    # Clear the handle fields now that the reviewer is gone
+    local now updated
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    updated=$(jq \
+      --argjson id "${item_id}" \
+      --arg now "${now}" \
+      '(.items[] | select(.id == $id)) |= (
+				.reviewerPid = null |
+				.reviewerStartedAt = null
+			) |
+			.updatedAt = $now' "${ORCH_STATE_FILE}")
+    orch_write_state "${SLUG}" "${updated}"
+    echo "orch-review: terminated reviewer for item ${item_id} (pid ${pid})"
+  done <<<"${settled}"
 }
 
-# --- Helper: detect stale reviewers (window dead, no review file) ---
+# --- Helper: detect stale reviewers (process dead, no review file) ---
 
 detect_stale_reviewers() {
-  if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-    return 0
-  fi
-
-  local reviewing_ids
-  reviewing_ids=$(jq -r \
-    '.items[] | select(.reviewStatus == "reviewing") | .id' \
+  local reviewing
+  reviewing=$(jq -r \
+    '.items[] | select(.reviewStatus == "reviewing") |
+       "\(.id)\t\(.reviewerPid // "")\t\(.reviewerStartedAt // "")"' \
     "${ORCH_STATE_FILE}")
 
-  if [[ -z "${reviewing_ids}" ]]; then
+  if [[ -z "${reviewing}" ]]; then
     return 0
   fi
-
-  local live_windows
-  live_windows=$(tmux list-windows -t "${TMUX_SESSION}" \
-    -F '#{window_name} #{pane_dead}' 2>/dev/null || true)
 
   local state
   state=$(cat "${ORCH_STATE_FILE}")
@@ -251,25 +278,45 @@ detect_stale_reviewers() {
   local now
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  for item_id in ${reviewing_ids}; do
-    local window_name="reviewer-${item_id}"
-    local is_alive=false
+  local item_id pid started_at status rc
+  while IFS=$'\t' read -r item_id pid started_at; do
+    [[ -z "${item_id}" ]] && continue
 
-    if printf '%s\n' "${live_windows}" | grep -q "^${window_name} 0$"; then
-      is_alive=true
+    # No PID recorded yet — spawn still in flight, skip this cycle.
+    if [[ -z "${pid}" ]]; then
+      continue
     fi
 
-    if [[ "${is_alive}" == false ]]; then
-      # Reviewer exited without writing review file — mark failed
-      state=$(printf '%s' "${state}" | jq \
-        --argjson id "${item_id}" \
-        --arg now "${now}" \
-        '(.items[] | select(.id == $id)).reviewStatus = "failed" |
-				 .updatedAt = $now')
-      echo "orch-review: reviewer for item ${item_id} exited without writing review — marking failed"
-      changed=true
+    # A completed review-file trumps process state; let the next
+    # orch_sync_review_files call promote the item.
+    if [[ -f "${REVIEW_DIR}/item-${item_id}-review.txt" ]]; then
+      continue
     fi
-  done
+
+    rc=0
+    if [[ -n "${started_at}" ]]; then
+      status=$(harness::query_status handle="${pid}" started_at="${started_at}") || rc=$?
+    else
+      status=$(harness::query_status handle="${pid}") || rc=$?
+    fi
+
+    if [[ "${rc}" -eq 0 && "${status}" == "alive" ]]; then
+      continue
+    fi
+
+    # Reviewer exited without writing a review — mark failed
+    state=$(printf '%s' "${state}" | jq \
+      --argjson id "${item_id}" \
+      --arg now "${now}" \
+      '(.items[] | select(.id == $id)) |= (
+				.reviewStatus = "failed" |
+				.reviewerPid = null |
+				.reviewerStartedAt = null
+			) |
+			.updatedAt = $now')
+    echo "orch-review: reviewer for item ${item_id} (pid ${pid}) exited without writing review — marking failed"
+    changed=true
+  done <<<"${reviewing}"
 
   if [[ "${changed}" == "true" ]]; then
     orch_write_state "${SLUG}" "${state}"
@@ -284,7 +331,7 @@ echo "  poll interval: ${POLL_INTERVAL}s"
 echo ""
 
 while true; do
-  # Sync review files into state, clean up finished windows, detect stale
+  # Sync review files into state, clean up finished processes, detect stale
   orch_sync_review_files "${SLUG}"
   kill_done_reviewers
   detect_stale_reviewers
@@ -316,11 +363,11 @@ while true; do
     pending_ids=$(jq -r '.items[] | select(.reviewStatus == "pending") | .id' \
       "${ORCH_STATE_FILE}")
     spawned=0
-    for pid in ${pending_ids}; do
+    for pid_item in ${pending_ids}; do
       if ((spawned >= available_slots)); then break; fi
-      pdesc=$(jq -r ".items[] | select(.id == ${pid}) | .description" \
+      pdesc=$(jq -r ".items[] | select(.id == ${pid_item}) | .description" \
         "${ORCH_STATE_FILE}")
-      spawn_reviewer "${pid}" "${pdesc}"
+      spawn_reviewer "${pid_item}" "${pdesc}"
       spawned=$((spawned + 1))
     done
   fi

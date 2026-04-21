@@ -94,7 +94,8 @@ total_count=0
 
 terminate_plan_handles() {
   local slug="$1"
-  local pid_dir="$(orch_plan_dir "${slug}")/pids"
+  local pid_dir
+  pid_dir="$(orch_plan_dir "${slug}")/pids"
   [[ -d "${pid_dir}" ]] || return 0
 
   local active
