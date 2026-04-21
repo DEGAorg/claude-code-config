@@ -12,7 +12,8 @@
 #   0 — all criteria verified (PASS)
 #   1 — some criteria remain unchecked (FAIL)
 #
-# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh, agent-shim.sh
+# Requires: jq, agent CLI (claude/gemini/codex), orch-state.sh,
+#           agent-shim.sh, harness/dispatcher.sh
 
 set -euo pipefail
 
@@ -23,6 +24,8 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=agent-shim.sh
 source "${SCRIPT_DIR}/agent-shim.sh"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -38,6 +41,8 @@ GH_SYNC="${GH_SYNC:-false}"
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
+PLAN_BASE_DIR=$(orch_plan_dir "${SLUG}")
+PID_DIR="${PLAN_BASE_DIR}/pids"
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # Use worktree plan path; in GH mode resolve from .orchestrator/
@@ -99,14 +104,28 @@ orch_write_state "${SLUG}" "${UPDATED}"
 POLL_INTERVAL=$(orch_read_config "verify_poll_interval_seconds")
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 
-# --- Tmux session ---
+# --- Harness handles ---
 
-TMUX_SESSION="orch-${SLUG}"
-WINDOW_NAME="verifier"
+VERIFIER_ROLE="verifier"
+VERIFIER_ID="0"
 VERIFY_RESULT_FILE="${PLAN_DIR}/verify-result.txt"
+VERIFIER_LOG="${LOG_DIR}/verifier.log"
+VERIFIER_STARTED_AT_FILE="${PID_DIR}/${VERIFIER_ROLE}-${VERIFIER_ID}.started_at"
 
 # Remove stale result file
 rm -f "${VERIFY_RESULT_FILE}"
+
+# Terminate any stale verifier from a previous iteration
+STALE_PID_FILE="${PID_DIR}/${VERIFIER_ROLE}-${VERIFIER_ID}.pid"
+if [[ -f "${STALE_PID_FILE}" ]]; then
+  STALE_HANDLE=$(head -n1 "${STALE_PID_FILE}" | tr -d '[:space:]')
+  if [[ -n "${STALE_HANDLE}" ]]; then
+    harness::terminate handle="${STALE_HANDLE}" grace=2 >/dev/null 2>&1 || true
+  fi
+  rm -f "${STALE_PID_FILE}" "${VERIFIER_STARTED_AT_FILE}"
+fi
+
+mkdir -p "${PID_DIR}" "${LOG_DIR}"
 
 # --- Build verifier prompt ---
 
@@ -115,7 +134,7 @@ VERIFIER_PROMPT="${VERIFIER_PROMPT//\{PLAN_PATH\}/${PLAN_DIR}/plan.md}"
 VERIFIER_PROMPT="${VERIFIER_PROMPT//\{RESULT_FILE\}/${VERIFY_RESULT_FILE}}"
 VERIFIER_PROMPT="${VERIFIER_PROMPT//\{UNCHECKED_CRITERIA\}/${UNCHECKED_CRITERIA}}"
 
-# Write prompt to temp file (tmux send-keys has length limits)
+# Write prompt to a file so the spawned shell can cat it in
 PROMPT_FILE=$(mktemp "${ORCH_STATE_DIR}/verifier-prompt-XXXXXX")
 mv "${PROMPT_FILE}" "${PROMPT_FILE}.md"
 PROMPT_FILE="${PROMPT_FILE}.md"
@@ -128,10 +147,7 @@ if [[ -d "${WORKTREE_DIR}" ]]; then
   VERIFY_CWD="${WORKTREE_DIR}"
 fi
 
-# --- Spawn verifier in tmux window ---
-
-# Kill stale verifier window from previous iteration
-tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
+# --- Spawn verifier via harness ---
 
 # Build agent command using shim helper (handles Codex exec pattern)
 CMD_TEMPLATE="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
@@ -144,23 +160,35 @@ if [[ -n "${SESSION_VAR}" ]]; then
   ENV_PREFIX="env -u '${SESSION_VAR}'"
 fi
 
-tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
-  "cd '${VERIFY_CWD}' && \
-	 RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-	 ${ENV_PREFIX} ${AGENT_CMD_STR} ; \
-	 echo '--- verifier exited ---'; \
-	 sleep 2"
+VERIFIER_CMD="RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
+${ENV_PREFIX} ${AGENT_CMD_STR} ; \
+echo '--- verifier exited ---'"
 
-# Stream verifier output to log file
-tmux pipe-pane -t "${TMUX_SESSION}:${WINDOW_NAME}" \
-  -o "cat >> '${LOG_DIR}/verifier.log'"
+VERIFIER_HANDLE=$(harness::spawn_process \
+  role="${VERIFIER_ROLE}" \
+  id="${VERIFIER_ID}" \
+  cwd="${VERIFY_CWD}" \
+  cmd="${VERIFIER_CMD}" \
+  logfile="${VERIFIER_LOG}" \
+  pid_dir="${PID_DIR}" \
+  started_at_file="${VERIFIER_STARTED_AT_FILE}")
 
-echo "orch-verify: spawned verifier in tmux window '${WINDOW_NAME}'"
+if [[ -z "${VERIFIER_HANDLE}" ]]; then
+  echo "error: harness failed to spawn verifier" >&2
+  exit 1
+fi
+
+echo "orch-verify: spawned verifier via harness (handle=${VERIFIER_HANDLE}, log=${VERIFIER_LOG})"
 
 # --- Poll for verify-result.txt ---
 
 MAX_POLLS=120 # 120 * 10s = 20 minutes default timeout
 poll_count=0
+
+VERIFIER_STARTED_AT=""
+if [[ -f "${VERIFIER_STARTED_AT_FILE}" ]]; then
+  VERIFIER_STARTED_AT=$(cat "${VERIFIER_STARTED_AT_FILE}")
+fi
 
 while true; do
   if [[ -f "${VERIFY_RESULT_FILE}" ]]; then
@@ -169,25 +197,21 @@ while true; do
     break
   fi
 
-  # Detect dead verifier (window gone, no result file)
-  if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-    LIVE_WINDOWS=$(tmux list-windows -t "${TMUX_SESSION}" \
-      -F '#{window_name} #{pane_dead}' 2>/dev/null || true)
-    IS_ALIVE=false
-    if printf '%s\n' "${LIVE_WINDOWS}" | grep -q "^${WINDOW_NAME} 0$"; then
-      IS_ALIVE=true
-    fi
-    if [[ "${IS_ALIVE}" == false ]]; then
-      echo "orch-verify: verifier exited without writing result — FAIL"
-      RESULT="FAIL"
-      break
-    fi
+  # Detect dead verifier (process gone, no result file)
+  STATUS_ARGS=(handle="${VERIFIER_HANDLE}")
+  if [[ -n "${VERIFIER_STARTED_AT}" ]]; then
+    STATUS_ARGS+=(started_at="${VERIFIER_STARTED_AT}")
+  fi
+  if ! harness::query_status "${STATUS_ARGS[@]}" >/dev/null 2>&1; then
+    echo "orch-verify: verifier exited without writing result — FAIL"
+    RESULT="FAIL"
+    break
   fi
 
   poll_count=$((poll_count + 1))
   if ((poll_count >= MAX_POLLS)); then
     echo "orch-verify: timeout after $((MAX_POLLS * POLL_INTERVAL))s — FAIL"
-    tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
+    harness::terminate handle="${VERIFIER_HANDLE}" grace=5 >/dev/null 2>&1 || true
     RESULT="FAIL"
     break
   fi
@@ -195,9 +219,10 @@ while true; do
   sleep "${POLL_INTERVAL}"
 done
 
-# --- Kill verifier window ---
+# --- Terminate verifier process ---
 
-tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
+harness::terminate handle="${VERIFIER_HANDLE}" grace=5 >/dev/null 2>&1 || true
+rm -f "${PID_DIR}/${VERIFIER_ROLE}-${VERIFIER_ID}.pid" "${VERIFIER_STARTED_AT_FILE}"
 
 # --- Re-count unchecked criteria after verifier ran ---
 
