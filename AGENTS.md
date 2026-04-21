@@ -83,13 +83,15 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/terminal-ui-write.sh` | Writes structured data to terminal-ui |
 | `scripts/log-server.py` | WebSocket log aggregation server |
 | `scripts/log-client.sh` | Log client for structured event streaming |
-| `scripts/orch-run.sh` | Orchestrator launcher — validates, initializes state, creates tmux session, starts engine |
-| `scripts/orch-engine.sh` | Orchestrator engine — poll loop, worker spawning, review, SHIP/REVISE handling |
+| `scripts/orch-run.sh` | Orchestrator launcher — validates, initializes state, spawns the engine via the Harness, attaches the Ink TUI |
+| `scripts/orch-engine.sh` | Orchestrator engine — poll loop, worker spawning (via Harness), review, SHIP/REVISE handling |
 | `scripts/orch-state.sh` | Orchestrator state helpers — read/write state.json, worktree management, master state |
 | `scripts/orch-parse-items.sh` | Parses plan.md progress log into JSON items with dependencies |
-| `scripts/orch-review.sh` | Per-item reviewer — spawns reviewer agents, collects SHIP/REVISE decisions |
+| `scripts/orch-review.sh` | Per-item reviewer — spawns reviewer agents (via Harness), collects SHIP/REVISE decisions |
 | `scripts/orch-verify.sh` | Completion criteria verifier — checks unchecked criteria after review |
-| `scripts/orch-display.sh` | Opens tmux dashboard in a terminal window (macOS .command / Linux terminal) |
+| `scripts/harness/contract.md` | Harness capability contract — `spawn_process`, `query_status`, `terminate`, `tail_logs`, `list_active` |
+| `scripts/harness/dispatcher.sh` | Harness dispatcher — reads `harness:` from `dega-core.yaml` (or `DEGA_HARNESS`) and sources the backend |
+| `scripts/harness/local.sh` | Local harness backend — `nohup … & disown` with PID files under `.orchestrator/plans/<slug>/pids/` |
 | `scripts/ralph-worktree.sh` | Legacy — worktree management for Ralph Loop |
 | `scripts/review-advance.sh` | Legacy — per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
@@ -227,8 +229,10 @@ With harness patterns applied (Phase 1-3), the pipeline gains:
 ### Current focus
 
 Core harness (all 7 gaps), Canon layer, and the orchestrator are all shipped.
-The orchestrator drives parallel worker agents via tmux with an Ink dashboard,
-per-item review, completion criteria gates, and automatic SHIP/merge/archive.
+The orchestrator drives parallel worker agents as detached background
+processes via the **Harness capability contract**, with an Ink TUI that
+reads `.orchestrator/` state directly, per-item review, completion
+criteria gates, and automatic SHIP/merge/archive.
 
 Active work:
 
@@ -315,8 +319,81 @@ bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endp
 ```
 
 The plan path must point to a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`).
-The orchestrator creates a tmux session, spawns worker agents in isolated worktrees,
-reviews each item, and iterates until all items pass review and completion criteria are met.
+The orchestrator spawns the engine and worker agents as detached background
+processes through the Harness (see below), reviews each item, and iterates
+until all items pass review and completion criteria are met. The Ink TUI
+attaches in the foreground; closing it leaves the engine running.
+
+### Harness capability contract
+
+All process-lifecycle primitives used by the Conductor (engine, reviewer,
+verifier, run, gc, planner-loop) go through a single contract defined in
+`scripts/harness/contract.md`:
+
+| Function | Purpose |
+|---|---|
+| `harness::spawn_process` | Start a detached background process; write `<role>-<id>.pid` under `pid_dir`; print the handle |
+| `harness::query_status` | Check whether a handle is still alive (`alive` / `dead`) |
+| `harness::terminate` | SIGTERM then SIGKILL after `grace` seconds; idempotent |
+| `harness::tail_logs` | Stream a log file (shell consumers; the TUI has its own Node tailer) |
+| `harness::list_active` | Enumerate live `<role> <id> <handle>` triples in a PID directory; prunes stale files |
+
+Handles are **opaque strings**. For the `local` backend the handle is a
+decimal PID; future backends may return container IDs or job URLs. The
+engine records `workerPid` and `logPath` in
+`.orchestrator/plans/<slug>/state.json` per item and passes the handle
+back to the harness unmodified.
+
+Callers source the dispatcher, never a backend directly:
+
+```bash
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
+```
+
+### Backends and selection
+
+The default (and only shipped) backend is **`local`** — `nohup … & disown`
+with PID files under `.orchestrator/plans/<slug>/pids/<role>-<id>.pid`
+and combined stdout+stderr logs under `.orchestrator/plans/<slug>/logs/`.
+
+Selection precedence:
+
+1. `DEGA_HARNESS=<name>` environment variable (overrides config; useful
+   for tests and one-off invocations).
+2. `harness:` key in `dega-core.yaml`.
+3. Fallback to `local`.
+
+Planned backends: `docker` (`harness/docker.sh`), `remote`
+(`harness/remote.sh`). Adding one means implementing the five functions
+with the same signatures and setting `harness: <name>` — no Conductor
+code changes.
+
+### Canon TUI attach flow
+
+The Ink TUI (`scripts/terminal-ui/`) does **not** shell out to the
+harness. It reads `.orchestrator/` directly through a `StateSource`
+interface (`scripts/terminal-ui/src/state-source.ts`), which abstracts
+the source of truth so a future remote/cloud harness can swap in a
+different implementation without touching view code.
+
+Attach flow:
+
+1. `orch-run.sh` spawns the engine via `harness::spawn_process`
+   (role=`engine`, id=`<slug>`) and prints the `state:` and `log:` paths.
+2. In foreground mode it then `exec`s the TUI (`node dist/cli.js
+   --orch <state.json>` when built, `pnpm exec tsx src/cli.tsx` when not,
+   `tail -F <log>` as a last resort).
+3. The TUI's `LocalStateSource` polls `state.json` and tails each item's
+   `logPath`. Closing the TUI leaves the engine alive; reattach by
+   re-running `orch-run.sh` (it detects the running engine via
+   `harness::list_active` and prints attach hints) or by tailing the log
+   file directly.
+
+The Conductor has no terminal-multiplexer dependency: all foreground
+attach, background monitoring, and reattach paths run through the
+Harness contract and the Ink `StateSource`. Git history is the safety
+net for the pre-migration flow.
 
 **Per-project config:** Each project provides a `dega-core.yaml` at its root with
 `max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project
