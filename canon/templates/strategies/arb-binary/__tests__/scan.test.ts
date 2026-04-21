@@ -287,6 +287,52 @@ describe("scanMarkets", () => {
     expect(deps.fetchOrderBook).not.toHaveBeenCalled();
   });
 
+  it("skips market when fetchOrderBook throws and still returns others", async () => {
+    const marketA = makeSearchResult({
+      conditionId: "cond-A",
+      question: "Market A",
+      yesTokenId: "tok-yes-A",
+      noTokenId: "tok-no-A",
+    });
+    const marketB = makeSearchResult({
+      conditionId: "cond-B",
+      question: "Market B",
+      yesTokenId: "tok-yes-B",
+      noTokenId: "tok-no-B",
+    });
+    const books: Record<string, OrderBook> = {
+      "tok-yes-B": makeOrderBook(
+        "tok-yes-B",
+        [{ price: 0.55, size: 100 }],
+        [{ price: 0.53, size: 300 }],
+      ),
+      "tok-no-B": makeOrderBook(
+        "tok-no-B",
+        [{ price: 0.30, size: 250 }],
+        [{ price: 0.28, size: 350 }],
+      ),
+    };
+    const deps: ScanDeps = {
+      searchMarkets: vi.fn(
+        async (_query: string) => [marketA, marketB],
+      ),
+      fetchOrderBook: vi.fn(
+        async (tokenId: string): Promise<OrderBook> => {
+          if (tokenId === "tok-yes-A" || tokenId === "tok-no-A") {
+            throw new Error("boom");
+          }
+          return (
+            books[tokenId] ?? { tokenId, asks: [], bids: [] }
+          );
+        },
+      ),
+    };
+    const result = await scanMarkets(makeConfig(), deps);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.conditionId).toBe("cond-B");
+  });
+
   it("skips market when order book has no asks", async () => {
     const market = makeSearchResult();
     const books: Record<string, OrderBook> = {
