@@ -32,7 +32,7 @@ into `canon/templates/` as runnable strategy directories.
 | MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | Planned | Single cycle, +$13.57/cycle |
 | MINT-02 | Split Mint $500+$500 | Very Low | Low | No (exec) | Planned | Two sub-cycles, adjustable between |
 | MINT-03 | MM at Midpoint (Passive) | Medium | Medium | No (exec) | Planned | LP rewards only, loses on execution |
-| MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | Planned | "Winning strategy", APY 26.2% |
+| MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | Ported | `strategies/mm-premium/` — scanner + risk checks |
 | MINT-05 | MM Sweet Spot (Dynamic) | Low | Medium | No (exec) | Planned | Auto-adjusts offset 0.25-0.50c |
 | MINT-06 | Compounding Multi-Cycle | Low | Low | No (exec) | Planned | Meta-strategy, reinvests MINT-01/04 |
 
