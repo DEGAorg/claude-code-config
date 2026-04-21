@@ -48,8 +48,8 @@ export interface OrchestratorItem {
   readonly status: ItemStatus;
   /** PID of the worker process, if running. */
   readonly workerPid: number | null;
-  /** Tmux pane identifier in foreground mode. */
-  readonly tmuxPane: string | null;
+  /** Absolute path to the worker's log file, if spawned. */
+  readonly logPath: string | null;
   /** Worktree path in background mode. */
   readonly worktree: string | null;
   /** Current ralph loop iteration (1-indexed). */

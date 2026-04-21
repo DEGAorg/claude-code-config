@@ -3,7 +3,7 @@ import type { ItemReviewStatus, OrchestratorItem } from "./orch-types.js";
 
 interface SessionDetailProps {
   readonly item: OrchestratorItem | null;
-  /** Last N lines captured from the worker/reviewer tmux pane. */
+  /** Last N lines tailed from the worker/reviewer log file. */
   readonly outputLines: readonly string[];
   /** Current review status for the selected item. */
   readonly reviewStatus?: ItemReviewStatus;
@@ -55,7 +55,7 @@ export function SessionDetail({ item, outputLines, reviewStatus, reservedRows }:
     >
       <Box gap={1}>
         <Text color={headerColor} bold>
-          {roleLabel} {item.tmuxPane ?? `item-${item.id}`}:
+          {roleLabel} item-{item.id}:
         </Text>
         <Text>
           item {item.id} — {item.description}

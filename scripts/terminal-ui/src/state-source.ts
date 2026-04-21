@@ -3,9 +3,13 @@
  * tailing per-item logs for the Ink TUI.
  *
  * The default (local) implementation watches `.orchestrator/plans/<slug>/state.json`
- * via chokidar and tails per-item log files via a Node tailer. A future
- * remote/cloud implementation can substitute without view-code changes.
+ * via chokidar and tails per-item log files via incremental positional
+ * reads. A future remote/cloud implementation can substitute without
+ * view-code changes.
  */
+
+import { open, readFile, stat } from "node:fs/promises";
+import { watch, type FSWatcher } from "chokidar";
 
 import type { OrchestratorState } from "./orch-types.js";
 
@@ -47,28 +51,138 @@ export interface StateSource {
   dispose(): Promise<void>;
 }
 
+function isNotFound(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    "code" in err &&
+    (err as { code: unknown }).code === "ENOENT"
+  );
+}
+
+async function readAllJson(
+  path: string,
+): Promise<OrchestratorState | null> {
+  try {
+    const raw = await readFile(path, "utf-8");
+    return JSON.parse(raw) as OrchestratorState;
+  } catch (err) {
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
 /**
- * Stub implementation — throws on every call. Item 7 replaces this with
- * a real `LocalStateSource` backed by chokidar + a Node tailer.
+ * Local `StateSource` backed by chokidar watchers on `state.json` and
+ * per-item log files. Holds open watchers until `dispose()` is called.
  */
 export class LocalStateSource implements StateSource {
-  constructor(_opts: { readonly statePath: string }) {
-    // intentionally empty — stub
+  private readonly statePath: string;
+  private readonly watchers = new Set<FSWatcher>();
+
+  constructor(opts: { readonly statePath: string }) {
+    this.statePath = opts.statePath;
   }
 
   readState(): Promise<OrchestratorState | null> {
-    throw new Error("LocalStateSource.readState not implemented");
+    return readAllJson(this.statePath);
   }
 
-  watchState(_listener: StateListener): Unsubscribe {
-    throw new Error("LocalStateSource.watchState not implemented");
+  watchState(listener: StateListener): Unsubscribe {
+    let active = true;
+
+    const emit = async () => {
+      if (!active) return;
+      const state = await readAllJson(this.statePath).catch(() => null);
+      if (active && state !== null) listener(state);
+    };
+
+    const watcher = watch(this.statePath, {
+      persistent: true,
+      ignoreInitial: false,
+    });
+    watcher.on("add", () => void emit());
+    watcher.on("change", () => void emit());
+    this.watchers.add(watcher);
+
+    return () => {
+      active = false;
+      this.watchers.delete(watcher);
+      void watcher.close();
+    };
   }
 
-  tailLog(_logPath: string, _listener: LogLineListener): Unsubscribe {
-    throw new Error("LocalStateSource.tailLog not implemented");
+  tailLog(logPath: string, listener: LogLineListener): Unsubscribe {
+    let active = true;
+    let position = 0;
+    let pending: Promise<void> = Promise.resolve();
+    let buffered = "";
+
+    // Prime position — if the file exists at subscription time, skip
+    // to EOF so existing content is not replayed. If it does not exist,
+    // read from byte 0 once it is created.
+    pending = pending.then(async () => {
+      try {
+        const s = await stat(logPath);
+        position = s.size;
+      } catch {
+        position = 0;
+      }
+    });
+
+    const readFrom = async () => {
+      if (!active) return;
+      let size: number;
+      try {
+        const s = await stat(logPath);
+        size = s.size;
+      } catch {
+        return;
+      }
+      if (size < position) position = 0;
+      if (size === position) return;
+
+      const fh = await open(logPath, "r").catch(() => null);
+      if (!fh) return;
+      try {
+        const len = size - position;
+        const buf = Buffer.alloc(len);
+        await fh.read(buf, 0, len, position);
+        position = size;
+        buffered += buf.toString("utf-8");
+        const parts = buffered.split("\n");
+        buffered = parts.pop() ?? "";
+        for (const line of parts) {
+          if (!active) return;
+          listener(line);
+        }
+      } finally {
+        await fh.close();
+      }
+    };
+
+    const enqueue = () => {
+      pending = pending.then(readFrom).catch(() => undefined);
+    };
+
+    const watcher = watch(logPath, {
+      persistent: true,
+      ignoreInitial: true,
+    });
+    watcher.on("add", enqueue);
+    watcher.on("change", enqueue);
+    this.watchers.add(watcher);
+
+    return () => {
+      active = false;
+      this.watchers.delete(watcher);
+      void watcher.close();
+    };
   }
 
-  dispose(): Promise<void> {
-    throw new Error("LocalStateSource.dispose not implemented");
+  async dispose(): Promise<void> {
+    const closing: Promise<void>[] = [];
+    for (const w of this.watchers) closing.push(w.close());
+    this.watchers.clear();
+    await Promise.all(closing);
   }
 }

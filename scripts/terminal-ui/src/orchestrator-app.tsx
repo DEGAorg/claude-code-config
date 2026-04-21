@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Box, Text, useApp, useInput, useStdin } from "ink";
 import { watch } from "chokidar";
-import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname, join } from "node:path";
 import type { OrchestratorState, MasterState } from "./orch-types.js";
+import { LocalStateSource, type StateSource } from "./state-source.js";
 import { SessionTable } from "./session-table.js";
 import { SessionDetail } from "./session-detail.js";
 import { MasterView } from "./master-view.js";
+
+/** Max lines retained in the tailed-log window. */
+const TAIL_BUFFER_LINES = 200;
 
 /** Threshold in seconds after which heartbeat is considered stale. */
 const HEARTBEAT_STALE_THRESHOLD = 300; // 5 minutes
@@ -31,13 +34,15 @@ function formatHeartbeatAge(epochSecs: number): {
 
 interface OrchestratorAppProps {
   readonly statePath: string;
+  /** Optional injected source — defaults to `LocalStateSource`. */
+  readonly source?: StateSource;
 }
 
 interface MasterOrchestratorAppProps {
   readonly masterPath: string;
 }
 
-export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
+export function OrchestratorApp({ statePath, source }: OrchestratorAppProps) {
   const [state, setState] = useState<OrchestratorState | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -46,51 +51,41 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
   const [, setHeartbeatTick] = useState(0);
   const lastValidRef = useRef<OrchestratorState | null>(null);
 
-  const loadState = useCallback(async () => {
-    try {
-      const raw = await readFile(statePath, "utf-8");
-      const parsed = JSON.parse(raw) as OrchestratorState;
-      lastValidRef.current = parsed;
-      setState(parsed);
-      setWarning(null);
-    } catch (err: unknown) {
-      const isNotFound =
-        err instanceof Error &&
-        "code" in err &&
-        (err as { code: unknown }).code === "ENOENT";
-
-      if (isNotFound) {
-        setState(null);
-        setWarning(null);
-        return;
-      }
-
-      if (lastValidRef.current) {
-        setState(lastValidRef.current);
-      }
-      setWarning(err instanceof Error ? err.message : String(err));
-    }
-  }, [statePath]);
+  const ownsSource = source === undefined;
+  const stateSource = useMemo<StateSource>(
+    () => source ?? new LocalStateSource({ statePath }),
+    [source, statePath],
+  );
 
   useEffect(() => {
-    void loadState();
+    let cancelled = false;
 
-    const watcher = watch(statePath, {
-      persistent: true,
-      ignoreInitial: true,
-    });
+    void stateSource
+      .readState()
+      .then((initial) => {
+        if (cancelled) return;
+        if (initial) {
+          lastValidRef.current = initial;
+          setState(initial);
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setWarning(err instanceof Error ? err.message : String(err));
+      });
 
-    watcher.on("change", () => void loadState());
-    watcher.on("add", () => void loadState());
-    watcher.on("unlink", () => {
-      setState(null);
+    const unsubscribe = stateSource.watchState((parsed) => {
+      lastValidRef.current = parsed;
+      setState(parsed);
       setWarning(null);
     });
 
     return () => {
-      void watcher.close();
+      cancelled = true;
+      unsubscribe();
+      if (ownsSource) void stateSource.dispose();
     };
-  }, [statePath, loadState]);
+  }, [stateSource, ownsSource]);
 
   // Read heartbeat file and poll for age updates
   const heartbeatPath = join(dirname(statePath), "heartbeat");
@@ -131,51 +126,30 @@ export function OrchestratorApp({ statePath }: OrchestratorAppProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Poll tmux capture-pane for live terminal output
-  const planSlug = state?.plan ?? null;
-  const selectedReviewStatus =
+  // Tail the selected item's log file via the state source.
+  const selectedLogPath =
     selectedId !== null && state !== null
-      ? (state.items.find((i) => i.id === selectedId)?.reviewStatus ?? "pending")
-      : "pending";
+      ? (state.items.find((i) => i.id === selectedId)?.logPath ?? null)
+      : null;
 
   useEffect(() => {
-    if (selectedId === null || planSlug === null) {
+    if (selectedId === null || selectedLogPath === null) {
       setOutputLines([]);
       return;
     }
 
-    const sessionName = `orch-${planSlug}`;
-    const windowPrefix =
-      selectedReviewStatus === "reviewing" ? "reviewer" : "worker";
-    const target = `${sessionName}:${windowPrefix}-${selectedId}`;
-
-    const capturePane = () => {
-      execFile(
-        "tmux",
-        ["capture-pane", "-t", target, "-p", "-S", "-200"],
-        { timeout: 5000 },
-        (err, stdout) => {
-          if (err) {
-            // Pane may not exist yet or worker finished
-            return;
-          }
-          // Trim trailing empty lines (tmux pads to full pane height)
-          const raw = stdout.split("\n");
-          let end = raw.length;
-          while (end > 0 && raw[end - 1]!.trim() === "") end--;
-          const lines = raw.slice(0, end);
-          setOutputLines(lines.slice(-200));
-        },
-      );
-    };
-
-    capturePane();
-    const interval = setInterval(capturePane, 1500);
+    setOutputLines([]);
+    const unsub = stateSource.tailLog(selectedLogPath, (line) => {
+      setOutputLines((prev) => {
+        const next = prev.length >= TAIL_BUFFER_LINES ? prev.slice(1) : prev;
+        return [...next, line];
+      });
+    });
 
     return () => {
-      clearInterval(interval);
+      unsub();
     };
-  }, [selectedId, planSlug, selectedReviewStatus]);
+  }, [selectedId, selectedLogPath, stateSource]);
 
   // Keyboard navigation: j/k or arrows to select items, q to quit on terminal screens
   const { isRawModeSupported } = useStdin();
