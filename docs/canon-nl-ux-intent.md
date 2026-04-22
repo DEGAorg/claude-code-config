@@ -18,7 +18,15 @@ that shifts `/canon-*` flows to NL-triggered skills.
   `.canon/state.json`), converts `canon/commands/*.md` to skills
   under `canon/skills/` with NL `@description`, and reduces
   `commands/canon-init.md` to a thin alias of `canon-new`.
-- **Plan #3 — `apply-core` manifest + install wiring:** pending.
+- **Plan #3 — `apply-core` manifest + install wiring:** shipped
+  (`.orchestrator/plans/20260422-canon-script-contract/plan.md`). Codifies
+  the canon script runtime contract (exit-code taxonomy `0`/`1`/`2`/`3`,
+  `canon-error: <code>: <short>` stderr format), adds
+  `canon/scripts/canon-error.sh` shared helper and
+  `canon/scripts/README.md` conventions doc, retrofits `phase-detect.sh`,
+  and extends `commands/apply-core.md` to install canon skills +
+  `canon/scripts/*.sh` and inject the canon persona + skill list into
+  the written `AGENTS.md`.
 
 ## Why
 

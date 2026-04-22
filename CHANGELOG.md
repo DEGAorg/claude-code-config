@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Codify canon script runtime contract + extend `apply-core` manifest with canon skills, scripts, and persona block (`20260422-canon-script-contract`) — 2026-04-22
+
 - Add canon umbrella skill + full-phase detection; convert `canon/commands/*` to NL skills with thin aliases (`20260422-canon-umbrella-state`) — 2026-04-22
 
 - Add `canon-new` NL-triggered skill and `bootstrap-check.sh` phase helper (`20260422-canon-new-skill`) — 2026-04-22
