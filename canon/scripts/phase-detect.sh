@@ -14,6 +14,14 @@
 
 set -euo pipefail
 
+# shellcheck source=canon-error.sh
+source "$(dirname "${BASH_SOURCE[0]}")/canon-error.sh"
+
+# Convert any unexpected bash-level failure (set -e trigger) into a
+# structured canon-error line so the agent can route it per the contract
+# in canon/scripts/README.md.
+trap 'canon_error 1 phase-detect-failed "unexpected error in phase-detect.sh"' ERR
+
 if [[ ! -f "dega-core.yaml" ]]; then
   echo "not-bootstrapped"
   exit 0

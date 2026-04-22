@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Codify canon script runtime contract + extend `apply-core` manifest with canon skills, scripts, and persona block (`20260422-canon-script-contract`) — 2026-04-22
+
 - Add canon umbrella skill + full-phase detection; convert `canon/commands/*` to NL skills with thin aliases (`20260422-canon-umbrella-state`) — 2026-04-22
 
 - Add `canon-new` NL-triggered skill and `bootstrap-check.sh` phase helper (`20260422-canon-new-skill`) — 2026-04-22
@@ -20,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- canon umbrella skill + state detection (`20260422-canon-umbrella-state`) — 2026-04-22
+
 - Orch workers → Harness capability contract (background processes) (`20260421-orch-harness-migration`) — 2026-04-21
 
 - Wire Strategy Templates into Canon Start Pipeline (`20260415-wire-templates`) — 2026-04-16
