@@ -1,3 +1,0 @@
-# SC1091 is advisory — shellcheck can't follow sourced files without -x.
-# Our sourced files all exist; requiring -x everywhere is noise.
-disable=SC1091
