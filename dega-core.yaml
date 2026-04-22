@@ -1,6 +1,11 @@
 # Dega Core config for claude-code-config repo
 version: 1
 provider: github
+# Harness backend — process-lifecycle primitives for the Conductor.
+# `local` spawns detached processes on the current host (see
+# scripts/harness/contract.md). Override per-invocation with the
+# DEGA_HARNESS env var. Future backends: docker, remote.
+harness: local
 max_iterations: 3
 
 budget:

@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Orchestrator launcher — validates inputs, initializes state, creates tmux
-# session, starts the engine as a tmux window, opens the display, prints a
-# one-line result, and exits. The calling terminal is free immediately.
+# Orchestrator launcher — validates inputs, initializes state, spawns the
+# engine as a detached process via the Harness capability contract, and
+# (in foreground mode) attaches the Ink TUI to tail progress. The engine
+# runs independently of the calling terminal; closing the TUI does not
+# stop it.
 #
 # The poll loop, worker spawning, review, and cleanup all run inside
-# orch-engine.sh in a tmux window named "engine".
+# scripts/orch-engine.sh — spawned here via `harness::spawn_process`
+# (role=engine, id=<slug>). State lives under `.orchestrator/plans/<slug>/`
+# and the Ink TUI reads it through the `StateSource` interface.
 #
 # Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
 #        scripts/orch-run.sh --gc [--dry-run]
@@ -13,8 +17,8 @@
 #   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
-#   --background         Headless mode — tmux only, no display windows
-#   --gc [--dry-run]     Run garbage collection on stale orch-* tmux sessions
+#   --background         Headless mode — spawn engine and exit without opening the TUI
+#   --gc [--dry-run]     Run garbage collection on stale plans
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
@@ -31,12 +35,14 @@ source "${SCRIPT_DIR}/agent-shim.sh"
 source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=read-github-config.sh
 source "${SCRIPT_DIR}/read-github-config.sh"
+# shellcheck source=harness/dispatcher.sh
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 # --- Check dependencies ---
 
 check_deps() {
   local missing=()
-  for cmd in jq tmux node; do
+  for cmd in jq node; do
     if ! command -v "${cmd}" >/dev/null 2>&1; then
       missing+=("${cmd}")
     fi
@@ -226,31 +232,41 @@ if [[ -z "${ISSUE_NUMBER}" ]] && gh_config_bool sync; then
   fi
 fi
 
-# --- Already-running detection ---
+# --- Per-plan state paths ---
 
-TMUX_SESSION="orch-${SLUG}"
-
-if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-  # Check if the engine window is alive
-  if tmux list-windows -t "${TMUX_SESSION}" -F '#{window_name}' 2>/dev/null |
-    grep -qx 'engine'; then
-    # Engine is running — print status from state.json and exit
-    STATE_FILE=$(orch_plan_state_file "${SLUG}")
-    if [[ -f "${STATE_FILE}" ]]; then
-      _done=$(jq '[.items[] | select(.status == "done")] | length' "${STATE_FILE}")
-      _running=$(jq '[.items[] | select(.status == "running")] | length' "${STATE_FILE}")
-      _total=$(jq '.items | length' "${STATE_FILE}")
-      echo "orch: '${SLUG}' is already running (${_done}/${_total} done, ${_running} active)"
-    else
-      echo "orch: '${SLUG}' is already running"
-    fi
-    echo "  attach: tmux attach-session -t '${TMUX_SESSION}'"
-    exit 0
-  fi
-fi
-
-# Per-plan state paths (from orch-state.sh helpers)
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
+PID_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/pids"
+LOG_FILE=$(orch_plan_log_file "${SLUG}")
+
+# --- Already-running detection (via harness) ---
+#
+# An engine is running iff `harness::list_active` reports a live process
+# with role=engine in the plan's PID dir.
+
+engine_is_alive() {
+  [[ -d "${PID_DIR}" ]] || return 1
+  local role _id pid
+  while read -r role _id pid; do
+    if [[ "${role}" == "engine" && -n "${pid}" ]]; then
+      return 0
+    fi
+  done < <(harness::list_active pid_dir="${PID_DIR}" 2>/dev/null || true)
+  return 1
+}
+
+if engine_is_alive; then
+  if [[ -f "${ORCH_STATE_FILE}" ]]; then
+    _done=$(jq '[.items[] | select(.status == "done")] | length' "${ORCH_STATE_FILE}")
+    _running=$(jq '[.items[] | select(.status == "running")] | length' "${ORCH_STATE_FILE}")
+    _total=$(jq '.items | length' "${ORCH_STATE_FILE}")
+    echo "orch: '${SLUG}' is already running (${_done}/${_total} done, ${_running} active)"
+  else
+    echo "orch: '${SLUG}' is already running"
+  fi
+  echo "  state:  ${ORCH_STATE_FILE}"
+  echo "  log:    ${LOG_FILE}"
+  exit 0
+fi
 
 # --- Initialize or resume state ---
 
@@ -276,7 +292,7 @@ init_state() {
 	      (if (.deps | length) == 0 then "ready" else "queued" end)
 	    end),
 	    workerPid: null,
-	    tmuxPane: null,
+	    logPath: null,
 	    worktree: null,
 	    iteration: 0,
 	    maxIterations: $maxIter,
@@ -367,71 +383,60 @@ fi
 orch_master_register "${SLUG}"
 orch_master_update_progress "${SLUG}"
 
-# --- Create tmux session with dashboard ---
+# --- Spawn the engine via the harness ---
 
-if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-  TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
-  HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
-  GRACE_TIMEOUT="${ORCH_DASHBOARD_TIMEOUT:-60}"
-  # Dashboard loop: restart node UI on crash, check engine liveness via
-  # heartbeat file staleness (>5min) and tmux window existence every 2s.
-  # When engine is dead, enter a grace period then kill the session.
-  read -r -d '' DASH_CMD <<-DASHEOF || true
-	grace_start=0
-	while true; do
-	  node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null
-	  engine_alive=true
-	  if ! tmux has-window -t '${TMUX_SESSION}:engine' 2>/dev/null; then
-	    engine_alive=false
-	  fi
-	  if [[ -f '${HEARTBEAT_FILE}' ]]; then
-	    last_hb=\$(cat '${HEARTBEAT_FILE}')
-	    now=\$(date +%s)
-	    age=\$(( now - last_hb ))
-	    if [[ \${age} -gt 300 ]]; then
-	      engine_alive=false
-	    fi
-	  fi
-	  if [[ "\${engine_alive}" == false ]]; then
-	    if [[ \${grace_start} -eq 0 ]]; then
-	      grace_start=\$(date +%s)
-	      echo "[engine exited — dashboard will close in ${GRACE_TIMEOUT}s]"
-	    fi
-	    elapsed=\$(( \$(date +%s) - grace_start ))
-	    if [[ \${elapsed} -ge ${GRACE_TIMEOUT} ]]; then
-	      echo "[grace period expired — killing session]"
-	      tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null || true
-	      break
-	    fi
-	  else
-	    grace_start=0
-	    echo '[dashboard restarting in 2s...]'
-	  fi
-	  sleep 2
-	done
-	DASHEOF
-  tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
-fi
+orch_ensure_plan_dirs "${SLUG}"
+mkdir -p "${PID_DIR}"
 
-# --- Start engine as a tmux window ---
+# Clear any stale engine PID sidecar from a previous run so the fresh
+# handle is the only one recorded.
+rm -f "${PID_DIR}/engine-${SLUG}.pid" "${PID_DIR}/engine-${SLUG}.started_at"
 
 ENGINE_ARGS="${SLUG} --max-workers ${MAX_WORKERS} --max-iterations ${MAX_ITERATIONS}"
 if [[ "${BACKGROUND}" == true ]]; then
   ENGINE_ARGS="${ENGINE_ARGS} --background"
 fi
 
-LOG_FILE=$(orch_plan_log_file "${SLUG}")
-orch_ensure_plan_dirs "${SLUG}"
+ENGINE_CMD="GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS}"
 
-tmux new-window -d -t "${TMUX_SESSION}" -n "engine" \
-  "cd '${REPO_ROOT}' && GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30; tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null"
+ENGINE_PID=$(harness::spawn_process \
+  role=engine \
+  id="${SLUG}" \
+  cwd="${REPO_ROOT}" \
+  cmd="${ENGINE_CMD}" \
+  logfile="${LOG_FILE}" \
+  pid_dir="${PID_DIR}" \
+  started_at_file="${PID_DIR}/engine-${SLUG}.started_at")
 
-# --- Open display windows (foreground mode) ---
+echo "orch: engine spawned (pid ${ENGINE_PID}) — log: ${LOG_FILE}"
+
+# --- Foreground mode: attach the Ink TUI ---
+#
+# The engine is detached from this shell regardless of BACKGROUND. When
+# foreground, we block on the Ink TUI so the user sees live progress;
+# closing the TUI (Ctrl-C / q) leaves the engine running. Run `tail -F`
+# on the log file, or re-invoke orch-run.sh, to reattach.
+
+launch_tui() {
+  local cli_js="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
+  local cli_tsx="${SCRIPT_DIR}/terminal-ui/src/cli.tsx"
+  if [[ -f "${cli_js}" ]]; then
+    exec node "${cli_js}" --orch "${ORCH_STATE_FILE}"
+  elif command -v pnpm >/dev/null 2>&1 && [[ -f "${cli_tsx}" ]]; then
+    cd "${SCRIPT_DIR}/terminal-ui"
+    exec pnpm exec tsx src/cli.tsx --orch "${ORCH_STATE_FILE}"
+  else
+    echo "orch: TUI not available (build with: pnpm -C scripts/terminal-ui build)"
+    echo "orch: tailing engine log — Ctrl-C to detach (engine keeps running)"
+    exec tail -n +1 -F "${LOG_FILE}"
+  fi
+}
 
 if [[ "${BACKGROUND}" == false ]]; then
-  bash "${SCRIPT_DIR}/orch-display.sh" "${TMUX_SESSION}" || true
+  launch_tui
 fi
 
-# --- Print one-line result and exit ---
+# --- Print one-line result and exit (background mode) ---
 
-echo "orch: launched ${SLUG} — attach with: tmux attach -t ${TMUX_SESSION}"
+echo "orch: launched ${SLUG} — tail log: tail -F '${LOG_FILE}'"
+echo "orch:                  state:   ${ORCH_STATE_FILE}"

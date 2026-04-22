@@ -33,6 +33,8 @@ source "${SCRIPT_DIR}/orch-state.sh"
 source "${SCRIPT_DIR}/read-github-config.sh"
 # shellcheck source=agent-shim.sh
 source "${SCRIPT_DIR}/agent-shim.sh"
+# shellcheck source=harness/dispatcher.sh
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 # --- Constants ---
 
@@ -646,8 +648,12 @@ while true; do
       while IFS= read -r slug; do
         [[ -z "${slug}" ]] && continue
 
-        # Skip if already running in a tmux session
-        if tmux has-session -t "orch-${slug}" 2>/dev/null; then
+        # Skip if an engine process is already alive for this plan.
+        # Uses the harness backend — no tmux.
+        plan_pid_dir="$(orch_plan_dir "${slug}")/pids"
+        if [[ -d "${plan_pid_dir}" ]] &&
+          harness::list_active pid_dir="${plan_pid_dir}" 2>/dev/null |
+          awk '{print $1}' | grep -qx 'engine'; then
           log "existing plan ${slug} already running — skipping"
           continue
         fi

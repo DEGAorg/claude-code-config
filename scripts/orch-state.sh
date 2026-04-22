@@ -393,12 +393,6 @@ orch_promote_ready_items() {
 
 orch_detect_stale_workers() {
   local slug="$1"
-  local tmux_session="orch-${slug}"
-
-  # Bail if tmux session doesn't exist
-  if ! tmux has-session -t "${tmux_session}" 2>/dev/null; then
-    return 0
-  fi
 
   local state_file
   state_file=$(orch_plan_state_file "${slug}")
@@ -413,23 +407,26 @@ orch_detect_stale_workers() {
     return 0
   fi
 
-  # Get live (non-dead) worker windows from tmux
-  # Format: "worker-N 0" or "worker-N 1" where 1 = pane_dead
-  local live_workers
-  live_workers=$(tmux list-windows -t "${tmux_session}" \
-    -F '#{window_name} #{pane_dead}' 2>/dev/null || true)
-
+  local pid_dir="${ORCH_STATE_DIR}/plans/${slug}/pids"
   local changed=false
   local now
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
   for item_id in ${running_ids}; do
-    local pane_name="worker-${item_id}"
-    local is_alive=false
+    local worker_pid started_at_file started_at is_alive=false
+    worker_pid=$(printf '%s' "${state}" | jq -r \
+      ".items[] | select(.id == ${item_id}) | .workerPid // empty")
 
-    # Check if pane exists and is not dead
-    if printf '%s\n' "${live_workers}" | grep -q "^${pane_name} 0$"; then
-      is_alive=true
+    if [[ -n "${worker_pid}" ]]; then
+      started_at=""
+      started_at_file="${pid_dir}/worker-${item_id}.started"
+      if [[ -f "${started_at_file}" ]]; then
+        started_at=$(cat "${started_at_file}")
+      fi
+      if harness::query_status handle="${worker_pid}" \
+        started_at="${started_at}" >/dev/null 2>&1; then
+        is_alive=true
+      fi
     fi
 
     if [[ "${is_alive}" == false ]]; then
@@ -475,7 +472,6 @@ orch_detect_stale_workers() {
 
 orch_master_register() {
   local slug="$1"
-  local tmux_session="orch-${slug}"
   local now
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -497,14 +493,12 @@ orch_master_register() {
     --arg slug "${slug}" \
     --arg status "running" \
     --arg statePath "${state_path}" \
-    --arg tmux "${tmux_session}" \
     --arg worktree "${worktree_path}" \
     --arg now "${now}" \
     '.plans += [{
 			slug: $slug,
 			status: $status,
 			statePath: $statePath,
-			tmuxSession: $tmux,
 			worktree: $worktree,
 			startedAt: $now,
 			updatedAt: $now,
@@ -726,11 +720,6 @@ orch_cleanup_worktree() {
 
 orch_kill_done_workers() {
   local slug="$1"
-  local tmux_session="orch-${slug}"
-
-  if ! tmux has-session -t "${tmux_session}" 2>/dev/null; then
-    return 0
-  fi
 
   local state_file
   state_file=$(orch_plan_state_file "${slug}")
@@ -745,16 +734,20 @@ orch_kill_done_workers() {
     return 0
   fi
 
-  local live_windows
-  live_windows=$(tmux list-windows -t "${tmux_session}" \
-    -F '#{window_name}' 2>/dev/null || true)
+  local pid_dir="${ORCH_STATE_DIR}/plans/${slug}/pids"
 
   for item_id in ${done_ids}; do
-    local window_name="worker-${item_id}"
-    if printf '%s\n' "${live_windows}" | grep -qx "${window_name}"; then
-      tmux kill-window -t "${tmux_session}:${window_name}" 2>/dev/null || true
-      echo "orch-state: killed finished worker window ${window_name}"
+    local worker_pid
+    worker_pid=$(jq -r \
+      ".items[] | select(.id == ${item_id}) | .workerPid // empty" \
+      "${state_file}")
+
+    if [[ -n "${worker_pid}" ]] && kill -0 "${worker_pid}" 2>/dev/null; then
+      harness::terminate handle="${worker_pid}" >/dev/null 2>&1 || true
+      echo "orch-state: terminated finished worker (item ${item_id}, pid ${worker_pid})"
     fi
+
+    rm -f "${pid_dir}/worker-${item_id}.pid" "${pid_dir}/worker-${item_id}.started"
   done
 }
 

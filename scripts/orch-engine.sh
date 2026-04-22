@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Orchestrator engine — poll loop, worker spawning, review, and cleanup.
 #
-# Runs inside a tmux window (started by orch-run.sh). Drives workers to
-# completion, invokes review, handles SHIP/REVISE outcomes, and cleans up.
+# Launched as a detached background process by orch-run.sh. Drives workers
+# to completion, invokes review, handles SHIP/REVISE outcomes, and cleans
+# up. Workers are spawned via the Harness capability contract
+# (scripts/harness/dispatcher.sh).
 #
 # Usage: scripts/orch-engine.sh <slug> [--max-workers N] [--max-iterations N] [--background]
-#
-# This script is not invoked directly by users. orch-run.sh launches it
-# inside a tmux window named "engine" in the orch-<slug> session.
 
 set -euo pipefail
 
@@ -22,6 +21,9 @@ source "${SCRIPT_DIR}/agent-shim.sh"
 
 # shellcheck source=providers/provider.sh
 source "${SCRIPT_DIR}/providers/provider.sh"
+
+# shellcheck source=harness/dispatcher.sh
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 # --- Parse args ---
 
@@ -70,6 +72,8 @@ REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+PID_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/pids"
+mkdir -p "${PID_DIR}"
 
 # Write current epoch to heartbeat file — called at poll start, after
 # worker spawn, after review, after each SHIP/FAIL step, and before exit.
@@ -134,10 +138,6 @@ if [[ ! -f "${WORKER_PROMPT_TEMPLATE}" ]]; then
   exit 1
 fi
 WORKER_PROMPT_BASE=$(cat "${WORKER_PROMPT_TEMPLATE}")
-
-# --- Tmux session name ---
-
-TMUX_SESSION="orch-${SLUG}"
 
 # --- Helper: build worker prompt for an item ---
 
@@ -238,21 +238,19 @@ ${plan_sections}"
 	PROMPT
 }
 
-# --- Helper: spawn a worker in a tmux pane ---
+# --- Helper: spawn a worker as a detached background process via harness ---
 
 spawn_worker() {
   local item_id="$1"
   local item_desc="$2"
-  local pane_name="worker-${item_id}"
 
   # Mark item as running
   orch_update_item_status "${SLUG}" "${item_id}" "running"
 
-  # Build prompt
+  # Build prompt and write it to a temp file (keeps the command short)
   local prompt
   prompt=$(build_worker_prompt "${item_id}" "${item_desc}")
 
-  # Write prompt to temp file (tmux send-keys has length limits)
   local prompt_file
   prompt_file=$(mktemp "${ORCH_STATE_DIR}/prompt-${item_id}-XXXXXX")
   mv "${prompt_file}" "${prompt_file}.md"
@@ -265,29 +263,47 @@ spawn_worker() {
   agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
-  local session_var
+  local session_var env_prefix=""
   session_var="$(dega_agent_session_var)"
-  local env_prefix=""
   if [[ -n "${session_var}" ]]; then
     env_prefix="env -u '${session_var}'"
   fi
 
-  # Kill stale window from previous iteration if it exists
-  tmux kill-window -t "${TMUX_SESSION}:${pane_name}" 2>/dev/null || true
+  local logfile="${LOG_DIR}/worker-${item_id}.log"
+  local started_at_file="${PID_DIR}/worker-${item_id}.started"
+  local full_cmd="RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' ${env_prefix} ${agent_cmd_str}"
 
-  # Spawn in background (-d) so dashboard keeps focus
-  tmux new-window -d -t "${TMUX_SESSION}" -n "${pane_name}" \
-    "cd '${WORKTREE_DIR}' && \
-		 RALPH_ROLE=worker RALPH_TASK_DIR='${PLAN_DIR}' \
-		 ${env_prefix} ${agent_cmd_str} ; \
-		 echo '--- worker ${item_id} exited ---'; \
-		 sleep 2"
+  # Remove any stale PID/started-at sidecar from a previous iteration so
+  # the harness can record a fresh handle.
+  rm -f "${PID_DIR}/worker-${item_id}.pid" "${started_at_file}"
 
-  # Stream worker output to log file for the dashboard
-  tmux pipe-pane -t "${TMUX_SESSION}:${pane_name}" \
-    -o "cat >> '${LOG_DIR}/worker-${item_id}.log'"
+  local worker_pid
+  worker_pid=$(harness::spawn_process \
+    role=worker \
+    id="${item_id}" \
+    cwd="${WORKTREE_DIR}" \
+    cmd="${full_cmd}" \
+    logfile="${logfile}" \
+    pid_dir="${PID_DIR}" \
+    started_at_file="${started_at_file}")
 
-  echo "orch-engine: spawned ${pane_name} for item ${item_id}: ${item_desc}"
+  # Record the opaque handle (workerPid) + logPath in state.json so the
+  # TUI and stale detection can find the worker without consulting any
+  # terminal multiplexer.
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local updated
+  updated=$(jq \
+    --argjson id "${item_id}" \
+    --arg pid "${worker_pid}" \
+    --arg log "${logfile}" \
+    --arg now "${now}" \
+    '(.items[] | select(.id == $id)) |=
+        (.workerPid = $pid | .logPath = $log) |
+     .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+
+  echo "orch-engine: spawned worker for item ${item_id} (pid ${worker_pid}): ${item_desc}"
 }
 
 # --- Wave execution loop ---

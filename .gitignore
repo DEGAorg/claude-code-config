@@ -9,6 +9,9 @@ __pycache__/
 /ace
 .ralph-runs.log
 
+# Local scratch (personal drafts, not ready to commit)
+/.scratch/
+
 # Claude Code worktrees (ephemeral, machine-local)
 /.claude/worktrees/
 

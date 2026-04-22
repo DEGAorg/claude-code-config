@@ -55,7 +55,7 @@ function formatReview(item: OrchestratorItem): string {
 }
 
 function formatWorker(item: OrchestratorItem): string {
-  if (item.tmuxPane) return item.tmuxPane;
+  if (item.workerPid !== null) return `pid ${item.workerPid}`;
   if (item.worktree) return "bg";
   return "—";
 }

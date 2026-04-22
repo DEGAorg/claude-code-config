@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Orchestrator garbage collector — finds and kills stale orch-* tmux sessions.
+# Orchestrator garbage collector — finds and cleans up stale plans.
 #
-# A session is considered stale when:
-#   1. It has no "engine" window (engine crashed or exited without cleanup), OR
+# A plan (registered "running" in .orchestrator/master.json) is considered
+# stale when:
+#   1. Its engine handle is no longer alive (engine crashed or exited
+#      without deregistering), OR
 #   2. Its heartbeat file is older than 10 minutes (engine is hung)
+#
+# Stale plans are cleaned up by terminating any leftover handles via the
+# harness backend and marking the master registry entry as "failed".
 #
 # Usage: scripts/orch-gc.sh [--dry-run]
 #
 # Options:
-#   --dry-run   List stale sessions without killing them
+#   --dry-run   List stale plans without killing processes or updating state
 
 set -euo pipefail
 
@@ -16,6 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck source=orch-state.sh
 source "${SCRIPT_DIR}/orch-state.sh"
+# shellcheck source=harness/dispatcher.sh
+source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 STALE_THRESHOLD=600 # 10 minutes in seconds
 DRY_RUN=false
@@ -39,11 +46,43 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# List all orch-* tmux sessions. Exit cleanly if tmux server is not running.
-sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | grep '^orch-' || true)
+# --- Enumerate candidate plans ---
+#
+# Source of truth is master.json (plans with status=="running"). If
+# master.json is missing or has no running plans, fall back to scanning
+# plan directories that contain a pids/ folder — catches cases where the
+# engine crashed before master-registering.
 
-if [[ -z "${sessions}" ]]; then
-  echo "orch-gc: no orch-* sessions found"
+collect_running_slugs() {
+  if [[ -f "${ORCH_MASTER_FILE}" ]]; then
+    jq -r '.plans[] | select(.status == "running") | .slug' \
+      "${ORCH_MASTER_FILE}" 2>/dev/null || true
+  fi
+}
+
+collect_plan_dirs_with_pids() {
+  local plans_root="${ORCH_STATE_DIR}/plans"
+  [[ -d "${plans_root}" ]] || return 0
+  local dir slug
+  for dir in "${plans_root}"/*/; do
+    [[ -d "${dir}" ]] || continue
+    if [[ -d "${dir}pids" ]]; then
+      slug="$(basename "${dir}")"
+      printf '%s\n' "${slug}"
+    fi
+  done
+}
+
+# Build unique sorted list of candidate slugs from both sources.
+slugs_tmp="$(
+  {
+    collect_running_slugs
+    collect_plan_dirs_with_pids
+  } | sort -u | sed '/^$/d'
+)"
+
+if [[ -z "${slugs_tmp}" ]]; then
+  echo "orch-gc: no running plans found"
   exit 0
 fi
 
@@ -51,25 +90,51 @@ now=$(date +%s)
 stale_count=0
 total_count=0
 
-while IFS= read -r session; do
+# --- Per-plan stale check and cleanup ---
+
+terminate_plan_handles() {
+  local slug="$1"
+  local pid_dir
+  pid_dir="$(orch_plan_dir "${slug}")/pids"
+  [[ -d "${pid_dir}" ]] || return 0
+
+  local active
+  active="$(harness::list_active pid_dir="${pid_dir}" 2>/dev/null || true)"
+  [[ -n "${active}" ]] || return 0
+
+  local role id handle
+  while read -r role id handle; do
+    [[ -n "${handle}" ]] || continue
+    echo "orch-gc:   terminating ${role}-${id} (handle=${handle})"
+    harness::terminate handle="${handle}" 2>/dev/null || {
+      echo "orch-gc:   WARN — failed to terminate ${role}-${id} (handle=${handle})" >&2
+    }
+  done <<<"${active}"
+}
+
+while IFS= read -r slug; do
+  [[ -n "${slug}" ]] || continue
   total_count=$((total_count + 1))
-  slug="${session#orch-}"
+
   is_stale=false
   reason=""
 
-  # Check 1: does the session have an "engine" window?
-  has_engine=true
-  if ! tmux has-session -t "${session}" 2>/dev/null; then
-    # Session disappeared between list and check — skip
-    continue
-  fi
-  if ! tmux list-windows -t "${session}" -F '#{window_name}' 2>/dev/null | grep -q '^engine$'; then
-    has_engine=false
-    is_stale=true
-    reason="no engine window"
+  pid_dir="$(orch_plan_dir "${slug}")/pids"
+  engine_alive=false
+  if [[ -d "${pid_dir}" ]]; then
+    # Any alive handle whose role is "engine" counts as live engine.
+    if harness::list_active pid_dir="${pid_dir}" 2>/dev/null |
+      awk '{print $1}' | grep -qx 'engine'; then
+      engine_alive=true
+    fi
   fi
 
-  # Check 2: is the heartbeat stale (>10min)?
+  if [[ "${engine_alive}" == false ]]; then
+    is_stale=true
+    reason="no alive engine handle"
+  fi
+
+  # Heartbeat staleness.
   heartbeat_file="${ORCH_STATE_DIR}/plans/${slug}/heartbeat"
   heartbeat_age="n/a"
   if [[ -f "${heartbeat_file}" ]]; then
@@ -85,20 +150,13 @@ while IFS= read -r session; do
         fi
       fi
     else
-      # Malformed heartbeat file — treat as stale if no engine window
-      if [[ "${has_engine}" == false ]]; then
-        is_stale=true
-        reason="${reason} + malformed heartbeat"
+      if [[ "${engine_alive}" == false ]]; then
+        reason="${reason:+${reason} + }malformed heartbeat"
       fi
     fi
   else
-    # No heartbeat file — stale if no engine window
-    if [[ "${has_engine}" == false ]]; then
-      if [[ -n "${reason}" ]]; then
-        reason="${reason} + no heartbeat file"
-      else
-        reason="no heartbeat file"
-      fi
+    if [[ "${engine_alive}" == false ]]; then
+      reason="${reason:+${reason} + }no heartbeat file"
     fi
   fi
 
@@ -108,7 +166,6 @@ while IFS= read -r session; do
 
   stale_count=$((stale_count + 1))
 
-  # Format heartbeat age for display
   age_display="unknown"
   if [[ "${heartbeat_age}" != "n/a" && "${heartbeat_age}" =~ ^[0-9]+$ ]]; then
     age_min=$((heartbeat_age / 60))
@@ -117,17 +174,17 @@ while IFS= read -r session; do
   fi
 
   if [[ "${DRY_RUN}" == true ]]; then
-    echo "orch-gc: [dry-run] stale session: ${session} (slug=${slug}, age=${age_display}, reason=${reason})"
+    echo "orch-gc: [dry-run] stale plan: ${slug} (age=${age_display}, reason=${reason})"
   else
-    echo "orch-gc: killing stale session: ${session} (slug=${slug}, age=${age_display}, reason=${reason})"
-    tmux kill-session -t "${session}" 2>/dev/null || {
-      echo "orch-gc: WARN — failed to kill session ${session}" >&2
-    }
+    echo "orch-gc: cleaning stale plan: ${slug} (age=${age_display}, reason=${reason})"
+    terminate_plan_handles "${slug}"
+    # Mark as failed in master registry (no-op if not registered).
+    orch_master_deregister "${slug}" "failed" >/dev/null 2>&1 || true
   fi
-done <<<"${sessions}"
+done <<<"${slugs_tmp}"
 
 if [[ "${DRY_RUN}" == true ]]; then
-  echo "orch-gc: found ${stale_count}/${total_count} stale session(s) (dry-run, nothing killed)"
+  echo "orch-gc: found ${stale_count}/${total_count} stale plan(s) (dry-run, nothing cleaned)"
 else
-  echo "orch-gc: killed ${stale_count}/${total_count} stale session(s)"
+  echo "orch-gc: cleaned ${stale_count}/${total_count} stale plan(s)"
 fi
