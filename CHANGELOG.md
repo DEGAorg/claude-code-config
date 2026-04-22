@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Add canon umbrella skill + full-phase detection; convert `canon/commands/*` to NL skills with thin aliases (`20260422-canon-umbrella-state`) — 2026-04-22
+
 - Add `canon-new` NL-triggered skill and `bootstrap-check.sh` phase helper (`20260422-canon-new-skill`) — 2026-04-22
 
 - Add missing gh-plan scripts to /apply-core install manifest (`20260324-apply-core-gh-scripts`) — 2026-03-24
