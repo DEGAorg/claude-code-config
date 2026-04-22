@@ -120,6 +120,19 @@ Files available:
 - `canon/cli/commands/help.ts`
 - `canon/skills/canon-cli.md`
 - `canon/skills/polymarket.md`
+- `canon/skills/canon.md`
+- `canon/skills/canon-new.md`
+- `canon/skills/canon-start.md`
+- `canon/skills/canon-stop.md`
+- `canon/skills/canon-conventions.md`
+- `canon/skills/discover.md`
+- `canon/skills/develop.md`
+- `canon/skills/register.md`
+- `canon/skills/orchestrator.md`
+- `canon/scripts/canon-error.sh`
+- `canon/scripts/bootstrap-check.sh`
+- `canon/scripts/phase-detect.sh`
+- `canon/scripts/README.md`
 - `canon/templates/` (entire directory — project shell copied wholesale by scaffold)
 
 ---
@@ -610,6 +623,99 @@ export PATH="$HOME/.degacore/bin:$PATH"
 ```
 
 Add this line to `~/.zshrc` or `~/.bashrc` for persistence.
+
+#### Canon Skills
+
+Write each canon skill file to `~/.degacore/config/skills/<name>.md`. These
+are natural-language skills the agent reaches for when the user expresses a
+matching intent inside a canon project. Safe to overwrite.
+
+Umbrella skills (entry points):
+- `canon/skills/canon.md` -> `~/.degacore/config/skills/canon.md`
+- `canon/skills/canon-new.md` -> `~/.degacore/config/skills/canon-new.md`
+
+Sub-skills (invoked from the umbrellas or directly on intent match):
+- `canon/skills/canon-start.md` -> `~/.degacore/config/skills/canon-start.md`
+- `canon/skills/canon-stop.md` -> `~/.degacore/config/skills/canon-stop.md`
+- `canon/skills/canon-conventions.md` -> `~/.degacore/config/skills/canon-conventions.md`
+- `canon/skills/discover.md` -> `~/.degacore/config/skills/discover.md`
+- `canon/skills/develop.md` -> `~/.degacore/config/skills/develop.md`
+- `canon/skills/register.md` -> `~/.degacore/config/skills/register.md`
+- `canon/skills/orchestrator.md` -> `~/.degacore/config/skills/orchestrator.md`
+
+#### Canon Scripts
+
+Install all `canon/scripts/*.sh` shell helpers into `~/.degacore/canon/scripts/`,
+preserving the executable bit. These implement the canon script runtime
+contract (see `canon/scripts/README.md`): each script starts with
+`set -euo pipefail`, obeys the shared exit-code taxonomy
+(`0` success, `1` generic, `2` precondition, `3` user input needed), and
+emits `canon-error: <code>: <short>` on stderr via the shared helper.
+
+```bash
+mkdir -p ~/.degacore/canon/scripts
+```
+
+Write each file from `canon/scripts/*.sh`:
+- `canon/scripts/canon-error.sh` -> `~/.degacore/canon/scripts/canon-error.sh`
+- `canon/scripts/bootstrap-check.sh` -> `~/.degacore/canon/scripts/bootstrap-check.sh`
+- `canon/scripts/phase-detect.sh` -> `~/.degacore/canon/scripts/phase-detect.sh`
+
+Also write the contract doc:
+- `canon/scripts/README.md` -> `~/.degacore/canon/scripts/README.md`
+
+Run `chmod +x ~/.degacore/canon/scripts/*.sh` after writing so the executable
+bit is preserved. Relative `source` paths using `BASH_SOURCE` resolve
+correctly from both the repo and the installed `~/.degacore/canon/scripts/`
+location.
+
+Safe to overwrite — these are engine scripts with no user customization.
+
+#### Canon Persona — inject into installed `AGENTS.md`
+
+When the **Canon Bootstrap** component is selected, append a **Canon agent
+persona** block to the installed `AGENTS.md` (the cross-agent instruction
+file in the target project root — Claude's `CLAUDE.md` and Gemini's
+`GEMINI.md` shim to it, Codex reads it natively). The persona tells the
+agent which canon skills exist so it reaches for them on matching natural
+language intent instead of waiting for a slash command.
+
+If `AGENTS.md` in the cwd already contains a `## Canon agent persona`
+section, replace its body in place. Otherwise, append the block verbatim:
+
+```markdown
+## Canon agent persona
+
+You have a canon agent persona for prediction-market work. When the user
+expresses intent that matches one of the canon skills below, reach for the
+skill directly — do not wait for a slash command. Canon skills live in
+`~/.degacore/config/skills/` and shell helpers in
+`~/.degacore/canon/scripts/` (see `canon/scripts/README.md` for the
+script runtime contract and exit-code taxonomy).
+
+Canon skills available:
+- `canon` — umbrella entry point for an existing canon project
+- `canon-new` — scaffold a new canon project
+- `canon-start` / `canon-stop` — session lifecycle
+- `canon-conventions` — repo layout and naming rules
+- `discover` — find/evaluate markets
+- `develop` — author/iterate on a strategy
+- `register` — register a strategy with the runner
+- `orchestrator` — launch the orchestrator for a canon plan
+
+Canon scripts (invoke via `bash ~/.degacore/canon/scripts/<name>.sh`):
+- `canon-error.sh` — shared stderr/exit helper (sourced by other scripts)
+- `bootstrap-check.sh` — verifies canon project prerequisites
+- `phase-detect.sh` — reports the current canon phase
+
+On any non-zero exit, parse the `canon-error: <code>: <short>` stderr
+prefix: code `2` means a precondition failed and you may repair + retry;
+code `3` means you need user input before retrying; code `1` is a generic
+failure; other non-zero codes are treated as generic.
+```
+
+Do not silently overwrite an `AGENTS.md` you did not create — ask before
+replacing an existing `## Canon agent persona` section if its body differs.
 
 ---
 
