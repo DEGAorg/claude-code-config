@@ -13,16 +13,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# shellcheck source=orch-state.sh
+# shellcheck source=orch-state.sh disable=SC1091
 source "${SCRIPT_DIR}/orch-state.sh"
 
-# shellcheck source=agent-shim.sh
+# shellcheck source=agent-shim.sh disable=SC1091
 source "${SCRIPT_DIR}/agent-shim.sh"
 
-# shellcheck source=providers/provider.sh
+# shellcheck source=providers/provider.sh disable=SC1091
 source "${SCRIPT_DIR}/providers/provider.sh"
 
-# shellcheck source=harness/dispatcher.sh
+# shellcheck source=harness/dispatcher.sh disable=SC1091
 source "${SCRIPT_DIR}/harness/dispatcher.sh"
 
 # --- Parse args ---
@@ -73,7 +73,31 @@ LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
 PID_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/pids"
+EVENTS_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/events.jsonl"
 mkdir -p "${PID_DIR}"
+
+# In-memory last-known status per item id. Used to diff state.json after
+# each sync and emit item_status transition events. Missing entries are
+# treated as "queued" (schema: first transition uses queued as `from`).
+declare -A LAST_STATUS=()
+
+emit_status_transitions() {
+  local item_id cur_status cur_iter last
+  while IFS=$'\t' read -r item_id cur_status cur_iter; do
+    [[ -z "${item_id}" ]] && continue
+    last="${LAST_STATUS[${item_id}]:-queued}"
+    if [[ "${cur_status}" != "${last}" ]]; then
+      harness::emit_event "${EVENTS_FILE}" item_status \
+        slug="${SLUG}" \
+        item:="${item_id}" \
+        from="${last}" \
+        to="${cur_status}" \
+        iteration:="${cur_iter:-0}" || true
+      LAST_STATUS[${item_id}]="${cur_status}"
+    fi
+  done < <(jq -r '.items[] | [.id, .status, (.iteration // 0)] | @tsv' \
+    "${ORCH_STATE_FILE}")
+}
 
 # Write current epoch to heartbeat file — called at poll start, after
 # worker spawn, after review, after each SHIP/FAIL step, and before exit.
@@ -260,6 +284,7 @@ spawn_worker() {
   # Build agent command using shim helper (handles Codex exec pattern)
   local cmd_template agent_cmd_str
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+  # shellcheck disable=SC2016 # `\$(cat ...)` is intentional — the template is evaluated later by bash, not here
   agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
@@ -303,6 +328,17 @@ spawn_worker() {
      .updatedAt = $now' "${ORCH_STATE_FILE}")
   orch_write_state "${SLUG}" "${updated}"
 
+  local iter
+  iter=$(jq ".items[] | select(.id == ${item_id}) | .iteration // 0" \
+    "${ORCH_STATE_FILE}")
+  harness::emit_event "${EVENTS_FILE}" item_spawn \
+    slug="${SLUG}" \
+    item:="${item_id}" \
+    iteration:="${iter}" \
+    pid:="${worker_pid}" \
+    log_path="${logfile}" \
+    worktree="${WORKTREE_DIR}" || true
+
   echo "orch-engine: spawned worker for item ${item_id} (pid ${worker_pid}): ${item_desc}"
 }
 
@@ -334,6 +370,8 @@ while true; do
   orch_sync_done_files "${SLUG}"
   orch_detect_stale_workers "${SLUG}"
   orch_promote_ready_items "${SLUG}"
+
+  emit_status_transitions
 
   # Update master state with current progress
   orch_master_update_progress "${SLUG}"
@@ -396,6 +434,7 @@ while true; do
       spawn_worker "${rid}" "${rdesc}"
       spawned=$((spawned + 1))
     done
+    emit_status_transitions
     write_heartbeat
   fi
 

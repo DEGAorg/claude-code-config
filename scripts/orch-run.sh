@@ -237,6 +237,41 @@ fi
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
 PID_DIR="${ORCH_STATE_DIR}/plans/${SLUG}/pids"
 LOG_FILE=$(orch_plan_log_file "${SLUG}")
+EVENTS_FILE="$(orch_plan_dir "${SLUG}")/events.jsonl"
+
+# Emit plan_end summarizing the current state.json. Used both on the
+# already-complete early-exit path and on the background-mode launch
+# exit. The engine emits an authoritative plan_end of its own when it
+# finishes — per events-schema.md consumers treat the last line as
+# authoritative.
+emit_plan_end() {
+  local status="$1"
+  local total done_count failed_count duration_ms=""
+  if [[ -f "${ORCH_STATE_FILE}" ]]; then
+    total=$(jq '.items | length' "${ORCH_STATE_FILE}")
+    done_count=$(jq '[.items[] | select(.status == "done")] | length' "${ORCH_STATE_FILE}")
+    failed_count=$(jq '[.items[] | select(.status == "failed")] | length' "${ORCH_STATE_FILE}")
+  else
+    total=0
+    done_count=0
+    failed_count=0
+  fi
+  if [[ -n "${PLAN_START_EPOCH_MS:-}" ]]; then
+    local now_ms=$(($(date +%s) * 1000))
+    duration_ms=$((now_ms - PLAN_START_EPOCH_MS))
+  fi
+  local -a kv=(
+    slug="${SLUG}"
+    status="${status}"
+    total_items:="${total}"
+    done_items:="${done_count}"
+    failed_items:="${failed_count}"
+  )
+  if [[ -n "${duration_ms}" ]]; then
+    kv+=(duration_ms:="${duration_ms}")
+  fi
+  harness::emit_event "${EVENTS_FILE}" plan_end "${kv[@]}"
+}
 
 # --- Already-running detection (via harness) ---
 #
@@ -341,6 +376,26 @@ else
   init_state
 fi
 
+# --- Emit plan_start event ---
+
+PLAN_START_EPOCH_MS=$(($(date +%s) * 1000))
+_total_items=$(jq '.items | length' "${ORCH_STATE_FILE}")
+_mode="foreground"
+if [[ "${BACKGROUND}" == true ]]; then
+  _mode="background"
+fi
+_plan_start_kv=(
+  slug="${SLUG}"
+  total_items:="${_total_items}"
+  max_parallel_workers:="${MAX_WORKERS}"
+  mode="${_mode}"
+)
+if [[ -n "${ISSUE_NUMBER}" ]]; then
+  _plan_start_kv+=(issue:="${ISSUE_NUMBER}")
+fi
+harness::emit_event "${EVENTS_FILE}" plan_start "${_plan_start_kv[@]}"
+unset _total_items _mode _plan_start_kv
+
 # --- Check if already complete ---
 
 REMAINING_COUNT=$(jq '[.items[] | select(.status != "done")] | length' \
@@ -349,6 +404,7 @@ TOTAL_COUNT=$(jq '.items | length' "${ORCH_STATE_FILE}")
 
 if [[ "${REMAINING_COUNT}" -eq 0 ]]; then
   echo "orch: all ${TOTAL_COUNT} items already complete for '${SLUG}'"
+  emit_plan_end "completed"
   orch_master_deregister "${SLUG}" "completed"
   orch_cleanup_worktree "${SLUG}"
   exit 0
@@ -437,6 +493,13 @@ if [[ "${BACKGROUND}" == false ]]; then
 fi
 
 # --- Print one-line result and exit (background mode) ---
+#
+# Emit a plan_end event here so background-mode consumers know the
+# orch-run wrapper has returned. The engine emits an authoritative
+# plan_end of its own on real completion; per events-schema.md the
+# last plan_end line in the stream is authoritative.
+
+emit_plan_end "cancelled"
 
 echo "orch: launched ${SLUG} — tail log: tail -F '${LOG_FILE}'"
 echo "orch:                  state:   ${ORCH_STATE_FILE}"
