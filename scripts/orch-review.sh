@@ -38,6 +38,7 @@ DONE_DIR=$(orch_plan_done_dir "${SLUG}")
 REVIEW_DIR=$(orch_plan_review_dir "${SLUG}")
 LOG_DIR=$(orch_plan_log_dir "${SLUG}")
 PID_DIR="$(orch_plan_dir "${SLUG}")/pids"
+EVENTS_FILE="$(orch_plan_dir "${SLUG}")/events.jsonl"
 WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
 
 # Use worktree plan path; in GH mode resolve from .orchestrator/
@@ -116,6 +117,25 @@ orch_write_state "${SLUG}" "${UPDATED}"
 
 mkdir -p "${REVIEW_DIR}"
 
+# --- Helper: portable epoch-ms timestamp (for duration_ms computation) ---
+
+_review_now_epoch_ms() {
+  # Prefer GNU date (Linux, or `gdate` via coreutils on macOS). BSD `date`
+  # prints `%3N` literally; detect that and fall back to second precision
+  # rendered as ms (trailing "000").
+  if command -v gdate >/dev/null 2>&1; then
+    gdate -u +%s%3N
+    return 0
+  fi
+  local ms
+  ms="$(date -u +%s%3N)"
+  if [[ "${ms}" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "${ms}"
+  else
+    printf '%s000\n' "$(date -u +%s)"
+  fi
+}
+
 # --- Helper: spawn a reviewer via the harness ---
 
 spawn_reviewer() {
@@ -175,8 +195,10 @@ spawn_reviewer() {
   local cmd
   cmd="GH_SYNC='${GH_SYNC}' RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 ${env_prefix} ${agent_cmd_str}; echo '--- reviewer ${item_id} exited ---'"
 
-  # Clear any stale PID file from a prior iteration before spawning
-  rm -f "${PID_DIR}/reviewer-${item_id}.pid" "${started_at_file}"
+  # Clear any stale PID / start-ms file from a prior iteration before spawning
+  rm -f "${PID_DIR}/reviewer-${item_id}.pid" \
+    "${started_at_file}" \
+    "${PID_DIR}/reviewer-${item_id}.ms_start"
 
   local pid
   if ! pid=$(harness::spawn_process \
@@ -217,6 +239,74 @@ spawn_reviewer() {
   orch_write_state "${SLUG}" "${updated}"
 
   echo "orch-review: spawned reviewer for item ${item_id} (pid ${pid}): ${item_desc}"
+
+  # Record start time (epoch ms) for duration_ms on review_end, then emit
+  # the review_start event. See scripts/harness/events-schema.md.
+  local start_ms iter
+  start_ms=$(_review_now_epoch_ms)
+  printf '%s\n' "${start_ms}" >"${PID_DIR}/reviewer-${item_id}.ms_start"
+  iter=$(jq -r --argjson id "${item_id}" \
+    '.items[] | select(.id == $id) | .iteration // 1' "${ORCH_STATE_FILE}")
+  harness::emit_event "${EVENTS_FILE}" review_start \
+    slug="${SLUG}" \
+    item:="${item_id}" \
+    iteration:="${iter}" \
+    pid:="${pid}" \
+    log_path="${log_file}" || true
+}
+
+# --- Helper: emit review_end for reviewers that have settled ---
+
+emit_review_end_events() {
+  # For each reviewer we tagged with an ms_start file, check whether its
+  # item has settled (passed/failed). If so, read the verdict from the
+  # review file (PASS → SHIP, FAIL → REVISE, anything else or no file →
+  # BLOCKED), emit review_end, and clear the ms_start marker so we do not
+  # double-emit on subsequent poll cycles.
+  local ms_start_file item_id settled review_file decision verdict iter
+  local start_ms now_ms duration_ms
+  for ms_start_file in "${PID_DIR}"/reviewer-*.ms_start; do
+    [[ -e "${ms_start_file}" ]] || continue
+    item_id="${ms_start_file##*/reviewer-}"
+    item_id="${item_id%.ms_start}"
+
+    settled=$(jq -r --argjson id "${item_id}" \
+      '.items[] | select(.id == $id) | .reviewStatus // ""' \
+      "${ORCH_STATE_FILE}")
+    case "${settled}" in
+    passed | failed) ;;
+    *) continue ;;
+    esac
+
+    review_file="${REVIEW_DIR}/item-${item_id}-review.txt"
+    if [[ -f "${review_file}" ]]; then
+      decision=$(head -1 "${review_file}" | tr -d '[:space:]')
+      case "${decision}" in
+      PASS) verdict="SHIP" ;;
+      FAIL) verdict="REVISE" ;;
+      *) verdict="BLOCKED" ;;
+      esac
+    else
+      verdict="BLOCKED"
+    fi
+
+    iter=$(jq -r --argjson id "${item_id}" \
+      '.items[] | select(.id == $id) | .iteration // 1' "${ORCH_STATE_FILE}")
+
+    start_ms=$(cat "${ms_start_file}")
+    now_ms=$(_review_now_epoch_ms)
+    duration_ms=$((now_ms - start_ms))
+    ((duration_ms < 0)) && duration_ms=0
+
+    harness::emit_event "${EVENTS_FILE}" review_end \
+      slug="${SLUG}" \
+      item:="${item_id}" \
+      iteration:="${iter}" \
+      verdict="${verdict}" \
+      duration_ms:="${duration_ms}" || true
+
+    rm -f "${ms_start_file}"
+  done
 }
 
 # --- Helper: terminate reviewers for items that have settled (pass/fail) ---
@@ -335,6 +425,7 @@ while true; do
   orch_sync_review_files "${SLUG}"
   kill_done_reviewers
   detect_stale_reviewers
+  emit_review_end_events
 
   # Count current review state
   cnt_reviewing=$(jq '[.items[] | select(.reviewStatus == "reviewing")] | length' \
