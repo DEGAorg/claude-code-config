@@ -259,6 +259,45 @@ Active work:
 
 ---
 
+## Skills
+
+Skills live under `skills/<name>/SKILL.md` and are cross-agent (Claude Code,
+Codex, Gemini) — they must avoid agent-specific tool syntax. A skill is a
+markdown contract plus optional shell helpers; the agent host indexes the
+frontmatter `name`/`description` and invokes the skill when its triggers
+match.
+
+### Invocation patterns
+
+Skills are triggered in one of two ways:
+
+- **Slash-invoked** — the user types `/skill-name` (or the skill's host maps
+  it to an explicit command). Use for procedures the user explicitly opts
+  into.
+- **Natural-language-triggered (NL-trigger)** — the agent decides to invoke
+  the skill based on conversational cues that match the skill's `When to
+  invoke` section. No slash command; the skill's SKILL.md must supply both
+  positive triggers (phrasings that should invoke) and anti-patterns (`When
+  NOT to invoke`) so the agent can calibrate.
+
+NL-triggered skills must document:
+
+1. **When to invoke** — concrete NL phrasings with examples.
+2. **When NOT to invoke** — anti-patterns the agent should recognize.
+3. **Structured output shape** — JSON the skill returns so callers can act
+   on it without reparsing prose.
+4. **Refusal conditions** — the specific error states the skill surfaces
+   (e.g. ambiguous intent, missing preconditions, already-running) and the
+   error codes it emits.
+
+### Current skills
+
+| Skill | Invocation | Purpose |
+|-------|-----------|---------|
+| [`skills/orch-invoke/SKILL.md`](skills/orch-invoke/SKILL.md) | NL-trigger | Resolve a user's intent to run an existing plan → GitHub issue + slug, validate the plan has dep annotations and is not already running, launch `scripts/orch-run.sh <slug> --issue N --background`, and return `{slug, issue, pid, events_path, state_path}`. Refuses on ambiguous intent, missing deps, or duplicate runs. |
+
+---
+
 ## Working Conventions
 
 ### Operating mode (read first every session)

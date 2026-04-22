@@ -1,0 +1,27 @@
+[
+  {
+    "number": 213,
+    "title": "plan: 20260422-orch-invoke-skill (NL-intent orchestrator launcher)",
+    "labels": [{ "name": "plan:active" }]
+  },
+  {
+    "number": 214,
+    "title": "plan: 20260422-orch-events (structured events + state layout)",
+    "labels": [{ "name": "plan:draft" }]
+  },
+  {
+    "number": 209,
+    "title": "plan: 20260421-orch-harness-migration",
+    "labels": [{ "name": "plan:active" }]
+  },
+  {
+    "number": 206,
+    "title": "plan: 20260420-orch-tui-migration (workers become background; TUI attaches)",
+    "labels": [{ "name": "plan:draft" }]
+  },
+  {
+    "number": 180,
+    "title": "plan: 20260410-canon-demo-flow (user-facing demo walkthrough)",
+    "labels": [{ "name": "plan:draft" }]
+  }
+]
