@@ -14,13 +14,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# shellcheck source=orch-state.sh
+# shellcheck source=orch-state.sh disable=SC1091
 source "${SCRIPT_DIR}/orch-state.sh"
 
-# shellcheck source=agent-shim.sh
+# shellcheck source=agent-shim.sh disable=SC1091
 source "${SCRIPT_DIR}/agent-shim.sh"
 
-# shellcheck source=providers/provider.sh
+# shellcheck source=providers/provider.sh disable=SC1091
 source "${SCRIPT_DIR}/providers/provider.sh"
 
 # --- Parse args ---
@@ -262,6 +262,7 @@ spawn_worker() {
   # Build agent command using shim helper (handles Codex exec pattern)
   local cmd_template agent_cmd_str
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+  # shellcheck disable=SC2016  # literal $(cat '...') is intended for tmux shell
   agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
