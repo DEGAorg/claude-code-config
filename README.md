@@ -8,6 +8,8 @@ Opinionated defaults, documentation, and workflows for AI coding agents. Works w
 
 That's it. The agent fetches the install instructions and runs the full setup autonomously — including Canon TUI for visualization. See **[INSTALL.md](INSTALL.md)** for manual setup and details.
 
+**Updating:** Tell your agent `update dega core` (or `update core` / `upgrade dega core`), or run `/core-update`. The agent re-runs `INSTALL.md` against the current project — re-running the installer is the supported update path. It short-circuits when you're already on the latest `main` and reports a diff of changed files under `.claude/` when it does update.
+
 ### Multi-agent support
 
 The orchestrator, planner, and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
@@ -47,7 +49,7 @@ The orchestrator, planner, and all hooks run identically under any supported age
 
 | Path | Purpose |
 |------|---------|
-| `commands/` | Global slash commands (`/apply-core`, `/canon-init`, `/core-init`, `/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
+| `commands/` | Global slash commands (`/apply-core`, `/core-update`, `/canon-init`, `/core-init`, `/fix-issue`, `/review-pr`, `/plan`, `/cleanup`, `/doc-garden`) |
 | `hooks/` | Hook scripts for lifecycle events (PreToolUse, PostToolUse, Stop) |
 | `skills/` | Core skills (app-legibility, custom-linter-authoring, sound-notifications) |
 | `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
