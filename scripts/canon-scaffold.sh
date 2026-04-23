@@ -11,7 +11,7 @@
 set -euo pipefail
 
 REPO="DEGAorg/claude-code-config"
-BRANCH="develop"
+BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 
 FORCE=false
