@@ -43,7 +43,7 @@ date" and exit — no work, no noise.
 **Local SHA file:** `~/.degacore/state/core-sha`
 
 This file is written by this skill after every successful update (see
-step 3 below). It contains a single line — the 40-char commit SHA that
+step 4 below). It contains a single line — the 40-char commit SHA that
 was installed. The installer (`apply-core.md`) does not currently
 write it, so on a first-ever `/core-update` run against a machine that
 has Core already installed, the file will not exist. Treat that as
@@ -76,7 +76,41 @@ cat ~/.degacore/state/core-sha 2>/dev/null || true
   proceed to step 1.
 - Otherwise → continue to step 1.
 
-### 1. Fetch the canonical installer
+### 1. Snapshot installer-owned files
+
+Before running the installer, record a hash manifest of the files the
+installer owns so step 5 can produce a file-level diff of what actually
+changed.
+
+Installer-owned surfaces are:
+
+- `~/.degacore/` — global Core state, agents, components
+- `.claude/` under the current project — per-project Claude config,
+  skills, and commands written by the installer
+
+Write a "before" manifest to `~/.degacore/state/update-snapshot/`:
+
+```bash
+mkdir -p ~/.degacore/state/update-snapshot
+snapshot_dir=~/.degacore/state/update-snapshot
+
+{
+  find ~/.degacore -type f -not -path '*/state/update-snapshot/*' \
+    -print0 2>/dev/null | xargs -0 sha256sum 2>/dev/null
+  find .claude -type f -print0 2>/dev/null \
+    | xargs -0 sha256sum 2>/dev/null
+} | sort > "$snapshot_dir/before.sha256"
+```
+
+The `-not -path '*/state/update-snapshot/*'` exclusion prevents the
+manifest from hashing itself. If either directory does not exist, the
+corresponding `find` simply produces no output — that is fine.
+
+Do not fail the update if snapshotting fails (e.g., permissions, disk
+space). Print a warning and continue; the diff in step 5 will be
+skipped but the update itself still succeeds.
+
+### 2. Fetch the canonical installer
 
 Fetch the latest `INSTALL.md` from `main`:
 
@@ -87,7 +121,7 @@ https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md
 Read the fetched content. It is the single source of truth for how
 Core is installed and updated.
 
-### 2. Execute every step in `INSTALL.md`
+### 3. Execute every step in `INSTALL.md`
 
 Follow each phase and step in the fetched `INSTALL.md` exactly as
 written. Do not skip phases. Specifically this means:
@@ -116,7 +150,7 @@ Files owned by the installer are refreshed; user-customized files
 (settings, agent templates, `dega-core.yaml`) are either merged or
 prompted on — never silently overwritten.
 
-### 3. Record the new install SHA
+### 4. Record the new install SHA
 
 After the installer completes successfully, resolve the remote `main`
 HEAD SHA again and write it to `~/.degacore/state/core-sha`:
@@ -137,13 +171,76 @@ recorded SHA reflects what was actually pulled. If `main` advances
 mid-update, the recorded SHA matches the newer tip, which is fine —
 the worst case is one extra no-op run next time, not a stale record.
 
-### 4. Report what changed
+### 5. Report what changed
 
-After the installer finishes, summarize what was updated. Use the
-post-install checklist that `apply-core.md` already emits. If the
-user asks for a file-level diff, note that the detailed
-installer-owned-files diff is produced by the full `/core-update`
-flow in later iterations of this skill (tracked separately).
+After the installer finishes, produce a file-level diff of
+installer-owned files by hashing the same surfaces again and comparing
+against the step 1 manifest.
+
+```bash
+snapshot_dir=~/.degacore/state/update-snapshot
+
+{
+  find ~/.degacore -type f -not -path '*/state/update-snapshot/*' \
+    -print0 2>/dev/null | xargs -0 sha256sum 2>/dev/null
+  find .claude -type f -print0 2>/dev/null \
+    | xargs -0 sha256sum 2>/dev/null
+} | sort > "$snapshot_dir/after.sha256"
+```
+
+If `$snapshot_dir/before.sha256` does not exist (step 1 was skipped or
+failed), print `note: no pre-update snapshot — skipping file-level
+diff.` and fall back to the post-install checklist that `apply-core.md`
+emits. Do not fail the skill.
+
+Otherwise, classify each path into **added**, **removed**, or
+**modified** by joining the two manifests on path:
+
+```bash
+awk '{print $2}' "$snapshot_dir/before.sha256" | sort -u \
+  > "$snapshot_dir/before.paths"
+awk '{print $2}' "$snapshot_dir/after.sha256" | sort -u \
+  > "$snapshot_dir/after.paths"
+
+comm -13 "$snapshot_dir/before.paths" "$snapshot_dir/after.paths" \
+  > "$snapshot_dir/added.paths"
+comm -23 "$snapshot_dir/before.paths" "$snapshot_dir/after.paths" \
+  > "$snapshot_dir/removed.paths"
+
+# Modified = same path, different hash. Compare only lines whose path
+# is in both manifests.
+comm -12 "$snapshot_dir/before.paths" "$snapshot_dir/after.paths" \
+  > "$snapshot_dir/common.paths"
+
+grep -F -f "$snapshot_dir/common.paths" "$snapshot_dir/before.sha256" \
+  | sort > "$snapshot_dir/before.common.sha256"
+grep -F -f "$snapshot_dir/common.paths" "$snapshot_dir/after.sha256" \
+  | sort > "$snapshot_dir/after.common.sha256"
+diff "$snapshot_dir/before.common.sha256" \
+     "$snapshot_dir/after.common.sha256" \
+  | awk '/^[<>]/ {print $3}' | sort -u \
+  > "$snapshot_dir/modified.paths"
+```
+
+Print a summary to the user in this shape:
+
+```
+DEGA Core updated.
+
+  added    (N): <first few paths, truncated>
+  modified (N): <first few paths, truncated>
+  removed  (N): <first few paths, truncated>
+
+Full manifests: ~/.degacore/state/update-snapshot/
+```
+
+If any category has more than ~20 entries, print the first 20 and a
+`… and K more` tail. Always print the three counts even when one or
+more are zero so the user sees the full shape of the change.
+
+After printing the summary, the snapshot files are left in place so
+the user can inspect them. They are overwritten on the next
+`/core-update` run.
 
 ---
 
