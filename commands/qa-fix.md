@@ -103,8 +103,9 @@ finding location, evidence, and suggested fix — use them as your primary
 context. If the fix requires understanding more of the codebase, read the
 surrounding code before changing anything.
 
-After all items pass review, the verifier re-runs the QA check command
-for each severity tier to confirm the findings are gone.
+After all items pass review, the verifier runs a **full `/qa-review`** on the
+entire codebase — not just the changed files. This catches regressions where
+fixing one finding breaks something that was previously passing.
 
 ## Progress log
 
@@ -126,8 +127,10 @@ After all items, append:
 
 ## Completion criteria
 
-- [ ] No CRITICAL findings in re-run: `grep -c "\[CRITICAL\]" qa-reports/.latest-qa-fix/MASTER.md` returns 0
-- [ ] No HIGH findings in re-run: `grep -c "\[HIGH\]" qa-reports/.latest-qa-fix/MASTER.md` returns 0
+- [ ] Full QA re-run passes: run `/qa-review full` on the entire codebase — overall result must be PASS or WARN (not FAIL). A scoped re-check is NOT sufficient; fixing one issue can introduce regressions in areas that previously passed.
+- [ ] Overall CRITICAL count = 0 in the new MASTER.md
+- [ ] Overall HIGH count = 0 in the new MASTER.md
+- [ ] No new findings introduced that were not present in the original report
 - [ ] Full test suite passes: run the project check command from dega-core.yaml
 - [ ] No linting errors introduced by fixes
 
@@ -142,30 +145,44 @@ Run this after each item to validate changes don't break existing behavior:
 
 ## 4. Write Re-verification Trigger
 
-After the orchestrator finishes all items, the completion criteria include
-re-running QA. To support this, write a small helper file:
+After the orchestrator finishes all items, the verifier runs a full QA pass.
+Write this helper so the verifier can invoke it as a shell check:
 
 ```bash
 cat > "$PLAN_DIR/recheck.sh" << 'EOF'
 #!/usr/bin/env bash
-# Re-run QA scoped to files changed by this fix plan.
+# Full QA re-run after all fixes are applied.
 # Called by the verifier as part of completion criteria.
+# Runs the ENTIRE QA team — not scoped — because fixing one finding
+# can cause regressions in areas that previously passed.
 set -euo pipefail
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-CHANGED=$(git diff HEAD --name-only 2>/dev/null | head -50)
-if [[ -z "$CHANGED" ]]; then
-  echo "No changed files detected — run /qa-review manually"
-  exit 0
-fi
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 REPORT_DIR="$REPO_ROOT/qa-reports/$TIMESTAMP"
+ORIGINAL_REPORT="$1"  # path to original MASTER.md passed as argument
+
 mkdir -p "$REPORT_DIR"
-echo "$TIMESTAMP" > "$REPO_ROOT/qa-reports/.latest-qa-fix"
-echo "Re-check scope: $CHANGED" > "$REPORT_DIR/RUN_INFO.txt"
-echo "Run /qa-review changed to verify fixes"
+echo "$TIMESTAMP" > "$REPO_ROOT/qa-reports/.latest"
+echo "QA re-verification (full run)" > "$REPORT_DIR/RUN_INFO.txt"
+echo "Original report: $ORIGINAL_REPORT" >> "$REPORT_DIR/RUN_INFO.txt"
+
+echo "Running full /qa-review..."
+echo "REPORT_DIR=$REPORT_DIR"
+echo "This triggers the qa-leader with scope=full — all agents, full codebase."
+echo ""
+echo "Once complete, check:"
+echo "  Overall result in $REPORT_DIR/MASTER.md must be PASS or WARN"
+echo "  grep -c '\[CRITICAL\]' $REPORT_DIR/MASTER.md  → must be 0"
+echo "  grep -c '\[HIGH\]' $REPORT_DIR/MASTER.md      → must be 0"
 EOF
 chmod +x "$PLAN_DIR/recheck.sh"
 ```
+
+The verifier runs this script, then spawns `/qa-review full` and evaluates
+the new `MASTER.md`. If the new run has any CRITICAL or HIGH findings —
+whether they are from the original list or newly introduced — it reports FAIL
+and the orchestrator routes the new findings back to workers.
 
 ---
 
