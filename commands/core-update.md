@@ -33,6 +33,49 @@ that re-executes the install flow pointed at the current `main` of
 
 ## Steps
 
+### 0. Short-circuit if already up to date
+
+Before fetching or running anything, compare the locally-recorded
+install SHA against the remote `main` HEAD of
+`DEGAorg/claude-code-config`. If they match, report "already up to
+date" and exit — no work, no noise.
+
+**Local SHA file:** `~/.degacore/state/core-sha`
+
+This file is written by this skill after every successful update (see
+step 3 below). It contains a single line — the 40-char commit SHA that
+was installed. The installer (`apply-core.md`) does not currently
+write it, so on a first-ever `/core-update` run against a machine that
+has Core already installed, the file will not exist. Treat that as
+"unknown local SHA" and proceed with the update unconditionally — the
+post-update step will create the file so subsequent runs can
+short-circuit.
+
+**Resolve remote SHA:**
+
+```bash
+gh api repos/DEGAorg/claude-code-config/commits/main --jq .sha
+```
+
+If `gh` is not available or the call fails (offline, rate-limited,
+auth missing), do not short-circuit — proceed with the update and let
+the installer's own error handling surface any real problem. A
+missing remote SHA is not a reason to block an update the user
+explicitly asked for.
+
+**Resolve local SHA:**
+
+```bash
+cat ~/.degacore/state/core-sha 2>/dev/null || true
+```
+
+**Compare:**
+
+- If both SHAs are non-empty and equal → print
+  `DEGA Core is already up to date (SHA: <sha>).` and stop. Do not
+  proceed to step 1.
+- Otherwise → continue to step 1.
+
 ### 1. Fetch the canonical installer
 
 Fetch the latest `INSTALL.md` from `main`:
@@ -73,7 +116,28 @@ Files owned by the installer are refreshed; user-customized files
 (settings, agent templates, `dega-core.yaml`) are either merged or
 prompted on — never silently overwritten.
 
-### 3. Report what changed
+### 3. Record the new install SHA
+
+After the installer completes successfully, resolve the remote `main`
+HEAD SHA again and write it to `~/.degacore/state/core-sha`:
+
+```bash
+mkdir -p ~/.degacore/state
+gh api repos/DEGAorg/claude-code-config/commits/main --jq .sha \
+  > ~/.degacore/state/core-sha
+```
+
+This is what enables the step 0 short-circuit on the next run. If
+`gh` is unavailable, skip writing the file — the next run will simply
+re-update unconditionally, which is safe because install is
+idempotent.
+
+Resolve the SHA *after* the installer runs (not before), so the
+recorded SHA reflects what was actually pulled. If `main` advances
+mid-update, the recorded SHA matches the newer tip, which is fine —
+the worst case is one extra no-op run next time, not a stale record.
+
+### 4. Report what changed
 
 After the installer finishes, summarize what was updated. Use the
 post-install checklist that `apply-core.md` already emits. If the
