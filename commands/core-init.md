@@ -273,7 +273,7 @@ grep -q '^github:' dega-core.yaml
 **If it does not exist:** fetch the minimal template from GitHub:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/docs/core-init-agent-template.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/docs/core-init-agent-template.md
 ```
 
 Write the fetched content to `AGENTS.md` in the current directory.

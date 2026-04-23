@@ -54,7 +54,7 @@ mkdir -p .canon .claude/commands
 Fetch the `/canon-start` command so it's available when the agent starts:
 
 ```bash
-curl -sfL "https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/canon/commands/canon-start.md" \
+curl -sfL "https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/canon/commands/canon-start.md" \
   -o .claude/commands/canon-start.md
 ```
 
