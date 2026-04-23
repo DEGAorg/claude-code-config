@@ -87,6 +87,19 @@ Files available:
 - `scripts/planner-loop.sh`
 - `agents/planner-assess.md`
 - `agents/planner-writer.md`
+- `agents/qa-leader.md`
+- `agents/qa-automation.md`
+- `agents/qa-api.md`
+- `agents/qa-security.md`
+- `agents/qa-infra.md`
+- `agents/qa-ui.md`
+- `agents/qa-manual.md`
+- `agents/qa-performance.md`
+- `agents/qa-data.md`
+- `agents/qa-a11y.md`
+- `commands/qa-review.md`
+- `commands/qa-fix.md`
+- `skills/qa-standards.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -284,6 +297,15 @@ Components:
   Requires Orchestrator. Invoke via
   `~/.degacore/scripts/planner-loop.sh`.
   (opt-in; recommended when `~/.degacore/scripts/planner-loop.sh` is missing)
+- **QA Team** — 10 specialist QA agents + shared standards + `/qa-review` and `/qa-fix`
+  commands. Covers automation, API, security, infra, UI, manual, performance,
+  data/schema, and accessibility. `/qa-review` runs the full team and produces
+  a priority-flagged `MASTER.md`. `/qa-fix` converts findings into an
+  orchestrator execution plan so dev agents fix each issue.
+  Installs agents to `~/.degacore/config/agents/`, commands to
+  `~/.degacore/config/commands/`, and the shared skill to
+  `~/.degacore/config/skills/`.
+  (recommended when `~/.degacore/config/agents/qa-leader.md` is missing)
 - **Canon Bootstrap** — launcher, scaffold scripts, and CLI for Canon
   prediction market projects. Installs `canon-scaffold.sh` (deterministic
   project scaffolder called by `/canon-start`), `canon.sh` (reference copy
@@ -529,6 +551,29 @@ Write the agent prompts:
 Safe to overwrite — these are engine scripts and agent definitions with no
 user customization.
 
+#### QA Team
+
+Write each agent to `~/.degacore/config/agents/`:
+- `agents/qa-leader.md` -> `~/.degacore/config/agents/qa-leader.md`
+- `agents/qa-automation.md` -> `~/.degacore/config/agents/qa-automation.md`
+- `agents/qa-api.md` -> `~/.degacore/config/agents/qa-api.md`
+- `agents/qa-security.md` -> `~/.degacore/config/agents/qa-security.md`
+- `agents/qa-infra.md` -> `~/.degacore/config/agents/qa-infra.md`
+- `agents/qa-ui.md` -> `~/.degacore/config/agents/qa-ui.md`
+- `agents/qa-manual.md` -> `~/.degacore/config/agents/qa-manual.md`
+- `agents/qa-performance.md` -> `~/.degacore/config/agents/qa-performance.md`
+- `agents/qa-data.md` -> `~/.degacore/config/agents/qa-data.md`
+- `agents/qa-a11y.md` -> `~/.degacore/config/agents/qa-a11y.md`
+
+Write each command to `~/.degacore/config/commands/`:
+- `commands/qa-review.md` -> `~/.degacore/config/commands/qa-review.md`
+- `commands/qa-fix.md` -> `~/.degacore/config/commands/qa-fix.md`
+
+Write the shared skill to `~/.degacore/config/skills/`:
+- `skills/qa-standards.md` -> `~/.degacore/config/skills/qa-standards.md`
+
+Safe to overwrite — these are agent prompts and commands with no user customization.
+
 #### Canon Bootstrap
 
 Write each file to `~/.degacore/scripts/`:
@@ -772,6 +817,7 @@ Installed to ~/.degacore/:
   Terminal UI -> scripts/terminal-ui/ (built with pnpm)
   Orchestrator -> scripts/orch-*.sh + config/agents/ + scripts/hooks/
   Planner -> scripts/planner-loop.sh + config/agents/
+  QA Team -> config/agents/qa-*.md + config/commands/qa-*.md + config/skills/qa-standards.md
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
   Canon CLI -> canon-cli/ (built) + bin/canon-cli (linked)
 
