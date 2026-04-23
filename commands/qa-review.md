@@ -109,6 +109,8 @@ QA RESULT: FAIL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Findings: 1 CRITICAL · 3 HIGH · 7 MEDIUM · 4 LOW
 Report:   qa-reports/20260422-143022/MASTER.md
+
+Next: run /qa-fix to convert findings into a dev execution plan
 ```
 
 ## 5. Archive Tracking
