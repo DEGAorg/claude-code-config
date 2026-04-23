@@ -111,12 +111,14 @@ Files available:
 - `canon/cli/canon-cli.ts`
 - `canon/cli/output.ts`
 - `canon/cli/auth.ts`
+- `canon/cli/wallet-store.ts`
 - `canon/cli/commands/market.ts`
 - `canon/cli/commands/position.ts`
 - `canon/cli/commands/balance.ts`
 - `canon/cli/commands/order.ts`
 - `canon/cli/commands/kill.ts`
 - `canon/cli/commands/onboard.ts`
+- `canon/cli/commands/wallet.ts`
 - `canon/cli/commands/help.ts`
 - `canon/skills/canon-cli.md`
 - `canon/skills/polymarket.md`
@@ -574,12 +576,14 @@ Write each source file to `~/.degacore/canon-cli/`:
 - `canon/cli/canon-cli.ts` -> `~/.degacore/canon-cli/canon-cli.ts`
 - `canon/cli/output.ts` -> `~/.degacore/canon-cli/output.ts`
 - `canon/cli/auth.ts` -> `~/.degacore/canon-cli/auth.ts`
+- `canon/cli/wallet-store.ts` -> `~/.degacore/canon-cli/wallet-store.ts`
 - `canon/cli/commands/market.ts` -> `~/.degacore/canon-cli/commands/market.ts`
 - `canon/cli/commands/position.ts` -> `~/.degacore/canon-cli/commands/position.ts`
 - `canon/cli/commands/balance.ts` -> `~/.degacore/canon-cli/commands/balance.ts`
 - `canon/cli/commands/order.ts` -> `~/.degacore/canon-cli/commands/order.ts`
 - `canon/cli/commands/kill.ts` -> `~/.degacore/canon-cli/commands/kill.ts`
 - `canon/cli/commands/onboard.ts` -> `~/.degacore/canon-cli/commands/onboard.ts`
+- `canon/cli/commands/wallet.ts` -> `~/.degacore/canon-cli/commands/wallet.ts`
 - `canon/cli/commands/help.ts` -> `~/.degacore/canon-cli/commands/help.ts`
 
 Write the agent discovery skills:
