@@ -593,14 +593,26 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
   write_heartbeat
 
+  # Ship steps 4-7 run inside the worktree (isolated checkout of
+  # orch/<slug>) rather than REPO_ROOT. Committing inside REPO_ROOT
+  # when it is behind origin produces stale-tree commits that silently
+  # drop files added by interim PRs on origin/main. The worktree always
+  # reflects the orch branch so its tree is consistent with what the PR
+  # will merge. Fall back to REPO_ROOT only if the worktree is absent.
+  if [[ -d "${WORKTREE_DIR}" ]]; then
+    SHIP_TARGET="${WORKTREE_DIR}"
+  else
+    SHIP_TARGET="${REPO_ROOT}"
+  fi
+
   # --- Step 4: Move plan from active/ to completed/ ---
-  COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
+  COMPLETED_DIR="${SHIP_TARGET}/docs/exec-plans/completed/${SLUG}"
   if [[ "${GH_SYNC}" == true ]]; then
     echo "orch-engine: [SHIP 4/9] skipped — GH mode (no local plan move)"
   else
-    ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+    ACTIVE_PLAN_DIR="${SHIP_TARGET}/docs/exec-plans/active/${SLUG}"
     if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
-      mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+      mkdir -p "${SHIP_TARGET}/docs/exec-plans/completed"
       if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
         echo "orch-engine: [SHIP 4/9] moved plan to completed/"
       else
@@ -625,18 +637,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   else
     # Stage the deletion of active/ (already moved by step 4) and new completed/ dir.
     # Guard each path — step 4 may have partially failed or paths may not exist.
-    git -C "${REPO_ROOT}" rm -r --cached --ignore-unmatch \
+    git -C "${SHIP_TARGET}" rm -r --cached --ignore-unmatch \
       "docs/exec-plans/active/${SLUG}" 2>/dev/null || true
-    if [[ -d "${REPO_ROOT}/docs/exec-plans/completed/${SLUG}" ]]; then
-      git -C "${REPO_ROOT}" add "docs/exec-plans/completed/${SLUG}"
+    if [[ -d "${SHIP_TARGET}/docs/exec-plans/completed/${SLUG}" ]]; then
+      git -C "${SHIP_TARGET}" add "docs/exec-plans/completed/${SLUG}"
     fi
-    if git -C "${REPO_ROOT}" diff --cached --quiet; then
+    if git -C "${SHIP_TARGET}" diff --cached --quiet; then
       echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
     else
-      if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
+      # Allowlist matches only the active/<slug>/ and completed/<slug>/
+      # subtrees — any other staged path (e.g. a file deleted because of
+      # a stale-base mismatch) aborts the commit. Deletions under
+      # active/<slug>/ are expected because step 4 mv'd the directory,
+      # so ORCH_GUARDED_ALLOW_DELETIONS=1 is enabled for this step only.
+      if ORCH_GUARDED_ALLOW_DELETIONS=1 orch_guarded_commit \
+        "${SHIP_TARGET}" \
+        "orch: move ${SLUG} to completed" \
+        "docs/exec-plans/active/${SLUG}/*" \
+        "docs/exec-plans/completed/${SLUG}/*"; then
         echo "orch-engine: [SHIP 5/9] committed plan move"
       else
-        echo "orch-engine: ERROR — git commit failed for plan move" >&2
+        echo "orch-engine: ERROR — guarded commit failed for plan move" >&2
         SHIP_ERRORS=$((SHIP_ERRORS + 1))
       fi
     fi
@@ -649,12 +670,15 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   if [[ "${GH_SYNC}" == true ]]; then
     echo "orch-engine: [SHIP 6/9] skipped — GH mode (issues are the registry)"
   else
-    if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+    if ORCH_REPO_ROOT="${SHIP_TARGET}" \
+      orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
       # Commit registry update
-      git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
-      if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-        if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
-          echo "orch-engine: ERROR — git commit failed for registry update" >&2
+      git -C "${SHIP_TARGET}" add "docs/exec-plans/REGISTRY.md"
+      if ! git -C "${SHIP_TARGET}" diff --cached --quiet; then
+        if ! orch_guarded_commit "${SHIP_TARGET}" \
+          "orch: update plan registry for ${SLUG}" \
+          "docs/exec-plans/REGISTRY.md"; then
+          echo "orch-engine: ERROR — guarded commit failed for registry update" >&2
           SHIP_ERRORS=$((SHIP_ERRORS + 1))
         fi
       fi
@@ -673,15 +697,18 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
     PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
   fi
   if [[ -n "${PLAN_TITLE}" ]]; then
-    if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
-      git -C "${REPO_ROOT}" add "CHANGELOG.md"
-      if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-        if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update changelog for ${SLUG}"; then
-          echo "orch-engine: ERROR — git commit failed for changelog update" >&2
+    if ORCH_REPO_ROOT="${SHIP_TARGET}" orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
+      git -C "${SHIP_TARGET}" add "CHANGELOG.md"
+      if git -C "${SHIP_TARGET}" diff --cached --quiet; then
+        echo "orch-engine: [SHIP 7/9] changelog unchanged — nothing to commit"
+      else
+        if orch_guarded_commit "${SHIP_TARGET}" "orch: update changelog for ${SLUG}" "CHANGELOG.md"; then
+          echo "orch-engine: [SHIP 7/9] appended to changelog"
+        else
+          echo "orch-engine: ERROR — guarded commit failed for changelog update" >&2
           SHIP_ERRORS=$((SHIP_ERRORS + 1))
         fi
       fi
-      echo "orch-engine: [SHIP 7/9] appended to changelog"
     else
       echo "orch-engine: WARN — changelog append failed (non-fatal)"
     fi
