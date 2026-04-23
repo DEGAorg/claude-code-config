@@ -13,7 +13,7 @@ detected agent's config directory (`~/.<agent>/` — e.g. `.claude`, `.gemini`, 
 All files are fetched from:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/
 ```
 
 Files available:
@@ -549,7 +549,7 @@ Instead of fetching files individually, use `gh` to download the directory:
 rm -rf ~/.degacore/canon/templates
 mkdir -p ~/.degacore/canon
 cd /tmp && rm -rf _canon_tpl && mkdir _canon_tpl && cd _canon_tpl
-gh api repos/DEGAorg/claude-code-config/tarball/develop \
+gh api repos/DEGAorg/claude-code-config/tarball/main \
   --header 'Accept: application/vnd.github+json' > repo.tar.gz
 tar xzf repo.tar.gz --strip-components=1
 cp -R canon/templates ~/.degacore/canon/templates
@@ -725,7 +725,7 @@ After completing the user's selections, also install this command itself to
 `~/.degacore/config/commands/apply-core.md` by fetching:
 
 ```
-https://raw.githubusercontent.com/DEGAorg/claude-code-config/develop/commands/apply-core.md
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/commands/apply-core.md
 ```
 
 Then copy it into each detected agent's commands directory:
