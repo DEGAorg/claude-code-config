@@ -423,7 +423,18 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
     orch_write_state "${SLUG}" "${updated}"
 
-    if GH_SYNC="${GH_SYNC}" "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
+    # Phase-level watchdog — bounds the whole verify phase. If exceeded,
+    # the verifier process is killed with SIGTERM (rc=124) and the run
+    # fails cleanly with a log line naming the blocking criterion.
+    ORCH_VERIFY_PHASE_TIMEOUT="${ORCH_VERIFY_PHASE_TIMEOUT:-300}"
+
+    set +e
+    GH_SYNC="${GH_SYNC}" timeout "${ORCH_VERIFY_PHASE_TIMEOUT}" \
+      "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"
+    verify_rc=$?
+    set -e
+
+    if [[ "${verify_rc}" -eq 0 ]]; then
       # Verifier succeeded — re-check criteria
       CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
       if [[ "${CC_AFTER}" -gt 0 ]]; then
@@ -447,8 +458,34 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					 .updatedAt = $now' "${ORCH_STATE_FILE}")
         orch_write_state "${SLUG}" "${updated}"
       fi
+    elif [[ "${verify_rc}" -eq 124 ]]; then
+      # Phase timeout — extract the last criterion we saw running from
+      # verify.log so the operator knows what's hanging.
+      blocking=""
+      if [[ -f "${LOG_DIR}/verify.log" ]]; then
+        blocking=$(grep -E '] RUN: ' "${LOG_DIR}/verify.log" | tail -n 1 | sed -E 's/^\[[^]]+\] RUN: //' || true)
+      fi
+      echo "orch-engine: verify phase exceeded ${ORCH_VERIFY_PHASE_TIMEOUT}s — failing with phase_timeout" >&2
+      if [[ -n "${blocking}" ]]; then
+        echo "orch-engine: blocking criterion: ${blocking}" >&2
+      else
+        echo "orch-engine: blocking criterion: (unknown — no RUN entry in verify.log)" >&2
+      fi
+      now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      updated=$(jq \
+        --arg now "${now}" \
+        --arg reason "phase_timeout" \
+        --arg blocking "${blocking}" \
+        --argjson timeout "${ORCH_VERIFY_PHASE_TIMEOUT}" \
+        '.verification.status = "failed" |
+				 .verification.reason = $reason |
+				 .verification.blockingCriterion = $blocking |
+				 .verification.phaseTimeoutSeconds = $timeout |
+				 .updatedAt = $now' "${ORCH_STATE_FILE}")
+      orch_write_state "${SLUG}" "${updated}"
+      REVIEW_RESULT="REVISE"
     else
-      echo "orch-engine: verifier failed — REVISE"
+      echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE"
       now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
       updated=$(jq \
         --arg now "${now}" \
