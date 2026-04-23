@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { AuthError, getPrivateKey, requireAuth } from "../auth.js";
 
 describe("getPrivateKey", () => {
@@ -29,9 +32,14 @@ describe("getPrivateKey", () => {
 
 describe("requireAuth", () => {
   let originalKey: string | undefined;
+  let originalCwd: string;
+  let tmpRoot: string;
 
   beforeEach(() => {
     originalKey = process.env["POLYMARKET_PRIVATE_KEY"];
+    originalCwd = process.cwd();
+    tmpRoot = mkdtempSync(join(tmpdir(), "canon-auth-test-"));
+    process.chdir(tmpRoot);
   });
 
   afterEach(() => {
@@ -40,6 +48,8 @@ describe("requireAuth", () => {
     } else {
       process.env["POLYMARKET_PRIVATE_KEY"] = originalKey;
     }
+    process.chdir(originalCwd);
+    rmSync(tmpRoot, { recursive: true, force: true });
   });
 
   it("returns the key when set", () => {
@@ -70,6 +80,25 @@ describe("requireAuth", () => {
     delete process.env["POLYMARKET_PRIVATE_KEY"];
     expect(() => requireAuth("balance")).toThrow(
       /Read-only commands/,
+    );
+  });
+
+  it("falls back to the project-local wallet store when env is unset", () => {
+    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    mkdirSync(join(tmpRoot, ".canon"), { recursive: true });
+    const storedKey = "0x" + "c".repeat(64);
+    writeFileSync(
+      join(tmpRoot, ".canon", "wallet.env"),
+      `POLYMARKET_PRIVATE_KEY=${storedKey}\n`,
+      { mode: 0o600 },
+    );
+    expect(requireAuth("order create")).toBe(storedKey);
+  });
+
+  it("suggests running 'canon-cli wallet ensure' when no wallet exists", () => {
+    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    expect(() => requireAuth("order create")).toThrow(
+      /canon-cli wallet ensure/,
     );
   });
 });

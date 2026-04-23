@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "canon-templates": "file:../templates",
+    "ethers": "5.8.0",
     "pmxtjs": "2.22.1"
   },
   "devDependencies": {
