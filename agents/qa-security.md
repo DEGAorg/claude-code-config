@@ -69,12 +69,10 @@ git grep -l "password\|api_key\|secret\|token" HEAD 2>/dev/null | grep -v "test\
 npm audit --audit-level=low 2>/dev/null | tail -30
 npx better-npm-audit audit 2>/dev/null | tail -20
 
-# Python
-pip-audit 2>/dev/null | tail -20
-# or
-python3 -m pip_audit 2>/dev/null | tail -20
-# or with uv
-uv run pip-audit 2>/dev/null | tail -20
+# Python (use first available tool)
+pip-audit 2>/dev/null | tail -20 || \
+  python3 -m pip_audit 2>/dev/null | tail -20 || \
+  uv run pip-audit 2>/dev/null | tail -20
 
 # Rust
 cargo audit 2>/dev/null | tail -20
@@ -96,7 +94,7 @@ rg "f['\"]SELECT|f['\"]INSERT|f['\"]UPDATE|f['\"]DELETE" --type py 2>/dev/null |
 rg "format\(.*SELECT|%.*SELECT" --type py 2>/dev/null | head -10
 
 # NoSQL injection
-rg "\$where|\$regex.*req\.\|find\(\s*req\." --type js --type ts 2>/dev/null | head -10
+rg '(\$where|\$regex.*req\.|find\(\s*req\.)' --type js --type ts 2>/dev/null | head -10
 
 # OS command injection
 rg "(exec|spawn|system|popen|subprocess)\s*\(\s*(req\.|user|input|params|query)" \
@@ -104,7 +102,7 @@ rg "(exec|spawn|system|popen|subprocess)\s*\(\s*(req\.|user|input|params|query)"
 
 # SSTI — template injection
 rg "(render_template_string|\.render\(|jinja2\.Template\()" --type py 2>/dev/null | head -10
-rg "res\.render\s*\(.*req\.\|template\s*=.*req\." --type ts --type js 2>/dev/null | head -10
+rg '(res\.render\s*\(.*req\.|template\s*=.*req\.)' --type ts --type js 2>/dev/null | head -10
 
 # Path traversal
 rg "(path\.join|readFile|sendFile|res\.sendFile).*req\.(params|query|body)" \
@@ -138,7 +136,7 @@ rg "(csrf|csurf|CSRF)" --type ts --type js --type py 2>/dev/null | head -10
 
 ```bash
 # React / JSX — dangerouslySetInnerHTML
-rg "dangerouslySetInnerHTML" --type tsx --type jsx 2>/dev/null | head -10
+rg "dangerouslySetInnerHTML" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Angular — [innerHTML] bypass
 rg "\[innerHTML\]" 2>/dev/null | head -10
@@ -177,7 +175,7 @@ rg "(fetch|axios|requests\.get|http\.get)\s*\(\s*(req\.|request\.|params\.|query
   --type ts --type js --type py 2>/dev/null | head -15
 
 # Open redirects
-rg "(res\.redirect|window\.location|location\.href)\s*.*req\.\|redirect\s*\(.*request\." \
+rg '(res\.redirect|window\.location|location\.href)\s*.*req\.|redirect\s*\(.*request\.' \
   --type ts --type js --type py 2>/dev/null | head -10
 ```
 
@@ -185,16 +183,18 @@ rg "(res\.redirect|window\.location|location\.href)\s*.*req\.\|redirect\s*\(.*re
 
 ```bash
 # Check security headers
-curl -sI $BASE_URL 2>/dev/null | grep -iE "(strict-transport|x-content-type|x-frame|content-security|x-xss|referrer-policy)"
+curl -sI "$BASE_URL" 2>/dev/null | grep -iE "(strict-transport|x-content-type|x-frame|content-security|x-xss|referrer-policy)"
 
 # Missing HSTS
-curl -sI $BASE_URL 2>/dev/null | grep -i "strict-transport" || echo "MISSING: Strict-Transport-Security"
+curl -sI "$BASE_URL" 2>/dev/null | grep -i "strict-transport" || echo "MISSING: Strict-Transport-Security"
 # Missing CSP
-curl -sI $BASE_URL 2>/dev/null | grep -i "content-security-policy" || echo "MISSING: Content-Security-Policy"
+curl -sI "$BASE_URL" 2>/dev/null | grep -i "content-security-policy" || echo "MISSING: Content-Security-Policy"
 # Missing X-Frame-Options or CSP frame-ancestors
-curl -sI $BASE_URL 2>/dev/null | grep -iE "(x-frame-options|frame-ancestors)" || echo "MISSING: X-Frame-Options"
+curl -sI "$BASE_URL" 2>/dev/null | grep -iE "(x-frame-options|frame-ancestors)" || echo "MISSING: X-Frame-Options"
 # X-Content-Type-Options
-curl -sI $BASE_URL 2>/dev/null | grep -i "x-content-type" || echo "MISSING: X-Content-Type-Options"
+curl -sI "$BASE_URL" 2>/dev/null | grep -i "x-content-type" || echo "MISSING: X-Content-Type-Options"
+# Permissions-Policy
+curl -sI "$BASE_URL" 2>/dev/null | grep -i "permissions-policy" || echo "MISSING: Permissions-Policy"
 ```
 
 ### 9. Write Report

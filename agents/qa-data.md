@@ -40,7 +40,7 @@ find . -type d -name "migrations" -o -type d -name "migrate" -o -type d -name "d
 
 # Database config
 rg "(DATABASE_URL|DB_HOST|MONGODB_URI|REDIS_URL|PG_URI)" 2>/dev/null | head -10
-cat .env.example 2>/dev/null | grep -i "db\|database\|mongo\|redis\|postgres\|mysql\|sqlite"
+cat .env.example 2>/dev/null | grep -Ei "db|database|mongo|redis|postgres|mysql|sqlite"
 ```
 
 ### 2. Schema Integrity Audit
@@ -51,8 +51,16 @@ cat .env.example 2>/dev/null | grep -i "db\|database\|mongo\|redis\|postgres\|my
 cat $(find . -name "schema.prisma" 2>/dev/null | head -1) 2>/dev/null
 
 # Check for:
-# - Missing @id on all models
-rg "^model " $(find . -name "schema.prisma") 2>/dev/null -A 20 | grep -v "@id" | head -10
+# - Models missing @id (read each model block and check for presence of @id)
+python3 - << 'PYEOF'
+import re, sys, pathlib
+for f in pathlib.Path('.').rglob('schema.prisma'):
+    content = f.read_text()
+    models = re.findall(r'model\s+(\w+)\s*\{([^}]+)\}', content, re.DOTALL)
+    for name, body in models:
+        if '@id' not in body:
+            print(f"MISSING @id: model {name} in {f}")
+PYEOF
 
 # - Nullable fields that should be required
 rg "String\?" $(find . -name "schema.prisma") 2>/dev/null | head -20
@@ -86,21 +94,19 @@ For each migration file:
 
 ```bash
 # Destructive operations without backup/safeguards
-rg "(DROP TABLE|DROP COLUMN|TRUNCATE)" \
-  $(find . -path "*/migrations/*" 2>/dev/null | grep -v node_modules) 2>/dev/null | head -20
+rg "(DROP TABLE|DROP COLUMN|TRUNCATE)" --glob "*/migrations/*" 2>/dev/null | head -20
 
 # Column renames (can break running code if not atomic)
-rg "(RENAME COLUMN|renameColumn|rename_column)" \
-  $(find . -path "*/migrations/*" 2>/dev/null | grep -v node_modules) 2>/dev/null | head -10
+rg "(RENAME COLUMN|renameColumn|rename_column)" --glob "*/migrations/*" 2>/dev/null | head -10
 
 # Adding NOT NULL column without default (will fail on non-empty table)
-rg "NOT NULL" \
-  $(find . -path "*/migrations/*" 2>/dev/null | tail -20) 2>/dev/null | \
-  grep -v "DEFAULT\|ALTER COLUMN" | head -10
+# Note: grep -v "DEFAULT" only — do NOT exclude ALTER COLUMN; it's not a safe indicator
+rg "NOT NULL" --glob "*/migrations/*" 2>/dev/null | \
+  grep -v "DEFAULT" | head -10
 
 # Large table lock operations (will block production)
 rg "(ADD COLUMN|DROP COLUMN|ALTER COLUMN|CREATE INDEX(?! CONCURRENTLY))" \
-  $(find . -path "*/migrations/*" 2>/dev/null | grep -v node_modules) 2>/dev/null | head -20
+  --glob "*/migrations/*" 2>/dev/null | head -20
 
 # Irreversible migrations (down() missing or empty)
 find . -path "*/migrations/*" 2>/dev/null | grep -v node_modules | \
@@ -112,8 +118,13 @@ find . -path "*/migrations/*" 2>/dev/null | grep -v node_modules | wc -l
 
 ```bash
 # Unbounded queries (no limit/pagination)
-rg "(\.findMany\(\s*\{(?![^}]*take:)|\.all\(\)\s*$|SELECT \* FROM)" \
-  --type ts --type js --type py 2>/dev/null | grep -v "test\|spec" | head -20
+# Pattern 1: findMany() with no arguments at all
+rg "\.findMany\s*\(\s*\)" --type ts --type js 2>/dev/null | grep -v "test\|spec" | head -20
+# Pattern 2: .all() with no args
+rg "\.all\s*\(\s*\)\s*$" --type ts --type js --type py 2>/dev/null | grep -v "test\|spec" | head -10
+# Pattern 3: raw SELECT without LIMIT
+rg "SELECT \* FROM" --type ts --type js --type py 2>/dev/null | \
+  grep -v "LIMIT\|test\|spec" | head -10
 
 # Bulk operations without transactions
 rg "(for|forEach|map).*\.(create|update|delete|save)" \
@@ -210,8 +221,8 @@ Write `$REPORT_DIR/qa-data.md` following the template in `skills/qa-standards.md
 
 ## Rules
 
-- **DROP without DEFAULT guard is CRITICAL** — dropping a column from a live table
-  with running code is a production incident
+- **DROP COLUMN on live table is CRITICAL** — dropping a column while code still
+  references it causes an immediate production incident; coordinate with a deploy
 - **NOT NULL without DEFAULT on existing table is CRITICAL** — the migration will
   fail or corrupt data depending on the DB engine
 - **CREATE INDEX without CONCURRENTLY is HIGH** — it locks the table in Postgres;
