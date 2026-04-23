@@ -8,6 +8,7 @@ import { Workshop1Banner } from "./Workshop1Banner";
 import { Workshop2Banner } from "./Workshop2Banner";
 import { Workshop3Banner } from "./Workshop3Banner";
 import { Workshop4Banner } from "./Workshop4Banner";
+import { Workshop5Banner } from "./Workshop5Banner";
 import { colors, sizing, timing } from "./styles/theme";
 
 const { width, height, fps } = sizing;
@@ -113,6 +114,13 @@ export const RemotionRoot: React.FC = () => {
       <Still
         id="Workshop4Banner"
         component={Workshop4Banner}
+        width={1280}
+        height={720}
+      />
+
+      <Still
+        id="Workshop5Banner"
+        component={Workshop5Banner}
         width={1280}
         height={720}
       />
