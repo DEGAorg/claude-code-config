@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
-# Completion criteria verifier — spawns a verifier agent to execute and
-# check off unchecked completion criteria in plan.md.
+# Completion criteria verifier — runs each unchecked criterion directly in
+# shell and marks [x] in plan.md on pass.
 #
 # Called by orch-engine.sh after review returns SHIP but unchecked
-# completion criteria remain. The verifier runs tests, linters, etc.
-# and marks each criterion [x] if it passes.
+# completion criteria remain. Each criterion must contain a backtick-quoted
+# shell command (per rules/exec-plans.md); bullets without a command are
+# logged as "manual — cannot auto-verify" and left unchecked.
 #
 # Usage: scripts/orch-verify.sh <slug>
 #
+# Environment:
+#   ORCH_VERIFY_CRITERION_TIMEOUT  per-criterion timeout in seconds (default 60)
+#
 # Exit codes:
 #   0 — all criteria verified (PASS)
-#   1 — some criteria remain unchecked (FAIL)
+#   1 — some criteria remain unchecked or failed (FAIL)
 #
-# Requires: jq, agent CLI (claude/gemini/codex), tmux, orch-state.sh, agent-shim.sh
+# Requires: jq, timeout, orch-state.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# shellcheck source=orch-state.sh
+# shellcheck source=orch-state.sh disable=SC1091
 source "${SCRIPT_DIR}/orch-state.sh"
-# shellcheck source=agent-shim.sh
-source "${SCRIPT_DIR}/agent-shim.sh"
 
 SLUG="${1:-}"
 if [[ -z "${SLUG}" ]]; then
@@ -30,10 +32,11 @@ if [[ -z "${SLUG}" ]]; then
   exit 1
 fi
 
-PROMPT_TEMPLATE="${SCRIPT_DIR}/../agents/orch-verifier.md"
-
 # GH_SYNC flag — exported by orch-run.sh when github.sync is true
 GH_SYNC="${GH_SYNC:-false}"
+
+# Per-criterion timeout (default 60s)
+CRITERION_TIMEOUT="${ORCH_VERIFY_CRITERION_TIMEOUT:-60}"
 
 # Per-plan paths from orch-state.sh helpers
 ORCH_STATE_FILE=$(orch_plan_state_file "${SLUG}")
@@ -49,188 +52,176 @@ else
   PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
 fi
 
+PLAN_FILE="${PLAN_DIR}/plan.md"
+VERIFY_LOG="${LOG_DIR}/verify.log"
+
 if [[ ! -f "${ORCH_STATE_FILE}" ]]; then
   echo "error: state file not found: ${ORCH_STATE_FILE}" >&2
   exit 1
 fi
 
-if [[ ! -f "${PLAN_DIR}/plan.md" ]]; then
-  echo "error: plan not found: ${PLAN_DIR}/plan.md" >&2
+if [[ ! -f "${PLAN_FILE}" ]]; then
+  echo "error: plan not found: ${PLAN_FILE}" >&2
   exit 1
 fi
 
-if [[ ! -f "${PROMPT_TEMPLATE}" ]]; then
-  echo "error: verifier prompt template not found: ${PROMPT_TEMPLATE}" >&2
-  exit 1
+mkdir -p "${LOG_DIR}"
+
+# Working directory for criterion execution — prefer worktree
+VERIFY_CWD="${REPO_ROOT}"
+if [[ -d "${WORKTREE_DIR}" ]]; then
+  VERIFY_CWD="${WORKTREE_DIR}"
 fi
+
+log() {
+  local ts
+  ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  printf '[%s] %s\n' "${ts}" "$*" | tee -a "${VERIFY_LOG}"
+}
 
 # --- Extract unchecked completion criteria ---
+# awk tracks fenced code blocks (skipped) and the ## Completion criteria
+# section, emitting only unchecked bullets within that section.
 
-UNCHECKED_CRITERIA=$(awk '
-	/^```/ { fence = !fence; next }
-	fence { next }
-	/^## Completion criteria/ { capturing = 1; next }
-	capturing && /^## / { capturing = 0; next }
-	capturing && /^- \[ \]/ { print }
-' "${PLAN_DIR}/plan.md")
+extract_unchecked() {
+  awk '
+    /^```/ { fence = !fence; next }
+    fence { next }
+    /^## Completion criteria/ { capturing = 1; next }
+    capturing && /^## / { capturing = 0; next }
+    capturing && /^- \[ \]/ { print }
+  ' "${PLAN_FILE}"
+}
 
-if [[ -z "${UNCHECKED_CRITERIA}" ]]; then
-  echo "orch-verify: all completion criteria already checked — PASS"
+mapfile -t UNCHECKED_LINES < <(extract_unchecked)
+
+if [[ ${#UNCHECKED_LINES[@]} -eq 0 ]]; then
+  log "orch-verify: all completion criteria already checked — PASS"
+  NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  UPDATED=$(jq \
+    --arg now "${NOW}" \
+    '.verification.status = "passed" |
+     .verification.uncheckedCount = 0 |
+     .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${UPDATED}"
   exit 0
 fi
 
-UNCHECKED_COUNT=$(printf '%s\n' "${UNCHECKED_CRITERIA}" | wc -l | tr -d ' ')
-echo "orch-verify: ${UNCHECKED_COUNT} unchecked completion criteria found"
+UNCHECKED_COUNT=${#UNCHECKED_LINES[@]}
+log "orch-verify: ${UNCHECKED_COUNT} unchecked completion criteria found"
 
-# --- Update verification state ---
+# --- Update verification state → running ---
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 UPDATED=$(jq \
   --arg now "${NOW}" \
   --argjson count "${UNCHECKED_COUNT}" \
   '.verification.status = "running" |
-	 .verification.uncheckedCount = $count |
-	 .verification.iteration = ((.verification.iteration // 0) + 1) |
-	 .updatedAt = $now' "${ORCH_STATE_FILE}")
+   .verification.uncheckedCount = $count |
+   .verification.iteration = ((.verification.iteration // 0) + 1) |
+   .updatedAt = $now' "${ORCH_STATE_FILE}")
 orch_write_state "${SLUG}" "${UPDATED}"
 
-# --- Read poll interval ---
+# --- Extract first backtick-quoted command from a bullet line ---
+# Returns empty string if no backticked segment found.
 
-POLL_INTERVAL=$(orch_read_config "verify_poll_interval_seconds")
-POLL_INTERVAL="${POLL_INTERVAL:-10}"
+extract_command() {
+  local line="$1"
+  # Extract first backtick-quoted segment. Uses awk for portability
+  # across bash versions (macOS ships bash 3.2).
+  printf '%s' "${line}" | awk '
+    match($0, /`[^`]+`/) {
+      s = substr($0, RSTART + 1, RLENGTH - 2)
+      print s
+      exit
+    }
+  '
+}
 
-# --- Tmux session ---
+# --- Mutate plan.md: rewrite a specific `- [ ]` line to `- [x]` ---
+# Uses exact literal match on the full line to avoid mis-replacing
+# similar bullets elsewhere.
 
-TMUX_SESSION="orch-${SLUG}"
-WINDOW_NAME="verifier"
-VERIFY_RESULT_FILE="${PLAN_DIR}/verify-result.txt"
+mark_checked() {
+  local line="$1"
+  local checked="${line/- \[ \]/- [x]}"
+  local tmp
+  tmp=$(mktemp)
+  # awk exact-line match: replace first occurrence only
+  awk -v find="${line}" -v repl="${checked}" '
+    !done && $0 == find { print repl; done = 1; next }
+    { print }
+  ' "${PLAN_FILE}" >"${tmp}"
+  mv "${tmp}" "${PLAN_FILE}"
+}
 
-# Remove stale result file
-rm -f "${VERIFY_RESULT_FILE}"
+# --- Execute each criterion ---
 
-# --- Build verifier prompt ---
+passed=0
+failed=0
+manual=0
 
-VERIFIER_PROMPT=$(cat "${PROMPT_TEMPLATE}")
-VERIFIER_PROMPT="${VERIFIER_PROMPT//\{PLAN_PATH\}/${PLAN_DIR}/plan.md}"
-VERIFIER_PROMPT="${VERIFIER_PROMPT//\{RESULT_FILE\}/${VERIFY_RESULT_FILE}}"
-VERIFIER_PROMPT="${VERIFIER_PROMPT//\{UNCHECKED_CRITERIA\}/${UNCHECKED_CRITERIA}}"
+for line in "${UNCHECKED_LINES[@]}"; do
+  cmd=$(extract_command "${line}")
 
-# Write prompt to temp file (tmux send-keys has length limits)
-PROMPT_FILE=$(mktemp "${ORCH_STATE_DIR}/verifier-prompt-XXXXXX")
-mv "${PROMPT_FILE}" "${PROMPT_FILE}.md"
-PROMPT_FILE="${PROMPT_FILE}.md"
-printf '%s\n' "${VERIFIER_PROMPT}" >"${PROMPT_FILE}"
-
-# --- Determine working directory ---
-
-VERIFY_CWD="${REPO_ROOT}"
-if [[ -d "${WORKTREE_DIR}" ]]; then
-  VERIFY_CWD="${WORKTREE_DIR}"
-fi
-
-# --- Spawn verifier in tmux window ---
-
-# Kill stale verifier window from previous iteration
-tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
-
-# Build agent command using shim helper (handles Codex exec pattern)
-CMD_TEMPLATE="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
-AGENT_CMD_STR="${CMD_TEMPLATE/DEGA_PROMPT_MARKER/\"\$(cat '${PROMPT_FILE}')\"}"
-
-# Skip env -u when session var is empty (e.g., Codex has no session var)
-SESSION_VAR="$(dega_agent_session_var)"
-ENV_PREFIX=""
-if [[ -n "${SESSION_VAR}" ]]; then
-  ENV_PREFIX="env -u '${SESSION_VAR}'"
-fi
-
-tmux new-window -d -t "${TMUX_SESSION}" -n "${WINDOW_NAME}" \
-  "cd '${VERIFY_CWD}' && \
-	 RALPH_ROLE=verifier RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-	 ${ENV_PREFIX} ${AGENT_CMD_STR} ; \
-	 echo '--- verifier exited ---'; \
-	 sleep 2"
-
-# Stream verifier output to log file
-tmux pipe-pane -t "${TMUX_SESSION}:${WINDOW_NAME}" \
-  -o "cat >> '${LOG_DIR}/verifier.log'"
-
-echo "orch-verify: spawned verifier in tmux window '${WINDOW_NAME}'"
-
-# --- Poll for verify-result.txt ---
-
-MAX_POLLS=120 # 120 * 10s = 20 minutes default timeout
-poll_count=0
-
-while true; do
-  if [[ -f "${VERIFY_RESULT_FILE}" ]]; then
-    RESULT=$(head -1 "${VERIFY_RESULT_FILE}" | tr -d '[:space:]')
-    echo "orch-verify: verify-result.txt found — decision: ${RESULT}"
-    break
+  if [[ -z "${cmd}" ]]; then
+    log "MANUAL: no backticked command — ${line}"
+    manual=$((manual + 1))
+    continue
   fi
 
-  # Detect dead verifier (window gone, no result file)
-  if tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-    LIVE_WINDOWS=$(tmux list-windows -t "${TMUX_SESSION}" \
-      -F '#{window_name} #{pane_dead}' 2>/dev/null || true)
-    IS_ALIVE=false
-    if printf '%s\n' "${LIVE_WINDOWS}" | grep -q "^${WINDOW_NAME} 0$"; then
-      IS_ALIVE=true
-    fi
-    if [[ "${IS_ALIVE}" == false ]]; then
-      echo "orch-verify: verifier exited without writing result — FAIL"
-      RESULT="FAIL"
-      break
-    fi
-  fi
+  log "RUN: ${cmd}"
 
-  poll_count=$((poll_count + 1))
-  if ((poll_count >= MAX_POLLS)); then
-    echo "orch-verify: timeout after $((MAX_POLLS * POLL_INTERVAL))s — FAIL"
-    tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
-    RESULT="FAIL"
-    break
-  fi
+  set +e
+  output=$(cd "${VERIFY_CWD}" && timeout "${CRITERION_TIMEOUT}" bash -c "${cmd}" 2>&1)
+  rc=$?
+  set -e
 
-  sleep "${POLL_INTERVAL}"
+  # Trim to last 20 lines for log brevity
+  tail_output=$(printf '%s\n' "${output}" | tail -n 20)
+
+  if [[ ${rc} -eq 0 ]]; then
+    log "PASS (rc=0): ${cmd}"
+    mark_checked "${line}"
+    passed=$((passed + 1))
+  elif [[ ${rc} -eq 124 ]]; then
+    log "FAIL (timeout after ${CRITERION_TIMEOUT}s): ${cmd}"
+    printf '%s\n' "${tail_output}" >>"${VERIFY_LOG}"
+    failed=$((failed + 1))
+  else
+    log "FAIL (rc=${rc}): ${cmd}"
+    printf '%s\n' "${tail_output}" >>"${VERIFY_LOG}"
+    failed=$((failed + 1))
+  fi
 done
 
-# --- Kill verifier window ---
+# --- Re-count remaining unchecked after mutations ---
 
-tmux kill-window -t "${TMUX_SESSION}:${WINDOW_NAME}" 2>/dev/null || true
+REMAINING=$(extract_unchecked | wc -l | tr -d ' ')
 
-# --- Re-count unchecked criteria after verifier ran ---
-
-REMAINING=$(awk '
-	/^```/ { fence = !fence; next }
-	fence { next }
-	/^## Completion criteria/ { capturing = 1; next }
-	capturing && /^## / { capturing = 0; next }
-	capturing && /^- \[ \]/ { count++ }
-	END { print count+0 }
-' "${PLAN_DIR}/plan.md")
+log "orch-verify: summary — passed=${passed} failed=${failed} manual=${manual} remaining=${REMAINING}"
 
 # --- Update state and return ---
 
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-if [[ "${RESULT}" == "PASS" ]] && [[ "${REMAINING}" -eq 0 ]]; then
-  echo "orch-verify: PASS — all completion criteria verified"
+if [[ ${REMAINING} -eq 0 ]]; then
+  log "orch-verify: PASS — all completion criteria verified"
   UPDATED=$(jq \
     --arg now "${NOW}" \
     '.verification.status = "passed" |
-		 .verification.uncheckedCount = 0 |
-		 .updatedAt = $now' "${ORCH_STATE_FILE}")
+     .verification.uncheckedCount = 0 |
+     .updatedAt = $now' "${ORCH_STATE_FILE}")
   orch_write_state "${SLUG}" "${UPDATED}"
   exit 0
 else
-  echo "orch-verify: FAIL — ${REMAINING} criteria remain unchecked"
+  log "orch-verify: FAIL — ${REMAINING} criteria remain unchecked"
   UPDATED=$(jq \
     --arg now "${NOW}" \
     --argjson remaining "${REMAINING}" \
     '.verification.status = "failed" |
-		 .verification.uncheckedCount = $remaining |
-		 .updatedAt = $now' "${ORCH_STATE_FILE}")
+     .verification.uncheckedCount = $remaining |
+     .updatedAt = $now' "${ORCH_STATE_FILE}")
   orch_write_state "${SLUG}" "${UPDATED}"
   exit 1
 fi
