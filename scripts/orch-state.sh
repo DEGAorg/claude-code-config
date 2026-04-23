@@ -618,6 +618,11 @@ orch_guarded_commit() {
   local message="$2"
   shift 2
   local allowed=("$@")
+  # Opt-in: permit staged deletions (D entries) when the path matches
+  # the allowlist. Off by default so the stale-base guard still applies
+  # to single-file ship steps (CHANGELOG, REGISTRY). Step 5 (plan move)
+  # sets this to 1 because the move legitimately removes active/<slug>/.
+  local allow_deletions="${ORCH_GUARDED_ALLOW_DELETIONS:-0}"
 
   if [[ ! -d "${dir}" ]]; then
     echo "orch_guarded_commit: directory not found: ${dir}" >&2
@@ -646,15 +651,12 @@ orch_guarded_commit() {
     R* | C*) path="${rest}" ;;
     esac
 
-    if [[ "${change_type}" == D* ]]; then
-      echo "orch_guarded_commit: refusing to commit — staged deletion of '${path}' not allowed" >&2
-      return 1
-    fi
-
     local matched=false
     local allow
     for allow in "${allowed[@]}"; do
-      if [[ "${path}" == "${allow}" ]]; then
+      # Unquoted RHS: enable glob matching (e.g. "docs/path/<slug>/*").
+      # shellcheck disable=SC2053
+      if [[ "${path}" == ${allow} ]]; then
         matched=true
         break
       fi
@@ -662,6 +664,11 @@ orch_guarded_commit() {
 
     if [[ "${matched}" != true ]]; then
       echo "orch_guarded_commit: refusing to commit — staged path '${path}' not in allowlist (${allowed[*]})" >&2
+      return 1
+    fi
+
+    if [[ "${change_type}" == D* && "${allow_deletions}" != "1" ]]; then
+      echo "orch_guarded_commit: refusing to commit — staged deletion of '${path}' not allowed" >&2
       return 1
     fi
   done <<<"${staged}"
