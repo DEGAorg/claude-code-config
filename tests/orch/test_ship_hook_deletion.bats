@@ -49,8 +49,10 @@ setup() {
   git -C "${OTHER_DIR}" commit --quiet --no-verify -m "add plan-a"
   git -C "${OTHER_DIR}" push --quiet origin main
 
-  # Create an orch worktree forked from REPO_ROOT's stale HEAD.
-  ORCH_STATE_DIR="${REPO_ROOT}/.orchestrator"
+  # Create an orch worktree forked from REPO_ROOT's stale HEAD. The
+  # worktree is placed outside REPO_ROOT so it does not appear as an
+  # untracked directory in REPO_ROOT's working tree.
+  ORCH_STATE_DIR="${TEST_TMPDIR}/orchestrator"
   WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
   mkdir -p "${ORCH_STATE_DIR}/worktrees"
   git -C "${REPO_ROOT}" worktree add --quiet -b "orch/${SLUG}" \

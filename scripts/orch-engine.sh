@@ -629,21 +629,33 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   write_heartbeat
 
   # --- Step 7: Append to changelog ---
+  # Commit to the worktree (isolated checkout of orch branch) rather than
+  # REPO_ROOT to avoid landing stale-base trees on origin. Fall back to
+  # REPO_ROOT only if the worktree is absent.
+  WORKTREE_DIR="${ORCH_STATE_DIR}/worktrees/${SLUG}"
+  if [[ -d "${WORKTREE_DIR}" ]]; then
+    CHANGELOG_TARGET="${WORKTREE_DIR}"
+  else
+    CHANGELOG_TARGET="${REPO_ROOT}"
+  fi
   if [[ "${GH_SYNC}" == true ]]; then
     PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${PLAN_DIR}/plan.md" 2>/dev/null || true)
   else
     PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
   fi
   if [[ -n "${PLAN_TITLE}" ]]; then
-    if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
-      git -C "${REPO_ROOT}" add "CHANGELOG.md"
-      if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-        if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update changelog for ${SLUG}"; then
-          echo "orch-engine: ERROR — git commit failed for changelog update" >&2
+    if ORCH_REPO_ROOT="${CHANGELOG_TARGET}" orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
+      git -C "${CHANGELOG_TARGET}" add "CHANGELOG.md"
+      if git -C "${CHANGELOG_TARGET}" diff --cached --quiet; then
+        echo "orch-engine: [SHIP 7/9] changelog unchanged — nothing to commit"
+      else
+        if orch_guarded_commit "${CHANGELOG_TARGET}" "orch: update changelog for ${SLUG}" "CHANGELOG.md"; then
+          echo "orch-engine: [SHIP 7/9] appended to changelog"
+        else
+          echo "orch-engine: ERROR — guarded commit failed for changelog update" >&2
           SHIP_ERRORS=$((SHIP_ERRORS + 1))
         fi
       fi
-      echo "orch-engine: [SHIP 7/9] appended to changelog"
     else
       echo "orch-engine: WARN — changelog append failed (non-fatal)"
     fi
