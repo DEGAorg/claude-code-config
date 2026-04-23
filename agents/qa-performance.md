@@ -54,7 +54,7 @@ rg "(fetch|axios|requests\.(get|post))" --type ts --type js --type py 2>/dev/nul
 rg "\.find\(.*=>" --type ts --type js 2>/dev/null | head -20
 
 # Bundle size — large imports
-rg "import \* as " --type ts --type js --type tsx 2>/dev/null | head -10
+rg "import \* as " --type ts --type js --glob "*.tsx" 2>/dev/null | head -10
 rg "require\(['\"]lodash['\"]\)" --type ts --type js 2>/dev/null | head -5
 ```
 
@@ -92,11 +92,12 @@ time (for i in $(seq 1 10); do
   curl -s -o /dev/null -w "%{time_total}\n" "$BASE_URL/api/health" &
 done; wait)
 
-# 50 concurrent requests — moderate load
+# 50 concurrent requests — moderate load (--max-time prevents socket exhaustion)
 echo "=== 50 concurrent requests ==="
-time (for i in $(seq 1 50); do
-  curl -s -o /dev/null -w "%{http_code} " "$BASE_URL/api/health" &
-done; wait) | tr ' ' '\n' | sort | uniq -c
+for i in $(seq 1 50); do
+  curl -s --max-time 5 -o /dev/null -w "%{http_code}\n" "$BASE_URL/api/health" &
+done
+wait | sort | uniq -c
 ```
 
 ### 4. Load Test (if k6 or wrk available)
@@ -125,7 +126,7 @@ export default function () {
   sleep(0.1);
 }
 EOF
-k6 run --env BASE_URL=$BASE_URL /tmp/qa-load-test.js 2>/dev/null | tail -30
+k6 run --env "BASE_URL=$BASE_URL" /tmp/qa-load-test.js 2>/dev/null | tail -30
 
 # wrk (alternative)
 wrk -t4 -c50 -d30s --latency "$BASE_URL/api/health" 2>/dev/null | tail -20
@@ -138,10 +139,10 @@ ab -n 1000 -c 50 "$BASE_URL/api/health" 2>/dev/null | tail -30
 
 ```bash
 # Find ORM query logging config
-rg "DEBUG\s*=\s*True\|SQLALCHEMY_ECHO\|logging.*sql\|prisma.*log" 2>/dev/null | head -10
+rg "(DEBUG\s*=\s*True|SQLALCHEMY_ECHO|logging.*sql|prisma.*log)" 2>/dev/null | head -10
 
-# Prisma: check for missing select (over-fetching)
-rg "\.findMany\(\s*\)\|\.findFirst\(\s*\)\|\.findUnique\(\s*\)" --type ts 2>/dev/null | head -15
+# Prisma: check for missing select (over-fetching — no field selection)
+rg "(\.findMany\(\s*\)|\.findFirst\(\s*\)|\.findUnique\(\s*\))" --type ts 2>/dev/null | head -15
 
 # Sequelize: include without limit (N+1 risk)
 rg "include:\s*\[" --type js --type ts 2>/dev/null | head -15
@@ -150,7 +151,7 @@ rg "include:\s*\[" --type js --type ts 2>/dev/null | head -15
 rg "\.lazy\s*=\s*['\"]dynamic['\"]|selectin|subquery" --type py 2>/dev/null | head -10
 
 # Raw queries without parameterization (also security issue)
-rg "execute\s*\(\s*['\"]SELECT\|cursor\.(execute|fetchall)" --type py 2>/dev/null | head -10
+rg '(execute\s*\(\s*['"'"'"]SELECT|cursor\.(execute|fetchall))' --type py 2>/dev/null | head -10
 
 # Missing indexes on foreign keys (common mistake)
 find . -name "*migration*" 2>/dev/null | xargs grep -l "REFERENCES\|foreign.?key" 2>/dev/null | head -5

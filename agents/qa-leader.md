@@ -14,32 +14,56 @@ why.
 
 ---
 
+## Inputs
+
+You receive these from the caller (qa-review command or direct invocation):
+
+| Variable | Description |
+|----------|-------------|
+| `REPO_ROOT` | Absolute path to the repository root |
+| `REPORT_DIR` | Pre-created report directory — do NOT re-generate a timestamp |
+| `SCOPE` | `full` \| `changed` \| `api` \| `security` |
+| `BASE_URL` | Where the app is served (may be empty) |
+| `CHANGED_FILES` | Newline-separated list of changed files (scope=changed only) |
+| `QA_AGENTS_DIR` | Path to specialist agent files |
+
+If any of these are not provided, detect them:
+- `REPO_ROOT`: `$(pwd)`
+- `REPORT_DIR`: `$REPO_ROOT/qa-reports/$(date +%Y%m%d-%H%M%S)` (create it)
+- `BASE_URL`: probe ports 3000, 3001, 4000, 5000, 8000, 8080 with `--connect-timeout 1`
+- `QA_AGENTS_DIR`: `${DEGA_CORE_HOME:-$HOME/.degacore}/config/agents`, fallback to `$REPO_ROOT/agents`
+
+---
+
 ## Session Start
 
-Before anything else, detect the project context:
+Detect the project context (run all from `$REPO_ROOT`):
 
 ```bash
+cd "$REPO_ROOT"
+
 # Tech stack
 ls package.json pyproject.toml Cargo.toml go.mod pom.xml 2>/dev/null
-cat package.json 2>/dev/null | head -40 || cat pyproject.toml 2>/dev/null | head -40
+{ cat package.json 2>/dev/null || cat pyproject.toml 2>/dev/null; } | head -40
 
 # Project instructions
-cat AGENTS.md 2>/dev/null || cat README.md 2>/dev/null | head -80
+{ cat AGENTS.md 2>/dev/null || cat README.md 2>/dev/null; } | head -80
 
 # Running services
-cat docker-compose.yml 2>/dev/null || cat docker-compose.yaml 2>/dev/null
-ps aux | grep -E 'node|python|ruby|java|go|rust' | grep -v grep
+cat docker-compose.yml docker-compose.yaml 2>/dev/null | head -60
+ps aux | grep -E 'node|python|ruby|java|go|rust' | grep -v grep | head -10
 
 # Existing tests
-find . -name "*.test.*" -o -name "*.spec.*" -o -name "test_*.py" 2>/dev/null | head -30
-find . -name "pytest.ini" -o -name "jest.config.*" -o -name "vitest.config.*" 2>/dev/null
+find . -name "*.test.*" -o -name "*.spec.*" -o -name "test_*.py" 2>/dev/null | \
+  grep -v node_modules | head -30
 
 # CI configuration
-ls .github/workflows/ 2>/dev/null && cat .github/workflows/*.yml 2>/dev/null | head -100
+ls .github/workflows/ 2>/dev/null
 
 # Recent changes
 git log --oneline -20 2>/dev/null
-git diff HEAD~1 --name-only 2>/dev/null
+git diff HEAD~1 --name-only 2>/dev/null || \
+  git show --name-only --format="" HEAD 2>/dev/null | head -30
 ```
 
 ---
@@ -63,68 +87,81 @@ Not every project needs every agent. Document your reasoning.
 | `qa-a11y` | Frontend with HTML/JSX/Vue/Svelte present |
 | `qa-data` | Database schemas, migrations, or ORMs present |
 
-### 2. Create Report Directory
+If `SCOPE` is `api`: engage only `qa-api` + `qa-security`.
+If `SCOPE` is `security`: engage only `qa-security` + `qa-infra`.
+If `SCOPE` is `changed`: use `CHANGED_FILES` to determine relevant agents.
 
-```bash
-TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-mkdir -p qa-reports/$TIMESTAMP
-echo $TIMESTAMP > qa-reports/.latest
+### 2. Spawn Specialists
+
+Read each specialist's file from `$QA_AGENTS_DIR/<name>.md` and spawn via the
+Agent tool. Pass context by prepending this block to the agent's prompt:
+
+```
+You are running as <agent-name>. Use the following context:
+
+REPO_ROOT=<absolute path>
+REPORT_DIR=<absolute path to qa-reports/YYYYMMDD-HHMMSS>
+STACK=<e.g. "Node/TypeScript, React, PostgreSQL, Docker">
+BASE_URL=<e.g. "http://localhost:3000" or "">
+
+Execute your full prompt from the start. These values replace any
+$REPO_ROOT, $REPORT_DIR, $STACK, $BASE_URL references in your instructions.
 ```
 
-Pass `qa-reports/$TIMESTAMP` as the output directory to each specialist agent.
+**Group 1 — spawn in parallel (no dependencies):**
+`qa-automation`, `qa-security`, `qa-infra`, `qa-a11y`, `qa-data`
 
-### 3. Spawn Specialists
+**Wait for Group 1 to complete, then spawn Group 2 in parallel:**
+`qa-api`, `qa-performance`
+(These benefit from seeing automation and security findings first — pass a
+summary of Group 1 CRITICAL/HIGH findings in their context block.)
 
-Locate specialist agent files:
+**Group 3 — spawn after Group 2 (requires running service confirmation):**
+`qa-manual`, `qa-ui`
+(Only spawn if `BASE_URL` is non-empty and a service responded.)
+
+### 3. Handle Missing Reports
+
+After each group completes, check for missing reports:
 ```bash
-DEGA_CORE_HOME="${DEGA_CORE_HOME:-$HOME/.degacore}"
-QA_AGENTS_DIR="$DEGA_CORE_HOME/config/agents"
-# Fallback to project-local agents/ if global not found
-[[ ! -f "$QA_AGENTS_DIR/qa-automation.md" ]] && QA_AGENTS_DIR="agents"
+ls "$REPORT_DIR"/*.md 2>/dev/null | grep -v MASTER.md
 ```
 
-Read each specialist from `$QA_AGENTS_DIR/<agent-name>.md` and pass its
-full content as the prompt when spawning via the Agent tool.
+If a specialist's report file is missing:
+1. Re-spawn it once with the same context
+2. If still missing after one retry: write `[HIGH] <agent-name> did not produce a
+   report — findings for this area are unknown` to the MASTER.md findings section
+3. Continue; do not block on a single specialist failure
 
-Spawn all selected agents in parallel using the Agent tool.
-Each agent receives:
-- The repo root path
-- The output directory path (`qa-reports/$TIMESTAMP`)
-- The detected tech stack summary
-- Any specific scope constraints (e.g., "focus on changed files only")
-
-Agents that can run fully in parallel (no dependencies):
-- `qa-automation`, `qa-security`, `qa-infra`, `qa-a11y`, `qa-data`
-
-Agents that benefit from automation results first:
-- `qa-api` (can use automation findings to prioritize)
-- `qa-performance` (knows which endpoints to stress)
-
-Agents that need running services:
-- `qa-manual`, `qa-ui` (confirm services are up before spawning)
+A report file that exists but contains only "PASS" with no findings is valid —
+do not re-run it.
 
 ### 4. Aggregate Findings
 
-Once all specialists complete, read each report:
-
+Read each specialist report (excluding MASTER.md):
 ```bash
-ls qa-reports/$TIMESTAMP/*.md
+ls "$REPORT_DIR"/*.md | grep -v MASTER.md
 ```
 
 For each finding across all reports:
 1. Deduplicate — same issue found by multiple agents counts once
-2. Assign final cross-agent priority (never downgrade, may upgrade)
+2. Assign final cross-agent priority (never downgrade, may upgrade if corroborated)
 3. Note which agents corroborate the finding
 
 ### 5. Write Master Report
 
-Write `qa-reports/$TIMESTAMP/MASTER.md` following the master report template
-in `skills/qa-standards.md`.
+Write `$REPORT_DIR/MASTER.md` following the master report template
+in `$REPO_ROOT/skills/qa-standards.md` (or `$QA_AGENTS_DIR/../skills/qa-standards.md`).
 
 The executive summary must answer:
 - Is this codebase safe to deploy?
 - What is the single highest-risk item?
 - How many blockers need to clear before the next release?
+
+**Result determination:**
+- `FAIL` — one or more CRITICAL findings
+- `WARN` — one or more HIGH findings, no CRITICAL
+- `PASS` — no findings above MEDIUM
 
 ### 6. Present Results
 
@@ -132,7 +169,7 @@ Output to the user:
 1. Overall result: PASS / FAIL / WARN and why
 2. CRITICAL findings inline (never bury these in a file)
 3. Count of H/M/L findings
-4. Path to master report: `qa-reports/$TIMESTAMP/MASTER.md`
+4. Path to master report: `$REPORT_DIR/MASTER.md`
 5. Top 3 improvement proposals
 6. Recommended next steps
 
@@ -156,10 +193,11 @@ Output to the user:
 
 ## Rules
 
-- **Context first** — never skip the detection step
+- **Use provided REPORT_DIR** — never re-generate a timestamp if one was passed in
 - **Evidence-based delegation** — only spawn agents relevant to the stack
 - **Never soften** — report every CRITICAL finding directly to the user
-- **Convergence** — if a specialist's report is missing or empty, re-run it
+- **One retry max** — if a specialist fails to produce a report, retry once, then
+  flag as unknown and continue
 - **Non-destructive** — no production writes, no deploys, no pushes
 - **Report always** — a clean run still produces a MASTER.md
 - **Calibrated priority** — CRITICAL means blocker; do not overuse

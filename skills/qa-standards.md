@@ -11,6 +11,11 @@ Every finding must carry exactly one priority flag:
 
 | Flag | Label | Definition | SLA |
 |------|-------|-----------|-----|
+**Overall result determination:**
+- `FAIL` — one or more CRITICAL findings present
+- `WARN` — one or more HIGH findings, no CRITICAL
+- `PASS` — no findings above MEDIUM
+
 | `[CRITICAL]` | Blocker | Data loss, security breach, production down, auth bypass | Fix before next deploy |
 | `[HIGH]` | Must Fix | Core feature broken, significant regression, OWASP vulnerability | Fix this sprint |
 | `[MEDIUM]` | Should Fix | Degraded UX, missing validation, non-critical regression | Fix next sprint |
@@ -146,17 +151,22 @@ Ordered by impact:
 
 ## Context Gathering Protocol
 
-Every QA agent must detect the project context before testing. Run in order:
+Every QA agent must detect the project context before testing.
+All commands run from `$REPO_ROOT` — cd there first.
 
 ```bash
+cd "$REPO_ROOT"
+
 # 1. Detect tech stack
 ls package.json pyproject.toml Cargo.toml go.mod pom.xml 2>/dev/null
 
 # 2. Read the project manifest
-cat package.json 2>/dev/null || cat pyproject.toml 2>/dev/null || cat Cargo.toml 2>/dev/null
+cat "$REPO_ROOT/package.json" 2>/dev/null || \
+  cat "$REPO_ROOT/pyproject.toml" 2>/dev/null || \
+  cat "$REPO_ROOT/Cargo.toml" 2>/dev/null
 
 # 3. Read project instructions
-cat AGENTS.md 2>/dev/null || cat README.md 2>/dev/null | head -80
+{ cat "$REPO_ROOT/AGENTS.md" 2>/dev/null || cat "$REPO_ROOT/README.md" 2>/dev/null; } | head -80
 
 # 4. Detect running services
 cat docker-compose.yml 2>/dev/null || cat docker-compose.yaml 2>/dev/null

@@ -27,7 +27,8 @@ run the tests, interpret results, and propose a concrete automation roadmap.
 
 ```bash
 # Framework detection
-cat package.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({**d.get('devDependencies',{}), **d.get('dependencies',{})}, indent=2))" 2>/dev/null | grep -E 'jest|vitest|playwright|cypress|mocha|jasmine|testing-library'
+node -e "const d=require('./package.json'); console.log(Object.keys({...d.devDependencies,...d.dependencies}).join('\n'))" 2>/dev/null | grep -E 'jest|vitest|playwright|cypress|mocha|jasmine|testing-library' || \
+  jq -r '[(.devDependencies // {}), (.dependencies // {})] | add | keys[]' package.json 2>/dev/null | grep -E 'jest|vitest|playwright|cypress|mocha|jasmine|testing-library'
 cat pyproject.toml 2>/dev/null | grep -E 'pytest|unittest|hypothesis|coverage'
 cat Cargo.toml 2>/dev/null | grep -E 'test|criterion|proptest'
 
@@ -41,42 +42,31 @@ find . -type f \( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.test.js" -
 grep -r "coverage" jest.config.* vitest.config.* pyproject.toml 2>/dev/null | head -20
 ```
 
-### 2. Measure Coverage
+### 2. Run the Full Test Suite with Coverage
 
-Run coverage tools appropriate to the stack:
-
-```bash
-# Node/TypeScript
-npx vitest run --coverage 2>/dev/null || npx jest --coverage 2>/dev/null
-
-# Python
-python -m pytest --cov=. --cov-report=term-missing -q 2>/dev/null
-
-# Rust
-cargo tarpaulin --out Stdout 2>/dev/null || cargo test 2>/dev/null
-```
-
-Capture the full output. Do not truncate.
-
-### 3. Run the Full Test Suite
+Run once with coverage enabled — do not run the suite twice.
+Capture full output to a temp file; never truncate failure output.
 
 ```bash
-# Node/TypeScript
-npm test 2>&1 | tail -50
-npx vitest run 2>&1 | tail -50
+# Node/TypeScript — single run with coverage
+npx vitest run --coverage 2>&1 | tee /tmp/qa-automation-run.txt || \
+  npx jest --coverage 2>&1 | tee /tmp/qa-automation-run.txt
 
 # Python
-python -m pytest -q --tb=short 2>&1 | tail -80
+python -m pytest --cov=. --cov-report=term-missing --tb=short -q 2>&1 | \
+  tee /tmp/qa-automation-run.txt
 
 # Rust
-cargo test 2>&1 | tail -50
+cargo tarpaulin --out Stdout 2>&1 | tee /tmp/qa-automation-run.txt || \
+  cargo test 2>&1 | tee /tmp/qa-automation-run.txt
 
-# E2E
-npx playwright test 2>&1 | tail -50
-npx cypress run 2>&1 | tail -50
+# E2E (separate run — these don't contribute to unit coverage)
+npx playwright test 2>&1 | tee /tmp/qa-automation-e2e.txt
+npx cypress run 2>&1 | tee /tmp/qa-automation-e2e.txt
 ```
 
-Record: total tests, passed, failed, skipped, duration.
+Record from the output: total tests, passed, failed, skipped, duration,
+line coverage %, branch coverage %.
 
 ### 4. Audit Test Quality
 
@@ -100,7 +90,9 @@ rg "assert True|assert False" --type py 2>/dev/null | head -20
 rg "(xit|xdescribe|it\.skip|describe\.skip|pytest\.mark\.skip|#\[ignore\])" 2>/dev/null | head -20
 
 # TODO in tests
-rg "TODO|FIXME|HACK|XXX" --type-add 'test:*.{test.ts,test.js,test.py,_test.rs}' --type test 2>/dev/null | head -20
+rg "TODO|FIXME|HACK|XXX" \
+  --glob "*.test.ts" --glob "*.test.js" --glob "*.spec.ts" --glob "*.spec.js" \
+  --glob "test_*.py" --glob "*_test.rs" 2>/dev/null | head -20
 
 # Sleep / time-based flakiness
 rg "(setTimeout|sleep|time\.sleep|thread\.sleep)" 2>/dev/null | head -20
@@ -118,11 +110,17 @@ Map untested code paths:
 
 ```bash
 # Find untested files by cross-referencing test imports
-# List all source files
-find src/ lib/ app/ -name "*.ts" -o -name "*.js" -o -name "*.py" 2>/dev/null | grep -v node_modules | sort > /tmp/all_sources.txt
+find src/ lib/ app/ -name "*.ts" -o -name "*.js" -o -name "*.py" 2>/dev/null | \
+  grep -v node_modules | sort > /tmp/all_sources.txt
 
-# List files imported in tests  
-rg "import|from|require" --type ts --type js --type py -l 2>/dev/null | grep -E "(test|spec)" > /tmp/test_files.txt
+# Files referenced by any test (approximation — misses dynamic imports)
+rg "import|from|require" \
+  --glob "*.test.ts" --glob "*.test.js" --glob "*.spec.ts" --glob "*.spec.js" \
+  --glob "test_*.py" -l 2>/dev/null | sort > /tmp/test_files.txt
+
+# Files with zero test coverage (never imported)
+comm -23 /tmp/all_sources.txt /tmp/test_files.txt
+# Note: this is an approximation. Coverage reports from step 2 are authoritative.
 ```
 
 ### 6. Write Report

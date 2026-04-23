@@ -39,46 +39,46 @@ provide concrete, prioritized fixes.
 
 ```bash
 # Missing alt text on images
-rg "<img(?![^>]*alt=)" --type html --type tsx --type jsx 2>/dev/null | head -20
-rg "<img[^>]*alt\s*=\s*['\"]['\"]" --type html --type tsx --type jsx 2>/dev/null | head -10
+rg "<img(?![^>]*alt=)" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -20
+rg "<img[^>]*alt\s*=\s*['\"]['\"]" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Interactive elements without accessible names
 rg "<button(?![^>]*(aria-label|aria-labelledby|title))[^>]*>" \
-  --type html --type tsx --type jsx 2>/dev/null | grep -v ">" | head -15
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -15
 rg "<a(?![^>]*(aria-label|aria-labelledby))[^>]*href" \
-  --type html --type tsx --type jsx 2>/dev/null | head -15
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -15
 
 # Icon-only buttons (most likely missing accessible name)
 rg "<button[^>]*>(\s*<[A-Z][^>]*\/>\s*)<\/button>" \
-  --type tsx --type jsx 2>/dev/null | head -10
+  --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Form inputs without labels
 rg "<input(?![^>]*(aria-label|aria-labelledby|id))" \
-  --type html --type tsx --type jsx 2>/dev/null | head -15
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -15
 # Labels not associated with inputs
 rg "<label(?![^>]*for=|[^>]*htmlFor=)" \
-  --type html --type tsx --type jsx 2>/dev/null | head -10
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Missing document language
 rg "<html(?![^>]*lang=)" --type html 2>/dev/null | head -5
 
 # Incorrect heading hierarchy (h3 without h2, etc.)
-rg "<h[1-6]" --type html --type tsx --type jsx 2>/dev/null | head -30
+rg "<h[1-6]" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -30
 
 # tabIndex > 0 (breaks natural tab order)
-rg "tabIndex\s*=\s*[\"']\s*[1-9]" --type html --type tsx --type jsx 2>/dev/null | head -10
+rg "tabIndex\s*=\s*[\"']\s*[1-9]" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 rg 'tabindex\s*=\s*"[1-9]' --type html 2>/dev/null | head -10
 
 # Role usage without required aria attributes
 rg 'role\s*=\s*"(combobox|grid|listbox|radiogroup|slider|spinbutton|tablist)"' \
-  --type html --type tsx --type jsx 2>/dev/null | head -10
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # onClick on non-interactive elements (not keyboard accessible)
-rg "onClick\s*=.*<(div|span|p|li|td|tr)" --type tsx --type jsx 2>/dev/null | head -10
-rg "<(div|span|p|li)[^>]*onClick" --type tsx --type jsx 2>/dev/null | head -10
+rg "onClick\s*=.*<(div|span|p|li|td|tr)" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
+rg "<(div|span|p|li)[^>]*onClick" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # autofocus without careful consideration
-rg "autoFocus|autofocus" --type html --type tsx --type jsx 2>/dev/null | head -10
+rg "autoFocus|autofocus" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 ```
 
 ### 2. Color Contrast Analysis (Static)
@@ -90,7 +90,7 @@ find . -name "*.css" -o -name "*.scss" -o -name "*.sass" 2>/dev/null | \
 
 # Tailwind text colors
 rg "text-(gray|slate|zinc|neutral|stone)-(100|200|300|400|500)" \
-  --type html --type tsx --type jsx 2>/dev/null | head -20
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -20
 
 # Very light text on white backgrounds (high risk)
 rg "text-gray-[23]00|text-slate-[23]00|text-zinc-[23]00|color:\s*#[cCdDeEfF]{3,6}\b" \
@@ -98,16 +98,16 @@ rg "text-gray-[23]00|text-slate-[23]00|text-zinc-[23]00|color:\s*#[cCdDeEfF]{3,6
 
 # Color-only information (no icon/text backup)
 rg "text-(red|green|yellow|blue|orange)-[0-9]{3}(?!.*aria)" \
-  --type tsx --type jsx 2>/dev/null | head -10
+  --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 ```
 
 ### 3. Automated Axe Scan (if service running and Playwright available)
 
 ```bash
-# Write axe scan script
+# Write axe scan script — uses @axe-core/playwright (current official package)
 cat << 'EOF' > /tmp/qa-a11y-scan.mjs
 import { chromium } from 'playwright';
-import { injectAxe, checkA11y } from 'axe-playwright';
+import AxeBuilder from '@axe-core/playwright';
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
@@ -118,12 +118,14 @@ const allViolations = [];
 for (const route of routes) {
   try {
     await page.goto(`${process.env.BASE_URL}${route}`, { timeout: 10000 });
-    await injectAxe(page);
-    const results = await checkA11y(page, null, {
-      axeOptions: { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } },
-      includedImpacts: ['critical', 'serious', 'moderate', 'minor'],
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+    allViolations.push({
+      route,
+      violations: results.violations,
+      incomplete: results.incomplete,
     });
-    allViolations.push({ route, violations: results });
   } catch (e) {
     allViolations.push({ route, error: e.message });
   }
@@ -133,7 +135,7 @@ console.log(JSON.stringify(allViolations, null, 2));
 await browser.close();
 EOF
 
-BASE_URL=$BASE_URL node /tmp/qa-a11y-scan.mjs 2>/dev/null
+BASE_URL="$BASE_URL" node /tmp/qa-a11y-scan.mjs 2>/dev/null
 ```
 
 ### 4. Keyboard Navigation Audit
@@ -169,19 +171,19 @@ rg "outline\s*:\s*none|outline\s*:\s*0" --type css --type scss 2>/dev/null | \
 ```bash
 # ARIA live regions for dynamic content
 rg "aria-live|role\s*=\s*['\"](alert|status|log|marquee|timer)['\"]" \
-  --type html --type tsx --type jsx 2>/dev/null | head -10
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Modals: aria-modal, focus management
-rg "(Modal|Dialog|Drawer|Sheet|Overlay)" --type tsx --type jsx 2>/dev/null | head -5
-rg "aria-modal|role\s*=\s*['\"]dialog['\"]" --type html --type tsx --type jsx 2>/dev/null | head -10
+rg "(Modal|Dialog|Drawer|Sheet|Overlay)" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -5
+rg "aria-modal|role\s*=\s*['\"]dialog['\"]" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Tables: headers and captions
-rg "<table" --type html --type tsx --type jsx 2>/dev/null | head -10
-rg "<th(?![^>]*scope=)" --type html --type tsx --type jsx 2>/dev/null | head -10
+rg "<table" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
+rg "<th(?![^>]*scope=)" --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Dynamic content updates announced
 rg "aria-expanded|aria-selected|aria-checked|aria-pressed" \
-  --type html --type tsx --type jsx 2>/dev/null | head -20
+  --type html --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -20
 ```
 
 ### 6. Write Report

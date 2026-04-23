@@ -54,19 +54,19 @@ Read the source to understand the user journeys:
 
 ```bash
 # Routes and navigation
-rg "(Route|Link|NavLink|router\.push|navigate\()" --type tsx --type jsx --type ts 2>/dev/null | head -40
+rg "(Route|Link|NavLink|router\.push|navigate\()" --glob "*.tsx" --glob "*.jsx" --type ts 2>/dev/null | head -40
 
 # Page components
 find src/ app/ pages/ -name "*.tsx" -o -name "*.jsx" -o -name "*.vue" 2>/dev/null | head -30
 
 # Forms and user inputs
-rg "(onSubmit|handleSubmit|useForm|Form\.)" --type tsx --type jsx 2>/dev/null | head -20
+rg "(onSubmit|handleSubmit|useForm|Form\.)" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -20
 
 # State management
-rg "(useState|useReducer|useContext|zustand|redux|pinia|vuex)" --type tsx --type ts 2>/dev/null | head -20
+rg "(useState|useReducer|useContext|zustand|redux|pinia|vuex)" --glob "*.tsx" --type ts 2>/dev/null | head -20
 
 # API calls from frontend
-rg "(fetch\(|axios\.|api\.|useQuery|useMutation)" --type tsx --type ts 2>/dev/null | head -20
+rg "(fetch\(|axios\.|api\.|useQuery|useMutation)" --glob "*.tsx" --type ts 2>/dev/null | head -20
 ```
 
 ### 3. Define Exploration Charters

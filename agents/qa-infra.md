@@ -61,7 +61,8 @@ zizmor .github/workflows/ 2>/dev/null
 # Manual checks if tools unavailable:
 
 # Pinned actions (must use SHA, not @v1 or @main)
-grep -r "uses:" .github/workflows/ 2>/dev/null | grep -v "#" | grep -vE "@[0-9a-f]{40}"
+# grep -vE "^\s*#" excludes comment-only lines but keeps pinned actions with version comments
+grep -r "uses:" .github/workflows/ 2>/dev/null | grep -vE "^\s*#" | grep -vE "@[0-9a-f]{40}"
 
 # Permissions blocks
 grep -r "permissions:" .github/workflows/ 2>/dev/null
@@ -80,31 +81,37 @@ grep -r "env:" .github/workflows/ 2>/dev/null -A 5 | grep "\${{" | head -10
 grep -r "cache:" .github/workflows/ 2>/dev/null | head -10
 
 # Test steps — do tests run and block merge?
-grep -r "run: npm test\|run: pytest\|run: cargo test" .github/workflows/ 2>/dev/null
+grep -rE "run: (npm|pnpm|yarn|bun) test|run: (pytest|python -m pytest|uv run pytest)|run: cargo test|run: make test|run: go test" \
+  .github/workflows/ 2>/dev/null
 ```
 
 ### 3. Audit Docker Configuration
 
 ```bash
-# Read each Dockerfile
-for f in $(find . -name "Dockerfile*" 2>/dev/null | grep -v node_modules); do
-  echo "=== $f ==="
-  cat "$f"
-done
+# Collect Dockerfiles once — guard against empty result
+mapfile -t dfiles < <(find . -name "Dockerfile*" 2>/dev/null | grep -v node_modules)
 
-# Checks:
-# - Base image pinned to digest? (not :latest)
-grep -r "FROM.*:latest" $(find . -name "Dockerfile*" 2>/dev/null) 2>/dev/null
+if [[ ${#dfiles[@]} -gt 0 ]]; then
+  # Read each Dockerfile
+  for f in "${dfiles[@]}"; do echo "=== $f ==="; cat "$f"; done
 
-# - Running as root? (no USER directive)
-# - Non-root user defined?
-grep -r "^USER " $(find . -name "Dockerfile*" 2>/dev/null) 2>/dev/null
+  # Run hadolint if available
+  for f in "${dfiles[@]}"; do hadolint "$f" 2>/dev/null || echo "hadolint not available for $f"; done
 
-# - Secrets in ENV or ARG
-grep -r "ENV.*\(PASSWORD\|SECRET\|KEY\|TOKEN\)" $(find . -name "Dockerfile*" 2>/dev/null) 2>/dev/null
+  # Base image :latest check
+  grep "FROM.*:latest" "${dfiles[@]}" 2>/dev/null
 
-# - Multi-stage build (leaks build tools into prod?)
-grep -r "FROM.*AS " $(find . -name "Dockerfile*" 2>/dev/null) 2>/dev/null
+  # Running as root (no USER directive)
+  grep "^USER " "${dfiles[@]}" 2>/dev/null
+
+  # Secrets in ENV or ARG
+  grep -Ei "^ENV.*(PASSWORD|SECRET|KEY|TOKEN)" "${dfiles[@]}" 2>/dev/null
+
+  # Multi-stage build
+  grep "FROM.*AS " "${dfiles[@]}" 2>/dev/null
+else
+  echo "No Dockerfiles found"
+fi
 
 # docker-compose: resource limits
 cat docker-compose.yml 2>/dev/null | grep -A 10 "resources:" || echo "No resource limits defined"
@@ -131,8 +138,9 @@ grep -r "securityContext:" $(find . -name "*.yaml" | xargs grep -l "apiVersion:"
 # Liveness / readiness probes
 grep -r "livenessProbe:\|readinessProbe:" $(find . -name "*.yaml" | xargs grep -l "apiVersion:" 2>/dev/null) 2>/dev/null
 
-# :latest image tags
-grep -r "image:.*:latest\|image:.*[^@]$" $(find . -name "*.yaml" | xargs grep -l "kind: Deployment" 2>/dev/null) 2>/dev/null
+# :latest image tags (only flag :latest and completely untagged, not semver tags)
+rg "image:.*:latest" --type yaml 2>/dev/null | head -20
+rg 'image:\s*[^:@"\s]+\s*$' --type yaml 2>/dev/null | head -10  # untagged images
 
 # Privileged containers
 grep -r "privileged: true" $(find . -name "*.yaml" | xargs grep -l "apiVersion:" 2>/dev/null) 2>/dev/null
@@ -162,7 +170,8 @@ git grep -l "password\|secret\|api_key\|token" HEAD 2>/dev/null | grep -v "test\
 
 ```bash
 # Is the package manager enforced?
-cat package.json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('engines', 'no engines'), d.get('packageManager', 'no packageManager'))" 2>/dev/null
+node -e "const d=require('./package.json'); console.log('engines:', JSON.stringify(d.engines||{}), 'packageManager:', d.packageManager||'none')" 2>/dev/null || \
+  jq '{engines: .engines, packageManager: .packageManager}' package.json 2>/dev/null
 ls .nvmrc .node-version 2>/dev/null
 cat .tool-versions 2>/dev/null
 

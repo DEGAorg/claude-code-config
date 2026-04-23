@@ -30,7 +30,7 @@ edge behavior. Document everything. Spare nothing.
 ```bash
 # OpenAPI / Swagger spec
 find . -name "openapi.yaml" -o -name "openapi.json" -o -name "swagger.yaml" -o -name "swagger.json" 2>/dev/null
-find . -name "*.yaml" -o -name "*.yml" | xargs grep -l "openapi:" 2>/dev/null | head -10
+rg -l "^openapi:" --type yaml 2>/dev/null | head -10
 
 # Route definitions — Node/Express
 rg "(router\.(get|post|put|patch|delete)|app\.(get|post|put|patch|delete))" --type ts --type js 2>/dev/null | head -40
@@ -53,7 +53,8 @@ find . -name "*.proto" 2>/dev/null | head -10
 
 ```bash
 # Base URL and auth config
-cat .env .env.local .env.development .env.test 2>/dev/null | grep -E 'URL|PORT|HOST|API_KEY|TOKEN|SECRET' | grep -v '#'
+# Read only structural config — redact values before including in report
+cat .env .env.local .env.development .env.test 2>/dev/null | grep -E '^(BASE_URL|APP_URL|PORT|HOST|API_HOST)' | grep -v '#'
 cat docker-compose.yml 2>/dev/null | grep -E 'ports:|environment:' -A 5
 ```
 
@@ -83,9 +84,13 @@ curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET "$BASE_URL/api/protected" | tail 
 curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET "$BASE_URL/api/protected" \
   -H "Authorization: Bearer invalid_token_here" | tail -3
 
-# Expired token — should return 401
-curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET "$BASE_URL/api/protected" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.invalid" | tail -3
+# Expired token — use $EXPIRED_TOKEN env var if available; otherwise note as manual test
+# An expired token has a past `exp` claim and a valid signature for its algorithm.
+# If $EXPIRED_TOKEN is not set, skip this test and flag as: [MEDIUM] Expired token
+# test not automated — generate a token with exp in the past and set $EXPIRED_TOKEN.
+[[ -n "$EXPIRED_TOKEN" ]] && \
+  curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET "$BASE_URL/api/protected" \
+  -H "Authorization: Bearer $EXPIRED_TOKEN" | tail -3
 ```
 
 #### 3c. Authorization Tests
@@ -109,10 +114,18 @@ curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/resource" \
 curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/resource" \
   -H "Content-Type: application/json" -d '{"count": "not_a_number"}' | tail -3
 
-# Oversized payload
-python3 -c "print('{\"data\": \"' + 'A'*100000 + '\"}')" | \
+# Oversized payload (10 MB — tests body-size limit enforcement)
+python3 -c "import sys; sys.stdout.write('{\"data\": \"' + 'A'*10_000_000 + '\"}')" | \
   curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/resource" \
-  -H "Content-Type: application/json" -d @- | tail -3
+  -H "Content-Type: application/json" --data-binary @- | tail -3
+
+# HTTP verb tampering (method override attacks)
+curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/resource/1" \
+  -H "X-HTTP-Method-Override: DELETE" -H "Authorization: Bearer $TOKEN" | tail -3
+
+# Content-type confusion
+curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL/api/resource" \
+  -H "Content-Type: text/plain" -d '{"field":"value"}' | tail -3
 
 # SQL injection probe (should return 400 or 422, never 500)
 curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET "$BASE_URL/api/search?q=' OR 1=1--" | tail -3
@@ -131,11 +144,16 @@ curl -s -X GET "$BASE_URL/api/nonexistent" | python3 -c "import sys,json; print(
 
 #### 3f. Rate Limiting
 ```bash
-# Fire 20 requests in parallel — should get 429 responses
-for i in $(seq 1 20); do
-  curl -s -w "%{http_code}\n" -X GET "$BASE_URL/api/resource" -o /dev/null &
+# Fire 100 requests in parallel — capture status code distribution
+results=()
+for i in $(seq 1 100); do
+  results+=("$(curl -s --max-time 5 -o /dev/null \
+    -w "%{http_code}" -X GET "$BASE_URL/api/resource" \
+    -H "Authorization: Bearer $TOKEN")") &
 done
 wait
+printf '%s\n' "${results[@]}" | sort | uniq -c
+# Expected: some 429s — if all 200, rate limiting is absent → flag as [HIGH]
 ```
 
 ### 4. Contract Compliance
@@ -148,7 +166,7 @@ python3 -c "import yaml, jsonschema; print('spec loaded')" 2>/dev/null
 
 # Check actual responses match declared schemas
 # Use dredd if available
-npx dredd openapi.yaml $BASE_URL 2>/dev/null | tail -20
+npx dredd openapi.yaml "$BASE_URL" 2>/dev/null | tail -20
 ```
 
 Compare documented endpoints vs discovered routes. Flag:

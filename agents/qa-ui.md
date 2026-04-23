@@ -52,22 +52,25 @@ Before running the browser, scan the source:
 ```bash
 # Console.log left in production code (not tests)
 rg "console\.(log|warn|error|debug)" --type ts --type js \
-  --glob "!*.test.*" --glob "!*.spec.*" --glob "!node_modules/**" 2>/dev/null | head -30
+  --glob "!*.test.*" --glob "!*.spec.*" --glob "!**/node_modules/**" 2>/dev/null | head -30
 
-# Unhandled promise rejections
+# Unhandled promise rejections — empty catch blocks and async without try/catch
 rg "\.catch\s*\(\s*\)" --type ts --type js 2>/dev/null | head -20
-rg "async.*\{" --type ts --type js -l 2>/dev/null | head -10
+# async functions missing try/catch or .catch chaining (approximation)
+rg "^\s*async\s+(function|\w+\s*=\s*async)" --type ts --type js -l 2>/dev/null | \
+  xargs grep -L "try\s*{" 2>/dev/null | head -10
 
 # Direct DOM manipulation (potential XSS)
 rg "innerHTML\s*=" --type ts --type js 2>/dev/null | head -20
-rg "dangerouslySetInnerHTML" --type tsx --type jsx 2>/dev/null | head -10
+rg "dangerouslySetInnerHTML" --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Hard-coded URLs (environment config smell)
 rg "http(s)?://(localhost|127\.0\.0\.1|0\.0\.0\.0)" --type ts --type js \
   --glob "!*.test.*" --glob "!*.spec.*" 2>/dev/null | head -20
 
 # Deprecated patterns
-rg "componentWillMount|componentWillReceiveProps|componentWillUpdate" --type tsx --type jsx 2>/dev/null | head -10
+rg "componentWillMount|componentWillReceiveProps|componentWillUpdate" \
+  --glob "*.tsx" --glob "*.jsx" 2>/dev/null | head -10
 
 # Memory leak patterns
 rg "addEventListener" --type ts --type js 2>/dev/null | wc -l
@@ -120,7 +123,7 @@ for (const route of routes) {
     const response = await page.goto(`${process.env.BASE_URL || 'http://localhost:3000'}${route}`, {
       timeout: 10000, waitUntil: 'networkidle'
     });
-    const screenshot = `${process.env.REPORT_DIR}/${route.replace('/', '_') || 'home'}.png`;
+    const screenshot = `${process.env.REPORT_DIR}/${route.replace(/\//g, '_').replace(/^_/, '') || 'home'}.png`;
     await page.screenshot({ path: screenshot, fullPage: true });
     results.push({ route, status: response?.status(), screenshot, ok: response?.ok() });
   } catch (e) {
