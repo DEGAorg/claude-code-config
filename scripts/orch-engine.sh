@@ -23,6 +23,9 @@ source "${SCRIPT_DIR}/agent-shim.sh"
 # shellcheck source=providers/provider.sh disable=SC1091
 source "${SCRIPT_DIR}/providers/provider.sh"
 
+# shellcheck source=orch-watchdog.sh disable=SC1091
+source "${SCRIPT_DIR}/orch-watchdog.sh"
+
 # --- Parse args ---
 
 SLUG=""
@@ -391,7 +394,76 @@ done
 # --- Post-completion: run per-item review ---
 
 echo "orch-engine: running per-item review via orch-review.sh"
-"${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+
+# Phase-level watchdog via shared helper (scripts/orch-watchdog.sh).
+# rc=124 means orch-review.sh was killed by `timeout` — one or more
+# reviewers hung with a live pane but never wrote a review file.
+set +e
+GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout review 600 \
+  "${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+review_rc=$?
+set -e
+
+if [[ "${review_rc}" -eq 124 ]]; then
+  # List still-alive reviewer windows with ages as blocking detail.
+  tmux_session="orch-${SLUG}"
+  review_blocking=""
+  if tmux has-session -t "${tmux_session}" 2>/dev/null; then
+    now_epoch=$(date +%s)
+    live_reviewers=$(tmux list-windows -t "${tmux_session}" \
+      -F '#{window_name} #{window_activity}' 2>/dev/null |
+      grep '^reviewer-' || true)
+    if [[ -n "${live_reviewers}" ]]; then
+      while IFS= read -r line; do
+        win_name=$(printf '%s' "${line}" | awk '{print $1}')
+        win_activity=$(printf '%s' "${line}" | awk '{print $2}')
+        if [[ -n "${win_activity}" ]]; then
+          age=$((now_epoch - win_activity))
+        else
+          age="?"
+        fi
+        review_blocking+="${win_name} (age=${age}s) "
+      done <<<"${live_reviewers}"
+    fi
+  fi
+  if [[ -z "${review_blocking}" ]]; then
+    review_blocking="(no alive reviewer-* windows — see state.json)"
+  fi
+
+  # Mark stuck items failed so they don't block forever in future runs.
+  reviewing_ids=$(jq -r '.items[] | select(.reviewStatus == "reviewing") | .id' \
+    "${ORCH_STATE_FILE}")
+  if [[ -n "${reviewing_ids}" ]]; then
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    state=$(cat "${ORCH_STATE_FILE}")
+    for rid in ${reviewing_ids}; do
+      state=$(printf '%s' "${state}" | jq \
+        --argjson id "${rid}" \
+        --arg now "${now}" \
+        --arg reason "phase_timeout" \
+        '(.items[] | select(.id == $id)).reviewStatus = "failed" |
+         (.items[] | select(.id == $id)).reviewReason = $reason |
+         .updatedAt = $now')
+    done
+    orch_write_state "${SLUG}" "${state}"
+  fi
+
+  review_timeout_secs=$(orch_phase_timeout_secs review 600)
+  orch_mark_phase_timeout "${SLUG}" finalReview \
+    "${review_timeout_secs}" "${review_blocking}"
+  # Force REVISE so the engine doesn't try to SHIP with unreviewed items.
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq --arg now "${now}" \
+    '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+elif [[ "${review_rc}" -ne 0 ]]; then
+  echo "orch-engine: orch-review.sh exited with rc=${review_rc} — REVISE" >&2
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq --arg now "${now}" \
+    '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+fi
+
 write_heartbeat
 
 # Fire review lifecycle hooks
@@ -424,13 +496,10 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
     orch_write_state "${SLUG}" "${updated}"
 
-    # Phase-level watchdog — bounds the whole verify phase. If exceeded,
-    # the verifier process is killed with SIGTERM (rc=124) and the run
-    # fails cleanly with a log line naming the blocking criterion.
-    ORCH_VERIFY_PHASE_TIMEOUT="${ORCH_VERIFY_PHASE_TIMEOUT:-300}"
-
+    # Phase-level watchdog via shared helper (scripts/orch-watchdog.sh).
+    # rc=124 means the verifier was killed by `timeout`.
     set +e
-    GH_SYNC="${GH_SYNC}" timeout "${ORCH_VERIFY_PHASE_TIMEOUT}" \
+    GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout verify 300 \
       "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"
     verify_rc=$?
     set -e
@@ -461,29 +530,17 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       fi
     elif [[ "${verify_rc}" -eq 124 ]]; then
       # Phase timeout — extract the last criterion we saw running from
-      # verify.log so the operator knows what's hanging.
-      blocking=""
+      # verify.log as blocking detail, then delegate to the watchdog helper.
+      verify_blocking=""
       if [[ -f "${LOG_DIR}/verify.log" ]]; then
-        blocking=$(grep -E '] RUN: ' "${LOG_DIR}/verify.log" | tail -n 1 | sed -E 's/^\[[^]]+\] RUN: //' || true)
+        verify_blocking=$(grep -E '] RUN: ' "${LOG_DIR}/verify.log" | tail -n 1 | sed -E 's/^\[[^]]+\] RUN: //' || true)
       fi
-      echo "orch-engine: verify phase exceeded ${ORCH_VERIFY_PHASE_TIMEOUT}s — failing with phase_timeout" >&2
-      if [[ -n "${blocking}" ]]; then
-        echo "orch-engine: blocking criterion: ${blocking}" >&2
-      else
-        echo "orch-engine: blocking criterion: (unknown — no RUN entry in verify.log)" >&2
+      if [[ -z "${verify_blocking}" ]]; then
+        verify_blocking="(unknown — no RUN entry in verify.log)"
       fi
-      now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-      updated=$(jq \
-        --arg now "${now}" \
-        --arg reason "phase_timeout" \
-        --arg blocking "${blocking}" \
-        --argjson timeout "${ORCH_VERIFY_PHASE_TIMEOUT}" \
-        '.verification.status = "failed" |
-				 .verification.reason = $reason |
-				 .verification.blockingCriterion = $blocking |
-				 .verification.phaseTimeoutSeconds = $timeout |
-				 .updatedAt = $now' "${ORCH_STATE_FILE}")
-      orch_write_state "${SLUG}" "${updated}"
+      verify_timeout_secs=$(orch_phase_timeout_secs verify 300)
+      orch_mark_phase_timeout "${SLUG}" verification \
+        "${verify_timeout_secs}" "${verify_blocking}"
       REVIEW_RESULT="REVISE"
     else
       echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE"
