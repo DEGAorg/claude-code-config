@@ -138,7 +138,7 @@ scrutiny during reviews and where to be cautious when making changes.
 **Reviewer:** `/cleanup` + `/doc-garden` run
 
 **Strengths:**
-- Dev_Flow.md and AI_Dev_Pipeline.md are well-structured
+- dev-flow.md and ai-dev-pipeline.md are well-structured
 - Exec-plans structure is clean with proper active/completed separation
 - All new plans use YYYYMMDD date prefix convention
 - AGENTS.md repo map now includes orchestrator scripts and agents/

@@ -124,12 +124,12 @@ Round 1 uses the full multi-agent review. Rounds 2+ use lightweight self-review 
    - Opens a PR with fixes
    - Designed for weekly cron or Friday ritual
 
-3. **Create `docs/QUALITY.md`** — quality grades per domain:
+3. **Create `docs/quality.md`** — quality grades per domain:
    - Template for grading codebase areas (A–F) with rationale
    - Populated manually at project start or by `/init` (when built)
    - Agents read this to understand where to focus
 
-**Files created:** `commands/cleanup.md`, `docs/QUALITY.md`
+**Files created:** `commands/cleanup.md`, `docs/quality.md`
 **Files modified:** `agent-template.md` — golden principles section (done as part of Gap 1 restructure)
 
 ---
@@ -222,7 +222,7 @@ and enforced via ast-grep rules with agent-friendly error messages.
 | `docs/exec-plans/active/.gitkeep` | Create | 2 |
 | `docs/exec-plans/completed/.gitkeep` | Create | 2 |
 | `docs/exec-plans/tech-debt.md` | Create | 2 |
-| `docs/QUALITY.md` | Create (template) | 6 |
+| `docs/quality.md` | Create (template) | 6 |
 | `settings.json` | Add PostToolUse hook | 3 |
 | `canon/CLAUDE.md` | Add harness inheritance note | — |
 | `canon/rules/domain-layering.md` | Create | 4 |
@@ -234,7 +234,7 @@ and enforced via ast-grep rules with agent-friendly error messages.
 1. **Gap 1**: `agent-template.md` is ≤ 100 lines, no language-specific toolchain content. `rules/` files exist with correct glob metadata at top.
 2. **Gap 5**: `/fix-issue` steps show convergence loop section with "up to 3 rounds" language. `/review-pr` matches.
 3. **Gap 2**: `docs/exec-plans/active/` and `completed/` exist. `/fix-issue` writes plans there. `/plan` command creates a plan file in `active/`.
-4. **Gap 6**: `commands/cleanup.md` exists. `docs/QUALITY.md` exists as template. Golden principles appear in `agent-template.md`.
+4. **Gap 6**: `commands/cleanup.md` exists. `docs/quality.md` exists as template. Golden principles appear in `agent-template.md`.
 5. **Gap 3**: `commands/doc-garden.md` exists. `settings.json` has a PostToolUse hook entry.
 6. **Gap 4**: `skills/custom-linter-authoring.md` exists. `canon/rules/domain-layering.md` exists with example ast-grep rule and agent-friendly error message.
 7. **Canon**: `canon/CLAUDE.md` has harness section. `canon/rules/` has domain-layering rule. No Core content duplicated.

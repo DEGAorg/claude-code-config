@@ -11,7 +11,7 @@ at any step unless a finding requires a judgment call.
 
 ## 1. Load quality baseline
 
-Read `docs/QUALITY.md` to understand the current quality grades by area.
+Read `docs/quality.md` to understand the current quality grades by area.
 This tells you where to look harder and sets context for what "better"
 means in each module.
 
@@ -86,7 +86,7 @@ For each P1-P2 finding:
 - Verify tests still pass after each change
 - Do not fix P3 unless trivial (< 5 min); log them to tech-debt.md instead
 
-## 5. Update docs/QUALITY.md
+## 5. Update docs/quality.md
 
 After fixing, update the quality grades for any area that improved or
 regressed. Record the date and what changed.

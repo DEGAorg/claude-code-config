@@ -21,9 +21,6 @@ claude "/plan add pre-commit hook for shellcheck"
 bash scripts/orch-run.sh 20260315-add-shellcheck-hook      # parallel workers
 bash scripts/orch-run.sh 20260315-add-shellcheck-hook --max-workers 1  # sequential
 
-# Or let the planner pick work autonomously from focus.yaml
-bash scripts/planner-loop.sh                               # autonomous
-
 # 3. Done — the orchestrator commits and archives on SHIP
 ```
 
@@ -119,67 +116,6 @@ bash scripts/orch-run.sh <slug> [--max-workers N] [--max-iterations N] [--backgr
 
 For sequential execution (one item at a time), use `--max-workers 1`.
 
-### Planner Loop
-
-The planner loop is a fully autonomous agent that runs for hours unattended. It
-reads a `focus.yaml` config, decides what to work on next, creates execution
-plans, launches the orchestrator, monitors completion, and repeats — until the
-budget is exhausted or all focus areas are addressed.
-
-```bash
-bash scripts/planner-loop.sh
-```
-
-**How it works:**
-
-1. Reads `focus.yaml` from the repo root (re-reads each iteration so you can
-   edit focus mid-run)
-2. ASSESS — spawns `claude -p` with `agents/planner-assess.md` to evaluate
-   tech-debt, quality grades, active plans, and focus areas. Outputs a JSON
-   decision: `create_plan` with a slug, or `done`
-3. PLAN — spawns `claude -p` with `agents/planner-writer.md` to write a
-   complete `plan.md` for the chosen task
-4. COMMIT — git adds and commits the new plan
-5. EXECUTE — launches `orch-run.sh --background` to run the plan
-6. MONITOR — polls orchestrator `state.json` until completed or failed
-7. BUDGET CHECK — increments plan counter, checks failure counter and credit
-   exhaustion signals. Loops back to step 1 or exits
-
-**Focus config** (`focus.yaml` at repo root, gitignored):
-
-```yaml
-description: |
-  Focus on infrastructure hardening. Fix broken test suites first,
-  then split oversized files.
-
-areas:
-  - area: broken-orch-tests
-    priority: high
-    source: tech-debt
-    context: >
-      test-orch-e2e.sh uses old API. Needs rewrite.
-
-budget:
-  max_plans: 5
-  max_consecutive_failures: 2
-  cooldown_seconds: 30
-```
-
-**Budget guards:**
-
-| Guard | Trigger | Behavior |
-|-------|---------|----------|
-| Plan counter | `max_plans` reached | Clean exit |
-| Failure counter | `max_consecutive_failures` consecutive orch failures | Clean exit |
-| Credit exhaustion | `claude -p` exits with rate-limit/credit/billing error | Clean exit |
-
-**Key differences from Orchestrator:**
-
-- Planner loop decides *what* to work on; orchestrator decides *how* to execute
-- Planner creates plans autonomously; orchestrator executes existing plans
-- Planner runs across multiple plans over hours; orchestrator runs one plan
-- Planner uses the orchestrator as its execution engine
-
 ---
 
 ## When to Use What
@@ -190,10 +126,8 @@ budget:
 | Multi-item plan, items are independent | Orchestrator | Parallel execution, faster wall-clock time |
 | Exploratory work, unclear scope | Manual | You need human judgment at each step |
 | Quick fix, one file | Manual | Overhead of a loop isn't worth it |
-| AFK batch run, single plan | Orchestrator | Runs unattended until SHIP or budget exhausted |
-| AFK batch run, multiple plans | Planner Loop | Autonomously picks work, creates plans, executes them |
+| AFK batch run | Orchestrator | Runs unattended until SHIP or budget exhausted |
 | Items have complex dependencies | Orchestrator | Supports `depends:` declarations |
-| Long unattended session (hours) | Planner Loop | Budget guards handle credit exhaustion and failures |
 | Modifying the orchestrator itself | Manual | Orch can't safely modify its own scripts mid-run |
 
 ---

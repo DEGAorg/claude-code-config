@@ -1,9 +1,16 @@
 # Ralph Loop — Technical Reference
 
+> **Status (2026-04-23):** Superseded in this repo by the **orchestrator**
+> (`scripts/orch-*.sh`). The Ralph Loop pattern is preserved here as reference
+> for the minimal single-agent outer loop it describes. Use the orchestrator
+> for real work — it provides parallel workers, review gates, watchdogs, and
+> budget enforcement that a bare Ralph Loop does not. See
+> [`AGENTS.md`](../AGENTS.md) for current orchestration guidance.
+
 **Saved:** 2026-02-23
-**Why this exists:** Critical implementation detail — the exact CLI invocation required
-for the outer loop to spawn agents that can actually do work (read/write files, run
-commands, commit). Without this, the loop produces text but no actions.
+**Why this exists:** Documents the exact CLI invocation required for an outer
+loop to spawn agents that can actually do work (read/write files, run commands,
+commit). Still useful when you need a minimal loop without the orchestrator.
 
 ---
 

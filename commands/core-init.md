@@ -105,9 +105,6 @@ Append these lines to `.gitignore` if they aren't already present:
 ```
 # DEGA Core — orchestrator runtime state (ephemeral, not tracked)
 /.orchestrator/
-
-# DEGA Core — personal focus config for planner loop
-focus.yaml
 ```
 
 Check each line before appending — skip if already in `.gitignore`. Create
@@ -347,7 +344,7 @@ Created:
 ✓ docs/exec-plans/active/       — execution plan directory
 ✓ docs/exec-plans/completed/    — archived plans
 ✓ .claude/commands/              — local commands directory
-✓ .gitignore                     — added .orchestrator/ and focus.yaml entries
+✓ .gitignore                     — added .orchestrator/ entry
 ✓ dega-core.yaml                — core config (<LANGUAGE> detected, <PKG_MGR> if Node)
 ✓ AGENTS.md                     — project agent configuration (single source of truth)
 ✓ CLAUDE.md                     — shim pointing to AGENTS.md

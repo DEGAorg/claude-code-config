@@ -130,7 +130,6 @@ at the project root.
 | `/plan <task>` | Create an execution plan |
 | `orch-run.sh <slug>` | Run plan with parallel workers |
 | `orch-run.sh <slug> --max-workers 1` | Run plan sequentially |
-| `planner-loop.sh` | Autonomous: pick work from `focus.yaml`, plan, execute, repeat |
 
 ## Skills
 
