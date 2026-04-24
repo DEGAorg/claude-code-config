@@ -263,7 +263,7 @@ Active work:
 
 ### Canon TUI wiring
 
-The Canon TUI (`DEGAorg/conductor-view`, separate repo) is not auto-wired to this repo's knowledge. See `canon/docs/tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
+The Canon TUI (`DEGAorg/canon-tui`, separate repo) is not auto-wired to this repo's knowledge. See `canon/docs/tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
 
 ### Commit and push — prohibited
 

@@ -30,7 +30,7 @@ Do not stop at the first failure — check all of them so the user gets one comp
 
 | Check | Command | If missing |
 |-------|---------|-----------|
-| canon or tmux | `command -v canon \|\| command -v tmux` | "Install canon (preferred): see DEGAorg/conductor-view README, or tmux: `brew install tmux`" |
+| canon or tmux | `command -v canon \|\| command -v tmux` | "Install canon (preferred): see DEGAorg/canon-tui README, or tmux: `brew install tmux`" |
 | agent-shim.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/agent-shim.sh" ]]` | "Run `/apply-core` to install the agent shim" |
 | canon-scaffold.sh | `[[ -f "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-scaffold.sh" ]]` | "Run `/apply-core` and select Canon Scaffold" |
 
@@ -108,7 +108,7 @@ fi
 # ── Fallback: tmux with agent + dashboard ────────────────────────────
 if ! command -v tmux >/dev/null 2>&1; then
   echo "error: neither canon nor tmux found. Install one of:"
-  echo "  canon — see DEGAorg/conductor-view README"
+  echo "  canon — see DEGAorg/canon-tui README"
   echo "  tmux  — brew install tmux"
   exit 1
 fi

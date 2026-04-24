@@ -1,9 +1,9 @@
-# Conductor TUI Integration — Work Items for conductor-view
+# Conductor TUI Integration — Work Items for canon-tui
 
 > **Date:** 2026-04-06
-> **Repo:** DEGAorg/conductor-view (`/Users/cerratoa/dega/conductor-view`)
+> **Repo:** DEGAorg/canon-tui (`/Users/cerratoa/dega/canon-tui`)
 > **Context:** The Conductor agent prompt lives in `claude-code-config/agents/conductor.md`.
-> This document lists work needed in the conductor-view repo to make the
+> This document lists work needed in the canon-tui repo to make the
 > Conductor the default entry agent and clean up panel control.
 
 ---
@@ -159,7 +159,7 @@ see a clear indication they're talking to the Conductor, not raw Claude.
 
 ---
 
-## File Reference (all paths relative to conductor-view root)
+## File Reference (all paths relative to canon-tui root)
 
 | File | Purpose |
 |------|---------|

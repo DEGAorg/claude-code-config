@@ -15,9 +15,9 @@ in the claude-code-config repository.
 ## Multi-repo plans
 
 Plans that modify repos other than claude-code-config must:
-- Include a `repo:` field in the plan header (e.g., `repo: conductor-view`)
+- Include a `repo:` field in the plan header (e.g., `repo: canon-tui`)
 - Be tracked as GitHub Issues in the core repo (DEGAorg/claude-code-config)
-- Use `repo:conductor-view` label for routing
+- Use `repo:canon-tui` label for routing
 - Account for separate worktree setup in the target repo
 - Reference the decision doc: `docs/decisions/20260321-multi-repo-plan-architecture.md`
 

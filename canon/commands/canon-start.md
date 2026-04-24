@@ -445,7 +445,7 @@ Dashboard state writes degrade gracefully:
 
 **Canon TUI detection:** The session is valid if ANY of these are true:
 - `$TMUX` is set (tmux fallback)
-- `$CANON_TUI` is set (Canon TUI / conductor-view)
+- `$CANON_TUI` is set (Canon TUI / canon-tui)
 - `.canon/state.json` exists and was updated within the last 5 minutes (TUI wrote init state)
 
 Every `terminal-ui-write.sh` call in this command is already guarded with
