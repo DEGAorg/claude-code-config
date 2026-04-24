@@ -8,7 +8,7 @@ Run `/apply-core` inside any AI agent (Claude, Gemini, Codex) and select
 **Canon Bootstrap**. This installs the Canon scripts globally.
 
 You also need one of:
-- **Canon TUI** (recommended) — see DEGAorg/conductor-view README
+- **Canon TUI** (recommended) — see DEGAorg/canon-tui README
 - **tmux** — `brew install tmux`
 
 ## Steps
@@ -77,6 +77,6 @@ my-strategy/
 | Problem | Fix |
 |---------|-----|
 | `/canon-init` says prerequisites missing | Run `/apply-core` and select Canon Bootstrap + Terminal UI |
-| `./canon.sh` says neither canon nor tmux found | Install the Canon TUI (see DEGAorg/conductor-view) or `brew install tmux` |
+| `./canon.sh` says neither canon nor tmux found | Install the Canon TUI (see DEGAorg/canon-tui) or `brew install tmux` |
 | Scaffold fails to fetch from GitHub | Check internet connection; scaffold fetches from `raw.githubusercontent.com` |
 | Build phase hangs | Check `dega-core.yaml` has a valid `check_command` for your project |

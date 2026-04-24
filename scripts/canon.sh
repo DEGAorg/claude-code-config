@@ -31,7 +31,7 @@ fi
 # ── Fallback: tmux with agent + dashboard ────────────────────────────
 if ! command -v tmux >/dev/null 2>&1; then
   echo "error: neither canon nor tmux found. Install one of:"
-  echo "  canon — see DEGAorg/conductor-view README"
+  echo "  canon — see DEGAorg/canon-tui README"
   echo "  tmux  — brew install tmux"
   exit 1
 fi

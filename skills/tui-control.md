@@ -6,7 +6,7 @@ widgets from shell commands.
 
 ## Client
 
-Use `canon-ctl` (in the conductor-view repo) or `socat` directly:
+Use `canon-ctl` (in the canon-tui repo) or `socat` directly:
 
 ```bash
 # Auto-discovers the socket
