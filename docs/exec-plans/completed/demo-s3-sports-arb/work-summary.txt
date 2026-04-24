@@ -1,9 +1,0 @@
-DONE:
-- Verified `.canon/execution/2026-02-28.jsonl` exists with one structured SCAN_ERROR entry from the smoke test run
-- Checked the final completion criterion in plan.md — all completion criteria now checked
-
-REMAINING:
-- none — all progress log items and completion criteria are checked
-
-BLOCKERS:
-- none

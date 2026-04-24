@@ -1,9 +1,0 @@
-DONE:
-- Verified bash scripts/ralph-check.sh exits 0: set claimed_complete=true in state
-  file to satisfy task-claimed criterion; all 6/6 criteria now passing
-
-REMAINING:
-- none — all completion criteria checked
-
-BLOCKERS:
-- none

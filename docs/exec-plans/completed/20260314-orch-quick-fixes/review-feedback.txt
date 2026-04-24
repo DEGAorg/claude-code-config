@@ -1,5 +1,0 @@
-REWORK_ITEMS: 3
-
---- item 3 ---
-FINDING: All 4 hardcoded /tmp/ralph_*.tmp paths remain in scripts/ralph-loop.sh at lines 158, 245, 264, and 311. None were replaced with mktemp.
-ACTION: Replace each `/tmp/ralph_*.tmp` with a `mktemp "${TASK_DIR}/.ralph-XXXXXX"` call as described in the item.
