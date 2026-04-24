@@ -94,17 +94,14 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/review-advance.sh` | Legacy — per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
-| `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted. `--plan-only` creates plans for review without executing. |
 | `scripts/plan-upload.sh` | Commits and pushes reviewed plans to GitHub. Supports `--push`, `--issues`, `--all` flags. |
-| `focus.yaml.example` | Template for focus.yaml — planner loop configuration with areas, budget, and instructions file |
-| `focus-instructions.md.example` | Template for plan creation instructions — conventions and constraints for the plan writer agent |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
 | `docs/dev-flow.md` | 9-stage AI-driven development pipeline |
 | `docs/ai-dev-pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
 | `docs/quality.md` | Quality grades by codebase area — updated by `/cleanup` |
 | `docs/self-development.md` | How to apply fixes and features — manual and orchestrator workflows |
-| `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier, planner-assess, planner-writer) |
+| `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
@@ -128,7 +125,7 @@ claude-code-config/             ← Core (this repo root)
 ├── hooks/                      ← Lifecycle hooks (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
 ├── scripts/                    ← Orchestrator engine, terminal-ui, logging, Canon scripts
-├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer)
+├── agents/                     ← Agent prompt templates (conductor, orch-worker, orch-verifier)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
 ├── skills/                     ← Core skills (app-legibility, development-patterns, sound-notifications)

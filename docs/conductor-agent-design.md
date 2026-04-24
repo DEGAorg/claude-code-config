@@ -39,7 +39,7 @@ On session start, gather all relevant state:
 | Git state | Branches, worktrees, uncommitted changes |
 | Pull requests | `gh pr list`, open reviews |
 | TUI panel state | `canon-ctl snapshot` |
-| Canon/project state | `dega-core.yaml`, `focus.yaml`, project-specific config |
+| Canon/project state | `dega-core.yaml`, project-specific config |
 
 ### 2. TUI Control
 
@@ -111,8 +111,6 @@ The Conductor **delegates** to:
 |-------|---------|
 | `orch-worker` | Implement plan items in isolated worktrees |
 | `orch-verifier` | Review and verify completed work |
-| `planner-writer` | Create execution plans from task descriptions |
-| `planner-assess` | Assess project state and identify work |
 | Canon agents (dev, strategy-architect, market-analyst, risk-analyst, qa, deployment-ops) | Domain-specific Canon tasks |
 
 ---

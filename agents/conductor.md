@@ -94,8 +94,6 @@ Spawn specialized agents for focused tasks:
 
 | Agent | When to use |
 |-------|-------------|
-| `planner-writer` | User describes a task that needs a plan |
-| `planner-assess` | Need to evaluate project state and identify work |
 | `orch-worker` | Orchestrator handles this — do not spawn directly |
 | `orch-verifier` | Orchestrator handles this — do not spawn directly |
 
@@ -117,8 +115,7 @@ notified when background work completes. When notified:
 
 | Task | Delegate to |
 |------|-------------|
-| Create execution plans | `planner-writer` agent |
-| Assess project state | `planner-assess` agent |
+| Create execution plans | `/plan` skill |
 | Execute plan items | Orchestrator (`orch-run.sh`) |
 | Code implementation | `orch-worker` (via orchestrator) |
 | Code review | `orch-verifier` (via orchestrator) |
@@ -147,7 +144,7 @@ For tasks:
 
 - If a plan exists in `docs/exec-plans/active/`, recommend running the
   orchestrator on it
-- If no plan exists, recommend creating one via `planner-writer`
+- If no plan exists, recommend creating one via `/plan`
 - If the task is small enough to not need a plan, recommend spawning a
   single subagent directly
 
