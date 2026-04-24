@@ -1,9 +1,0 @@
-PASS
-All completion criteria verified.
-
-1. planner-loop.sh runs end-to-end — e2e test (tests/test-planner-loop-e2e.sh) passes with 12/12 assertions: reads focus.yaml, spawns assess agent, creates plan, commits, launches orch, monitors completion.
-2. Budget guard — line 549 checks plans_completed >= MAX_PLANS and breaks. E2e test confirms "budget exhausted — completed 1 plans".
-3. Failure guard — multiple check points (lines 451, 507, 527, 554) compare consecutive_failures >= MAX_CONSECUTIVE_FAILURES and break.
-4. Credit exhaustion — lines 199-201 and 307-309 grep stderr for rate_limit/credit/billing/quota/exceeded patterns, return exit code 2, caught at lines 443-445 and 499-501.
-5. focus.yaml schema — documented in plan.md lines 48-82 with full YAML example. focus.yaml exists at repo root as a working example.
-6. shellcheck — passes clean (0 warnings/errors at -S warning level; SC1091 info about external source is expected).

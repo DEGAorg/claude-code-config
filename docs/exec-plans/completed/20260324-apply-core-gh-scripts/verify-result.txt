@@ -1,5 +1,0 @@
-PASS
-All completion criteria verified.
-
-Criterion 1: rg returns 30 matches for script names (required >= 14)
-Criterion 2: rg returns 7 matches for orch-lifecycle (required >= 2)
