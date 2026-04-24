@@ -53,7 +53,7 @@ The orchestrator, planner, and all hooks run identically under any supported age
 | `rules/` | Language-specific standards loaded by file type (Python, TypeScript, Rust, Bash, GitHub Actions) |
 | `scripts/` | Shell scripts and tooling — orchestrator engine, terminal-ui dashboard, logging, Canon scripts |
 | `sounds/` | MP3 sound files played on task completion |
-| `docs/` | Pipeline docs, architecture, exec plans, [self-development guide](docs/Self_Development.md) |
+| `docs/` | Internal docs (architecture, guides, ADRs) — see [docs/README.md](docs/README.md) for the index and [docs/authoring-docs.md](docs/authoring-docs.md) for conventions |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `canon/` | Canon layer — prediction market skills, agents, hooks, commands, templates |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
@@ -193,7 +193,7 @@ The `/apply-core` command installs the template to `~/.degacore/config/agent-tem
 
 ### Sandboxing
 
-At Trail of Bits we run Claude Code in bypass-permissions mode (`--dangerously-skip-permissions`). This means you need to understand your sandboxing options -- the agent will execute commands without asking, so the sandbox is what keeps it from doing damage.
+We run agents in bypass-permissions mode (`--dangerously-skip-permissions` for Claude Code, equivalent flags for Gemini/Codex). This means you need to understand your sandboxing options — the agent will execute commands without asking, so the sandbox is what keeps it from doing damage.
 
 #### Built-in sandbox (`/sandbox`)
 
@@ -335,25 +335,18 @@ This uses `type: "prompt"` instead of `type: "command"` -- Claude Code sends the
 
 ### Plugins and Skills
 
-Claude Code's capabilities come from plugins, which provide skills (reusable workflows), agents (specialized subagents), and commands (slash commands). Plugins are distributed through marketplaces.
+Agents' capabilities come from skills (reusable workflows, checklists, decision frameworks), subagents (specialized personas), and slash commands (scripted sequences). In DEGA Core, these live directly in this repo — not in external marketplaces — and are installed into each supported agent (`~/.claude/`, `~/.gemini/`, `~/.codex/`) by `/apply-core`.
 
-#### Trail of Bits marketplaces
+| Kind | Source in this repo | Installed to |
+|------|---------------------|--------------|
+| Skills | `skills/` | `~/.claude/skills/`, `~/.gemini/skills/`, `~/.codex/skills/` |
+| Subagents | `agents/` | `~/.claude/agents/` (Claude-only) |
+| Slash commands | `commands/` | `~/.claude/commands/`, `~/.gemini/commands/`, `~/.codex/commands/` |
+| Rules | `rules/` | `~/.claude/rules/`, `~/.gemini/rules/`, `~/.codex/rules/` |
 
-Install the three Trail of Bits marketplaces:
+To add or change any of these: edit the file in this repo, commit, and re-run `/core-update` (or `update dega core`) on any machine. The install is idempotent — running it again brings every artifact to latest `main`.
 
-```bash
-claude plugin marketplace add trailofbits/skills
-claude plugin marketplace add trailofbits/skills-internal
-claude plugin marketplace add trailofbits/skills-curated
-```
-
-| Repository | Description |
-|------------|-------------|
-| [trailofbits/skills](https://github.com/trailofbits/skills) | Our public skills for security auditing, smart contract analysis, reverse engineering, code review, and development workflows. |
-| [trailofbits/skills-internal](https://github.com/trailofbits/skills-internal) | Automated exploitation, fuzz harness generation, vulnerability-class-specific analysis, audit report writing in the Trail of Bits house style, engagement scoping, client deliverables, and proprietary workflows. Private to Trail of Bits. |
-| [trailofbits/skills-curated](https://github.com/trailofbits/skills-curated) | Third-party skills and external marketplaces we've vetted and approved for use. Every addition gets code review. |
-
-For external marketplaces (Anthropic official, superpowers, compound-engineering, etc.), see [skills-curated](https://github.com/trailofbits/skills-curated) -- it maintains the approved list and install scripts.
+For authoring conventions (SKILL.md frontmatter, structure, testing locally) see **[Writing Skills and Agents](#writing-skills-and-agents)** below.
 
 #### agent-browser skill
 
@@ -366,7 +359,7 @@ The `agent-browser` CLI (installed in [Prerequisites](#tools)) ships its own mar
 
 ### MCP Servers
 
-Everyone at Trail of Bits should set up at least **Context7** and **Exa** as global MCP servers.
+Set up at least **Context7** and **Exa** as global MCP servers.
 
 | Server | What it does | Requirements |
 |--------|-------------|--------------|
@@ -584,38 +577,40 @@ The Ink dashboard displays a "Last heartbeat: Xs ago" indicator in the header ba
 
 ## Writing Skills and Agents
 
-Skills and agents encode expertise rather than procedures. Where a command runs a specific sequence of steps, a skill teaches Claude *how to think* about a category of work, and an agent is a specialist you hand a job to. Read Anthropic's [skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) first for guidance on structure, descriptions, and progressive disclosure.
+Skills and agents encode expertise rather than procedures. Where a command runs a specific sequence of steps, a skill teaches the agent *how to think* about a category of work, and a subagent is a specialist you hand a job to. Read Anthropic's [skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) first for guidance on structure, descriptions, and progressive disclosure.
 
-**Skills** load instructions into the current session. They're conventions, checklists, and decision frameworks that shape how Claude approaches work -- not step-by-step scripts. **Agents** run in their own context window with a dedicated system prompt. Use an agent when the work benefits from a focused persona, would bloat the main session with context, needs a constrained tool set, or should run in parallel with other work.
+**Skills** load instructions into the current session. They're conventions, checklists, and decision frameworks that shape how the agent approaches work — not step-by-step scripts. **Subagents** run in their own context window with a dedicated system prompt. Use a subagent when the work benefits from a focused persona, would bloat the main session with context, needs a constrained tool set, or should run in parallel with other work.
 
-**Agent personas for security work.** A "senior auditor who's triaged hundreds of reentrancy bugs" approaches code differently than a "fuzzing engineer thinking about coverage and crash triage." The system prompt shapes what the agent notices and prioritizes, not just what steps it follows. When you have deep expertise in a vulnerability class or analysis methodology, encode it as an agent persona, not just a skill checklist.
+**Keep skills lean.** Target under 2,000 words in `SKILL.md`. Move checklists, patterns, and long examples into sibling files under the skill directory and reference them from `SKILL.md` via progressive disclosure.
 
-**Tooling.** The `plugin-dev` plugin (from `claude-plugins-official`) has workflows for both. `/plugin-dev:skill-development` walks you through a 6-step process for skills. `/plugin-dev:agent-development` does the same for agents. For a full plugin with multiple components, use `/plugin-dev:create-plugin` to orchestrate the process.
+### Adding a skill to this repo
 
-**Quality.** For security skills and agents, don't just describe the workflow. Bundle the reference material that makes it expert-level: analysis checklists, vulnerability patterns, example outputs, and the decision logic an experienced auditor would apply. Keep the SKILL.md lean (under 2,000 words) and move detailed content into `references/` files.
+1. Create `skills/<skill-name>/SKILL.md` (or a single `skills/<skill-name>.md` for tiny skills — see existing examples in `skills/`).
+2. Use this frontmatter:
+
+   ```markdown
+   ---
+   name: <skill-name>
+   description: One-line hook — when should the agent invoke this?
+   ---
+
+   # <Skill Name>
+
+   <body: when to use, what to do, decision framework>
+   ```
+
+3. Test locally before publishing: copy the file into `~/.claude/skills/` (or run `/core-update` from this checkout) and invoke it in a session.
+4. Commit and push. Users pick it up the next time they run `update dega core` or `/core-update`.
+
+The same pattern applies to `agents/` (subagent prompts), `commands/` (slash commands), and `rules/` (language standards). Anything dropped into these directories is installed by `/apply-core` into every detected agent's config directory.
 
 ### Publishing skills
 
-Where to publish depends on the audience:
-
-- **Public and open source** -- submit a PR to [trailofbits/skills](https://github.com/trailofbits/skills).
-- **Internal to Trail of Bits** -- submit a PR to [trailofbits/skills-internal](https://github.com/trailofbits/skills-internal).
-- **Third-party skill you want approved** -- submit a PR to [trailofbits/skills-curated](https://github.com/trailofbits/skills-curated) with attribution to the original source. Every PR gets code review.
+Skills live in this repo — open a PR against `DEGAorg/claude-code-config`. There is no separate marketplace. Once merged to `main`, every installed instance picks up the skill on the next `update dega core` / `/core-update`.
 
 ## Recommended Skills
 
-Skills come from plugins you install via the Trail of Bits marketplaces and third-party marketplaces. Here are the ones worth knowing about from each.
-
-### Trail of Bits ([trailofbits/skills](https://github.com/trailofbits/skills))
-
-Security auditing, code analysis, and development workflows. Installed automatically with the Trail of Bits marketplace.
-
-| Skill | What it does | When to use it |
-|-------|-------------|----------------|
-| `ask-questions-if-underspecified` | Asks 1-5 targeted clarification questions before starting work | Any underspecified request -- prevents building the wrong thing |
-| `modern-python` | Configures projects with uv, ruff, ty, pytest, prek | New Python projects or migrating from pip/Poetry/mypy/black |
-| `audit-context-building` | Line-by-line code analysis using First Principles and 5 Whys methodology | Building deep understanding of unfamiliar code before an audit |
-| `differential-review` | Security-focused review of code changes with blast radius analysis | Reviewing PRs or commits where security impact matters |
+DEGA Core ships its own skills in [`skills/`](skills/) — installed automatically by `/apply-core`. Beyond those, the following third-party plugins are worth adding via `claude plugin marketplace add`.
 
 ### Superpowers ([obra/superpowers](https://github.com/obra/superpowers))
 

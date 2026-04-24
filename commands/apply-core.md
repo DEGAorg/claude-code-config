@@ -84,9 +84,6 @@ Files available:
 - `agents/orch-worker.md`
 - `agents/orch-verifier.md`
 - `hooks/orch-done-sync.sh`
-- `scripts/planner-loop.sh`
-- `agents/planner-assess.md`
-- `agents/planner-writer.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -183,7 +180,6 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/orch-review.sh`
 - `~/.degacore/scripts/orch-verify.sh`
 - `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
-- `~/.degacore/scripts/planner-loop.sh`
 - `~/.degacore/scripts/canon-scaffold.sh`
 - `~/.degacore/scripts/canon.sh`
 - `~/.degacore/scripts/ensure-gh.sh`
@@ -280,13 +276,6 @@ Components:
   (default 30). Requires Terminal UI and tmux. Invoke via
   `~/.degacore/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.degacore/scripts/orch-run.sh` is missing)
-- **Planner** — autonomous planner loop that reads `focus.yaml`, assesses the
-  project, writes execution plans, and launches the orchestrator. Installs
-  `planner-loop.sh` to `~/.degacore/scripts/` and agent prompts
-  (`planner-assess.md`, `planner-writer.md`) to `~/.degacore/config/agents/`.
-  Requires Orchestrator. Invoke via
-  `~/.degacore/scripts/planner-loop.sh`.
-  (opt-in; recommended when `~/.degacore/scripts/planner-loop.sh` is missing)
 - **Canon Bootstrap** — launcher, scaffold scripts, project templates, and CLI
   for Canon prediction market projects. Installs `canon-scaffold.sh`
   (deterministic project scaffolder called by `/canon-start`), `canon.sh`
@@ -518,20 +507,6 @@ rebuild it:
 ```bash
 cd ~/.degacore/scripts/terminal-ui && pnpm install && pnpm run build
 ```
-
-#### Planner
-
-Write the planner loop script:
-- `scripts/planner-loop.sh` -> `~/.degacore/scripts/planner-loop.sh`
-
-Run `chmod +x ~/.degacore/scripts/planner-loop.sh` after writing.
-
-Write the agent prompts:
-- `agents/planner-assess.md` -> `~/.degacore/config/agents/planner-assess.md`
-- `agents/planner-writer.md` -> `~/.degacore/config/agents/planner-writer.md`
-
-Safe to overwrite — these are engine scripts and agent definitions with no
-user customization.
 
 #### Canon Bootstrap
 
@@ -800,7 +775,6 @@ Installed to ~/.degacore/:
   Sounds -> sounds/ (MP3 + OGG) + scripts/hooks/play-sound.sh
   Terminal UI -> scripts/terminal-ui/ (built with pnpm)
   Orchestrator -> scripts/orch-*.sh + config/agents/ + scripts/hooks/
-  Planner -> scripts/planner-loop.sh + config/agents/
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
   Canon CLI -> canon-cli/ (built) + bin/canon-cli (linked)
 

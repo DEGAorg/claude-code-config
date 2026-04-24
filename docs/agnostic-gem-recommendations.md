@@ -56,7 +56,6 @@ The installation command must be updated to:
 ### Decouple Engine Scripts
 Systematically update the following scripts to use the abstraction layer:
 - `orch-engine.sh` / `orch-review.sh` (Worker spawning)
-- `planner-loop.sh` (Assessment and plan writing)
 - `ralph-loop.sh` (Legacy worker/reviewer iterations)
 
 ### Global Path Migration

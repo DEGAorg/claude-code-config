@@ -99,8 +99,7 @@ git -C "${REPO_ROOT}" commit -m "$(
   cat <<-EOF
 		plan: add reviewed plans (${slug_list})
 
-		Plans created via planner-loop --plan-only, reviewed, and ready
-		for orchestrator execution.
+		Reviewed plans ready for orchestrator execution.
 
 		Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 	EOF

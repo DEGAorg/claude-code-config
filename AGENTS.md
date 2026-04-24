@@ -35,7 +35,7 @@ Canon specifications live in a sibling docs repo. Do not duplicate them in Core.
 | File | Use when |
 |------|----------|
 | `Canon_MVP_Technical_Roadmap.md` | Scaffold structure, canon_init, 10 templates, .canon/ tree |
-| `Canon_Installation_Architecture_Analysis.md` | Core vs Canon split, install scope, canon_init behavior |
+| `canon-installation-architecture-analysis.md` | Core vs Canon split, install scope, canon_init behavior |
 | `specs/SAS_Agent_Framework.md` | Agent personas, skills, workflows, .canon/ conventions |
 | `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/dega-core.yaml, hooks |
 | `specs/SAS_Automation_Model.md` | Strategy scaffolds, automation patterns |
@@ -94,17 +94,14 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/review-advance.sh` | Legacy — per-item reviewer loop for Ralph iterations |
 | `scripts/canon.sh` | Canon bootstrap wrapper |
 | `scripts/canon-runner.sh` | Canon strategy runner |
-| `scripts/planner-loop.sh` | Autonomous planner loop — reads focus.yaml, assesses, plans, executes via orch, repeats until budget exhausted. `--plan-only` creates plans for review without executing. |
 | `scripts/plan-upload.sh` | Commits and pushes reviewed plans to GitHub. Supports `--push`, `--issues`, `--all` flags. |
-| `focus.yaml.example` | Template for focus.yaml — planner loop configuration with areas, budget, and instructions file |
-| `focus-instructions.md.example` | Template for plan creation instructions — conventions and constraints for the plan writer agent |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
-| `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
-| `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
+| `docs/dev-flow.md` | 9-stage AI-driven development pipeline |
+| `docs/ai-dev-pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
-| `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
-| `docs/Self_Development.md` | How to apply fixes and features — manual and orchestrator workflows |
-| `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier, planner-assess, planner-writer) |
+| `docs/quality.md` | Quality grades by codebase area — updated by `/cleanup` |
+| `docs/self-development.md` | How to apply fixes and features — manual and orchestrator workflows |
+| `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
 | `canon/` | **Canon layer** — prediction market development (see below) |
@@ -128,7 +125,7 @@ claude-code-config/             ← Core (this repo root)
 ├── hooks/                      ← Lifecycle hooks (enforce-package-manager, play-sound, orch-done-sync, structured-log, etc.)
 ├── sounds/                     ← MP3 sound files for task-completion audio cues
 ├── scripts/                    ← Orchestrator engine, terminal-ui, logging, Canon scripts
-├── agents/                     ← Agent prompt templates (orch-worker, orch-verifier, planner-assess, planner-writer)
+├── agents/                     ← Agent prompt templates (conductor, orch-worker, orch-verifier)
 ├── docs/                       ← Core docs (pipeline, harness patterns, architecture)
 │   └── exec-plans/             ← Execution plans (active + completed)
 ├── skills/                     ← Core skills (app-legibility, development-patterns, sound-notifications)
@@ -178,7 +175,7 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 | 3 | Doc-gardening automation | **Done** | `commands/doc-garden.md` + PostToolUse hook |
 | 4 | Custom linters with agent-friendly error messages | **Done** | `skills/custom-linter-authoring.md` + `canon/rules/domain-layering.md` |
 | 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
-| 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/QUALITY.md` |
+| 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/quality.md` |
 | 7 | Application legibility to agents | **Done** | `skills/app-legibility.md` |
 
 ### Implementation order
@@ -192,8 +189,8 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
 ## AI-Driven Development Flow
 
-Full description: `docs/Dev_Flow.md`
-Pipeline diagram: `docs/AI_Dev_Pipeline.md`
+Full description: `docs/dev-flow.md`
+Pipeline diagram: `docs/ai-dev-pipeline.md`
 
 Nine-stage pipeline with five quality layers:
 
@@ -292,7 +289,7 @@ In this repo, `github.pr_target` is currently `ace-work`: open PRs against `ace-
 ### General
 
 - Use `README.md` as source of truth for repo configuration explanations.
-- Use `docs/Dev_Flow.md` as source of truth for the development pipeline.
+- Use `docs/dev-flow.md` as source of truth for the development pipeline.
 - Use the harness gap analysis on `openai-harness-patterns` branch for implementation details.
 - Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
 - When a Canon pattern generalizes, promote it to Core.

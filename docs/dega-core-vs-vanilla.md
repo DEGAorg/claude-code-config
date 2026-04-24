@@ -11,6 +11,6 @@
 | GitHub Issues as plan backend | No | Plans sync to/from GitHub Issues automatically |
 | Guardrail hooks | Basic permission model | Lifecycle hooks: block `rm -rf`, enforce package managers, structured logging |
 | Reusable harness across projects | Per-project AGENTS.md | `/apply-core` installs globally, works on any repo |
-| Quality tracking | No | `/cleanup` scans + `QUALITY.md` grades by area |
+| Quality tracking | No | `/cleanup` scans + `quality.md` grades by area |
 | Sound notifications | No | Audio cues on task completion |
-| 9-stage dev pipeline | No | Codified in `Dev_Flow.md`, enforced by tooling |
+| 9-stage dev pipeline | No | Codified in `dev-flow.md`, enforced by tooling |
