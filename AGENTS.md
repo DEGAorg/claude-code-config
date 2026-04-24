@@ -35,7 +35,7 @@ Canon specifications live in a sibling docs repo. Do not duplicate them in Core.
 | File | Use when |
 |------|----------|
 | `Canon_MVP_Technical_Roadmap.md` | Scaffold structure, canon_init, 10 templates, .canon/ tree |
-| `Canon_Installation_Architecture_Analysis.md` | Core vs Canon split, install scope, canon_init behavior |
+| `canon-installation-architecture-analysis.md` | Core vs Canon split, install scope, canon_init behavior |
 | `specs/SAS_Agent_Framework.md` | Agent personas, skills, workflows, .canon/ conventions |
 | `specs/SAS_AIDD_Pipeline.md` | Ralph Loop, risk contract, .canon/dega-core.yaml, hooks |
 | `specs/SAS_Automation_Model.md` | Strategy scaffolds, automation patterns |
@@ -99,11 +99,11 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `focus.yaml.example` | Template for focus.yaml — planner loop configuration with areas, budget, and instructions file |
 | `focus-instructions.md.example` | Template for plan creation instructions — conventions and constraints for the plan writer agent |
 | `scripts/canon-scaffold.sh` | Scaffolds Canon project structure |
-| `docs/Dev_Flow.md` | 9-stage AI-driven development pipeline |
-| `docs/AI_Dev_Pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
+| `docs/dev-flow.md` | 9-stage AI-driven development pipeline |
+| `docs/ai-dev-pipeline.md` | Pipeline diagram (Mermaid) with stage descriptions |
 | `docs/exec-plans/` | Execution plans: `active/` (in progress), `completed/` (archived), `tech-debt.md` |
-| `docs/QUALITY.md` | Quality grades by codebase area — updated by `/cleanup` |
-| `docs/Self_Development.md` | How to apply fixes and features — manual and orchestrator workflows |
+| `docs/quality.md` | Quality grades by codebase area — updated by `/cleanup` |
+| `docs/self-development.md` | How to apply fixes and features — manual and orchestrator workflows |
 | `agents/` | Agent prompt templates (conductor, orch-worker, orch-verifier, planner-assess, planner-writer) |
 | `tests/` | Test scripts for hooks and infrastructure |
 | `ace/` | Ace agent notes — meeting notes, progress logs, tasks |
@@ -178,7 +178,7 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 | 3 | Doc-gardening automation | **Done** | `commands/doc-garden.md` + PostToolUse hook |
 | 4 | Custom linters with agent-friendly error messages | **Done** | `skills/custom-linter-authoring.md` + `canon/rules/domain-layering.md` |
 | 5 | Agent-to-agent review convergence loop (up to 3 rounds) | **Done** | `commands/fix-issue.md` + `commands/review-pr.md` |
-| 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/QUALITY.md` |
+| 6 | Entropy / garbage collection automation | **Done** | `commands/cleanup.md` + `docs/quality.md` |
 | 7 | Application legibility to agents | **Done** | `skills/app-legibility.md` |
 
 ### Implementation order
@@ -192,8 +192,8 @@ Seven gaps were mapped from OpenAI's methodology to Claude Code equivalents.
 
 ## AI-Driven Development Flow
 
-Full description: `docs/Dev_Flow.md`
-Pipeline diagram: `docs/AI_Dev_Pipeline.md`
+Full description: `docs/dev-flow.md`
+Pipeline diagram: `docs/ai-dev-pipeline.md`
 
 Nine-stage pipeline with five quality layers:
 
@@ -292,7 +292,7 @@ In this repo, `github.pr_target` is currently `ace-work`: open PRs against `ace-
 ### General
 
 - Use `README.md` as source of truth for repo configuration explanations.
-- Use `docs/Dev_Flow.md` as source of truth for the development pipeline.
+- Use `docs/dev-flow.md` as source of truth for the development pipeline.
 - Use the harness gap analysis on `openai-harness-patterns` branch for implementation details.
 - Core artifacts must remain project-agnostic. Domain logic goes in `canon/`.
 - When a Canon pattern generalizes, promote it to Core.

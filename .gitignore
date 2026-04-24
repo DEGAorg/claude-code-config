@@ -37,3 +37,4 @@ canon/cli/dist/
 
 # Strategy source docs (local reference, not committed)
 /templates/
+docs/.discard/

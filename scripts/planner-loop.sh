@@ -39,7 +39,7 @@ source "${SCRIPT_DIR}/agent-shim.sh"
 LOG_DIR="${DEGA_CORE_HOME}/state/planner"
 FOCUS_FILE="${REPO_ROOT}/focus.yaml"
 TECH_DEBT_FILE="${REPO_ROOT}/docs/exec-plans/tech-debt.md"
-QUALITY_FILE="${REPO_ROOT}/docs/QUALITY.md"
+QUALITY_FILE="${REPO_ROOT}/docs/quality.md"
 REGISTRY_FILE="${REPO_ROOT}/docs/exec-plans/REGISTRY.md"
 ACTIVE_PLANS_DIR="${REPO_ROOT}/docs/exec-plans/active"
 ASSESS_PROMPT="${SCRIPT_DIR}/../agents/planner-assess.md"
@@ -194,7 +194,7 @@ gather_context() {
   if [[ -f "${QUALITY_FILE}" ]]; then
     quality=$(cat "${QUALITY_FILE}")
   else
-    quality="(no QUALITY.md found)"
+    quality="(no quality.md found)"
   fi
 
   if [[ -d "${ACTIVE_PLANS_DIR}" ]]; then

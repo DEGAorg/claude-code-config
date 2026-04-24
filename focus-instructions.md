@@ -56,7 +56,7 @@ Plans that modify repos other than claude-code-config must:
 
 - MVP scope: `docs/mvp-scope.md`
 - Tech debt: `docs/exec-plans/tech-debt.md`
-- Quality grades: `docs/QUALITY.md`
+- Quality grades: `docs/quality.md`
 - Session handoff: `ace/tasks/20260321-session-handoff.md`
 - Carlos meeting (Mar 23): `ace/meets/meet-mar-23.md`
 - Multi-repo decision: `docs/decisions/20260321-multi-repo-plan-architecture.md`

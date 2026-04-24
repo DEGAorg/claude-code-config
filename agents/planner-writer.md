@@ -24,7 +24,7 @@ before writing a plan. Specifically:
 
 - Read every file that will be touched — plan against actual code, not memory
 - Read `docs/exec-plans/active/` to avoid duplicating in-progress work
-- Read `docs/tech-debt.md` and `docs/QUALITY.md` if the task relates to debt or quality
+- Read `docs/tech-debt.md` and `docs/quality.md` if the task relates to debt or quality
 - Identify acceptance criteria: what does "done" look like?
 - Identify risks and open questions that need decisions
 

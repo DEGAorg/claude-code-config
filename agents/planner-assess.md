@@ -10,7 +10,7 @@ The planner loop provides these via your prompt:
 
 - **Focus config**: contents of `focus.yaml` (priorities and constraints)
 - **Tech debt**: contents of `docs/exec-plans/tech-debt.md` (known issues)
-- **Quality grades**: contents of `docs/QUALITY.md` (codebase health)
+- **Quality grades**: contents of `docs/quality.md` (codebase health)
 - **Active plans**: list of plans in `docs/exec-plans/active/`
 - **Plan registry**: contents of `docs/exec-plans/REGISTRY.md` (history)
 
