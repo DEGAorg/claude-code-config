@@ -1,8 +1,0 @@
-DONE:
-- Run `pnpm exec oxlint src/` — confirmed 0 warnings, 0 errors on src/types/index.ts with all plugins enabled
-
-REMAINING:
-- none — all progress log items and completion criteria are now checked
-
-BLOCKERS:
-- none

@@ -1,8 +1,0 @@
-DONE:
-- Updated commands/apply-core.md install manifest: added poll_interval_seconds to Orchestrator component description and to the ralph.yaml customization warning
-
-REMAINING:
-- none (all progress log items checked)
-
-BLOCKERS:
-- none

@@ -1,5 +1,0 @@
-REWORK_ITEMS: 1
-
---- item 1 (review failed) ---
-FINDING: .github/workflows/ci.yml:22 — shellcheck command is still `shellcheck hooks/*.sh scripts/*.sh tests/*.sh` with no `-e SC1091 -S warning` flags
-ACTION: Update line 22 to `shellcheck -e SC1091 -S warning hooks/*.sh scripts/*.sh tests/*.sh`

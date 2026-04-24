@@ -1,9 +1,0 @@
-DONE:
-- Verified README "Verify connections" section exists (line 27 of README.md)
-- All completion criteria are now checked
-
-REMAINING:
-- none — all progress log items and completion criteria are complete
-
-BLOCKERS:
-- none
