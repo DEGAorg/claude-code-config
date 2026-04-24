@@ -1,7 +1,0 @@
-PASS
-All completion criteria verified.
-
-shellcheck -e SC1091 -S warning hooks/*.sh scripts/*.sh tests/*.sh → exit 0
-shfmt -d on plan-modified files (canon-runner.sh, canon-scaffold.sh, ralph-loop.sh) → exit 0
-
-Note: pre-existing shfmt formatting issues exist in 6 unrelated files (orch-state.sh, orch-verify.sh, planner-loop.sh, test-dashboard-rendering.sh, test-enforce-package-manager.sh, test-orch-ship-pr.sh) — these are outside the scope of this plan.

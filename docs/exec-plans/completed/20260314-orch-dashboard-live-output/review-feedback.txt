@@ -1,9 +1,0 @@
-REWORK_ITEMS: 6,7
-
---- item 6 ---
-FINDING: The useEffect that watches the selected item's log file via chokidar is completely missing from orchestrator-app.tsx. The worker's summary claims lines 73-105 contain a log-watching useEffect, but those lines are actually the keyboard navigation block (useInput). The outputLines state is declared (line 23) and passed to SessionDetail (line 153), but it is only ever set to [] on navigation changes (lines 86, 91, 94) — no code ever populates it with actual log file content.
-ACTION: Add a useEffect in OrchestratorApp that derives a log path from statePath and selectedId (e.g. dirname(statePath)/logs/worker-{selectedId}.log), watches it with chokidar on add/change events, reads the last ~200 lines into outputLines, and cleans up the watcher when selectedId changes or on unmount.
-
---- item 7 ---
-FINDING: Neither change described in the handoff summary is present in the codebase. session-detail.tsx:1-69 has no strip-ansi import and no stripAnsi call — lines render raw at line 61-63. package.json:1-31 does not list strip-ansi as a dependency.
-ACTION: Actually implement the changes: (1) add strip-ansi@7.2.0 to dependencies in scripts/terminal-ui/package.json, (2) import stripAnsi in session-detail.tsx, (3) apply stripAnsi to visible lines before rendering (e.g. visible.map(stripAnsi).map(...)), (4) run pnpm install to update lockfile, (5) verify with pnpm run check.

@@ -1,8 +1,0 @@
-DONE:
-- Verified `tsc --noEmit` passes on the terminal-ui package (last completion criterion)
-
-REMAINING:
-- none — all progress log items and completion criteria are checked
-
-BLOCKERS:
-- none

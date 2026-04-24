@@ -1,8 +1,0 @@
-PASS
-All completion criteria verified.
-
-1. SHIP sets label to plan:pr-review — handle_ship() calls set_label "plan:pr-review" (line 433)
-2. SHIP sets body status to "PR Review" — handle_ship() calls update_body_on_pr() which sets "PR Review" (line 317)
-3. SHIP does NOT close the issue — no gh issue close in handle_ship()
-4. pr_merged sets plan:completed and "Completed" — handle_pr_merged() calls set_label "plan:completed" (line 459) and update_body_on_merge() sets "Completed" (line 353)
-5. shellcheck and shfmt clean — only SC1091 info-level messages (sourced files not in worktree), no warnings/errors. shfmt reports no formatting differences.

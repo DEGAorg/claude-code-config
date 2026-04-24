@@ -1,2 +1,0 @@
-PASS
-All completion criteria verified.
