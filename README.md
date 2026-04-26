@@ -337,18 +337,19 @@ This uses `type: "prompt"` instead of `type: "command"` -- Claude Code sends the
 
 ### Plugins and Skills
 
-Agents' capabilities come from skills (reusable workflows, checklists, decision frameworks), subagents (specialized personas), and slash commands (scripted sequences). In DEGA Core, these live directly in this repo — not in external marketplaces — and are installed into each supported agent (`~/.claude/`, `~/.gemini/`, `~/.codex/`) by `/apply-core`.
+Agents' capabilities come from skills (reusable workflows, checklists, decision frameworks), subagents (specialized personas), and slash commands (scripted sequences). In DEGA Core, these live directly in this repo — not in external marketplaces. Shared Core artifacts are installed by `/apply-core`; harness-specific skill packages are stored here and can be copied into the matching agent until installer support is wired in.
 
-| Kind | Source in this repo | Installed to |
+| Kind | Source in this repo | Install behavior |
 |------|---------------------|--------------|
-| Skills | `skills/` | `~/.claude/skills/`, `~/.gemini/skills/`, `~/.codex/skills/` |
+| Shared skills | `skills/*.md` | Installed as agent-readable DEGA Core skill references |
+| Harness skills | `skills/claude/<name>/`, `skills/codex/<name>/` | Stored as Claude/Codex `SKILL.md` packages; copy manually until installer support lands |
 | Subagents | `agents/` | `~/.claude/agents/` (Claude-only) |
 | Slash commands | `commands/` | `~/.claude/commands/`, `~/.gemini/commands/`, `~/.codex/commands/` |
 | Rules | `rules/` | `~/.claude/rules/`, `~/.gemini/rules/`, `~/.codex/rules/` |
 
-To add or change any of these: edit the file in this repo, commit, and re-run `/core-update` (or `update dega core`) on any machine. The install is idempotent — running it again brings every artifact to latest `main`.
+To add or change shared installer-owned artifacts: edit the file in this repo, commit, and re-run `/core-update` (or `update dega core`) on any machine. The install is idempotent — running it again brings installer-supported artifacts to latest `main`.
 
-For authoring conventions (SKILL.md frontmatter, structure, testing locally) see **[Writing Skills and Agents](#writing-skills-and-agents)** below.
+For authoring conventions, package layout, and privacy review steps, see **[Writing Skills and Agents](#writing-skills-and-agents)** below.
 
 #### agent-browser skill
 
@@ -587,28 +588,130 @@ Skills and agents encode expertise rather than procedures. Where a command runs 
 
 ### Adding a skill to this repo
 
-1. Create `skills/<skill-name>/SKILL.md` (or a single `skills/<skill-name>.md` for tiny skills — see existing examples in `skills/`).
-2. Use this frontmatter:
+There are two skill layouts:
 
-   ```markdown
-   ---
-   name: <skill-name>
-   description: One-line hook — when should the agent invoke this?
-   ---
+- `skills/*.md` — compact shared DEGA Core references used by this repo's
+  own workflows.
+- `skills/claude/<skill-name>/` and `skills/codex/<skill-name>/` — packaged
+  Claude Code and Codex skills with `SKILL.md` and optional bundled resources.
 
-   # <Skill Name>
+Before adding a local skill, inspect the repo for overlap:
 
-   <body: when to use, what to do, decision framework>
-   ```
+```bash
+find skills canon/skills -maxdepth 3 -type f | sort
+rg -n "<skill-name>|<distinctive phrase from the skill>" skills canon/skills README.md
+```
 
-3. Test locally before publishing: copy the file into `~/.claude/skills/` (or run `/core-update` from this checkout) and invoke it in a session.
-4. Commit and push. Users pick it up the next time they run `update dega core` or `/core-update`.
+If an existing skill is redundant or materially overlaps, decide whether to
+skip, replace, merge, rename, or keep both with clearer descriptions before
+copying files.
 
-The same pattern applies to `agents/` (subagent prompts), `commands/` (slash commands), and `rules/` (language standards). Anything dropped into these directories is installed by `/apply-core` into every detected agent's config directory.
+For a packaged harness skill, create both harness directories when both variants
+exist:
+
+```text
+skills/
+  claude/
+    <skill-name>/
+      SKILL.md
+      scripts/
+      references/
+  codex/
+    <skill-name>/
+      SKILL.md
+      scripts/
+      references/
+```
+
+Use this frontmatter for Claude Code:
+
+```markdown
+---
+name: <skill-name>
+description: One-line hook — when should the agent invoke this?
+argument-hint: "[optional invocation hint]"
+allowed-tools: Bash Read Write Edit Glob Grep  # list only the tools actually needed
+user-invocable: true
+---
+
+# <Skill Name>
+
+<body: when to use, what to do, decision framework>
+
+## Task
+
+$ARGUMENTS
+```
+
+Use this frontmatter for Codex:
+
+```markdown
+---
+name: <skill-name>
+description: One-line hook — when should the agent invoke this?
+---
+
+# <Skill Name>
+
+<body: when to use, what to do, decision framework>
+```
+
+Adapt between harnesses deliberately:
+
+- Claude Code supports `argument-hint`, `allowed-tools`, `user-invocable`, and
+  the trailing `## Task` / `$ARGUMENTS` section.
+- Codex uses only `name` and `description` frontmatter for routing, so keep the
+  body direct and avoid Claude-specific tool names unless the skill is
+  explicitly Claude-only.
+- Copy shared resources into both harness directories. Do not symlink between
+  `.claude` and `.codex` paths; either harness should work independently.
+
+Only include files that directly support the skill:
+
+- Include: `SKILL.md`, small reference files, deterministic helper scripts, and
+  optional UI metadata such as `agents/openai.yaml`.
+- Exclude: virtual environments, caches, compiled files, generated output,
+  local state, credential files, and machine-specific setup artifacts.
+
+Run a privacy and portability pass before committing:
+
+```bash
+find skills -name '__pycache__' -o -name '*.pyc' -o -name '.venv' -o -name '.env' -o -name '.env.*'
+private_scan='(/Us''ers/|TO''KEN|SEC''RET|API_''KEY|PASS''WORD|Bea''rer|oauth2''service)'
+rg -n "$private_scan" skills
+rg -n '<private-email>|<private-domain>|<private-org>|<private-project>' skills
+```
+
+Normalize examples to use `$HOME`, `$CLAUDE_HOME`, `$CODEX_HOME`, or
+skill-relative paths. Never commit real credentials, personal account
+inventories, private domains, private project names, hardcoded machine paths, or
+instructions that depend on one person's local auth state.
+
+Test locally before publishing by copying the packaged skill into a throwaway
+agent config directory or by installing it into the matching local harness and
+invoking it in a fresh session:
+
+```bash
+cp -R skills/claude/<skill-name> "${CLAUDE_HOME:-$HOME/.claude}/skills/<skill-name>"
+cp -R skills/codex/<skill-name> "${CODEX_HOME:-$HOME/.codex}/skills/<skill-name>"
+```
+
+Commit only after reviewing the full diff:
+
+```bash
+git diff --check
+git diff --stat
+git diff
+```
+
+The same review discipline applies to `agents/` (subagent prompts), `commands/`
+(slash commands), and `rules/` (language standards). Keep generated artifacts
+out of git and verify how `/apply-core` installs each surface before relying on
+automatic distribution.
 
 ### Publishing skills
 
-Skills live in this repo — open a PR against `DEGAorg/claude-code-config`. There is no separate marketplace. Once merged to `main`, every installed instance picks up the skill on the next `update dega core` / `/core-update`.
+Skills live in this repo — open a PR against `DEGAorg/claude-code-config`. There is no separate marketplace. Shared skills are picked up on the next `update dega core` / `/core-update`; harness-specific `SKILL.md` packages are available from the repo and must be copied into the matching agent directory until installer support is added.
 
 ## Recommended Skills
 
