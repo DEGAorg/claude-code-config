@@ -6,6 +6,12 @@ max_iterations: 3
 budget:
   warn_at_iteration: 2
 check_command: bash scripts/ralph-check.sh
+
+# Completion-criteria verification mode.
+# - advisory (default): verify runs and records results, but does NOT gate SHIP.
+# - enforce: verify failure triggers REVISE (legacy behavior).
+verify:
+  mode: advisory
 poll_interval_seconds: 15
 review_poll_interval_seconds: 10
 verify_poll_interval_seconds: 10
