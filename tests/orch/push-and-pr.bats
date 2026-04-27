@@ -211,7 +211,7 @@ _default_args() {
   echo --worktree "${TEST_TMP}/wt" \
     --branch feature/xyz \
     --base main \
-    --title "test PR" \
+    --title test-pr \
     --body-file "${TEST_TMP}/body.md"
 }
 
