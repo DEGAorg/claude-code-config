@@ -92,6 +92,17 @@ must be rewritten before the issue is created.
 
 Every completion criterion must be a shell command a reviewer can run.
 
+**Completion criteria are advisory by default.** The orchestrator's verify
+phase runs them, records results in `state.json`, and posts a results comment
+to the issue, but does NOT gate SHIP on failure. To make verify failures
+block SHIP (the legacy behavior), set `verify.mode: enforce` in
+`dega-core.yaml`. See `docs/decisions/20260427-verify-advisory-default.md`
+for rationale.
+
+Even though verify is advisory, write criteria as concrete shell commands —
+the results comment is only useful when each criterion is independently
+runnable.
+
 ```markdown
 # WRONG — vague, not verifiable
 - [ ] Tests pass

@@ -62,6 +62,63 @@ orch_read_config() {
   printf '%s' "${value}"
 }
 
+# --- Verify-mode config (issue #241 advisory-by-default) ---
+
+# Read .verify.mode from a YAML config file. Returns "advisory" by default
+# (file missing, key absent, empty/unknown value); returns "enforce" only
+# when explicitly set. Uses yq when available, falls back to awk so the
+# orchestrator does not require yq as a hard dependency.
+#   Usage: mode=$(orch_get_verify_mode "${ORCH_REPO_ROOT}/dega-core.yaml")
+orch_get_verify_mode() {
+  local yaml_path="$1"
+  local mode=""
+
+  if [[ ! -f "${yaml_path}" ]]; then
+    printf 'advisory'
+    return 0
+  fi
+
+  if command -v yq >/dev/null 2>&1; then
+    mode=$(yq '.verify.mode // ""' "${yaml_path}" 2>/dev/null |
+      tr -d '"' | tr -d "'" | tr -d '[:space:]')
+  fi
+
+  if [[ -z "${mode}" || "${mode}" == "null" ]]; then
+    mode=$(awk '
+      /^verify:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[[:space:]]+mode:/ {
+        sub(/^[[:space:]]+mode:[[:space:]]*/, "")
+        sub(/[[:space:]]*#.*$/, "")
+        gsub(/[[:space:]"\047]/, "")
+        print
+        exit
+      }
+      in_block && /^[^[:space:]#]/ { in_block = 0 }
+    ' "${yaml_path}")
+  fi
+
+  case "${mode}" in
+  advisory | enforce) printf '%s' "${mode}" ;;
+  *) printf 'advisory' ;;
+  esac
+}
+
+# Decide whether a verify failure should gate SHIP. Returns 0 (true → gate
+# → set REVIEW_RESULT=REVISE) only when verify_rc is non-zero AND mode is
+# "enforce". Returns 1 (false → SHIP proceeds) in every other case,
+# including advisory-on-failure, success-in-either-mode, and unknown
+# modes (treated as advisory for safety).
+#   Usage: if orch_verify_should_gate "$verify_rc" "$mode"; then ...
+orch_verify_should_gate() {
+  local verify_rc="$1"
+  local mode="$2"
+
+  if [[ "${verify_rc}" -ne 0 && "${mode}" == "enforce" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 # --- Platform detection ---
 
 # Detect the current platform. Returns one of: macos, wsl, linux.

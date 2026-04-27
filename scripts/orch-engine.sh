@@ -483,6 +483,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   # --- Completion criteria gate ---
   CC_UNCHECKED=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
 
+  # Forensics #241: completion-criteria verification is advisory by default.
+  # Resolve verify.mode from dega-core.yaml; only "enforce" gates SHIP on
+  # verify failure. Unknown / missing values are treated as advisory.
+  VERIFY_CONFIG_FILE="$(orch_resolve_config)"
+  verify_mode=$(orch_get_verify_mode "${VERIFY_CONFIG_FILE}")
+  echo "orch-engine: verify.mode=${verify_mode}"
+
   if [[ "${CC_UNCHECKED}" -gt 0 ]]; then
     echo "orch-engine: ${CC_UNCHECKED} unchecked completion criteria — spawning verifier"
 
@@ -512,7 +519,6 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       # Verifier succeeded — re-check criteria
       CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
       if [[ "${CC_AFTER}" -gt 0 ]]; then
-        echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — REVISE"
         now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         updated=$(jq \
           --arg now "${now}" \
@@ -521,14 +527,19 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					 .verification.uncheckedCount = $count |
 					 .updatedAt = $now' "${ORCH_STATE_FILE}")
         orch_write_state "${SLUG}" "${updated}"
-        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS
-        # so an unverifiable plan cannot loop indefinitely.
-        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
-          orch_master_deregister "${SLUG}" "failed"
-          write_heartbeat
-          exit 1
+        if orch_verify_should_gate 1 "${verify_mode}"; then
+          echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — REVISE (verify.mode=enforce)"
+          # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS
+          # so an unverifiable plan cannot loop indefinitely.
+          if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+            orch_master_deregister "${SLUG}" "failed"
+            write_heartbeat
+            exit 1
+          fi
+          REVIEW_RESULT="REVISE"
+        else
+          echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
         fi
-        REVIEW_RESULT="REVISE"
       else
         echo "orch-engine: all completion criteria verified"
         now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -552,28 +563,36 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       verify_timeout_secs=$(orch_phase_timeout_secs verify 300)
       orch_mark_phase_timeout "${SLUG}" verification \
         "${verify_timeout_secs}" "${verify_blocking}"
-      # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
-      if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
-        orch_master_deregister "${SLUG}" "failed"
-        write_heartbeat
-        exit 1
+      if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
+        REVIEW_RESULT="REVISE"
+      else
+        echo "orch-engine: verify timed out — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
       fi
-      REVIEW_RESULT="REVISE"
     else
-      echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE"
       now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
       updated=$(jq \
         --arg now "${now}" \
         '.verification.status = "failed" |
 				 .updatedAt = $now' "${ORCH_STATE_FILE}")
       orch_write_state "${SLUG}" "${updated}"
-      # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
-      if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
-        orch_master_deregister "${SLUG}" "failed"
-        write_heartbeat
-        exit 1
+      if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
+        echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE (verify.mode=enforce)"
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
+        REVIEW_RESULT="REVISE"
+      else
+        echo "orch-engine: verifier failed (rc=${verify_rc}) — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
       fi
-      REVIEW_RESULT="REVISE"
     fi
   else
     echo "orch-engine: all completion criteria already checked"
