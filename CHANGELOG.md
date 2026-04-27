@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
+
 - Wire Strategy Templates into Canon Start Pipeline (`20260415-wire-templates`) — 2026-04-16
 
 - ARB-01 Binary Arbitrage Scanner (`20260414-arb-01`) — 2026-04-16
