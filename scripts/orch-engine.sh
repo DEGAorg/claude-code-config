@@ -564,6 +564,12 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       orch_mark_phase_timeout "${SLUG}" verification \
         "${verify_timeout_secs}" "${verify_blocking}"
       if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
         REVIEW_RESULT="REVISE"
       else
         echo "orch-engine: verify timed out — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
@@ -577,6 +583,12 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       orch_write_state "${SLUG}" "${updated}"
       if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
         echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE (verify.mode=enforce)"
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
         REVIEW_RESULT="REVISE"
       else
         echo "orch-engine: verifier failed (rc=${verify_rc}) — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
