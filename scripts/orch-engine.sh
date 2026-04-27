@@ -263,10 +263,14 @@ spawn_worker() {
   printf '%s\n' "${prompt}" >"${prompt_file}"
 
   # Build agent command using shim helper (handles Codex exec pattern)
-  local cmd_template agent_cmd_str
+  local cmd_template agent_cmd_str prompt_replacement
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
+  # Build replacement string first; bash ${var/pat/repl} disables parameter
+  # expansion inside single-quoted regions of the inline replacement, so the
+  # path must be expanded before the substitution.
   # shellcheck disable=SC2016  # literal $(cat '...') is intended for tmux shell
-  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
+  prompt_replacement="\"\$(cat '${prompt_file}')\""
+  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/${prompt_replacement}}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
   local session_var
