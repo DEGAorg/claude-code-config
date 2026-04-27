@@ -517,6 +517,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					 .verification.uncheckedCount = $count |
 					 .updatedAt = $now' "${ORCH_STATE_FILE}")
         orch_write_state "${SLUG}" "${updated}"
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS
+        # so an unverifiable plan cannot loop indefinitely.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
         REVIEW_RESULT="REVISE"
       else
         echo "orch-engine: all completion criteria verified"

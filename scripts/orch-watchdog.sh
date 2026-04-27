@@ -72,3 +72,45 @@ orch_mark_phase_timeout() {
   orch_write_state "${slug}" "${updated}"
   echo "orch-watchdog: ${state_path} marked failed (phase_timeout after ${timeout_secs}s)${blocking:+; blocking: ${blocking}}" >&2
 }
+
+# Bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+# Usage: orch_verify_iteration_exhausted <slug> <max_iterations>
+#   - Reads .verification.iteration from the plan's state.json.
+#   - iteration < max_iterations: returns 1 (not exhausted, no state mutation).
+#   - iteration >= max_iterations: writes terminal failure to state and
+#     returns 0. Sets:
+#         .status                     = "failed"
+#         .verification.status        = "failed"
+#         .verification.reason        = "verify_iteration_exhausted"
+#         .verification.maxIterations = <max_iterations>
+#         .updatedAt                  = now (RFC3339 UTC)
+#     .verification.iteration is preserved.
+orch_verify_iteration_exhausted() {
+  local slug="$1" max="$2"
+  local state_file
+  state_file=$(orch_plan_state_file "${slug}")
+  if [[ ! -f "${state_file}" ]]; then
+    echo "orch-watchdog: state file not found for slug ${slug}" >&2
+    return 1
+  fi
+  local iter
+  iter=$(jq -r '.verification.iteration // 0' "${state_file}")
+  if [[ "${iter}" -lt "${max}" ]]; then
+    return 1
+  fi
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local updated
+  updated=$(jq \
+    --arg now "${now}" \
+    --arg reason "verify_iteration_exhausted" \
+    --argjson max "${max}" \
+    '.status = "failed" |
+     .verification.status = "failed" |
+     .verification.reason = $reason |
+     .verification.maxIterations = $max |
+     .updatedAt = $now' "${state_file}")
+  orch_write_state "${slug}" "${updated}"
+  echo "orch-watchdog: verify-iteration exhausted (iteration=${iter}, max=${max}) — plan ${slug} marked failed" >&2
+  return 0
+}
