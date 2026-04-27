@@ -37,6 +37,7 @@ BASE=""
 TITLE=""
 BODY_FILE=""
 ISSUE=""
+PLAN_SLUG=""
 PROPAGATION_TIMEOUT=30
 CREATE_RETRIES=3
 CREATE_BACKOFF=3
@@ -45,6 +46,7 @@ usage() {
   cat >&2 <<EOF
 Usage: $0 --worktree <path> --branch <branch> --base <branch> \\
           --title <string> --body-file <path> [--issue <N>] \\
+          [--plan-slug <slug>] \\
           [--propagation-timeout <s>] [--create-retries <n>] \\
           [--create-backoff <s>]
 EOF
@@ -74,6 +76,10 @@ while [[ $# -gt 0 ]]; do
     ;;
   --issue)
     ISSUE="$2"
+    shift 2
+    ;;
+  --plan-slug)
+    PLAN_SLUG="$2"
     shift 2
     ;;
   --propagation-timeout)
@@ -239,10 +245,48 @@ fi
 
 printf '%s\n' "${PR_URL}"
 
-# --- 6. Optional issue comment (idempotency added in item 3) ---
+# --- 6. Optional issue comment (idempotent via posted.json) ---
+#
+# Mirrors the pattern used by hooks/orch-lifecycle/01-gh-plan-sync.sh:
+# a JSON object keyed by "<plan-slug>:pr-link" records that the comment
+# was posted. The key is written only after provider_issue_comment exits
+# 0, so a transient failure leaves the key absent and the next run
+# retries.
 if [[ -n "${ISSUE}" ]]; then
-  if ! provider_issue_comment --issue "${ISSUE}" --body "PR created: ${PR_URL}" >/dev/null 2>&1; then
-    echo "OTHER: failed to post issue comment on #${ISSUE}" >&2
+  if [[ -z "${PLAN_SLUG}" ]]; then
+    PLAN_SLUG="$(basename "${WORKTREE}")"
+  fi
+  POSTED_JSON="${ORCH_STATE_DIR:-.orchestrator}/posted.json"
+  POSTED_LOCK="${POSTED_JSON}.lock"
+  POSTED_KEY="${PLAN_SLUG}:pr-link"
+
+  already_posted=false
+  if [[ -f "${POSTED_JSON}" ]] &&
+    jq -e --arg k "${POSTED_KEY}" 'has($k)' "${POSTED_JSON}" >/dev/null 2>&1; then
+    already_posted=true
+  fi
+
+  if [[ "${already_posted}" != true ]]; then
+    if provider_issue_comment --issue "${ISSUE}" --body "PR created: ${PR_URL}" >/dev/null 2>&1; then
+      mkdir -p "$(dirname "${POSTED_JSON}")"
+      (
+        if command -v flock >/dev/null 2>&1; then
+          flock 9 || true
+        fi
+        existing='{}'
+        if [[ -s "${POSTED_JSON}" ]]; then
+          existing="$(cat "${POSTED_JSON}")"
+        fi
+        now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        printf '%s' "${existing}" |
+          jq --arg k "${POSTED_KEY}" --arg t "${now}" \
+            '. + {($k): {"postedAt": $t}}' \
+            >"${POSTED_JSON}.tmp"
+        mv "${POSTED_JSON}.tmp" "${POSTED_JSON}"
+      ) 9>"${POSTED_LOCK}"
+    else
+      echo "OTHER: failed to post issue comment on #${ISSUE}" >&2
+    fi
   fi
 fi
 
