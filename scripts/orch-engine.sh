@@ -849,49 +849,54 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
   WORKTREE_DIR_PUSH="${ORCH_STATE_DIR}/worktrees/${SLUG}"
   if [[ -d "${WORKTREE_DIR_PUSH}" ]]; then
-    # Push the worktree branch directly
-    if git -C "${WORKTREE_DIR_PUSH}" push -u origin "${ORCH_BRANCH}" 2>&1; then
-      echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
-
-      # Build PR body
-      PR_BODY="## SHIP Summary"$'\n\n'
-      PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
-      PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
-      if [[ "${FAILED_COUNT}" -gt 0 ]]; then
-        PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
-      fi
-      PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
-      PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
-
-      # Add Closes #N if issue is linked
-      ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
-      if [[ -n "${ISSUE_NUMBER}" ]]; then
-        PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
-      fi
-
-      PR_TITLE="plan: ${SLUG}"
-
-      if PR_URL=$(provider_pr_create \
-        --title "${PR_TITLE}" \
-        --body "${PR_BODY}" \
-        --base "${PR_TARGET}" \
-        --head "${ORCH_BRANCH}" 2>&1); then
-        echo "orch-engine: PR created: ${PR_URL}"
-
-        # Post PR link as comment on the linked issue
-        if [[ -n "${ISSUE_NUMBER}" ]]; then
-          provider_issue_comment \
-            --issue "${ISSUE_NUMBER}" \
-            --body "PR created: ${PR_URL}" 2>&1 || {
-            echo "orch-engine: WARN — failed to post PR link on issue #${ISSUE_NUMBER}" >&2
-          }
-        fi
-      else
-        echo "orch-engine: WARN — PR creation failed (non-fatal): ${PR_URL}" >&2
-      fi
-    else
-      echo "orch-engine: WARN — git push failed, skipping PR creation" >&2
+    # Build PR body
+    PR_BODY="## SHIP Summary"$'\n\n'
+    PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
+    PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
+    if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+      PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
     fi
+    PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
+    PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
+
+    # Add Closes #N if issue is linked
+    ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
+    if [[ -n "${ISSUE_NUMBER}" ]]; then
+      PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
+    fi
+
+    PR_TITLE="plan: ${SLUG}"
+
+    PR_BODY_FILE="$(mktemp -t orch-pr-body.XXXXXX)"
+    PR_ERR_FILE="$(mktemp -t orch-pr-err.XXXXXX)"
+    printf '%s' "${PR_BODY}" >"${PR_BODY_FILE}"
+
+    set +e
+    PR_URL=$("${SCRIPT_DIR}/gh-push-and-pr.sh" \
+      --worktree "${WORKTREE_DIR_PUSH}" \
+      --branch "${ORCH_BRANCH}" \
+      --base "${PR_TARGET}" \
+      --title "${PR_TITLE}" \
+      --body-file "${PR_BODY_FILE}" \
+      --plan-slug "${SLUG}" \
+      --issue "${ISSUE_NUMBER:-}" 2>"${PR_ERR_FILE}")
+    rc=$?
+    set -e
+
+    if [[ "${rc}" -eq 0 ]]; then
+      echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
+      echo "orch-engine: PR created: ${PR_URL}"
+    else
+      case "${rc}" in
+      1) echo "orch-engine: WARN — PR creation timed out waiting for branch propagation" >&2 ;;
+      2) echo "orch-engine: WARN — branch has no commits ahead of base; nothing to PR" >&2 ;;
+      3) echo "orch-engine: ERROR — auth/permissions failure on PR create" >&2 ;;
+      *) echo "orch-engine: WARN — PR creation failed (rc=${rc})" >&2 ;;
+      esac
+      cat "${PR_ERR_FILE}" >&2 || true
+    fi
+
+    rm -f "${PR_BODY_FILE}" "${PR_ERR_FILE}"
   else
     echo "orch-engine: [SHIP 8/9] skipped PR — no worktree (changes on working branch)"
   fi
