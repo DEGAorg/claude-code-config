@@ -886,6 +886,20 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
     if [[ "${rc}" -eq 0 ]]; then
       echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
       echo "orch-engine: PR created: ${PR_URL}"
+
+      # Persist PR URL/number into state.finalReview so consumers (Canon
+      # TUI, agent-notify hook) can render the link on terminal.
+      PR_NUMBER="${PR_URL##*/}"
+      if [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+        updated=$(jq \
+          --arg url "${PR_URL}" \
+          --argjson num "${PR_NUMBER}" \
+          '.finalReview = ((.finalReview // {}) + {prUrl: $url, prNumber: $num})' \
+          "${ORCH_STATE_FILE}")
+        orch_write_state "${SLUG}" "${updated}"
+      else
+        echo "orch-engine: WARN — could not parse PR number from URL: ${PR_URL}" >&2
+      fi
     else
       case "${rc}" in
       1) echo "orch-engine: WARN — PR creation timed out waiting for branch propagation" >&2 ;;
