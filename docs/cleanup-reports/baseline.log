@@ -1,0 +1,145 @@
+=== BASELINE LOG: 2026-04-28T21:27:20Z ===
+Branch: orch/252-20260428-pre-release-cleanup
+HEAD: 32bfa8a8a40a2a61ae29c64fca3e50da443d9b52
+
+=== bats tests/orch/*.bats ===
+1..48
+ok 1 success: push, propagation match, ahead_by=1, PR created, exit 0
+ok 2 push failure: git push exits nonzero, script exits nonzero, no PR call
+ok 3 propagation timeout: remote SHA never matches, exit 1 PROPAGATION_TIMEOUT
+ok 4 no-commits: ahead_by=0 short-circuits with exit 2 NO_COMMITS
+ok 5 transient retry success: PR create fails once with transient error, retry succeeds
+ok 6 transient retry exhausted: all attempts hit transient errors, exit nonzero
+ok 7 auth failure: PR create fails with auth/permissions error, exit 3 AUTH, no retry
+ok 8 default invocation creates session with no dashboard window and does not invoke orch-display.sh
+ok 9 --attach creates a dashboard window and invokes orch-display.sh
+ok 10 -a short alias matches --attach
+ok 11 --background exits 0 silently and behaves identically to default
+ok 12 detached session has cleanup wired so it ends after engine exit
+ok 13 review event posts when posted.json is absent and records the key
+ok 14 review event skips items whose key is already in posted.json
+ok 15 review event with all keys pre-seeded performs zero sync calls
+ok 16 review event does not record key when sync script exits nonzero
+ok 17 review event posts again when item iteration advances
+ok 18 ship step 7 commits in worktree only and preserves files added on origin
+ok 19 orch_get_verify_mode defaults to advisory when verify block is absent
+ok 20 orch_get_verify_mode returns advisory when explicitly set
+ok 21 orch_get_verify_mode returns enforce when explicitly set
+ok 22 orch_get_verify_mode tolerates surrounding config keys
+ok 23 orch_get_verify_mode defaults to advisory when file is missing
+ok 24 orch_get_verify_mode treats unknown mode value as advisory
+ok 25 advisory mode + verify_rc=1 does not gate (case a: SHIP on failure)
+ok 26 enforce mode + verify_rc=1 gates (case b: REVISE preserves old behavior)
+ok 27 advisory mode + verify_rc=0 does not gate (case c: SHIP on success)
+ok 28 enforce mode + verify_rc=0 does not gate (success ships in either mode)
+ok 29 advisory mode + verify_rc=124 (timeout) does not gate
+ok 30 enforce mode + verify_rc=124 (timeout) gates
+ok 31 unknown mode + verify_rc=1 treated as advisory (no gate)
+ok 32 orch_verify_iteration_exhausted returns 1 when iteration is 2 and max is 3
+ok 33 orch_verify_iteration_exhausted does not mutate state when iteration is below max
+ok 34 orch_verify_iteration_exhausted returns 0 when iteration equals max
+ok 35 orch_verify_iteration_exhausted writes terminal failed status when exhausted
+ok 36 orch_verify_iteration_exhausted refreshes updatedAt when exhausted
+ok 37 orch_verify_iteration_exhausted treats iteration > max as exhausted
+ok 38 orch_verify_iteration_exhausted preserves verification.iteration when exhausted
+ok 39 orch_phase_timeout_secs uses default when env var unset
+ok 40 orch_phase_timeout_secs prefers env var when set
+ok 41 orch_phase_timeout_secs uppercases phase name for env var lookup
+ok 42 orch_run_phase_with_timeout returns 0 when command succeeds under timeout
+ok 43 orch_run_phase_with_timeout returns command rc when command fails under timeout
+ok 44 orch_run_phase_with_timeout returns 124 when command exceeds timeout
+ok 45 orch_run_phase_with_timeout respects env override for default
+ok 46 orch_mark_phase_timeout writes failed state with reason and blocking
+ok 47 orch_mark_phase_timeout works for arbitrary state path
+ok 48 orch_mark_phase_timeout accepts empty blocking detail
+BATS_EXIT=0
+
+=== shellcheck scripts/*.sh hooks/**/*.sh ===
+
+In scripts/canon.sh line 6:
+source "${SCRIPT_DIR}/agent-shim.sh"
+       ^---------------------------^ SC1091 (info): Not following: agent-shim.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/gh-plan-fetch.sh line 13:
+source "${SCRIPT_DIR}/providers/provider.sh"
+       ^-- SC1091 (info): Not following: scripts/providers/provider.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/gh-plan-sync.sh line 41:
+source "${SCRIPT_DIR}/providers/provider.sh"
+       ^-- SC1091 (info): Not following: providers/provider.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/log-client.sh line 20:
+source "${SCRIPT_DIR}/agent-shim.sh"
+       ^---------------------------^ SC1091 (info): Not following: agent-shim.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-gc.sh line 18:
+source "${SCRIPT_DIR}/orch-state.sh"
+       ^---------------------------^ SC1091 (info): Not following: orch-state.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-review.sh line 17:
+source "${SCRIPT_DIR}/orch-state.sh"
+       ^---------------------------^ SC1091 (info): Not following: orch-state.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-review.sh line 19:
+source "${SCRIPT_DIR}/agent-shim.sh"
+       ^---------------------------^ SC1091 (info): Not following: agent-shim.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-run.sh line 34:
+source "${SCRIPT_DIR}/agent-shim.sh"
+       ^---------------------------^ SC1091 (info): Not following: agent-shim.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-run.sh line 36:
+source "${SCRIPT_DIR}/orch-state.sh"
+       ^---------------------------^ SC1091 (info): Not following: orch-state.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-run.sh line 38:
+source "${SCRIPT_DIR}/read-github-config.sh"
+       ^-- SC1091 (info): Not following: read-github-config.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/orch-run.sh line 142:
+  source "${SCRIPT_DIR}/ensure-gh.sh"
+         ^--------------------------^ SC1091 (info): Not following: ensure-gh.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/plan-create.sh line 19:
+source "${SCRIPT_DIR}/providers/provider.sh"
+       ^-- SC1091 (info): Not following: scripts/providers/provider.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/plan-issue.sh line 20:
+source "${SCRIPT_DIR}/ensure-gh.sh"
+       ^--------------------------^ SC1091 (info): Not following: ensure-gh.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/plan-issue.sh line 22:
+source "${SCRIPT_DIR}/read-github-config.sh"
+       ^-- SC1091 (info): Not following: read-github-config.sh was not specified as input (see shellcheck -x).
+
+
+In scripts/ralph-check.sh line 13:
+source "${SCRIPT_DIR}/orch-state.sh"
+       ^---------------------------^ SC1091 (info): Not following: orch-state.sh was not specified as input (see shellcheck -x).
+
+
+In hooks/orch-done-sync.sh line 66:
+source "${STATE_LIB}"
+       ^------------^ SC1091 (info): Not following: ../scripts/orch-state.sh was not specified as input (see shellcheck -x).
+
+For more information:
+  https://www.shellcheck.net/wiki/SC1091 -- Not following: ../scripts/orch-st...
+SHELLCHECK_EXIT=1
+
+=== SUMMARY ===
+Bats: 48 passed, 0 failed (across tests/orch/*.bats)
+Shellcheck: exit 1; 16 findings, all SC1091 (info — sourced files not specified as input). Pre-existing on develop HEAD (32bfa8a8); no regressions vs develop (HEAD == origin/develop at item-1 baseline run).
+Verdict: PASS — no test failures and no shellcheck regressions vs develop.
