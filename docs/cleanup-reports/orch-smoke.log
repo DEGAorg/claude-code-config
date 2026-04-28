@@ -1,0 +1,128 @@
+# Orchestrator E2E smoke — 2026-04-28
+
+## Summary
+
+- Smoke issue: https://github.com/DEGAorg/claude-code-config/issues/255 (CLOSED)
+- Smoke PR:    https://github.com/DEGAorg/claude-code-config/pull/256 (CLOSED)
+- Branch:      orch/255-cleanup-smoke-2026-04-28 (DELETED locally + on remote)
+- Slug:        cleanup-smoke-2026-04-28
+- Label:       cleanup-smoke-2026-04-28
+- Run command: bash scripts/orch-run.sh cleanup-smoke-2026-04-28 --issue 255 --max-iterations 1 --max-workers 1
+
+## Assertions
+
+- (a) PR was opened: PASS — PR #256 created by engine [SHIP 8/9]
+- (b) Issue comment count < 50 (no runaway): PASS — final count = 5
+- (c) tmux list-windows shows engine only (no dashboard window in default mode): PASS
+      Snapshot of windows during run (post-engine spawn):
+        0: zsh* (1 panes)        — default tmux session window
+        1: engine (1 panes)      — engine window
+        2: reviewer-1 (1 panes)  — transient reviewer worker window (cleaned up after SHIP)
+      No 'dashboard' window present at any point — confirms detached default mode.
+
+## Cleanup
+
+- gh pr close 256 --delete-branch  → CLOSED + branch deleted
+- gh issue close 255 --reason completed → CLOSED
+- tmux session orch-cleanup-smoke-2026-04-28 → ended
+
+## Engine log (verbatim from .orchestrator/plans/cleanup-smoke-2026-04-28/logs/engine.log)
+
+```
+
+orch-engine: GH_SYNC=true
+orch-engine: starting wave execution
+  plan: cleanup-smoke-2026-04-28
+  total items: 1
+  max workers: 1
+  worktree: /Users/cerratoa/dega/aidd/claude-code-config/.orchestrator/worktrees/cleanup-smoke-2026-04-28
+  poll interval: 15s
+
+orch-engine: lifecycle hook: 01-gh-plan-sync.sh start cleanup-smoke-2026-04-28
+https://github.com/DEGAorg/claude-code-config/issues/255#issuecomment-4339265286
+Posted start comment on issue #255.
+orch-engine: [poll] done=0 running=0 ready=1 queued=0 failed=0
+orch-engine: spawned worker-1 for item 1: Create the file `docs/cleanup-reports/smoke-marker.md` containing exactly one line `smoke run 2026-04-28` and a trailing newline. No other content. Verify locally with `grep -q '^smoke run 2026-04-28$' docs/cleanup-reports/smoke-marker.md` before stopping.
+orch-engine: [poll] done=0 running=1 ready=0 queued=0 failed=0
+orch-state: item 1 done-file found — marked done
+[orch/255-cleanup-smoke-2026-04-28 065d74f8] orch: item 1 — Create the file `docs/cleanup-reports/smoke-marker.md` containing exactly one line `smoke run 2026-04-28` and a trailing newline. No other content. Verify locally with `grep -q '^smoke run 2026-04-28$' docs/cleanup-reports/smoke-marker.md` before stopping.
+ 1 file changed, 1 insertion(+)
+ create mode 100644 docs/cleanup-reports/smoke-marker.md
+orch-state: committed item 1 changes in worktree
+orch-engine: [poll] done=1 running=0 ready=0 queued=0 failed=0
+
+orch-engine: all 1 items complete
+orch-engine: running per-item review via orch-review.sh
+orch-review: all 1 items done — starting per-item review
+orch-review: starting parallel review
+  max concurrent reviewers: 1
+  poll interval: 10s
+
+orch-review: [poll] reviewing=0 pending=1 passed=0 failed=0 skipped=0
+orch-review: spawned reviewer-1 for item 1: Create the file `docs/cleanup-reports/smoke-marker.md` containing exactly one line `smoke run 2026-04-28` and a trailing newline. No other content. Verify locally with `grep -q '^smoke run 2026-04-28$' docs/cleanup-reports/smoke-marker.md` before stopping.
+orch-review: [poll] reviewing=1 pending=0 passed=0 failed=0 skipped=0
+orch-state: item 1 review — PASS
+orch-review: killed finished reviewer window reviewer-1
+orch-review: [poll] reviewing=0 pending=0 passed=1 failed=0 skipped=0
+
+orch-review: reviews complete — 1 passed, 0 failed, 0 skipped
+
+orch-review: SHIP — all 1 items passed
+orch-engine: lifecycle hook: 01-gh-plan-sync.sh review cleanup-smoke-2026-04-28
+https://github.com/DEGAorg/claude-code-config/issues/255#issuecomment-4339272353
+Checked off progress item in issue #255.
+Posted review comment for item 1 on issue #255.
+
+orch-engine: review passed — checking completion criteria
+orch-engine: verify.mode=advisory
+orch-engine: 2 unchecked completion criteria — spawning verifier
+[2026-04-28T21:38:03Z] orch-verify: 2 unchecked completion criteria found
+[2026-04-28T21:38:03Z] RUN: test -s docs/cleanup-reports/smoke-marker.md
+[2026-04-28T21:38:03Z] PASS (rc=0): test -s docs/cleanup-reports/smoke-marker.md
+[2026-04-28T21:38:03Z] RUN: grep -q '^smoke run 2026-04-28$' docs/cleanup-reports/smoke-marker.md
+[2026-04-28T21:38:03Z] PASS (rc=0): grep -q '^smoke run 2026-04-28$' docs/cleanup-reports/smoke-marker.md
+[2026-04-28T21:38:03Z] orch-verify: summary — passed=2 failed=0 manual=0 remaining=0
+[2026-04-28T21:38:03Z] orch-verify: PASS — all completion criteria verified
+orch-engine: all completion criteria verified
+orch-engine: lifecycle hook: 01-gh-plan-sync.sh verify cleanup-smoke-2026-04-28
+https://github.com/DEGAorg/claude-code-config/issues/255#issuecomment-4339272836
+Posted verify comment on issue #255.
+
+orch-engine: SHIP — all 1 items passed review and completion criteria verified
+orch-engine: [SHIP 1/9] skipped — GH mode (no local plan sync)
+orch-state: worktree has no changes to commit
+orch-engine: [SHIP 2/9] worktree changes committed
+orch-state: deregistered plan cleanup-smoke-2026-04-28 (status: completed)
+orch-engine: [SHIP 3/9] deregistered from master state
+orch-engine: [SHIP 4/9] skipped — GH mode (no local plan move)
+orch-engine: [SHIP 5/9] skipped — GH mode (no plan move to commit)
+orch-engine: [SHIP 6/9] skipped — GH mode (issues are the registry)
+[orch/255-cleanup-smoke-2026-04-28 6697a9c6] orch: update changelog for cleanup-smoke-2026-04-28
+ 1 file changed, 2 insertions(+)
+orch-engine: [SHIP 7/9] appended to changelog
+orch-engine: [SHIP 8/9] pushed branch orch/255-cleanup-smoke-2026-04-28
+orch-engine: PR created: branch 'orch/255-cleanup-smoke-2026-04-28' set up to track 'origin/orch/255-cleanup-smoke-2026-04-28'.
+https://github.com/DEGAorg/claude-code-config/pull/256
+orch-state: removed worktree at /Users/cerratoa/dega/aidd/claude-code-config/.orchestrator/worktrees/cleanup-smoke-2026-04-28
+Deleted branch orch/255-cleanup-smoke-2026-04-28 (was 6697a9c6).
+orch-state: deleted branch orch/255-cleanup-smoke-2026-04-28
+orch-engine: [SHIP 9/9] worktree cleaned up
+
+orch-engine: post-validation skipped — GH mode (no local plan artifacts)
+
+========================================
+  SHIP COMPLETE
+========================================
+  Plan:     cleanup-smoke-2026-04-28
+  Items:    1/1 passed
+  Errors:   0
+  Elapsed:  -358m -55s
+  Status:   all 9 steps passed, validation OK
+========================================
+
+orch-engine: log saved to .orchestrator/plans/cleanup-smoke-2026-04-28/logs/engine.log
+orch-engine: lifecycle hook: 01-gh-plan-sync.sh ship cleanup-smoke-2026-04-28
+https://github.com/DEGAorg/claude-code-config/issues/255#issuecomment-4339274312
+Updated Status to PR Review in issue #255.
+Posted SHIP comment on issue #255 (awaiting PR merge to close).
+```
