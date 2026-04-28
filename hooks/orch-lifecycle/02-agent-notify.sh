@@ -14,8 +14,7 @@ set -euo pipefail
 #
 # Skips silently for non-terminal events or when state.json is absent.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 EVENT="${1:?usage: 02-agent-notify.sh <event> <slug> [options]}"
 SLUG="${2:?usage: 02-agent-notify.sh <event> <slug> [options]}"
@@ -137,6 +136,7 @@ JQ_ARGS=(
   --arg summary "${SUMMARY}"
   --arg createdAt "${CREATED_AT}"
 )
+# shellcheck disable=SC2016 # jq filter — $vars are jq refs, not shell expansion
 JQ_FILTER='{slug: $slug, status: $status, summary: $summary, createdAt: $createdAt, seen: false}'
 
 if [[ -n "${ISSUE_NUMBER}" ]]; then
