@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Make orch detached-by-default; add `--attach` (`20260427-orch-detach-default`) — 2026-04-28
+
 - Add missing gh-plan scripts to /apply-core install manifest (`20260324-apply-core-gh-scripts`) — 2026-03-24
 
 - Create GitHub Issue when plan is written, not when orch starts (`20260324-issue-on-plan-create`) — 2026-03-24

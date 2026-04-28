@@ -6,19 +6,24 @@
 # The poll loop, worker spawning, review, and cleanup all run inside
 # orch-engine.sh in a tmux window named "engine".
 #
-# Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background]
+# Usage: scripts/orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--attach|-a]
 #        scripts/orch-run.sh --gc [--dry-run]
 #
 # Options:
 #   --issue N            Fetch plan from GitHub Issue #N instead of local plan.md
 #   --max-workers N      Max concurrent workers (default: 4)
 #   --max-iterations N   Max review/rework iterations per item (default: 3)
-#   --background         Headless mode — tmux only, no display windows
+#   --attach, -a         Open a terminal attached to the tmux session and run
+#                        the in-tmux dashboard window (legacy foreground mode).
+#                        Default is detached: tmux session + engine only, no
+#                        terminal window opened, no dashboard window created.
+#   --background         Deprecated silent no-op (kept for one release; the
+#                        former --background behavior is now the default).
 #   --gc [--dry-run]     Run garbage collection on stale orch-* tmux sessions
 #
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test
 # Example: scripts/orch-run.sh 20260309-orch-smoke-test --issue 42
-# Example: scripts/orch-run.sh 20260309-orch-smoke-test --background
+# Example: scripts/orch-run.sh 20260309-orch-smoke-test --attach
 
 set -euo pipefail
 
@@ -56,7 +61,7 @@ SLUG=""
 ISSUE_NUMBER=""
 MAX_WORKERS=4
 MAX_ITERATIONS=3
-BACKGROUND=false
+ATTACH=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -80,13 +85,19 @@ while [[ $# -gt 0 ]]; do
     MAX_ITERATIONS="${2:-3}"
     shift 2
     ;;
+  --attach | -a)
+    ATTACH=true
+    shift
+    ;;
   --background)
-    BACKGROUND=true
+    # Deprecated: this used to opt out of the dashboard/display windows.
+    # That behavior is now the default, so the flag is a silent no-op
+    # for one release to keep existing callers working.
     shift
     ;;
   -*)
     echo "error: unknown option: $1" >&2
-    echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
+    echo "usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--attach|-a] | --gc [--dry-run]" >&2
     exit 1
     ;;
   *)
@@ -97,7 +108,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${SLUG}" ]]; then
-  echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--background] | --gc [--dry-run]" >&2
+  echo "error: usage: orch-run.sh <slug> [--issue N] [--max-workers N] [--max-iterations N] [--attach|-a] | --gc [--dry-run]" >&2
   exit 1
 fi
 
@@ -367,16 +378,22 @@ fi
 orch_master_register "${SLUG}"
 orch_master_update_progress "${SLUG}"
 
-# --- Create tmux session with dashboard ---
+# --- Create tmux session ---
+#
+# In attach mode (--attach/-a) the session's first window is the
+# dashboard running the ink UI; the engine joins as a second window.
+# In the default detached mode there is no dashboard — the session is
+# created empty so the engine window can be attached to it below.
 
 if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
-  TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
-  HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
-  GRACE_TIMEOUT="${ORCH_DASHBOARD_TIMEOUT:-60}"
-  # Dashboard loop: restart node UI on crash, check engine liveness via
-  # heartbeat file staleness (>5min) and tmux window existence every 2s.
-  # When engine is dead, enter a grace period then kill the session.
-  read -r -d '' DASH_CMD <<-DASHEOF || true
+  if [[ "${ATTACH}" == true ]]; then
+    TERMINAL_UI_CLI="${SCRIPT_DIR}/terminal-ui/dist/cli.js"
+    HEARTBEAT_FILE="${ORCH_STATE_DIR}/plans/${SLUG}/heartbeat"
+    GRACE_TIMEOUT="${ORCH_DASHBOARD_TIMEOUT:-60}"
+    # Dashboard loop: restart node UI on crash, check engine liveness via
+    # heartbeat file staleness (>5min) and tmux window existence every 2s.
+    # When engine is dead, enter a grace period then kill the session.
+    read -r -d '' DASH_CMD <<-DASHEOF || true
 	grace_start=0
 	while true; do
 	  node '${TERMINAL_UI_CLI}' --orch '${ORCH_STATE_FILE}' 2>/dev/null
@@ -410,15 +427,15 @@ if ! tmux has-session -t "${TMUX_SESSION}" 2>/dev/null; then
 	  sleep 2
 	done
 	DASHEOF
-  tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
+    tmux new-session -d -s "${TMUX_SESSION}" -n "dashboard" "${DASH_CMD}"
+  else
+    tmux new-session -d -s "${TMUX_SESSION}"
+  fi
 fi
 
 # --- Start engine as a tmux window ---
 
 ENGINE_ARGS="${SLUG} --max-workers ${MAX_WORKERS} --max-iterations ${MAX_ITERATIONS}"
-if [[ "${BACKGROUND}" == true ]]; then
-  ENGINE_ARGS="${ENGINE_ARGS} --background"
-fi
 
 LOG_FILE=$(orch_plan_log_file "${SLUG}")
 orch_ensure_plan_dirs "${SLUG}"
@@ -426,9 +443,9 @@ orch_ensure_plan_dirs "${SLUG}"
 tmux new-window -d -t "${TMUX_SESSION}" -n "engine" \
   "cd '${REPO_ROOT}' && GH_SYNC='${GH_SYNC}' bash '${SCRIPT_DIR}/orch-engine.sh' ${ENGINE_ARGS} 2>&1 | tee '${LOG_FILE}'; echo '--- engine exited ---'; sleep 30; tmux kill-session -t '${TMUX_SESSION}' 2>/dev/null"
 
-# --- Open display windows (foreground mode) ---
+# --- Open display window (attach mode only) ---
 
-if [[ "${BACKGROUND}" == false ]]; then
+if [[ "${ATTACH}" == true ]]; then
   bash "${SCRIPT_DIR}/orch-display.sh" "${TMUX_SESSION}" || true
 fi
 
