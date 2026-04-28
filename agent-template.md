@@ -109,15 +109,21 @@ Use plain, factual language. A bug fix is a bug fix, not a "critical stability i
 
 ## Execution Plans
 
-Plans are versioned task definitions stored in `docs/exec-plans/active/`.
-Use `/plan` to create one from a task description. The plan includes
-requirements, approach, progress log with dependency annotations, and
-completion criteria.
+Plans are GitHub issues with the `plan:draft` label on the project repo;
+the orchestrator fetches them into `.orchestrator/plans/<slug>/plan.md` at
+run time. The issue body is the canonical plan and includes requirements,
+approach, progress log with dependency annotations, and completion
+criteria. The fetched `.orchestrator/plans/<slug>/plan.md` is ephemeral
+runtime state — workers mutate its checkboxes during a run, but the issue
+remains the source of truth.
+
+Use `/plan` to draft a plan from a task description and open it as an
+issue.
 
 **Run a plan with the orchestrator:**
 
 ```bash
-bash ~/.degacore/scripts/orch-run.sh <dated-slug>
+bash ~/.degacore/scripts/orch-run.sh <slug> --issue <N>
 ```
 
 The orchestrator spawns parallel worker agents in tmux (each in its own
@@ -128,8 +134,8 @@ at the project root.
 | Command | What it does |
 |---------|--------------|
 | `/plan <task>` | Create an execution plan |
-| `orch-run.sh <slug>` | Run plan with parallel workers |
-| `orch-run.sh <slug> --max-workers 1` | Run plan sequentially |
+| `orch-run.sh <slug> --issue N` | Run plan with parallel workers |
+| `orch-run.sh <slug> --issue N --max-workers 1` | Run plan sequentially |
 
 ## Skills
 
