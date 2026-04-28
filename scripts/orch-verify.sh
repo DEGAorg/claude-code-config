@@ -172,8 +172,13 @@ for line in "${UNCHECKED_LINES[@]}"; do
 
   log "RUN: ${cmd}"
 
+  # Prepend Homebrew/local paths so rg, yq, fd, etc. resolve in the
+  # bash -c subshell even when the inherited PATH is stripped (e.g. tmux
+  # subshells under launchd lose Homebrew). Override via
+  # ORCH_VERIFY_PATH_PREFIX in tests.
+  VERIFY_PATH_PREFIX="${ORCH_VERIFY_PATH_PREFIX:-/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin}"
   set +e
-  output=$(cd "${VERIFY_CWD}" && timeout "${CRITERION_TIMEOUT}" bash -c "${cmd}" 2>&1)
+  output=$(cd "${VERIFY_CWD}" && PATH="${VERIFY_PATH_PREFIX}:${PATH}" timeout "${CRITERION_TIMEOUT}" bash -c "${cmd}" 2>&1)
   rc=$?
   set -e
 
