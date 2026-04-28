@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- Pre-release cleanup and verification (`20260428-pre-release-cleanup`) — 2026-04-28
+
 - Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
 
 - Wire Strategy Templates into Canon Start Pipeline (`20260415-wire-templates`) — 2026-04-16
