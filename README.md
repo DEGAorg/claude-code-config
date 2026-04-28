@@ -537,6 +537,8 @@ The orchestrator runs execution plans with parallel worker agents in tmux. Each 
 bash ~/.degacore/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
 ```
 
+By default the orchestrator runs **detached**: the tmux session, engine, and workers all start in the background, and no terminal window or in-tmux ink dashboard is opened. Observe progress by reading `.orchestrator/plans/<slug>/state.json`, `heartbeat`, and the per-worker logs — or attach the canon-tui to those files. Pass `--attach` (alias `-a`) to opt back into the foreground experience: a terminal window attached to the tmux session plus the in-tmux `dashboard` window running the ink UI. The legacy `--background` flag is accepted as a silent no-op for one release (it requested what is now the default).
+
 ### Engine heartbeat
 
 The engine writes a Unix timestamp to `$ORCH_STATE_DIR/plans/$SLUG/heartbeat` at regular intervals — every poll cycle and before/after major steps (worker spawn, review, SHIP/FAIL). The dashboard and garbage collector use this file to detect whether the engine is alive or hung.
