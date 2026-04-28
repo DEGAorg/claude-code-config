@@ -29,7 +29,7 @@ On every session start, gather state before doing anything else:
 |-------|---------------|
 | TUI alive | `canon-ctl ping` |
 | TUI widget tree | `canon-ctl snapshot` |
-| Active plans | `ls docs/exec-plans/active/` |
+| Active plans | `gh issue list --repo $(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||') --state open --label "plan:draft,plan:in-progress"` |
 | Orchestrator state | Read `.orchestrator/state.json` if it exists |
 | Git state | `git status`, `git branch`, `git worktree list` |
 | Open PRs | `gh pr list` |
@@ -85,7 +85,7 @@ Spawn the orchestrator for plan execution:
 
 ```bash
 # run_in_background
-bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/<slug>
+bash ~/.claude/scripts/orch-run.sh <YYYYMMDD-slug> --issue <N>
 ```
 
 ### Subagents
@@ -142,8 +142,8 @@ When the user asks you to do something:
 
 For tasks:
 
-- If a plan exists in `docs/exec-plans/active/`, recommend running the
-  orchestrator on it
+- If open `plan:draft` or `plan:in-progress` issues exist, recommend
+  running the orchestrator on one (`orch-run.sh <slug> --issue <N>`)
 - If no plan exists, recommend creating one via `/plan`
 - If the task is small enough to not need a plan, recommend spawning a
   single subagent directly

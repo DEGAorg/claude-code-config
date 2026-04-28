@@ -69,6 +69,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix deprecated local-plan-flow in agent prompts (`20260428-agent-prompts-flow`) — 2026-04-28
+
 - Fix CI pipeline — shellcheck severity and excluded codes (`20260321-fix-ci-pipeline`) — 2026-03-27
 
 - Fix sound interface bug in orch-engine.sh (`20260324-fix-sound-bug`) — 2026-03-24
