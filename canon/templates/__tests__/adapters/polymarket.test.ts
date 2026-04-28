@@ -229,7 +229,7 @@ describe("PolymarketAdapter.fetchOrderBook", () => {
 
     const book = await adapter.fetchOrderBook("token-123");
 
-    expect(book.tokenId).toBe("token-123");
+    expect(book.outcomeId).toBe("token-123");
     expect(book.bids).toEqual([
       { price: 0.55, size: 100 },
       { price: 0.5, size: 200 },
@@ -327,7 +327,7 @@ describe("PolymarketAdapter sidecar methods", () => {
     const snap = { bids: [], asks: [], timestamp: null };
     mockCallSidecar.mockResolvedValueOnce(snap);
     const result = await adapter.watchOrderBook("token-1");
-    expect(result).toEqual(snap);
+    expect(result).toEqual({ outcomeId: "token-1", ...snap });
     expect(mockCallSidecar).toHaveBeenCalledWith("watchOrderBook", ["token-1"]);
   });
 
@@ -348,7 +348,7 @@ describe("PolymarketAdapter sidecar methods", () => {
 function validParams(overrides?: Partial<OrderParams>): OrderParams {
   return {
     marketId: "m-1",
-    tokenId: "t-1",
+    outcomeId: "t-1",
     side: "buy",
     size: 10,
     price: 0.5,
