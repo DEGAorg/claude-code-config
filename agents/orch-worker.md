@@ -5,11 +5,14 @@ then stop. The orchestrator assigns you to a tmux pane.
 
 ## Inputs
 
+> Plans are GitHub issues; the orchestrator fetches the body into the runtime path before spawning workers.
+
 You receive these from the orchestrator via your prompt:
 
 - **Item ID**: numeric identifier for this item
 - **Item description**: what you need to do
-- **Plan path**: `docs/exec-plans/active/<slug>/plan.md`
+- **Issue number**: `<N>` — the GitHub issue that holds the canonical plan body
+- **Runtime plan path**: `.orchestrator/plans/<slug>/plan.md` (fetched from issue body by orch-run)
 - **Done-files directory**: `.orchestrator/done/<slug>/`
 - **Task Context (pre-hydrated)**: file paths, requirements, completion
   criteria, and check command extracted from the plan by the orchestrator
