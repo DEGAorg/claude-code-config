@@ -47,6 +47,48 @@ export interface MarketMatch {
   resolutionDate?: string;
 }
 
+/**
+ * Snapshot of a binary market enriched with the time-series signals
+ * momentum / fair-value strategies need (volume, open interest, time-to-close).
+ *
+ * Returned by {@link MarketClient.fetchMarketSnapshots}.
+ */
+export interface MarketSnapshot {
+  marketId: string;
+  question: string;
+  yesOutcomeId: string;
+  noOutcomeId: string;
+  /** Last-known YES price (0–1). */
+  yesPrice: number;
+  /** Last-known NO price (0–1). */
+  noPrice: number;
+  /** 24-hour USD volume. */
+  volume24h: number;
+  /** Open interest in USD. */
+  openInterest: number;
+  /** Milliseconds until market close, or `undefined` when not surfaced. */
+  timeToCloseMs?: number;
+  /** Snapshot timestamp (ms since epoch). */
+  timestampMs: number;
+}
+
+/** A single leg (outcome) of a multi-outcome market. */
+export interface OutcomeLeg {
+  /** Human-readable outcome label (e.g. "Lakers"). */
+  outcome: string;
+  /** Outcome / token ID for this leg's YES side. */
+  outcomeId: string;
+  /** Last-known YES price (0–1). */
+  yesPrice: number;
+}
+
+/** A multi-outcome (>2 legs) market — NegRisk candidate on Polymarket. */
+export interface MultiOutcomeMatch {
+  marketId: string;
+  question: string;
+  legs: OutcomeLeg[];
+}
+
 /** A current position held by the authenticated account. */
 export interface Position {
   marketId: string;
@@ -66,6 +108,19 @@ export interface Balance {
   locked: number;
 }
 
+/**
+ * Time-in-force semantics for limit orders.
+ *
+ * - `"GTC"` — good-til-cancelled (default for plain limits).
+ * - `"IOC"` — immediate-or-cancel; partial fills allowed, remainder cancelled.
+ * - `"FOK"` — fill-or-kill; full size fills atomically or the whole order cancels.
+ *
+ * Use {@link MarketClient.getCapabilities} to verify the venue supports
+ * `tif` before relying on FOK / IOC semantics — older sidecars / venues
+ * silently ignore the field.
+ */
+export type TimeInForce = "GTC" | "IOC" | "FOK";
+
 /** Parameters for creating or building an order. */
 export interface OrderParams {
   marketId: string;
@@ -74,6 +129,22 @@ export interface OrderParams {
   size: number;
   price: number;
   orderType: "market" | "limit";
+  /** Optional time-in-force; only meaningful for `orderType === "limit"`. */
+  timeInForce?: TimeInForce;
+}
+
+/** Feature flags advertised by the venue / its sidecar. */
+export interface Capabilities {
+  /** True when the venue forwards `tif` (GTC/IOC/FOK) to the exchange. */
+  supportsTif: boolean;
+}
+
+/** Result of bootstrapping the venue account / proxy / credentials. */
+export interface EnsureAccountResult {
+  /** True when the account is fully ready to trade. */
+  ready: boolean;
+  /** Venue-specific account identifier (e.g. Polymarket Safe proxy address). */
+  accountId?: string;
 }
 
 /** Order returned by the exchange. */
@@ -169,6 +240,24 @@ export interface MarketClient {
   /** Search markets matching a free-text query. */
   searchMarkets(query: string): Promise<MarketMatch[]>;
 
+  /**
+   * Search the venue and return enriched snapshots (volume, open
+   * interest, time-to-close) for binary markets matching `query`.
+   *
+   * Distinct from {@link searchMarkets}, which returns only price/ID
+   * basics. Strategies that gate on liquidity, decay, or recency
+   * consume this richer shape.
+   */
+  fetchMarketSnapshots(query: string): Promise<MarketSnapshot[]>;
+
+  /**
+   * Search for multi-outcome (>2 leg) markets — NegRisk-style on
+   * Polymarket, "who-wins-X" on Kalshi. Callers must apply their own
+   * confirmation (e.g. resolve every leg's order book) before treating
+   * the result as a true multi-condition arb.
+   */
+  searchMultiOutcomeMarkets(query: string): Promise<MultiOutcomeMatch[]>;
+
   /** Fetch the current YES/NO price snapshot for a binary market. */
   fetchMarketPrice(marketId: string): Promise<MarketPrice>;
 
@@ -221,6 +310,24 @@ export interface MarketClient {
    * Phase 1 returns a single batch rather than a true subscription.
    */
   watchTrades(outcomeId: string): Promise<Trade[]>;
+
+  /**
+   * Feature flags advertised by the venue (e.g. whether `tif` is honoured).
+   *
+   * `--live` start-up gates use this to refuse to run when the venue
+   * cannot honour required semantics (e.g. FOK time-in-force).
+   */
+  getCapabilities(): Promise<Capabilities>;
+
+  /**
+   * Bootstrap the venue account / proxy / credentials so subsequent
+   * trading calls succeed. Idempotent — safe to call repeatedly.
+   *
+   * For Polymarket this discovers (and persists) the Gnosis Safe
+   * proxy that holds funds. Other venues may verify API key
+   * provisioning, KYC status, etc.
+   */
+  ensureAccount(): Promise<EnsureAccountResult>;
 }
 
 // ---------------------------------------------------------------------------

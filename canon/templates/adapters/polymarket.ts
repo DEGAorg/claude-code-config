@@ -8,26 +8,102 @@
  * v2.22.1) call the pmxt sidecar directly via `callSidecar`.
  */
 
+// Side-effect: install a browser UA on axios so SDK calls clear CF's bot
+// challenge on clob.polymarket.com. Must come before any SDK import.
+import "../clob-axios-defaults.js";
 import { Polymarket } from "pmxtjs";
-import { callSidecar } from "../sidecar.js";
+import { getWalletPrivateKey, getWalletProxyAddress } from "../env.js";
+import { discoverPolymarketProxy } from "../proxy-discovery.js";
+import { callSidecar, getSidecarCapabilities } from "../sidecar.js";
 import type {
   Balance,
   BuildOrderResult,
+  Capabilities,
   CancelResult,
+  EnsureAccountResult,
   FetchMyTradesParams,
   FetchOHLCVOptions,
   MarketClient,
   MarketMatch,
   MarketPrice,
+  MarketSnapshot,
+  MultiOutcomeMatch,
   OrderBook,
   OrderParams,
   OrderResponse,
+  OutcomeLeg,
   Position,
   PriceCandle,
   PriceLevel,
   Trade,
   UserTrade,
 } from "../client-market.js";
+
+/**
+ * Raw market shape returned by the pmxt sidecar's `fetchMarkets`
+ * endpoint. We type only the fields the read paths consume.
+ */
+interface RawSidecarMarket {
+  marketId: string;
+  title: string;
+  outcomes: {
+    outcomeId?: string;
+    label: string;
+    price?: number;
+  }[];
+  volume24h?: number;
+  openInterest?: number;
+  resolutionDate?: string;
+}
+
+/**
+ * Resolve the Polymarket signatureType for the SDK.
+ *
+ * Defaults to `"gnosis-safe"` when a proxy address is supplied (modern
+ * Polymarket accounts use a Gnosis Safe proxy that holds funds — without
+ * this hint the SDK falls back to EOA-style L2 derivation and dies with
+ * "Derived credentials are incomplete"). Falls back to undefined (SDK
+ * default) when no proxy is configured. Operators can override via
+ * `POLYMARKET_SIGNATURE_TYPE`.
+ */
+function resolveSignatureType(
+  proxyAddress: string | undefined,
+): "eoa" | "poly-proxy" | "gnosis-safe" | undefined {
+  const override = process.env["POLYMARKET_SIGNATURE_TYPE"];
+  if (
+    override === "eoa" ||
+    override === "poly-proxy" ||
+    override === "gnosis-safe"
+  ) {
+    return override;
+  }
+  return proxyAddress ? "gnosis-safe" : undefined;
+}
+
+/**
+ * Build sidecar credentials for trading methods (createOrder,
+ * cancelOrder, buildOrder).
+ *
+ * The CLOB matcher checks balance/allowance at the **funder** address,
+ * not the signer. Strategies running through a Polymarket Safe must
+ * hand the sidecar both `funderAddress` (the Safe) and the matching
+ * `signatureType`, otherwise pmxt-core defaults to EOA mode and the
+ * order is rejected with "balance: 0" — even when the Safe holds
+ * collateral.
+ */
+function tradingCredentials(privateKey: string): {
+  privateKey: string;
+  signatureType: string;
+  funderAddress?: string;
+} {
+  const proxyAddress = getWalletProxyAddress();
+  const signatureType = resolveSignatureType(proxyAddress) ?? "eoa";
+  return {
+    privateKey,
+    signatureType,
+    ...(proxyAddress ? { funderAddress: proxyAddress } : {}),
+  };
+}
 
 const VALID_SIDES = ["buy", "sell"] as const;
 const VALID_ORDER_TYPES = ["market", "limit"] as const;
@@ -69,11 +145,13 @@ export class PolymarketAdapter implements MarketClient {
 
   private getClient(): Polymarket {
     if (!this.client) {
-      const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-      const proxyAddress = process.env["POLYMARKET_PROXY_ADDRESS"];
+      const privateKey = getWalletPrivateKey();
+      const proxyAddress = getWalletProxyAddress();
+      const signatureType = resolveSignatureType(proxyAddress);
       this.client = new Polymarket({
         ...(privateKey ? { privateKey } : {}),
         ...(proxyAddress ? { proxyAddress } : {}),
+        ...(signatureType ? { signatureType } : {}),
         autoStartServer: true,
       });
     }
@@ -254,8 +332,8 @@ export class PolymarketAdapter implements MarketClient {
 
   async createOrder(params: OrderParams): Promise<OrderResponse> {
     validateOrderParams(params);
-    const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-    if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+    const privateKey = getWalletPrivateKey();
+    if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
     const order = await callSidecar<{
       id: string;
       marketId: string;
@@ -276,8 +354,11 @@ export class PolymarketAdapter implements MarketClient {
         type: params.orderType,
         amount: params.size,
         price: params.price,
+        ...(params.timeInForce !== undefined
+          ? { tif: params.timeInForce }
+          : {}),
       }],
-      { privateKey, signatureType: "eoa" },
+      tradingCredentials(privateKey),
     );
     return {
       id: order.id,
@@ -294,12 +375,12 @@ export class PolymarketAdapter implements MarketClient {
   }
 
   async cancelOrder(orderId: string): Promise<CancelResult> {
-    const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-    if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+    const privateKey = getWalletPrivateKey();
+    if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
     const order = await callSidecar<{ id?: string; status?: string }>(
       "cancelOrder",
       [orderId],
-      { privateKey, signatureType: "eoa" },
+      tradingCredentials(privateKey),
     );
     return {
       id: order.id ?? orderId,
@@ -309,8 +390,8 @@ export class PolymarketAdapter implements MarketClient {
 
   async buildOrder(params: OrderParams): Promise<BuildOrderResult> {
     validateOrderParams(params);
-    const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-    if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+    const privateKey = getWalletPrivateKey();
+    if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
     const built = await callSidecar<{
       exchange: string;
       params: {
@@ -332,8 +413,11 @@ export class PolymarketAdapter implements MarketClient {
         type: params.orderType,
         amount: params.size,
         price: params.price,
+        ...(params.timeInForce !== undefined
+          ? { tif: params.timeInForce }
+          : {}),
       }],
-      { privateKey, signatureType: "eoa" },
+      tradingCredentials(privateKey),
     );
     return {
       exchange: built.exchange,
@@ -368,5 +452,117 @@ export class PolymarketAdapter implements MarketClient {
 
   async watchTrades(outcomeId: string): Promise<Trade[]> {
     return callSidecar<Trade[]>("watchTrades", [outcomeId]);
+  }
+
+  async fetchMarketSnapshots(query: string): Promise<MarketSnapshot[]> {
+    const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+      { query },
+    ]);
+    const now = Date.now();
+    const results: MarketSnapshot[] = [];
+
+    for (const m of markets) {
+      if (m.outcomes.length !== 2) continue;
+      const yesOutcome = m.outcomes[0];
+      const noOutcome = m.outcomes[1];
+      if (!yesOutcome || !noOutcome) continue;
+      if (yesOutcome.price === undefined || noOutcome.price === undefined) {
+        continue;
+      }
+      if (
+        yesOutcome.outcomeId === undefined ||
+        noOutcome.outcomeId === undefined
+      ) {
+        continue;
+      }
+      const closeMs =
+        m.resolutionDate !== undefined ? Date.parse(m.resolutionDate) : NaN;
+      const timeToCloseMs = Number.isFinite(closeMs)
+        ? Math.max(0, closeMs - now)
+        : undefined;
+      results.push({
+        marketId: m.marketId,
+        question: m.title,
+        yesOutcomeId: yesOutcome.outcomeId,
+        noOutcomeId: noOutcome.outcomeId,
+        yesPrice: yesOutcome.price,
+        noPrice: noOutcome.price,
+        volume24h: m.volume24h ?? 0,
+        openInterest: m.openInterest ?? 0,
+        ...(timeToCloseMs !== undefined ? { timeToCloseMs } : {}),
+        timestampMs: now,
+      });
+    }
+
+    return results;
+  }
+
+  async searchMultiOutcomeMarkets(
+    query: string,
+  ): Promise<MultiOutcomeMatch[]> {
+    const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+      { query },
+    ]);
+    const results: MultiOutcomeMatch[] = [];
+
+    for (const m of markets) {
+      if (m.outcomes.length <= 2) continue;
+      const legs: OutcomeLeg[] = [];
+      let skip = false;
+      for (const o of m.outcomes) {
+        if (o.price === undefined || o.outcomeId === undefined) {
+          skip = true;
+          break;
+        }
+        legs.push({
+          outcome: o.label,
+          outcomeId: o.outcomeId,
+          yesPrice: o.price,
+        });
+      }
+      if (skip) continue;
+      results.push({
+        marketId: m.marketId,
+        question: m.title,
+        legs,
+      });
+    }
+
+    return results;
+  }
+
+  async getCapabilities(): Promise<Capabilities> {
+    return getSidecarCapabilities();
+  }
+
+  /**
+   * Auto-discover and persist `WALLET_PROXY_ADDRESS` for live trading.
+   *
+   * pmxt-core 2.22.1's built-in `discoverProxy()` calls a Polymarket
+   * data-api endpoint that now returns 404 — so without help, every
+   * gnosis-safe-migrated account falls back to EOA mode and trips
+   * "Derived credentials are incomplete" inside `getApiCredentials()`.
+   *
+   * Idempotent — if the proxy is already configured or no private key
+   * is present, returns the current state without re-discovering.
+   */
+  async ensureAccount(): Promise<EnsureAccountResult> {
+    const existing = getWalletProxyAddress();
+    if (existing) return { ready: true, accountId: existing };
+
+    const privateKey = getWalletPrivateKey();
+    if (!privateKey) return { ready: false };
+
+    const { Wallet } = await import("ethers");
+    const eoa = new Wallet(privateKey).address;
+
+    const result = await discoverPolymarketProxy(eoa);
+    if (result.proxyAddress) {
+      process.env["WALLET_PROXY_ADDRESS"] = result.proxyAddress;
+      // Reset cached client so the next call picks up the discovered proxy.
+      this.client = undefined;
+      return { ready: true, accountId: result.proxyAddress };
+    }
+    return { ready: false };
   }
 }
