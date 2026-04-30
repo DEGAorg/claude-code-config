@@ -29,7 +29,7 @@ into `canon/templates/` as runnable strategy directories.
 
 | ID | Name | Risk | Complexity | Scanner-ready? | Status | Notes |
 |----|------|------|------------|----------------|--------|-------|
-| MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | Planned | Single cycle, +$13.57/cycle |
+| MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | Ported (live, $1k/cycle) | `strategies/mint-01/` — splitPosition + dual sell limits at midpoint+0.75¢, 24h reconcile, 5¢ stop-loss |
 | MINT-02 | Split Mint $500+$500 | Very Low | Low | No (exec) | Planned | Two sub-cycles, adjustable between |
 | MINT-03 | MM at Midpoint (Passive) | Medium | Medium | No (exec) | Planned | LP rewards only, loses on execution |
 | MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | Ported | `strategies/mm-premium/` — scanner + risk checks |
