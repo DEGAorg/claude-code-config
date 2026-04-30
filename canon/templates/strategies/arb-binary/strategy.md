@@ -91,6 +91,39 @@ whether each signal would pass risk gating.
 - In live mode: submit both orders via `Promise.all` for near-simultaneous execution
 - Urgency: `immediate` (arb edges are transient)
 
+**Run modes (`entry.ts`):**
+
+| Flag | Behaviour |
+|------|-----------|
+| _(none)_ | Dry-run. Full pipeline runs; orders are NOT submitted. |
+| `--dry-run` | Same as default — explicit dry-run. |
+| `--live` | Live execution. Real CLOB orders are placed via `createLiveExecutor`. |
+
+`--live` is the only path that places orders. A typo, a missing flag, or
+any unrelated argv entry leaves the strategy in dry-run.
+
+**Live execution prerequisites:**
+- A funded Polymarket wallet configured at `.canon/wallet.env`
+  (loaded via `canon/cli/wallet-store.ts` → `FileWalletStore`).
+- USDC balance on Polygon for the orders being placed.
+- USDC allowance to the CTFExchange. The live executor manages this
+  idempotently: `getAllowance()` is consulted lazily; `approve()` is
+  only sent when the cached allowance is below `100k USDC`, and tops
+  the allowance up to `1M USDC` (6-decimal raw values
+  `100_000_000_000n` / `1_000_000_000_000n`).
+- Submitted order IDs are tracked in-memory and cancellable through
+  the same executor (`executor.cancel(orderId)`), enabling MINT-05
+  cancel/replace flows to reuse this layer.
+
+**Safety notes:**
+- Default is dry-run — the runner never submits without `--live`.
+- The risk-checker circuit breaker trips after `maxConsecutiveLosses=3`
+  and rejects every subsequent signal until a winning trade resets
+  the counter. This is verified by
+  `strategies/arb-binary/__tests__/entry.test.ts`.
+- An optional integration test (gated behind `CANON_LIVE_TEST=1`)
+  places a single tiny order on a low-liquidity market; CI never runs it.
+
 **Scan layer:**
 1. `searchMarkets(config.category)` — fetch binary markets matching category
 2. `fetchOrderBook(yesTokenId)` + `fetchOrderBook(noTokenId)` — per market

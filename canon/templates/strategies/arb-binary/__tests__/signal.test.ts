@@ -106,6 +106,21 @@ describe("detectSignals", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Token IDs propagated for live execution
+  // -------------------------------------------------------------------------
+
+  it("propagates yes/no CLOB token IDs through signal metadata", () => {
+    const market = makeMarket({ yesAsk: 0.40, noAsk: 0.40 });
+    const signals = detectSignals([market], makeConfig());
+
+    expect(signals.length).toBe(2);
+    for (const signal of signals) {
+      expect(signal.metadata["yesTokenId"]).toBe(market.yesTokenId);
+      expect(signal.metadata["noTokenId"]).toBe(market.noTokenId);
+    }
+  });
+
+  // -------------------------------------------------------------------------
   // Hurdle rate
   // -------------------------------------------------------------------------
 

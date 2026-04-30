@@ -19,7 +19,7 @@ into `canon/templates/` as runnable strategy directories.
 
 | ID | Name | Risk | Complexity | Scanner-ready? | Status | Notes |
 |----|------|------|------------|----------------|--------|-------|
-| ARB-01 | Binary Arb Buy (YES+NO < $1) | Very Low | Low | Yes | Ported | `strategies/arb-binary/` — scanner + risk checks |
+| ARB-01 | Binary Arb Buy (YES+NO < $1) | Very Low | Low | Yes | Ported (live execution) | `strategies/arb-binary/` — scanner + risk checks + live CLOB execution behind `--live` |
 | ARB-02 | Binary Arb Sell / Mint | Very Low | Medium | Yes | Planned | Requires CTF mint tx (4-6s latency) |
 | ARB-03 | NegRisk Multi-condition Buy | Low | Medium | Yes | Ported | `strategies/arb-negrisk-buy/` — multi-leg scanner + risk checks |
 | ARB-04 | NegRisk Multi-condition Sell | Medium | High | No | Deferred | Mint set + parallel sell, ~5% of markets |
@@ -58,7 +58,7 @@ into `canon/templates/` as runnable strategy directories.
 | Template | Source strategy | Status |
 |----------|---------------|--------|
 | `nba-momentum/` | Custom (cross-venue arb scanner) | Ported, dry-run only |
-| `arb-binary/` | Binary Arb Buy (from C2 spec) | Ported, scanner + risk checks |
+| `arb-binary/` | Binary Arb Buy (from C2 spec) | Ported (live execution) — scanner + risk + live CLOB orders behind `--live` |
 
 ## Easiest to implement next (scanner-capable, low complexity)
 

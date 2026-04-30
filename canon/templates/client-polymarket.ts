@@ -649,6 +649,20 @@ export async function fetchOpenOrders(
   );
 }
 
+/**
+ * Time-in-force semantics for limit orders.
+ *
+ * - "GTC" — good-til-cancelled (default for plain limits).
+ * - "IOC" — immediate-or-cancel; partial fills allowed, remainder cancelled.
+ * - "FOK" — fill-or-kill; full size fills atomically or the whole order cancels.
+ *
+ * NOTE: pmxtjs@2.22.1 (the current sidecar) does NOT yet expose a
+ * time-in-force flag on `createOrder`. This field is forwarded by the
+ * templates layer but ignored downstream until the sidecar is updated.
+ * See `docs/reviews/261-open-questions.md` Q-4.
+ */
+export type TimeInForce = "GTC" | "IOC" | "FOK";
+
 /** Parameters for creating or building an order. */
 export interface OrderParams {
   marketId: string;
@@ -657,6 +671,8 @@ export interface OrderParams {
   size: number;
   price: number;
   orderType: "market" | "limit";
+  /** Optional time-in-force; only meaningful for `orderType === "limit"`. */
+  timeInForce?: TimeInForce;
 }
 
 /** Order response from createOrder. */
