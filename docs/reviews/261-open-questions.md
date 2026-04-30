@@ -38,7 +38,23 @@ the executor response to one of:
 
 ## Q-2 — When is a binary-arb signal a "win" vs. a "loss"?
 
-**Open. Strategy-level question, not solvable in the runner.**
+**Closed (2026-04-30).** Decision (a) chosen: *both legs of the same
+market reaching `submitted` in the same poll cycle is a win; a single
+leg in isolation records nothing; `rejected` / `error` records a loss
+and clears any pending leg state.*
+
+The contract is implemented in
+`canon/templates/strategies/arb-binary/entry.ts:createEntryOnOutcome`
+(closure-scoped `Map<marketId, Set<"yes"|"no">>`) and pinned by tests
+under `describe("createEntryOnOutcome")` in
+`canon/templates/strategies/arb-binary/__tests__/entry.test.ts`.
+
+Settlement-time P&L (option B) and slippage-driven losses are still
+out of scope — the breaker remains conservative on the loss side and
+optimistic on the win side. Revisit when settlement-event ingestion
+lands.
+
+### Original framing (kept for context)
 
 The current `arb-binary/entry.ts:createEntryOnOutcome` records a
 `recordOutcome(false)` (loss) on `rejected | error` only. It does
@@ -79,7 +95,31 @@ The current `arb-binary/entry.ts:createEntryOnOutcome` records a
 
 ## Q-3 — Allowance adapter: where does the wallet/provider come from?
 
-**Open. Cross-package wiring.**
+**Closed (2026-04-30).** Option A chosen: *the templates layer accepts
+provider/signer hooks from the caller; nothing is parsed at import time.*
+
+`canon/templates/usdc-allowance.ts` now ships a real ethers-v5
+`createUsdcAllowanceClient(config)` whose `config.getProvider` and
+`config.getSigner` are caller-supplied factories. The factory returns
+an `AllowanceClient` whose `getAllowance()` reads `USDC.allowance(owner,
+spender)` from the live RPC and `approve(amount)` submits the tx and
+awaits one confirmation. `AllowanceNotImplementedError` has been
+removed; the symbol no longer appears in the source tree.
+
+Polygon contract addresses are pinned in
+`canon/templates/polygon-addresses.ts` (`USDC_E_ADDRESS`,
+`CTF_EXCHANGE_ADDRESS`, `NEG_RISK_CTF_EXCHANGE_ADDRESS`,
+`DEFAULT_ALLOWANCE_SPENDER = CTF_EXCHANGE_ADDRESS`) — the templates
+layer no longer re-declares them inline. ARB-01 wires the adapter in
+`arb-binary/entry.ts:buildLiveAllowanceClient()`, reading
+`POLYMARKET_PROXY_ADDRESS`, `POLYMARKET_PRIVATE_KEY`, and
+`POLYGON_RPC_URL` lazily from `process.env` and threading the resulting
+`AllowanceClient` into `createEntryDeps({ allowance })`. Top-up
+semantics keep the original plan: refresh to a fixed
+`USDC_ALLOWANCE_TARGET` (1M USDC) when the cached value drops below
+`USDC_ALLOWANCE_THRESHOLD` (100k USDC).
+
+### Original framing (kept for context)
 
 `canon/templates/usdc-allowance.ts` ships an `AllowanceClient`
 factory (`createUsdcAllowanceClient`) that throws
@@ -127,7 +167,23 @@ arb-binary entry can opt in by injecting it into `createLiveExecutor`.
 
 ## Q-4 — Time-in-force: does pmxtjs / the sidecar support FOK?
 
-**Open. Confirmed unsupported in pmxtjs@2.22.1.**
+**Closed (2026-04-30).** The pmxt sidecar now forwards
+`tif` end-to-end and advertises support via a `getCapabilities`
+RPC.
+
+`canon/templates/sidecar.ts` adds `SidecarCapabilities` and
+`getSidecarCapabilities()` (returns `{ supportsTif: false }` on a 404
+from older sidecars so callers fall back safely).
+`canon/templates/client-polymarket.ts:createOrder` now includes
+`tif` in the sidecar payload when `OrderParams.timeInForce` is set,
+and re-exports `getCapabilities()` for the `--live` start-up gate.
+ARB-01 emits `"FOK"` from `resolveArbBinaryOrder` and the value is
+threaded through `signalToOrderParams` → `client-polymarket.createOrder`
+→ sidecar → CLOB. Behaviour is pinned in
+`canon/templates/__tests__/client-polymarket.test.ts` (forwarding,
+omission when undefined, and capability advertisement).
+
+### Original framing (kept for context)
 
 A repo-wide grep over `canon/cli/node_modules/.pnpm/pmxtjs@2.22.1/`
 returned **zero matches** for `FOK`, `IOC`, `timeInForce`, or
@@ -184,7 +240,24 @@ still wrong** (no FOK guarantee on the exchange).
 
 ## Q-5 — Should `--live` refuse to start when stubs are unimplemented?
 
-**Open. Production-safety question.**
+**Closed (2026-04-30).** `--live` now hard-fails at start-up when the
+sidecar does not advertise FOK, and the allowance adapter is wired in
+real (not stubbed) — so the two production-safety gaps that drove this
+question are both gone.
+
+`canon/templates/strategies/arb-binary/entry.ts:assertLiveCapabilities`
+queries `getCapabilities()` and throws an error explicitly anchored at
+"docs/reviews/261-open-questions.md (Q-5)" when `supportsTif` is false.
+`main()` calls the gate before any deps are constructed when
+`--live` is set. `createEntryDeps` accepts an `allowance` injection
+seam, and `main()` builds a real `createUsdcAllowanceClient` from
+env (`POLYMARKET_PROXY_ADDRESS`, `POLYMARKET_PRIVATE_KEY`,
+`POLYGON_RPC_URL`) for the `--live` path. The opt-in smoke test at
+`canon/templates/strategies/arb-binary/__tests__/live-amoy.test.ts`
+exercises the gate against a real running sidecar
+(`CANON_LIVE_TEST=1`).
+
+### Original framing (kept for context)
 
 After this patch, `--live` will:
 
@@ -220,13 +293,15 @@ allowance the wallet happened to have.
 | Q   | Subject                                | Status on this branch       | Owner of next step            |
 |-----|----------------------------------------|-----------------------------|-------------------------------|
 | Q-1 | Runner outcome contract                | Closed                      | —                             |
-| Q-2 | Win/loss definition for binary arb     | Stubbed (loss-only path)    | Strategy design discussion    |
-| Q-3 | USDC allowance wiring                  | Interface-only, throws      | Wallet/provider plumbing plan |
-| Q-4 | FOK on the wire                        | Type added; sidecar mute    | Sidecar + pmxtjs investigation|
-| Q-5 | `--live` start-up safety gate          | Open                        | Follow-up "Track 1b" plan     |
+| Q-2 | Win/loss definition for binary arb     | Closed (both legs = win)    | —                             |
+| Q-3 | USDC allowance wiring                  | Closed (ethers-v5 adapter)  | —                             |
+| Q-4 | FOK on the wire                        | Closed (sidecar forwards tif)| —                            |
+| Q-5 | `--live` start-up safety gate          | Closed (assertLiveCapabilities)| —                          |
 
-All five questions are scoped to the follow-up plan. The current
-branch is now safe to merge from a *correctness* point of view —
-nothing is silently broken — but is **not yet** the production-ready
-ARB-01 the original plan #261 promised. Q-3 / Q-4 / Q-5 must close
-before we ship `--live` as truly safe.
+All five questions are now closed. The follow-up plan
+`20260430-arb01-live-completion` landed the ethers-v5 allowance
+adapter, the sidecar `tif` forwarding + `getCapabilities` RPC, the
+`assertLiveCapabilities` start-up gate, and the "both-legs-filled =
+win" tracker. ARB-01 `--live` is now production-safe within the
+limits documented above (settlement-time P&L and slippage-driven
+losses remain conservative — see Q-2 closure note).
