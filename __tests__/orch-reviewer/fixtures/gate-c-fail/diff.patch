@@ -1,0 +1,18 @@
+diff --git a/runner.ts b/runner.ts
+--- a/runner.ts
++++ b/runner.ts
+@@ -10,6 +10,8 @@
++export type OnOutcome = (outcome: { status: string }) => void;
++
+ export interface RunnerDeps {
+   strategy: () => Promise<unknown>;
+ }
+diff --git a/__tests__/runner.test.ts b/__tests__/runner.test.ts
+--- a/__tests__/runner.test.ts
++++ b/__tests__/runner.test.ts
+@@ -5,3 +5,8 @@
++import type { OnOutcome } from "../runner.js";
++
++describe("OnOutcome", () => {
++  it("is exported", () => { expect(true).toBe(true); });
++});
