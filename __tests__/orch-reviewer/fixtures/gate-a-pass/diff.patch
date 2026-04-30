@@ -1,0 +1,28 @@
+diff --git a/canon/templates/live-executor.ts b/canon/templates/live-executor.ts
+new file mode 100644
+--- /dev/null
++++ b/canon/templates/live-executor.ts
+@@ -0,0 +1,5 @@
++export function createLiveExecutor() {
++  return { submit: async () => ({ id: "x", status: "ok" }) };
++}
+diff --git a/canon/templates/__tests__/live-executor.integration.test.ts b/canon/templates/__tests__/live-executor.integration.test.ts
+new file mode 100644
+--- /dev/null
++++ b/canon/templates/__tests__/live-executor.integration.test.ts
+@@ -0,0 +1,15 @@
++import { describe, it, expect } from "vitest";
++import { detectSignals } from "../strategies/arb-binary/signal.js";
++import { signalToOrderParams } from "../order-executor.js";
++
++describe("end-to-end signal → order params", () => {
++  it("emits a CLOB-shaped tokenId from the scan layer", () => {
++    const market = { yesTokenId: "12345678901234567890123456789012345678901234567890123456789012345", noTokenId: "99999999999999999999999999999999999999999999999999999999999999999" };
++    // ... build signal from scan output via real detectSignals call
++    const signal = detectSignals([{ ...market } as any], {} as any)[0]!;
++    const params = signalToOrderParams(signal, { yes: market.yesTokenId, no: market.noTokenId }, 0.4);
++    expect(params.tokenId).toMatch(/^\d{60,}$/);
++    expect(params.price).toBeGreaterThanOrEqual(0);
++    expect(params.price).toBeLessThanOrEqual(1);
++  });
++});

@@ -1,0 +1,17 @@
+diff --git a/canon/templates/client-polymarket.ts b/canon/templates/client-polymarket.ts
+--- a/canon/templates/client-polymarket.ts
++++ b/canon/templates/client-polymarket.ts
+@@ -650,6 +650,7 @@ export interface OrderParams {
+   orderType: "market" | "limit";
++  timeInForce?: "GTC" | "IOC" | "FOK";
+ }
+diff --git a/canon/templates/strategies/arb-binary/entry.ts b/canon/templates/strategies/arb-binary/entry.ts
+--- a/canon/templates/strategies/arb-binary/entry.ts
++++ b/canon/templates/strategies/arb-binary/entry.ts
+@@ -100,6 +100,7 @@ function resolveArbBinaryOrder(signal) {
+   return {
+     tokenIds,
+     price,
++    timeInForce: "FOK",
+   };
+ }

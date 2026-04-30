@@ -1,0 +1,18 @@
+diff --git a/runner.ts b/runner.ts
+--- a/runner.ts
++++ b/runner.ts
+@@ -10,6 +10,8 @@
++export type OnOutcome = (outcome: { status: string }) => void;
++
+ export interface RunnerDeps {
++  onOutcome?: OnOutcome;
+ }
+diff --git a/entry.ts b/entry.ts
+--- a/entry.ts
++++ b/entry.ts
+@@ -50,3 +50,7 @@
++import type { OnOutcome } from "./runner.js";
++
++const onOutcome: OnOutcome = (outcome) => {
++  if (outcome.status === "rejected") risk.recordOutcome(false);
++};

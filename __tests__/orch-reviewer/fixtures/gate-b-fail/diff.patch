@@ -1,0 +1,9 @@
+diff --git a/canon/templates/order-executor.ts b/canon/templates/order-executor.ts
+--- a/canon/templates/order-executor.ts
++++ b/canon/templates/order-executor.ts
+@@ -90,7 +90,7 @@ export function signalToOrderParams(signal, tokenIds, price) {
+   const orderType: "market" | "limit" =
+-    signal.urgency === "immediate" ? "market" : "limit";
++    signal.urgency === "immediate" ? "market" : "limit";
+   return { marketId: signal.market.market_id, tokenId: tokenIds[token], side, size: signal.size, price, orderType };
+ }
