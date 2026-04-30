@@ -99,37 +99,25 @@ is_live_infra_change() {
 # True if any test file in the diff has an integration-trace shape:
 # imports `signal.js` AND the order-params helper AND has a CLOB
 # token-id regex assertion.
+#
+# NOTE: collect awk output first, then run all greps over the buffer.
+# A direct `awk | grep -q` pipeline interacts badly with `pipefail`:
+# grep exits on first match, awk receives SIGPIPE, the pipe's
+# rightmost non-zero exit propagates and the wrapping `|| return 1`
+# fires even though the pattern was found.
 has_integration_trace_test() {
-  awk '
+  local plus_lines
+  plus_lines=$(awk '
     /^diff --git / {
       file = $4
       sub(/^b\//, "", file)
       keep = (file ~ /\/__tests__\// || file ~ /\.test\.ts$/)
     }
     keep && /^\+/ { print }
-  ' "${DIFF_FILE}" |
-    grep -q 'signal\.js' ||
-    return 1
-  awk '
-    /^diff --git / {
-      file = $4
-      sub(/^b\//, "", file)
-      keep = (file ~ /\/__tests__\// || file ~ /\.test\.ts$/)
-    }
-    keep && /^\+/ { print }
-  ' "${DIFF_FILE}" |
-    grep -qE 'signalToOrderParams|order-executor\.js' ||
-    return 1
-  awk '
-    /^diff --git / {
-      file = $4
-      sub(/^b\//, "", file)
-      keep = (file ~ /\/__tests__\// || file ~ /\.test\.ts$/)
-    }
-    keep && /^\+/ { print }
-  ' "${DIFF_FILE}" |
-    grep -qE '\\d\{60' ||
-    return 1
+  ' "${DIFF_FILE}")
+  grep -q 'signal\.js' <<<"${plus_lines}" || return 1
+  grep -qE 'signalToOrderParams|order-executor\.js' <<<"${plus_lines}" || return 1
+  grep -qE '\\d\{60' <<<"${plus_lines}" || return 1
   return 0
 }
 
@@ -358,9 +346,14 @@ for label in A:${a} B:${b} C:${c}; do
   esac
 done
 
-# Lowercase the gate labels for the JSON keys.
-blocking_json=$(printf '"%s",' "${blocking[@]:-}" | sed 's/,$//')
-[[ -z "${blocking_json}" ]] && blocking_json=""
+# Lowercase the gate labels for the JSON keys. Suppress the printf
+# fallback when the array is empty so the JSON stays as `[]` instead
+# of `[""]`.
+if [[ ${#blocking[@]} -eq 0 ]]; then
+  blocking_json=""
+else
+  blocking_json=$(printf '"%s",' "${blocking[@]}" | sed 's/,$//')
+fi
 
 cat >"${VERDICT}" <<JSON
 {

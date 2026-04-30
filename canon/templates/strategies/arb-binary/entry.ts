@@ -16,19 +16,29 @@
 import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
+import type { WalletStore } from "../../wallet-store.js";
 import {
   fetchOrderBook,
+  getCapabilities,
   searchMarkets,
 } from "../../client-polymarket.js";
 import { createLiveExecutor } from "../../live-executor.js";
-import type { ResolvedOrder } from "../../live-executor.js";
+import type {
+  AllowanceClient,
+  ResolvedOrder,
+} from "../../live-executor.js";
 import { createLivePositions } from "../../live-positions.js";
+import {
+  DEFAULT_ALLOWANCE_SPENDER,
+  USDC_E_ADDRESS,
+} from "../../polygon-addresses.js";
 import { createRunner } from "../../runner.js";
 import type {
   ExecutorDeps,
   OnOutcome,
   PositionDeps,
 } from "../../runner.js";
+import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
 
@@ -83,16 +93,45 @@ export function createEntryRisk(): ArbBinaryRisk {
 /**
  * Build the runner outcome callback for ARB-01.
  *
- * Treats `rejected` and `error` submissions as losses for the
- * consecutive-loss circuit breaker. `submitted` is intentionally
- * NOT counted as a win — settlement-time P&L attribution is
- * unresolved (see `docs/reviews/261-open-questions.md`, Q-2).
+ * Win/loss accounting for the consecutive-loss circuit breaker
+ * (Q-2, decision (a) "both legs filled = win"):
+ *
+ * - `rejected` / `error` — record a loss and discard any pending
+ *   leg state for that market (the pair is already broken).
+ * - `submitted` — track which leg (yes/no) of the market filled.
+ *   Once both legs of the same market reach `submitted`, record a
+ *   win and reset the per-market state. A single leg in isolation
+ *   records nothing — it is neither a win (pair incomplete) nor a
+ *   loss (the leg itself succeeded).
+ *
+ * Per-market tracking lives in a closure-scoped Map so the runner's
+ * onOutcome callback observes leg pairs across the synchronous
+ * processing of a cycle's signals. See
+ * `docs/reviews/261-open-questions.md`, Q-2.
  */
 export function createEntryOnOutcome(risk: ArbBinaryRisk): OnOutcome {
+  const filledLegs = new Map<string, Set<"yes" | "no">>();
   return (outcome) => {
+    const marketId = outcome.signal.market.market_id;
     if (outcome.status === "rejected" || outcome.status === "error") {
+      filledLegs.delete(marketId);
       risk.recordOutcome(false);
+      return;
     }
+    if (outcome.status !== "submitted") return;
+
+    const direction = outcome.signal.direction;
+    const leg: "yes" | "no" =
+      direction === "buy_yes" || direction === "sell_yes" ? "yes" : "no";
+
+    const seen = filledLegs.get(marketId) ?? new Set<"yes" | "no">();
+    seen.add(leg);
+    if (seen.has("yes") && seen.has("no")) {
+      filledLegs.delete(marketId);
+      risk.recordOutcome(true);
+      return;
+    }
+    filledLegs.set(marketId, seen);
   };
 }
 
@@ -134,16 +173,34 @@ function resolveArbBinaryOrder(signal: TradeSignal): ResolvedOrder {
 }
 
 /**
+ * Optional dependencies for `createEntryDeps`.
+ *
+ * `allowance` is an injection seam — `main()` builds a real
+ * `createUsdcAllowanceClient` for `--live`, while tests inject a
+ * fake `AllowanceClient` to assert the live executor consults it
+ * before submitting (Q-3).
+ */
+export interface CreateEntryDepsOptions {
+  allowance?: AllowanceClient;
+}
+
+/**
  * Build the live executor + position adapters consumed by the runner.
  *
  * Both adapters are always live — the runner gates `executor.submit` on
  * `config.dryRun`, so dry-run still exercises the wiring without sending
- * orders.
+ * orders. When `options.allowance` is provided, the live executor will
+ * read it before each submit and top up to `USDC_ALLOWANCE_TARGET` when
+ * the cached value falls below `USDC_ALLOWANCE_THRESHOLD`.
  */
-export function createEntryDeps(flags: EntryFlags): EntryDeps {
+export function createEntryDeps(
+  flags: EntryFlags,
+  options: CreateEntryDepsOptions = {},
+): EntryDeps {
   void flags;
   const executor = createLiveExecutor({
     resolveOrder: resolveArbBinaryOrder,
+    ...(options.allowance !== undefined ? { allowance: options.allowance } : {}),
     allowanceThreshold: USDC_ALLOWANCE_THRESHOLD,
     allowanceTarget: USDC_ALLOWANCE_TARGET,
   });
@@ -151,12 +208,113 @@ export function createEntryDeps(flags: EntryFlags): EntryDeps {
   return { executor, positions };
 }
 
+/**
+ * `--live` start-up safety gate (Q-5).
+ *
+ * Refuses to start when the running pmxt sidecar does not advertise
+ * `supportsTif`. ARB-01 relies on FOK to keep YES/NO legs synchronised;
+ * silently degrading to a regular limit order would expose the strategy
+ * to one-sided fills.
+ */
+export async function assertLiveCapabilities(): Promise<void> {
+  const caps = await getCapabilities();
+  if (!caps.supportsTif) {
+    throw new Error(
+      "ARB-01 --live: pmxt sidecar does not advertise FOK time-in-force " +
+        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
+    );
+  }
+}
+
+/**
+ * Build a live USDC allowance client from an injected `WalletStore`.
+ *
+ * The wallet store owns key storage (canon's `.canon/wallet.env` by
+ * default; pluggable for Keychain / hardware backends). The templates
+ * layer never touches private keys directly — it asks the store.
+ *
+ * Returns undefined when the store has no wallet, when the owner
+ * address cannot be derived, or when the store throws — `main()` then
+ * skips allowance plumbing rather than placing live orders against a
+ * misconfigured wallet.
+ */
+export async function buildLiveAllowanceClient(
+  wallet: WalletStore,
+): Promise<AllowanceClient | undefined> {
+  if (!wallet.hasWallet()) return undefined;
+
+  let ownerAddress: string;
+  try {
+    ownerAddress = await wallet.getAddress();
+  } catch {
+    // WalletNotFoundError or any signer-side failure — surface as
+    // "no allowance adapter" so main() falls back to manual approval
+    // rather than crashing the strategy boot.
+    return undefined;
+  }
+
+  const rpcUrl =
+    process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
+
+  return createUsdcAllowanceClient({
+    ownerAddress,
+    spenderAddress: DEFAULT_ALLOWANCE_SPENDER,
+    usdcAddress: USDC_E_ADDRESS,
+    getProvider: async () => {
+      const { providers } = await import("ethers");
+      return new providers.JsonRpcProvider(rpcUrl);
+    },
+    getSigner: async () => {
+      const { Wallet, providers } = await import("ethers");
+      return new Wallet(
+        wallet.getPrivateKey(),
+        new providers.JsonRpcProvider(rpcUrl),
+      );
+    },
+  });
+}
+
+/**
+ * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
+ *
+ * The path is held in a runtime variable so TypeScript does not
+ * statically resolve it and pull `canon/cli` into the templates
+ * `rootDir`. The templates layer keeps a clean boundary; only this
+ * one call site reaches across to the CLI package, and only at
+ * runtime when `--live` is set.
+ */
+async function loadCanonWalletStore(): Promise<WalletStore> {
+  const specifier = "../../../cli/wallet-store.js";
+  const mod = (await import(/* @vite-ignore */ specifier)) as {
+    FileWalletStore: new () => WalletStore;
+  };
+  return new mod.FileWalletStore();
+}
+
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
 
+  if (!flags.dryRun) {
+    await assertLiveCapabilities();
+  }
+
   const risk = createEntryRisk();
-  const { executor, positions } = createEntryDeps(flags);
+  // Bootstrap edge: the templates layer never imports from canon/cli
+  // at compile time, but main() — the composition root — pulls the
+  // concrete FileWalletStore at runtime so existing canon wallets
+  // (`.canon/wallet.env`) are reused without duplication.
+  const wallet: WalletStore | undefined = flags.dryRun
+    ? undefined
+    : await loadCanonWalletStore();
+  const allowance =
+    wallet !== undefined
+      ? await buildLiveAllowanceClient(wallet)
+      : undefined;
+  const { executor, positions } = createEntryDeps(
+    flags,
+    allowance !== undefined ? { allowance } : {},
+  );
 
   const strategy = async (): Promise<TradeSignal[]> => {
     const marketData = await scanMarkets(DEFAULT_ARB_BINARY_CONFIG, {

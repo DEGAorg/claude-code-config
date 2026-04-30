@@ -38,6 +38,7 @@ const mockFetchOrderBook = vi.fn(async (tokenId: string) => ({
 const mockFetchBalance = vi.fn(async () => []);
 const mockFetchPositions = vi.fn(async () => []);
 const mockFetchOpenOrders = vi.fn(async () => []);
+const mockGetCapabilities = vi.fn(async () => ({ supportsTif: true }));
 
 vi.mock("../../../client-polymarket.js", () => ({
   createOrder: mockCreateOrder,
@@ -47,7 +48,14 @@ vi.mock("../../../client-polymarket.js", () => ({
   fetchBalance: mockFetchBalance,
   fetchPositions: mockFetchPositions,
   fetchOpenOrders: mockFetchOpenOrders,
+  getCapabilities: mockGetCapabilities,
 }));
+
+interface FakeAllowanceClient {
+  getAllowance: ((() => Promise<bigint>) & ReturnType<typeof vi.fn>);
+  approve: ((amount: bigint) => Promise<{ txHash: string }>) &
+    ReturnType<typeof vi.fn>;
+}
 
 interface EntryModule {
   parseEntryFlags: (argv: readonly string[]) => { dryRun: boolean };
@@ -70,7 +78,15 @@ interface EntryModule {
     orderId?: string;
     error?: string;
   }) => void;
-  createEntryDeps: (flags: { dryRun: boolean }) => {
+  createEntryDeps: (
+    flags: { dryRun: boolean },
+    options?: {
+      allowance?: {
+        getAllowance: () => Promise<bigint>;
+        approve: (amount: bigint) => Promise<{ txHash: string }>;
+      };
+    },
+  ) => {
     executor: {
       submit: (s: TradeSignal) => Promise<{ id: string; status: string }>;
     };
@@ -79,6 +95,8 @@ interface EntryModule {
       getPortfolio: () => Portfolio;
     };
   };
+  assertLiveCapabilities: () => Promise<void>;
+  buildLiveAllowanceClient: (wallet: unknown) => Promise<unknown>;
 }
 
 let entry: EntryModule;
@@ -86,8 +104,16 @@ let entry: EntryModule;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
+  mockGetCapabilities.mockImplementation(async () => ({ supportsTif: true }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });
+
+function makeFakeAllowance(initial = 0n): FakeAllowanceClient {
+  return {
+    getAllowance: vi.fn(async () => initial),
+    approve: vi.fn(async () => ({ txHash: "0xabc" })),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -229,7 +255,7 @@ describe("createEntryOnOutcome", () => {
     expect(recordSpy).toHaveBeenCalledWith(false);
   });
 
-  it("does not record a win on `submitted` (settlement P&L unresolved)", () => {
+  it("does not record a win on a single-leg `submitted` (pair incomplete)", () => {
     const risk = entry.createEntryRisk();
     const recordSpy = vi.spyOn(risk, "recordOutcome");
     const onOutcome = entry.createEntryOnOutcome(risk);
@@ -241,6 +267,107 @@ describe("createEntryOnOutcome", () => {
     });
 
     expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("records a win when both YES and NO legs of the same market submit (Q-2)", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes",
+    });
+    expect(recordSpy).not.toHaveBeenCalled();
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "submitted",
+      orderId: "ord-no",
+    });
+
+    expect(recordSpy).toHaveBeenCalledTimes(1);
+    expect(recordSpy).toHaveBeenCalledWith(true);
+  });
+
+  it("does not double-count a win when the same leg submits twice", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes-1",
+    });
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes-2",
+    });
+
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("isolates leg tracking per market_id", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({
+        direction: "buy_yes",
+        market: {
+          platform: "polymarket",
+          market_id: "cond-A",
+          question: "A?",
+        },
+      }),
+      status: "submitted",
+    });
+    onOutcome({
+      signal: makeSignal({
+        direction: "buy_no",
+        market: {
+          platform: "polymarket",
+          market_id: "cond-B",
+          question: "B?",
+        },
+      }),
+      status: "submitted",
+    });
+
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("clears pending leg state when the pair's other leg fails", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes",
+    });
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "rejected",
+    });
+    // The previous YES-only state must NOT combine with a future NO
+    // to retroactively mark a win.
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "submitted",
+      orderId: "ord-no",
+    });
+
+    // Only the rejected NO records a loss; the lingering YES from
+    // before the rejection is cleared, so the late NO submit tracks
+    // alone — no win recorded.
+    expect(recordSpy).toHaveBeenCalledTimes(1);
+    expect(recordSpy).toHaveBeenCalledWith(false);
   });
 
   it("trips the circuit breaker after 3 rejected outcomes", () => {
@@ -285,5 +412,181 @@ describe("createEntryDeps", () => {
     expect(mockFetchBalance).toHaveBeenCalledTimes(1);
     expect(mockFetchPositions).toHaveBeenCalledTimes(1);
     expect(mockFetchOpenOrders).toHaveBeenCalledTimes(1);
+  });
+
+  it("threads an injected allowance client into the live executor (Q-3)", async () => {
+    const allowance = makeFakeAllowance(0n);
+    const deps = entry.createEntryDeps({ dryRun: false }, { allowance });
+
+    await deps.executor.submit(makeSignal());
+
+    expect(allowance.getAllowance).toHaveBeenCalledTimes(1);
+    expect(allowance.approve).toHaveBeenCalledTimes(1);
+    expect(mockCreateOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not approve when the cached allowance already meets the threshold", async () => {
+    // 100k USDC threshold (6 decimals) — supply more than that.
+    const allowance = makeFakeAllowance(200_000_000_000n);
+    const deps = entry.createEntryDeps({ dryRun: false }, { allowance });
+
+    await deps.executor.submit(makeSignal());
+    await deps.executor.submit(makeSignal());
+
+    expect(allowance.getAllowance).toHaveBeenCalledTimes(1);
+    expect(allowance.approve).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration trace — scan → signal → submit produces CLOB-shaped order
+// ---------------------------------------------------------------------------
+
+describe("integration trace (scan → signal → submit)", () => {
+  it("forwards a real CLOB token id (77-digit decimal) to createOrder", async () => {
+    const { detectSignals } = (await import(
+      "../signal.js"
+    )) as typeof import("../signal.js");
+    const { signalToOrderParams } = (await import(
+      "../../../order-executor.js"
+    )) as typeof import("../../../order-executor.js");
+
+    const yesTokenId =
+      "12345678901234567890123456789012345678901234567890123456789012345";
+    const noTokenId =
+      "98765432109876543210987654321098765432109876543210987654321098765";
+
+    const signals = detectSignals(
+      [
+        {
+          conditionId: "0xcondition",
+          question: "Will it rain?",
+          category: "NBA",
+          yesAsk: 0.4,
+          noAsk: 0.4,
+          yesTokenId,
+          noTokenId,
+          estimatedSlippage: 0.001,
+        },
+      ],
+      {
+        category: "NBA",
+        feeRate: 0.02,
+        gasCost: 0.02,
+        hurdleRate: 0.015,
+        slippageAbort: 0.003,
+        bankroll: 10_000,
+        kellyFraction: 0.25,
+        maxExposure: 0.08,
+        signalTtlMs: 5_000,
+      },
+    );
+
+    expect(signals.length).toBeGreaterThan(0);
+    const yesSignal = signals.find((s) => s.direction === "buy_yes")!;
+
+    // Direct chain: signal → signalToOrderParams → CLOB-shaped params.
+    const params = signalToOrderParams(
+      yesSignal,
+      { yes: yesTokenId, no: noTokenId },
+      yesSignal.metadata["yesAsk"] as number,
+      "FOK",
+    );
+
+    expect(params.tokenId).toMatch(/^\d{60,}$/);
+    expect(params.price).toBeGreaterThanOrEqual(0);
+    expect(params.price).toBeLessThanOrEqual(1);
+    expect(params.size).toBeGreaterThan(0);
+    expect(params.orderType).toBe("limit");
+    expect(params.timeInForce).toBe("FOK");
+
+    // End-to-end via the live executor still produces the same shape.
+    const deps = entry.createEntryDeps({ dryRun: false });
+    await deps.executor.submit(yesSignal);
+
+    expect(mockCreateOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenId: expect.stringMatching(/^\d{60,}$/),
+        timeInForce: "FOK",
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildLiveAllowanceClient — WalletStore injection (Q-3 architecture)
+// ---------------------------------------------------------------------------
+
+interface FakeWalletStore {
+  hasWallet: ReturnType<typeof vi.fn>;
+  getPrivateKey: ReturnType<typeof vi.fn>;
+  getAddress: ReturnType<typeof vi.fn>;
+  ensure: ReturnType<typeof vi.fn>;
+}
+
+function makeFakeWallet(opts: {
+  hasWallet?: boolean;
+  address?: string;
+  privateKey?: string;
+} = {}): FakeWalletStore {
+  return {
+    hasWallet: vi.fn(() => opts.hasWallet ?? true),
+    getPrivateKey: vi.fn(
+      () => opts.privateKey ?? "0x" + "a".repeat(64),
+    ),
+    getAddress: vi.fn(async () => opts.address ?? "0xowner"),
+    ensure: vi.fn(),
+  };
+}
+
+interface BuildLiveAllowanceClientFn {
+  (wallet: FakeWalletStore): Promise<unknown>;
+}
+
+describe("buildLiveAllowanceClient (WalletStore injection)", () => {
+  it("returns undefined when the wallet store has no wallet", async () => {
+    const wallet = makeFakeWallet({ hasWallet: false });
+    const build = (entry as unknown as { buildLiveAllowanceClient: BuildLiveAllowanceClientFn }).buildLiveAllowanceClient;
+    const client = await build(wallet);
+    expect(client).toBeUndefined();
+    expect(wallet.hasWallet).toHaveBeenCalled();
+    expect(wallet.getAddress).not.toHaveBeenCalled();
+  });
+
+  it("derives owner address from wallet.getAddress() (no env vars consulted)", async () => {
+    const prevOwner = process.env["POLYMARKET_PROXY_ADDRESS"];
+    delete process.env["POLYMARKET_PROXY_ADDRESS"];
+    const wallet = makeFakeWallet({ address: "0xfromwallet" });
+    const build = (entry as unknown as { buildLiveAllowanceClient: BuildLiveAllowanceClientFn }).buildLiveAllowanceClient;
+    const client = await build(wallet);
+    expect(client).toBeDefined();
+    expect(wallet.getAddress).toHaveBeenCalledTimes(1);
+    if (prevOwner !== undefined) {
+      process.env["POLYMARKET_PROXY_ADDRESS"] = prevOwner;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// assertLiveCapabilities — start-up safety gate (Q-5)
+// ---------------------------------------------------------------------------
+
+describe("assertLiveCapabilities", () => {
+  it("resolves when the sidecar advertises FOK support", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    await expect(entry.assertLiveCapabilities()).resolves.toBeUndefined();
+    expect(mockGetCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when the sidecar does not advertise FOK support", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(/FOK/);
+  });
+
+  it("error message points at the open-questions doc (Q-5)", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /261-open-questions\.md/,
+    );
   });
 });

@@ -6,14 +6,15 @@
  * wallet has granted to the exchange spender, and submits an
  * `approve()` transaction when the live executor's threshold check
  * decides a top-up is needed.
- *
- * STATUS: interface + factory shape only. The on-chain calls are
- * intentionally unimplemented and throw `AllowanceNotImplementedError`
- * until the wallet/provider plumbing is wired through to the templates
- * layer (currently lives in `canon/cli/wallet-store.ts`). See
- * `docs/reviews/261-open-questions.md` Q-3.
  */
+import { Contract } from "ethers";
 import type { AllowanceClient } from "./live-executor.js";
+
+/** Minimal ERC-20 ABI fragments needed for allowance + approve. */
+const ERC20_ABI = [
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+];
 
 /** Ethers-v5-style provider/signer surface needed by the adapter. */
 export interface UsdcAllowanceConfig {
@@ -35,39 +36,73 @@ export interface UsdcAllowanceConfig {
   getProvider: () => Promise<unknown>;
 }
 
-export class AllowanceNotImplementedError extends Error {
-  constructor(operation: string) {
-    super(
-      `USDC allowance adapter is not yet wired (${operation}). ` +
-        "See docs/reviews/261-open-questions.md (Q-3).",
-    );
-    this.name = "AllowanceNotImplementedError";
-  }
+/** Shape returned by ethers v5 `allowance()` (BigNumber). */
+interface BigNumberLike {
+  toBigInt: () => bigint;
+}
+
+function isBigNumberLike(value: unknown): value is BigNumberLike {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { toBigInt?: unknown }).toBigInt === "function"
+  );
 }
 
 /**
  * Build a USDC allowance adapter for the live executor.
  *
- * The returned `AllowanceClient` will, once implemented:
- *   - `getAllowance()` → call USDC `allowance(owner, spender)` via the
- *     provider and return the raw 6-decimal `bigint`.
- *   - `approve(amount)` → submit an `approve(spender, amount)` tx
- *     using the signer, await one confirmation, return `{ txHash }`.
- *
- * Until then it throws `AllowanceNotImplementedError` so the absence
- * of real wiring is loud rather than silent.
+ * - `getAllowance()` calls USDC `allowance(owner, spender)` via the
+ *   provider and returns the raw 6-decimal `bigint`.
+ * - `approve(amount)` submits `approve(spender, amount)` via the
+ *   signer, awaits one confirmation, and returns `{ txHash }`.
  */
 export function createUsdcAllowanceClient(
   config: UsdcAllowanceConfig,
 ): AllowanceClient {
-  void config;
   return {
     async getAllowance(): Promise<bigint> {
-      throw new AllowanceNotImplementedError("getAllowance");
+      const provider = await config.getProvider();
+      const contract = new Contract(
+        config.usdcAddress,
+        ERC20_ABI,
+        provider as never,
+      );
+      const raw: unknown = await (
+        contract as unknown as {
+          allowance: (owner: string, spender: string) => Promise<unknown>;
+        }
+      ).allowance(config.ownerAddress, config.spenderAddress);
+      if (typeof raw === "bigint") {
+        return raw;
+      }
+      if (isBigNumberLike(raw)) {
+        return raw.toBigInt();
+      }
+      throw new TypeError(
+        `usdc-allowance: unexpected allowance() return type (${typeof raw})`,
+      );
     },
-    async approve(_amount: bigint): Promise<{ txHash: string }> {
-      void _amount;
-      throw new AllowanceNotImplementedError("approve");
+    async approve(amount: bigint): Promise<{ txHash: string }> {
+      const signer = await config.getSigner();
+      const contract = new Contract(
+        config.usdcAddress,
+        ERC20_ABI,
+        signer as never,
+      );
+      const tx = (await (
+        contract as unknown as {
+          approve: (
+            spender: string,
+            amount: bigint,
+          ) => Promise<{ hash: string; wait: () => Promise<unknown> }>;
+        }
+      ).approve(config.spenderAddress, amount)) satisfies {
+        hash: string;
+        wait: () => Promise<unknown>;
+      };
+      await tx.wait();
+      return { txHash: tx.hash };
     },
   };
 }

@@ -1,12 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type {
   fetchMarketPrice as FetchMarketPriceFn,
   searchMarkets as SearchMarketsFn,
   fetchOrderBook as FetchOrderBookFn,
+  createOrder as CreateOrderFn,
+  getCapabilities as GetCapabilitiesFn,
 } from "../client-polymarket.js";
 
 const mockFetchMarkets = vi.fn();
 const mockFetchOrderBook = vi.fn();
+const mockCallSidecar = vi.fn();
+const mockGetSidecarCapabilities = vi.fn();
 
 vi.mock("pmxtjs", () => {
   class MockPolymarket {
@@ -16,18 +20,32 @@ vi.mock("pmxtjs", () => {
   return { Polymarket: MockPolymarket };
 });
 
+vi.mock("../sidecar.js", () => ({
+  callSidecar: mockCallSidecar,
+  getSidecarCapabilities: mockGetSidecarCapabilities,
+}));
+
 let fetchMarketPrice: typeof FetchMarketPriceFn;
 let searchMarkets: typeof SearchMarketsFn;
 let fetchOrderBook: typeof FetchOrderBookFn;
+let createOrder: typeof CreateOrderFn;
+let getCapabilities: typeof GetCapabilitiesFn;
 
 beforeEach(async () => {
   vi.clearAllMocks();
   // Reset the module so the cached singleton is cleared each test
   vi.resetModules();
+  process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest";
   const mod = await import("../client-polymarket.js");
   fetchMarketPrice = mod.fetchMarketPrice;
   searchMarkets = mod.searchMarkets;
   fetchOrderBook = mod.fetchOrderBook;
+  createOrder = mod.createOrder;
+  getCapabilities = mod.getCapabilities;
+});
+
+afterEach(() => {
+  delete process.env["POLYMARKET_PRIVATE_KEY"];
 });
 
 // ---------------------------------------------------------------------------
@@ -241,5 +259,90 @@ describe("fetchOrderBook", () => {
 
     expect(result.bids[0]).toEqual({ price: 0.5, size: 10 });
     expect(result.asks[0]).toEqual({ price: 0.6, size: 20 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createOrder — tif forwarding
+// ---------------------------------------------------------------------------
+describe("createOrder tif forwarding", () => {
+  const orderResponse = {
+    id: "order-1",
+    marketId: "m-1",
+    outcomeId: "tok-1",
+    side: "buy" as const,
+    type: "limit" as const,
+    amount: 5,
+    price: 0.6,
+    status: "open",
+    filled: 0,
+    remaining: 5,
+  };
+
+  it("forwards timeInForce as `tif` on the sidecar payload", async () => {
+    mockCallSidecar.mockResolvedValueOnce(orderResponse);
+
+    await createOrder({
+      marketId: "m-1",
+      tokenId: "tok-1",
+      side: "buy",
+      size: 5,
+      price: 0.6,
+      orderType: "limit",
+      timeInForce: "FOK",
+    });
+
+    expect(mockCallSidecar).toHaveBeenCalledTimes(1);
+    const [method, args] = mockCallSidecar.mock.calls[0] as [
+      string,
+      ReadonlyArray<Record<string, unknown>>,
+    ];
+    expect(method).toBe("createOrder");
+    expect(args[0]).toMatchObject({
+      marketId: "m-1",
+      outcomeId: "tok-1",
+      tif: "FOK",
+    });
+  });
+
+  it("omits `tif` when timeInForce is not provided", async () => {
+    mockCallSidecar.mockResolvedValueOnce(orderResponse);
+
+    await createOrder({
+      marketId: "m-1",
+      tokenId: "tok-1",
+      side: "buy",
+      size: 5,
+      price: 0.6,
+      orderType: "limit",
+    });
+
+    const [, args] = mockCallSidecar.mock.calls[0] as [
+      string,
+      ReadonlyArray<Record<string, unknown>>,
+    ];
+    expect(args[0]).not.toHaveProperty("tif");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getCapabilities
+// ---------------------------------------------------------------------------
+describe("getCapabilities", () => {
+  it("returns the shape advertised by the sidecar", async () => {
+    mockGetSidecarCapabilities.mockResolvedValueOnce({ supportsTif: true });
+
+    const caps = await getCapabilities();
+
+    expect(caps).toEqual({ supportsTif: true });
+    expect(mockGetSidecarCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates a `supportsTif: false` flag from older sidecars", async () => {
+    mockGetSidecarCapabilities.mockResolvedValueOnce({ supportsTif: false });
+
+    const caps = await getCapabilities();
+
+    expect(caps.supportsTif).toBe(false);
   });
 });
