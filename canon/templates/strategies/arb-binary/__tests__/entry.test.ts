@@ -38,6 +38,7 @@ const mockFetchOrderBook = vi.fn(async (tokenId: string) => ({
 const mockFetchBalance = vi.fn(async () => []);
 const mockFetchPositions = vi.fn(async () => []);
 const mockFetchOpenOrders = vi.fn(async () => []);
+const mockGetCapabilities = vi.fn(async () => ({ supportsTif: true }));
 
 vi.mock("../../../client-polymarket.js", () => ({
   createOrder: mockCreateOrder,
@@ -47,7 +48,14 @@ vi.mock("../../../client-polymarket.js", () => ({
   fetchBalance: mockFetchBalance,
   fetchPositions: mockFetchPositions,
   fetchOpenOrders: mockFetchOpenOrders,
+  getCapabilities: mockGetCapabilities,
 }));
+
+interface FakeAllowanceClient {
+  getAllowance: ((() => Promise<bigint>) & ReturnType<typeof vi.fn>);
+  approve: ((amount: bigint) => Promise<{ txHash: string }>) &
+    ReturnType<typeof vi.fn>;
+}
 
 interface EntryModule {
   parseEntryFlags: (argv: readonly string[]) => { dryRun: boolean };
@@ -70,7 +78,15 @@ interface EntryModule {
     orderId?: string;
     error?: string;
   }) => void;
-  createEntryDeps: (flags: { dryRun: boolean }) => {
+  createEntryDeps: (
+    flags: { dryRun: boolean },
+    options?: {
+      allowance?: {
+        getAllowance: () => Promise<bigint>;
+        approve: (amount: bigint) => Promise<{ txHash: string }>;
+      };
+    },
+  ) => {
     executor: {
       submit: (s: TradeSignal) => Promise<{ id: string; status: string }>;
     };
@@ -79,6 +95,7 @@ interface EntryModule {
       getPortfolio: () => Portfolio;
     };
   };
+  assertLiveCapabilities: () => Promise<void>;
 }
 
 let entry: EntryModule;
@@ -86,8 +103,16 @@ let entry: EntryModule;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
+  mockGetCapabilities.mockImplementation(async () => ({ supportsTif: true }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });
+
+function makeFakeAllowance(initial = 0n): FakeAllowanceClient {
+  return {
+    getAllowance: vi.fn(async () => initial),
+    approve: vi.fn(async () => ({ txHash: "0xabc" })),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -229,7 +254,7 @@ describe("createEntryOnOutcome", () => {
     expect(recordSpy).toHaveBeenCalledWith(false);
   });
 
-  it("does not record a win on `submitted` (settlement P&L unresolved)", () => {
+  it("does not record a win on a single-leg `submitted` (pair incomplete)", () => {
     const risk = entry.createEntryRisk();
     const recordSpy = vi.spyOn(risk, "recordOutcome");
     const onOutcome = entry.createEntryOnOutcome(risk);
@@ -241,6 +266,107 @@ describe("createEntryOnOutcome", () => {
     });
 
     expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("records a win when both YES and NO legs of the same market submit (Q-2)", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes",
+    });
+    expect(recordSpy).not.toHaveBeenCalled();
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "submitted",
+      orderId: "ord-no",
+    });
+
+    expect(recordSpy).toHaveBeenCalledTimes(1);
+    expect(recordSpy).toHaveBeenCalledWith(true);
+  });
+
+  it("does not double-count a win when the same leg submits twice", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes-1",
+    });
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes-2",
+    });
+
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("isolates leg tracking per market_id", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({
+        direction: "buy_yes",
+        market: {
+          platform: "polymarket",
+          market_id: "cond-A",
+          question: "A?",
+        },
+      }),
+      status: "submitted",
+    });
+    onOutcome({
+      signal: makeSignal({
+        direction: "buy_no",
+        market: {
+          platform: "polymarket",
+          market_id: "cond-B",
+          question: "B?",
+        },
+      }),
+      status: "submitted",
+    });
+
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("clears pending leg state when the pair's other leg fails", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal({ direction: "buy_yes" }),
+      status: "submitted",
+      orderId: "ord-yes",
+    });
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "rejected",
+    });
+    // The previous YES-only state must NOT combine with a future NO
+    // to retroactively mark a win.
+    onOutcome({
+      signal: makeSignal({ direction: "buy_no" }),
+      status: "submitted",
+      orderId: "ord-no",
+    });
+
+    // Only the rejected NO records a loss; the lingering YES from
+    // before the rejection is cleared, so the late NO submit tracks
+    // alone — no win recorded.
+    expect(recordSpy).toHaveBeenCalledTimes(1);
+    expect(recordSpy).toHaveBeenCalledWith(false);
   });
 
   it("trips the circuit breaker after 3 rejected outcomes", () => {
@@ -285,5 +411,52 @@ describe("createEntryDeps", () => {
     expect(mockFetchBalance).toHaveBeenCalledTimes(1);
     expect(mockFetchPositions).toHaveBeenCalledTimes(1);
     expect(mockFetchOpenOrders).toHaveBeenCalledTimes(1);
+  });
+
+  it("threads an injected allowance client into the live executor (Q-3)", async () => {
+    const allowance = makeFakeAllowance(0n);
+    const deps = entry.createEntryDeps({ dryRun: false }, { allowance });
+
+    await deps.executor.submit(makeSignal());
+
+    expect(allowance.getAllowance).toHaveBeenCalledTimes(1);
+    expect(allowance.approve).toHaveBeenCalledTimes(1);
+    expect(mockCreateOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not approve when the cached allowance already meets the threshold", async () => {
+    // 100k USDC threshold (6 decimals) — supply more than that.
+    const allowance = makeFakeAllowance(200_000_000_000n);
+    const deps = entry.createEntryDeps({ dryRun: false }, { allowance });
+
+    await deps.executor.submit(makeSignal());
+    await deps.executor.submit(makeSignal());
+
+    expect(allowance.getAllowance).toHaveBeenCalledTimes(1);
+    expect(allowance.approve).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// assertLiveCapabilities — start-up safety gate (Q-5)
+// ---------------------------------------------------------------------------
+
+describe("assertLiveCapabilities", () => {
+  it("resolves when the sidecar advertises FOK support", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    await expect(entry.assertLiveCapabilities()).resolves.toBeUndefined();
+    expect(mockGetCapabilities).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when the sidecar does not advertise FOK support", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(/FOK/);
+  });
+
+  it("error message points at the open-questions doc (Q-5)", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /261-open-questions\.md/,
+    );
   });
 });
