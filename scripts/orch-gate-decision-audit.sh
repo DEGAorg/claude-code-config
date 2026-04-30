@@ -71,6 +71,7 @@ awk '
             stop["Loose"] = 1; stop["Same"] = 1; stop["Different"] = 1
           }
           /^[A-Z]{2,}$/ { print; next }
+          /^[A-Z]{2,}-[A-Z0-9]+$/ { print; next }   # e.g. ARB-01, MINT-05
           /^`[^`]+`$/   { gsub(/`/, ""); print; next }
           /^[A-Z][a-zA-Z]{3,}$/ {
             if (!($0 in stop)) print

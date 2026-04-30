@@ -17,11 +17,10 @@
  * Q-2 (win = both legs filled in the same cycle) is closed by
  * `entry.test.ts` — covered there with deterministic mocks.
  *
- * Required env (when `CANON_LIVE_TEST=1`):
- *   - POLYMARKET_PRIVATE_KEY   — wallet key pmxt sidecar trades from
- *   - POLYMARKET_PROXY_ADDRESS — proxy/EOA address (allowance owner)
+ * Required to exercise Q-3 (allowance):
+ *   - A canon wallet at `.canon/wallet.env` (run `canon-cli wallet ensure`)
  * Optional:
- *   - POLYGON_RPC_URL          — defaults to https://polygon.drpc.org
+ *   - POLYGON_RPC_URL — defaults to https://polygon.drpc.org
  */
 
 import { describe, it, expect } from "vitest";
@@ -32,12 +31,31 @@ import {
   USDC_E_ADDRESS,
 } from "../../../polygon-addresses.js";
 import { createUsdcAllowanceClient } from "../../../usdc-allowance.js";
+import type { WalletStore } from "../../../wallet-store.js";
 import { assertLiveCapabilities } from "../entry.js";
 
+interface FileWalletStoreCtor {
+  new (): WalletStore;
+}
+async function loadWalletStore(): Promise<WalletStore> {
+  // Bootstrap edge: path held in a runtime variable so the templates
+  // rootDir contract holds (TS won't statically pull canon/cli in).
+  const specifier = "../../../../cli/wallet-store.js";
+  const mod = (await import(/* @vite-ignore */ specifier)) as {
+    FileWalletStore: FileWalletStoreCtor;
+  };
+  return new mod.FileWalletStore();
+}
+
 const LIVE_ENABLED = process.env["CANON_LIVE_TEST"] === "1";
-const HAS_WALLET =
-  Boolean(process.env["POLYMARKET_PRIVATE_KEY"]) &&
-  Boolean(process.env["POLYMARKET_PROXY_ADDRESS"]);
+const HAS_WALLET = await (async () => {
+  if (!LIVE_ENABLED) return false;
+  try {
+    return (await loadWalletStore()).hasWallet();
+  } catch {
+    return false;
+  }
+})();
 const RPC_URL =
   process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
 
@@ -61,8 +79,8 @@ describe.runIf(LIVE_ENABLED)("ARB-01 live smoke (CANON_LIVE_TEST=1)", () => {
     "Q-3 — USDC allowance adapter against a live RPC",
     () => {
       it("getAllowance() returns a non-negative bigint", async () => {
-        const ownerAddress = process.env["POLYMARKET_PROXY_ADDRESS"] ?? "";
-        const privateKey = process.env["POLYMARKET_PRIVATE_KEY"] ?? "";
+        const wallet = await loadWalletStore();
+        const ownerAddress = await wallet.getAddress();
 
         const client = createUsdcAllowanceClient({
           ownerAddress,
@@ -74,7 +92,10 @@ describe.runIf(LIVE_ENABLED)("ARB-01 live smoke (CANON_LIVE_TEST=1)", () => {
           },
           getSigner: async () => {
             const { Wallet, providers } = await import("ethers");
-            return new Wallet(privateKey, new providers.JsonRpcProvider(RPC_URL));
+            return new Wallet(
+              wallet.getPrivateKey(),
+              new providers.JsonRpcProvider(RPC_URL),
+            );
           },
         });
 

@@ -96,6 +96,7 @@ interface EntryModule {
     };
   };
   assertLiveCapabilities: () => Promise<void>;
+  buildLiveAllowanceClient: (wallet: unknown) => Promise<unknown>;
 }
 
 let entry: EntryModule;
@@ -434,6 +435,135 @@ describe("createEntryDeps", () => {
 
     expect(allowance.getAllowance).toHaveBeenCalledTimes(1);
     expect(allowance.approve).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration trace — scan → signal → submit produces CLOB-shaped order
+// ---------------------------------------------------------------------------
+
+describe("integration trace (scan → signal → submit)", () => {
+  it("forwards a real CLOB token id (77-digit decimal) to createOrder", async () => {
+    const { detectSignals } = (await import(
+      "../signal.js"
+    )) as typeof import("../signal.js");
+    const { signalToOrderParams } = (await import(
+      "../../../order-executor.js"
+    )) as typeof import("../../../order-executor.js");
+
+    const yesTokenId =
+      "12345678901234567890123456789012345678901234567890123456789012345";
+    const noTokenId =
+      "98765432109876543210987654321098765432109876543210987654321098765";
+
+    const signals = detectSignals(
+      [
+        {
+          conditionId: "0xcondition",
+          question: "Will it rain?",
+          category: "NBA",
+          yesAsk: 0.4,
+          noAsk: 0.4,
+          yesTokenId,
+          noTokenId,
+          estimatedSlippage: 0.001,
+        },
+      ],
+      {
+        category: "NBA",
+        feeRate: 0.02,
+        gasCost: 0.02,
+        hurdleRate: 0.015,
+        slippageAbort: 0.003,
+        bankroll: 10_000,
+        kellyFraction: 0.25,
+        maxExposure: 0.08,
+        signalTtlMs: 5_000,
+      },
+    );
+
+    expect(signals.length).toBeGreaterThan(0);
+    const yesSignal = signals.find((s) => s.direction === "buy_yes")!;
+
+    // Direct chain: signal → signalToOrderParams → CLOB-shaped params.
+    const params = signalToOrderParams(
+      yesSignal,
+      { yes: yesTokenId, no: noTokenId },
+      yesSignal.metadata["yesAsk"] as number,
+      "FOK",
+    );
+
+    expect(params.tokenId).toMatch(/^\d{60,}$/);
+    expect(params.price).toBeGreaterThanOrEqual(0);
+    expect(params.price).toBeLessThanOrEqual(1);
+    expect(params.size).toBeGreaterThan(0);
+    expect(params.orderType).toBe("limit");
+    expect(params.timeInForce).toBe("FOK");
+
+    // End-to-end via the live executor still produces the same shape.
+    const deps = entry.createEntryDeps({ dryRun: false });
+    await deps.executor.submit(yesSignal);
+
+    expect(mockCreateOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokenId: expect.stringMatching(/^\d{60,}$/),
+        timeInForce: "FOK",
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildLiveAllowanceClient — WalletStore injection (Q-3 architecture)
+// ---------------------------------------------------------------------------
+
+interface FakeWalletStore {
+  hasWallet: ReturnType<typeof vi.fn>;
+  getPrivateKey: ReturnType<typeof vi.fn>;
+  getAddress: ReturnType<typeof vi.fn>;
+  ensure: ReturnType<typeof vi.fn>;
+}
+
+function makeFakeWallet(opts: {
+  hasWallet?: boolean;
+  address?: string;
+  privateKey?: string;
+} = {}): FakeWalletStore {
+  return {
+    hasWallet: vi.fn(() => opts.hasWallet ?? true),
+    getPrivateKey: vi.fn(
+      () => opts.privateKey ?? "0x" + "a".repeat(64),
+    ),
+    getAddress: vi.fn(async () => opts.address ?? "0xowner"),
+    ensure: vi.fn(),
+  };
+}
+
+interface BuildLiveAllowanceClientFn {
+  (wallet: FakeWalletStore): Promise<unknown>;
+}
+
+describe("buildLiveAllowanceClient (WalletStore injection)", () => {
+  it("returns undefined when the wallet store has no wallet", async () => {
+    const wallet = makeFakeWallet({ hasWallet: false });
+    const build = (entry as unknown as { buildLiveAllowanceClient: BuildLiveAllowanceClientFn }).buildLiveAllowanceClient;
+    const client = await build(wallet);
+    expect(client).toBeUndefined();
+    expect(wallet.hasWallet).toHaveBeenCalled();
+    expect(wallet.getAddress).not.toHaveBeenCalled();
+  });
+
+  it("derives owner address from wallet.getAddress() (no env vars consulted)", async () => {
+    const prevOwner = process.env["POLYMARKET_PROXY_ADDRESS"];
+    delete process.env["POLYMARKET_PROXY_ADDRESS"];
+    const wallet = makeFakeWallet({ address: "0xfromwallet" });
+    const build = (entry as unknown as { buildLiveAllowanceClient: BuildLiveAllowanceClientFn }).buildLiveAllowanceClient;
+    const client = await build(wallet);
+    expect(client).toBeDefined();
+    expect(wallet.getAddress).toHaveBeenCalledTimes(1);
+    if (prevOwner !== undefined) {
+      process.env["POLYMARKET_PROXY_ADDRESS"] = prevOwner;
+    }
   });
 });
 

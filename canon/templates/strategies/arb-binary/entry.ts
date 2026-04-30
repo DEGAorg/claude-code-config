@@ -16,6 +16,7 @@
 import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
+import type { WalletStore } from "../../wallet-store.js";
 import {
   fetchOrderBook,
   getCapabilities,
@@ -226,18 +227,34 @@ export async function assertLiveCapabilities(): Promise<void> {
 }
 
 /**
- * Build a live USDC allowance client from environment variables, or
- * return undefined if the required configuration is missing.
+ * Build a live USDC allowance client from an injected `WalletStore`.
  *
- * Wallet / RPC details are intentionally read lazily — the templates
- * layer must not couple to a wallet store at import time.
+ * The wallet store owns key storage (canon's `.canon/wallet.env` by
+ * default; pluggable for Keychain / hardware backends). The templates
+ * layer never touches private keys directly — it asks the store.
+ *
+ * Returns undefined when the store has no wallet, when the owner
+ * address cannot be derived, or when the store throws — `main()` then
+ * skips allowance plumbing rather than placing live orders against a
+ * misconfigured wallet.
  */
-function buildLiveAllowanceClient(): AllowanceClient | undefined {
-  const ownerAddress = process.env["POLYMARKET_PROXY_ADDRESS"];
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
+export async function buildLiveAllowanceClient(
+  wallet: WalletStore,
+): Promise<AllowanceClient | undefined> {
+  if (!wallet.hasWallet()) return undefined;
+
+  let ownerAddress: string;
+  try {
+    ownerAddress = await wallet.getAddress();
+  } catch {
+    // WalletNotFoundError or any signer-side failure — surface as
+    // "no allowance adapter" so main() falls back to manual approval
+    // rather than crashing the strategy boot.
+    return undefined;
+  }
+
   const rpcUrl =
     process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
-  if (!ownerAddress || !privateKey) return undefined;
 
   return createUsdcAllowanceClient({
     ownerAddress,
@@ -249,9 +266,29 @@ function buildLiveAllowanceClient(): AllowanceClient | undefined {
     },
     getSigner: async () => {
       const { Wallet, providers } = await import("ethers");
-      return new Wallet(privateKey, new providers.JsonRpcProvider(rpcUrl));
+      return new Wallet(
+        wallet.getPrivateKey(),
+        new providers.JsonRpcProvider(rpcUrl),
+      );
     },
   });
+}
+
+/**
+ * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
+ *
+ * The path is held in a runtime variable so TypeScript does not
+ * statically resolve it and pull `canon/cli` into the templates
+ * `rootDir`. The templates layer keeps a clean boundary; only this
+ * one call site reaches across to the CLI package, and only at
+ * runtime when `--live` is set.
+ */
+async function loadCanonWalletStore(): Promise<WalletStore> {
+  const specifier = "../../../cli/wallet-store.js";
+  const mod = (await import(/* @vite-ignore */ specifier)) as {
+    FileWalletStore: new () => WalletStore;
+  };
+  return new mod.FileWalletStore();
 }
 
 async function main(): Promise<void> {
@@ -263,7 +300,17 @@ async function main(): Promise<void> {
   }
 
   const risk = createEntryRisk();
-  const allowance = flags.dryRun ? undefined : buildLiveAllowanceClient();
+  // Bootstrap edge: the templates layer never imports from canon/cli
+  // at compile time, but main() — the composition root — pulls the
+  // concrete FileWalletStore at runtime so existing canon wallets
+  // (`.canon/wallet.env`) are reused without duplication.
+  const wallet: WalletStore | undefined = flags.dryRun
+    ? undefined
+    : await loadCanonWalletStore();
+  const allowance =
+    wallet !== undefined
+      ? await buildLiveAllowanceClient(wallet)
+      : undefined;
   const { executor, positions } = createEntryDeps(
     flags,
     allowance !== undefined ? { allowance } : {},
