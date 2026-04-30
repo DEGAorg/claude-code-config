@@ -6,7 +6,11 @@
  */
 
 import { Polymarket } from "pmxtjs";
-import { callSidecar } from "./sidecar.js";
+import {
+  callSidecar,
+  getSidecarCapabilities,
+  type SidecarCapabilities,
+} from "./sidecar.js";
 
 /** YES/NO price snapshot for a Polymarket condition. */
 export interface MarketPrice {
@@ -656,10 +660,10 @@ export async function fetchOpenOrders(
  * - "IOC" — immediate-or-cancel; partial fills allowed, remainder cancelled.
  * - "FOK" — fill-or-kill; full size fills atomically or the whole order cancels.
  *
- * NOTE: pmxtjs@2.22.1 (the current sidecar) does NOT yet expose a
- * time-in-force flag on `createOrder`. This field is forwarded by the
- * templates layer but ignored downstream until the sidecar is updated.
- * See `docs/reviews/261-open-questions.md` Q-4.
+ * The templates layer forwards this as `tif` on the sidecar's
+ * `createOrder` payload. Use {@link getCapabilities} to verify the
+ * running sidecar supports time-in-force before relying on FOK
+ * semantics — older sidecars silently ignore the field.
  */
 export type TimeInForce = "GTC" | "IOC" | "FOK";
 
@@ -773,6 +777,9 @@ export async function createOrder(
       type: params.orderType,
       amount: params.size,
       price: params.price,
+      ...(params.timeInForce !== undefined
+        ? { tif: params.timeInForce }
+        : {}),
     }],
     { privateKey, signatureType: "eoa" },
   );
@@ -845,6 +852,9 @@ export async function buildOrder(
       type: params.orderType,
       amount: params.size,
       price: params.price,
+      ...(params.timeInForce !== undefined
+        ? { tif: params.timeInForce }
+        : {}),
     }],
     { privateKey, signatureType: "eoa" },
   );
@@ -863,6 +873,16 @@ export async function buildOrder(
       : {}),
     raw: built.raw,
   };
+}
+
+/**
+ * Query the running pmxt sidecar for advertised feature flags.
+ *
+ * Used by `--live` start-up gates to refuse to run when the sidecar
+ * cannot honour required semantics (e.g. FOK time-in-force).
+ */
+export async function getCapabilities(): Promise<SidecarCapabilities> {
+  return getSidecarCapabilities();
 }
 
 // ---------------------------------------------------------------------------
