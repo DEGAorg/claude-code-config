@@ -1,14 +1,16 @@
 /**
- * Auth module — resolves the Polymarket private key.
+ * Auth module — resolves the wallet private key.
  *
  * Resolution order:
- *   1. `POLYMARKET_PRIVATE_KEY` env var (preserved for CI / back-compat)
- *   2. Project-local wallet store (`.canon/wallet.env`)
+ *   1. `WALLET_PRIVATE_KEY` env var (legacy `POLYMARKET_PRIVATE_KEY`
+ *      still honoured with a deprecation warning).
+ *   2. Project-local wallet store (`.canon/wallet.env`).
  *
  * Write commands call `requireAuth()` before executing. Read-only
  * commands skip auth entirely.
  */
 
+import { getWalletPrivateKey } from "./env.js";
 import { FileWalletStore, WalletNotFoundError } from "./wallet-store.js";
 
 export class AuthError extends Error {
@@ -20,7 +22,7 @@ export class AuthError extends Error {
 
 /** Synchronous env lookup; returns the raw env var or undefined. */
 export function getPrivateKey(): string | undefined {
-  return process.env["POLYMARKET_PRIVATE_KEY"];
+  return getWalletPrivateKey();
 }
 
 /**
@@ -50,7 +52,7 @@ export function requireAuth(command: string): string {
           "       canon-cli wallet ensure\n" +
           "\n" +
           "  2. Or set the env var (CI / existing wallet):\n" +
-          "       export POLYMARKET_PRIVATE_KEY=<your-private-key>\n" +
+          "       export WALLET_PRIVATE_KEY=<your-private-key>\n" +
           "\n" +
           "Read-only commands (market search, help) work without auth.",
       );

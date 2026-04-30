@@ -1,7 +1,7 @@
 /**
  * Position subcommand — list positions and calculate PnL.
  *
- * All operations require POLYMARKET_PRIVATE_KEY.
+ * All operations require WALLET_PRIVATE_KEY.
  *
  * Usage:
  *   canon-cli position list [--pretty]

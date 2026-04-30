@@ -6,6 +6,7 @@
  */
 
 import { Polymarket } from "pmxtjs";
+import { getWalletPrivateKey, getWalletProxyAddress } from "./env.js";
 import {
   callSidecar,
   getSidecarCapabilities,
@@ -143,8 +144,8 @@ let client: Polymarket | undefined;
 
 function getClient(): Polymarket {
   if (!client) {
-    const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-    const proxyAddress = process.env["POLYMARKET_PROXY_ADDRESS"];
+    const privateKey = getWalletPrivateKey();
+    const proxyAddress = getWalletProxyAddress();
 
     client = new Polymarket({
       ...(privateKey ? { privateKey } : {}),
@@ -269,7 +270,7 @@ export async function fetchOrderBook(tokenId: string): Promise<OrderBook> {
 /**
  * Fetch current positions for the authenticated Polymarket account.
  *
- * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * Requires `WALLET_PRIVATE_KEY` to be set. Auth errors from
  * pmxtjs propagate to the caller.
  */
 export async function fetchPositions(): Promise<Position[]> {
@@ -290,7 +291,7 @@ export async function fetchPositions(): Promise<Position[]> {
 /**
  * Fetch account balances for the authenticated Polymarket account.
  *
- * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * Requires `WALLET_PRIVATE_KEY` to be set. Auth errors from
  * pmxtjs propagate to the caller.
  */
 export async function fetchBalance(): Promise<AccountBalance[]> {
@@ -311,11 +312,11 @@ export async function fetchBalance(): Promise<AccountBalance[]> {
  * Returns USDC.e (tradeable), native USDC (swap needed), and POL (gas).
  * This is the user-facing balance — what `canon-cli balance` should show.
  *
- * Requires `POLYMARKET_PRIVATE_KEY`. Uses a public Polygon RPC.
+ * Requires `WALLET_PRIVATE_KEY`. Uses a public Polygon RPC.
  */
 export async function fetchOnChainBalances(): Promise<OnChainBalance[]> {
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
 
   const { ethers } = await import("ethers");
   const rpc = process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
@@ -437,8 +438,8 @@ export async function swapToUsdce(
   amountIn: number,
 ): Promise<SwapResult> {
   if (amountIn <= 0) throw new Error(`amountIn must be > 0, got ${amountIn}`);
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
 
   const route = SWAP_ROUTES[from];
   const slippageBps = Number(process.env["SWAP_SLIPPAGE_BPS"] ?? "50");
@@ -579,7 +580,7 @@ export async function swapToUsdce(
 /**
  * Fetch trade history for the authenticated Polymarket account.
  *
- * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * Requires `WALLET_PRIVATE_KEY` to be set. Auth errors from
  * pmxtjs propagate to the caller.
  *
  * @param params - Optional filtering/pagination parameters.
@@ -616,7 +617,7 @@ export async function fetchMyTrades(
 /**
  * Fetch all open orders for the authenticated Polymarket account.
  *
- * Requires `POLYMARKET_PRIVATE_KEY` to be set. Auth errors from
+ * Requires `WALLET_PRIVATE_KEY` to be set. Auth errors from
  * pmxtjs propagate to the caller.
  *
  * @param marketId - Optional market ID to filter orders.
@@ -755,8 +756,8 @@ export async function createOrder(
   params: OrderParams,
 ): Promise<OrderResponse> {
   validateOrderParams(params);
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
   const order = await callSidecar<{
     id: string;
     marketId: string;
@@ -805,8 +806,8 @@ export async function createOrder(
 export async function cancelOrder(
   orderId: string,
 ): Promise<CancelResult> {
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
   const order = await callSidecar<{ id?: string; status?: string }>(
     "cancelOrder",
     [orderId],
@@ -829,8 +830,8 @@ export async function buildOrder(
   params: OrderParams,
 ): Promise<BuildOrderResult> {
   validateOrderParams(params);
-  const privateKey = process.env["POLYMARKET_PRIVATE_KEY"];
-  if (!privateKey) throw new Error("POLYMARKET_PRIVATE_KEY required");
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) throw new Error("WALLET_PRIVATE_KEY required");
   const built = await callSidecar<{
     exchange: string;
     params: {

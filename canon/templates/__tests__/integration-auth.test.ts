@@ -2,7 +2,7 @@
  * Integration tests for auth-required Polymarket client methods.
  *
  * These tests hit the real Polymarket mainnet API. They are skipped
- * when POLYMARKET_PRIVATE_KEY is not set (CI-safe).
+ * when WALLET_PRIVATE_KEY is not set (CI-safe).
  *
  * The createOrder+cancelOrder roundtrip uses a $0.01 limit buy at
  * price 0.01 — an extreme price that will never fill. The order is
@@ -21,7 +21,7 @@ import {
 } from "../client-polymarket.js";
 import type { OrderParams } from "../client-polymarket.js";
 
-const HAS_AUTH = Boolean(process.env["POLYMARKET_PRIVATE_KEY"]);
+const HAS_AUTH = Boolean(process.env["WALLET_PRIVATE_KEY"]);
 
 describe.runIf(HAS_AUTH)(
   "integration: auth-required methods",

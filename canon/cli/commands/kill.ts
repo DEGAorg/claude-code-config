@@ -1,7 +1,7 @@
 /**
  * Kill subcommand — cancel all open orders (kill switch).
  *
- * Requires POLYMARKET_PRIVATE_KEY. Without --yes, performs a dry run
+ * Requires WALLET_PRIVATE_KEY. Without --yes, performs a dry run
  * showing open orders. With --yes, cancels them all.
  *
  * Usage:

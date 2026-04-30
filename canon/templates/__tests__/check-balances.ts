@@ -6,7 +6,7 @@ for (const line of env.split("\n")) {
   const m = line.match(/^([A-Z_]+)=(.*)$/);
   if (m && m[1] && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
-const signer = new ethers.Wallet(process.env["POLYMARKET_PRIVATE_KEY"]!);
+const signer = new ethers.Wallet(process.env["WALLET_PRIVATE_KEY"]!);
 const provider = new ethers.providers.StaticJsonRpcProvider("https://polygon.drpc.org", { name: "polygon", chainId: 137 });
 const tokens = {
   "Native USDC (0x3c49)": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",

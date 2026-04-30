@@ -22,7 +22,7 @@ let buildOrder: typeof BuildOrderFn;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
-  process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest";
+  process.env["WALLET_PRIVATE_KEY"] = "0xtest";
   const mod = await import("../client-polymarket.js");
   createOrder = mod.createOrder;
   cancelOrder = mod.cancelOrder;
@@ -30,7 +30,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env["POLYMARKET_PRIVATE_KEY"];
+  delete process.env["WALLET_PRIVATE_KEY"];
 });
 
 function validParams(

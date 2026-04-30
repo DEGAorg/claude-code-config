@@ -38,7 +38,10 @@ export class WalletNotFoundError extends Error {
   }
 }
 
-const KEY_NAME = "POLYMARKET_PRIVATE_KEY";
+/** Canonical line key written to `.canon/wallet.env` for new wallets. */
+const KEY_NAME = "WALLET_PRIVATE_KEY";
+/** Legacy line key kept readable for back-compat with older wallets. */
+const LEGACY_KEY_NAME = "POLYMARKET_PRIVATE_KEY";
 
 /**
  * Project-local wallet store backed by `.canon/wallet.env`.
@@ -84,10 +87,18 @@ export class FileWalletStore implements WalletStore {
     return { address: wallet.address, created: true };
   }
 
-  /** Return the private key from disk, or undefined if not present/parseable. */
+  /**
+   * Return the private key from disk, or undefined if not present/parseable.
+   *
+   * Prefers the canonical `WALLET_PRIVATE_KEY` line. Falls back to the
+   * legacy `POLYMARKET_PRIVATE_KEY` for wallets created before #268,
+   * with a one-shot stderr warning so users know to migrate.
+   */
   private readKey(): string | undefined {
     if (!existsSync(this.path)) return undefined;
     const text = readFileSync(this.path, "utf8");
+    let modern: string | undefined;
+    let legacy: string | undefined;
     for (const raw of text.split("\n")) {
       const line = raw.trim();
       if (!line || line.startsWith("#")) continue;
@@ -95,8 +106,30 @@ export class FileWalletStore implements WalletStore {
       if (eq === -1) continue;
       const name = line.slice(0, eq).trim();
       const value = line.slice(eq + 1).trim();
-      if (name === KEY_NAME && value.length > 0) return value;
+      if (value.length === 0) continue;
+      if (name === KEY_NAME) modern = value;
+      else if (name === LEGACY_KEY_NAME) legacy = value;
+    }
+    if (modern !== undefined) return modern;
+    if (legacy !== undefined) {
+      warnLegacyKeyOnce(this.path);
+      return legacy;
     }
     return undefined;
   }
+}
+
+let legacyKeyWarned = false;
+function warnLegacyKeyOnce(path: string): void {
+  if (legacyKeyWarned) return;
+  legacyKeyWarned = true;
+  process.stderr.write(
+    `[canon] ${path}: ${LEGACY_KEY_NAME} is deprecated; ` +
+      `rename the line to ${KEY_NAME} (back-compat will be dropped in a future release).\n`,
+  );
+}
+
+/** Reset the legacy-key warning latch (test helper only). */
+export function _resetLegacyKeyWarningForTests(): void {
+  legacyKeyWarned = false;
 }

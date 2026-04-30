@@ -12,7 +12,7 @@ const USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 const ROUTER = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"; // Uniswap SwapRouter02
 
 const provider = new ethers.providers.StaticJsonRpcProvider("https://polygon.drpc.org", { name: "polygon", chainId: 137 });
-const signer = new ethers.Wallet(process.env["POLYMARKET_PRIVATE_KEY"]!, provider);
+const signer = new ethers.Wallet(process.env["WALLET_PRIVATE_KEY"]!, provider);
 
 const erc20 = (addr: string) =>
   new ethers.Contract(
