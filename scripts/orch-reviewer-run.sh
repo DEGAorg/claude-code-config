@@ -185,7 +185,7 @@ gate_b() {
     local found=0
     while IFS= read -r kw; do
       [[ -z "${kw}" ]] && continue
-      if grep -qF "${kw}" "${DIFF_FILE}"; then
+      if grep -qF -- "${kw}" "${DIFF_FILE}"; then
         found=1
         break
       fi

@@ -208,6 +208,84 @@ Aggregate rules:
 
 ---
 
+## Known limitations (v1)
+
+These are deliberate trade-offs in the v1 heuristics. Each one is
+documented with the failure shape it cannot detect and what a v2 would
+need to do.
+
+### Gate B — keyword extractor is heuristic
+
+The decision-log audit relies on extracting keywords from each
+decision row. The current heuristic keeps:
+
+- ALL-CAPS acronyms (≥2 chars): `FOK`, `USDC`, `CTF`.
+- Back-tick tokens: `` `live-executor` ``, `` `OrderParams` ``.
+- Capitalised proper nouns ≥4 chars NOT in a stop-word list.
+
+Stop-words filter generic sentence-starters (`Separate`, `Either`,
+`Default`, etc.) so they don't fail-flag every decision that begins
+with one. The full list lives in
+`scripts/orch-gate-decision-audit.sh`.
+
+**What this misses.** A decision phrased entirely in lowercase prose
+("we keep the existing handler shape") produces zero keywords and is
+reported `INCONCLUSIVE` for that row. The aggregate then becomes
+`INCONCLUSIVE` unless another decision row provides evidence.
+
+**Fix shape for v2.** Either (a) require plan authors to wrap the
+load-bearing identifier in back-ticks (already supported, just
+underused), or (b) replace the heuristic with an LLM-extracted
+keyword set — at the cost of non-determinism in the gate.
+
+### Gate C — wiring detector cannot tell "referenced" from "called"
+
+The current heuristic for "is this newly exposed hook actually wired
+into production?" is: `grep` for the symbol name across all `.ts`
+files outside `__tests__` and `*.test.ts`. If any non-test file
+references the symbol, the gate passes.
+
+**What this misses.** A symbol that's *defined* in one production
+file and *referenced* (in a type signature, an export, a comment) in
+another production file passes — even if no production code path
+actually *calls* the function. The dogfood on PR #262 illustrated
+this: `risk.recordOutcome(boolean)` was defined in `risk.ts` and
+exposed through the strategy's risk interface, so it had non-test
+"references." But the runner never *called* it. Gate C reported
+PASS; the bug was real.
+
+**Fix shape for v2.** Distinguish:
+
+- *Reference* — the symbol name appears on the right of an `import`,
+  in a type position, in `as`-cast, in a comment, etc.
+- *Call site* — the symbol appears as the head of a call expression
+  (`name(`) or as a method invocation (`.name(`) inside an executable
+  function body, not in a type-only context.
+
+Reliable distinction needs AST analysis (ts-morph, ast-grep with TS
+support) rather than text search. Tracked as a v2 enhancement —
+filed as a follow-up issue against this same plan family.
+
+**Mitigation today.** Gate A often catches the same class of failure
+from a different angle: an unwired hook usually means the production
+path is missing something testable. The aggregate verdict on PR #262
+was FAIL via Gate A even though Gate C false-passed — defence in depth
+worked.
+
+### Gate D — advisory in v1, by design
+
+Gate D ships as `WARN`-only. Mock-coverage delta has the highest
+false-positive rate of the four gates because:
+
+- Some mocks legitimately don't need shape assertions (e.g. an entire
+  external SDK stubbed for unrelated reasons).
+- Some shape assertions are written in helper files, not the test
+  file itself.
+
+We need data on real PRs before deciding the threshold. After ~10
+PRs of observed signal, the gate is upgraded to a blocker (or the
+heuristic refined first).
+
 ## Extending the gates
 
 Each gate is a function in `scripts/orch-reviewer-run.sh`. To add a

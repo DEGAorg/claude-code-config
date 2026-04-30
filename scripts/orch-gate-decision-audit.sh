@@ -48,12 +48,34 @@ awk '
 
     # Extract heuristic keywords: ALL-CAPS acronyms (≥2 chars), back-tick
     # tokens, and `Capitalized` proper nouns ≥4 chars. Lowercase common
-    # English words are skipped.
-    keywords=$(printf '%s' "${decision}" | tr -c 'A-Za-z0-9_`' '\n' |
+    # English words are skipped, and a stop-word list filters generic
+    # sentence-starters that would otherwise match the proper-noun rule
+    # (e.g. "Separate live-executor and live-positions modules" — we
+    # don't want "Separate" treated as a code-pattern keyword).
+    keywords=$(printf '%s' "${decision}" | tr -c 'A-Za-z0-9_`.\-' '\n' |
       awk '
+          BEGIN {
+            stop["Separate"] = 1; stop["Single"] = 1; stop["Multiple"] = 1
+            stop["First"] = 1; stop["Last"] = 1; stop["Final"] = 1
+            stop["Either"] = 1; stop["Both"] = 1; stop["Each"] = 1
+            stop["Every"] = 1; stop["Some"] = 1; stop["Many"] = 1
+            stop["Most"] = 1; stop["Only"] = 1; stop["Default"] = 1
+            stop["Custom"] = 1; stop["Generic"] = 1; stop["Specific"] = 1
+            stop["Initial"] = 1; stop["Optional"] = 1; stop["Required"] = 1
+            stop["Direct"] = 1; stop["Indirect"] = 1; stop["Avoid"] = 1
+            stop["Allow"] = 1; stop["Always"] = 1; stop["Never"] = 1
+            stop["When"] = 1; stop["While"] = 1; stop["With"] = 1
+            stop["Without"] = 1; stop["Make"] = 1; stop["Keep"] = 1
+            stop["Use"] = 1; stop["Treat"] = 1; stop["Skip"] = 1
+            stop["Phase"] = 1; stop["Phased"] = 1; stop["Strict"] = 1
+            stop["Loose"] = 1; stop["Same"] = 1; stop["Different"] = 1
+          }
           /^[A-Z]{2,}$/ { print; next }
           /^`[^`]+`$/   { gsub(/`/, ""); print; next }
-          /^[A-Z][a-zA-Z]{3,}$/ { print; next }
+          /^[A-Z][a-zA-Z]{3,}$/ {
+            if (!($0 in stop)) print
+            next
+          }
         ' |
       sort -u |
       awk 'BEGIN { printf "[" } { printf "%s\"%s\"", (NR>1 ? "," : ""), $0 } END { print "]" }')
