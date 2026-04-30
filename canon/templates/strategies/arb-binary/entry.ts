@@ -24,7 +24,11 @@ import { createLiveExecutor } from "../../live-executor.js";
 import type { ResolvedOrder } from "../../live-executor.js";
 import { createLivePositions } from "../../live-positions.js";
 import { createRunner } from "../../runner.js";
-import type { ExecutorDeps, PositionDeps } from "../../runner.js";
+import type {
+  ExecutorDeps,
+  OnOutcome,
+  PositionDeps,
+} from "../../runner.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
 
@@ -77,6 +81,22 @@ export function createEntryRisk(): ArbBinaryRisk {
 }
 
 /**
+ * Build the runner outcome callback for ARB-01.
+ *
+ * Treats `rejected` and `error` submissions as losses for the
+ * consecutive-loss circuit breaker. `submitted` is intentionally
+ * NOT counted as a win — settlement-time P&L attribution is
+ * unresolved (see `docs/reviews/261-open-questions.md`, Q-2).
+ */
+export function createEntryOnOutcome(risk: ArbBinaryRisk): OnOutcome {
+  return (outcome) => {
+    if (outcome.status === "rejected" || outcome.status === "error") {
+      risk.recordOutcome(false);
+    }
+  };
+}
+
+/**
  * Resolve a TradeSignal to the (tokenIds, price) pair the live executor needs.
  *
  * The scan layer attaches yesAsk/noAsk and the YES/NO CLOB token IDs to the
@@ -107,6 +127,9 @@ function resolveArbBinaryOrder(signal: TradeSignal): ResolvedOrder {
   return {
     tokenIds: { yes: yesTokenId, no: noTokenId },
     price: isYesLeg ? yesAsk : noAsk,
+    // FOK kills the leg if it can't fully execute, preventing
+    // one-sided exposure between the YES and NO legs.
+    timeInForce: "FOK",
   };
 }
 
@@ -143,6 +166,8 @@ async function main(): Promise<void> {
     return detectSignals(marketData, DEFAULT_ARB_BINARY_CONFIG);
   };
 
+  const onOutcome = createEntryOnOutcome(risk);
+
   const runner = createRunner(
     {
       pollIntervalMs,
@@ -157,6 +182,7 @@ async function main(): Promise<void> {
       positions,
       log: (entry: ExecutionLogEntry) =>
         appendEntry(".canon/execution", entry),
+      onOutcome,
     },
   );
 

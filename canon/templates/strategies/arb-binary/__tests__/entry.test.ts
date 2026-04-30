@@ -62,6 +62,14 @@ interface EntryModule {
     };
     recordOutcome: (won: boolean) => void;
   };
+  createEntryOnOutcome: (
+    risk: { recordOutcome: (won: boolean) => void },
+  ) => (outcome: {
+    signal: TradeSignal;
+    status: "submitted" | "rejected" | "error";
+    orderId?: string;
+    error?: string;
+  }) => void;
   createEntryDeps: (flags: { dryRun: boolean }) => {
     executor: {
       submit: (s: TradeSignal) => Promise<{ id: string; status: string }>;
@@ -199,6 +207,55 @@ describe("createEntryRisk", () => {
 // ---------------------------------------------------------------------------
 // createEntryDeps — wires live executor / positions, no stubs
 // ---------------------------------------------------------------------------
+
+describe("createEntryOnOutcome", () => {
+  it("records a loss when the outcome is `rejected`", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({ signal: makeSignal(), status: "rejected" });
+
+    expect(recordSpy).toHaveBeenCalledWith(false);
+  });
+
+  it("records a loss when the outcome is `error`", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({ signal: makeSignal(), status: "error", error: "boom" });
+
+    expect(recordSpy).toHaveBeenCalledWith(false);
+  });
+
+  it("does not record a win on `submitted` (settlement P&L unresolved)", () => {
+    const risk = entry.createEntryRisk();
+    const recordSpy = vi.spyOn(risk, "recordOutcome");
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({
+      signal: makeSignal(),
+      status: "submitted",
+      orderId: "ord-test",
+    });
+
+    expect(recordSpy).not.toHaveBeenCalled();
+  });
+
+  it("trips the circuit breaker after 3 rejected outcomes", () => {
+    const risk = entry.createEntryRisk();
+    const onOutcome = entry.createEntryOnOutcome(risk);
+
+    onOutcome({ signal: makeSignal(), status: "rejected" });
+    onOutcome({ signal: makeSignal(), status: "rejected" });
+    onOutcome({ signal: makeSignal(), status: "rejected" });
+
+    const decision = risk.preTradeCheck(makeSignal(), makePortfolio());
+    expect(decision.approved).toBe(false);
+    expect(decision.rejection_reason).toMatch(/circuit.?breaker/i);
+  });
+});
 
 describe("createEntryDeps", () => {
   it("returns an executor and a positions adapter regardless of dryRun", () => {

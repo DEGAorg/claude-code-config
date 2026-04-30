@@ -32,6 +32,13 @@ interface PositionDeps {
   getPortfolio(): Portfolio;
 }
 
+interface OrderOutcome {
+  signal: TradeSignal;
+  status: "submitted" | "rejected" | "error";
+  orderId?: string;
+  error?: string;
+}
+
 interface RunnerDeps {
   strategy: () => Promise<TradeSignal[]>;
   risk: {
@@ -45,6 +52,7 @@ interface RunnerDeps {
   executor: ExecutorDeps;
   positions: PositionDeps;
   log: (entry: ExecutionLogEntry) => void;
+  onOutcome?: (outcome: OrderOutcome) => void;
 }
 
 interface Runner {
@@ -397,6 +405,80 @@ describe("signal processing pipeline", () => {
 // ---------------------------------------------------------------------------
 // Error recovery
 // ---------------------------------------------------------------------------
+
+describe("onOutcome callback", () => {
+  it("fires with status=submitted after a successful executor.submit", async () => {
+    const signal = makeSignal();
+    const deps = makeDeps();
+    deps.strategy.mockResolvedValue([signal]);
+    const onOutcome = vi.fn();
+    const config = makeConfig();
+    const runner = createRunner(config, { ...deps, onOutcome });
+
+    await runOneCycle(runner, config);
+
+    expect(onOutcome).toHaveBeenCalledTimes(1);
+    expect(onOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "submitted",
+        orderId: "ord-1",
+      }),
+    );
+  });
+
+  it("fires with status=error when executor.submit throws", async () => {
+    const signal = makeSignal();
+    const deps = makeDeps();
+    deps.strategy.mockResolvedValue([signal]);
+    deps.executor.submit.mockRejectedValueOnce(new Error("boom"));
+    const onOutcome = vi.fn();
+    const config = makeConfig();
+    const runner = createRunner(config, { ...deps, onOutcome });
+
+    await runOneCycle(runner, config);
+
+    expect(onOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error", error: "boom" }),
+    );
+  });
+
+  it("fires with status=rejected when executor.submit returns rejected", async () => {
+    const signal = makeSignal();
+    const deps = makeDeps();
+    deps.strategy.mockResolvedValue([signal]);
+    deps.executor.submit.mockResolvedValueOnce({
+      id: "ord-x",
+      status: "rejected",
+    });
+    const onOutcome = vi.fn();
+    const config = makeConfig();
+    const runner = createRunner(config, { ...deps, onOutcome });
+
+    await runOneCycle(runner, config);
+
+    expect(onOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "rejected" }),
+    );
+  });
+
+  it("does not fire when the risk check rejects the signal", async () => {
+    const signal = makeSignal();
+    const deps = makeDeps();
+    deps.strategy.mockResolvedValue([signal]);
+    deps.risk.preTradeCheck.mockReturnValue({
+      approved: false,
+      rejection_reason: "test",
+    });
+    const onOutcome = vi.fn();
+    const config = makeConfig();
+    const runner = createRunner(config, { ...deps, onOutcome });
+
+    await runOneCycle(runner, config);
+
+    expect(onOutcome).not.toHaveBeenCalled();
+    expect(deps.executor.submit).not.toHaveBeenCalled();
+  });
+});
 
 describe("error recovery", () => {
   it("continues loop when strategy throws", async () => {

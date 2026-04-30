@@ -8,7 +8,7 @@
  */
 
 import { cancelOrder, createOrder } from "./client-polymarket.js";
-import type { CancelResult } from "./client-polymarket.js";
+import type { CancelResult, TimeInForce } from "./client-polymarket.js";
 import { signalToOrderParams } from "./order-executor.js";
 import type { TokenIds } from "./order-executor.js";
 import type { TradeSignal } from "./types/TradeSignal.js";
@@ -17,6 +17,11 @@ import type { TradeSignal } from "./types/TradeSignal.js";
 export interface ResolvedOrder {
   tokenIds: TokenIds;
   price: number;
+  /**
+   * Optional time-in-force override forwarded to the exchange.
+   * ARB-01 uses "FOK" to prevent one-sided leg fills.
+   */
+  timeInForce?: TimeInForce;
 }
 
 /** Strategy hook that translates a signal into token IDs and a target price. */
@@ -84,8 +89,8 @@ export function createLiveExecutor(opts: LiveExecutorOptions): LiveExecutor {
   async function submit(signal: TradeSignal): Promise<SubmitOutcome> {
     await ensureAllowance();
 
-    const { tokenIds, price } = opts.resolveOrder(signal);
-    const params = signalToOrderParams(signal, tokenIds, price);
+    const { tokenIds, price, timeInForce } = opts.resolveOrder(signal);
+    const params = signalToOrderParams(signal, tokenIds, price, timeInForce);
 
     const response = await createOrder(params);
     submittedOrderIds.push(response.id);
