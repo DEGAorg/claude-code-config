@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- ARB-01 live-execution completion (Q-2 / Q-3 / Q-4 / Q-5) (`20260430-arb01-live-completion`) — 2026-04-30
+
 - ARB-01 production-ready + shared live executor layer (`20260429-arb01-live-executor`) — 2026-04-29
 
 - Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
