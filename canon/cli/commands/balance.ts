@@ -1,7 +1,7 @@
 /**
  * Balance subcommand — fetch on-chain balances for the EOA on Polygon.
  *
- * Requires POLYMARKET_PRIVATE_KEY.
+ * Requires WALLET_PRIVATE_KEY.
  *
  * Usage:
  *   canon-cli balance [--pretty]

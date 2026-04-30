@@ -40,13 +40,13 @@ beforeEach(() => {
   }) as typeof process.stderr.write;
 
   process.exitCode = undefined;
-  process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest";
+  process.env["WALLET_PRIVATE_KEY"] = "0xtest";
 });
 
 afterEach(() => {
   process.stdout.write = originalStdoutWrite;
   process.stderr.write = originalStderrWrite;
-  delete process.env["POLYMARKET_PRIVATE_KEY"];
+  delete process.env["WALLET_PRIVATE_KEY"];
   vi.clearAllMocks();
 });
 
@@ -229,7 +229,7 @@ describe("order create", () => {
   });
 
   it("requires auth", async () => {
-    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    delete process.env["WALLET_PRIVATE_KEY"];
 
     await run([
       "create",
@@ -318,7 +318,7 @@ describe("order cancel", () => {
   });
 
   it("requires auth", async () => {
-    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    delete process.env["WALLET_PRIVATE_KEY"];
 
     await run(["cancel", "ord-1"]);
 
@@ -407,7 +407,7 @@ describe("order trades", () => {
   });
 
   it("requires auth", async () => {
-    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    delete process.env["WALLET_PRIVATE_KEY"];
 
     await run(["trades"]);
 

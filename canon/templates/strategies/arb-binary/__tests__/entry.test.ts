@@ -554,15 +554,15 @@ describe("buildLiveAllowanceClient (WalletStore injection)", () => {
   });
 
   it("derives owner address from wallet.getAddress() (no env vars consulted)", async () => {
-    const prevOwner = process.env["POLYMARKET_PROXY_ADDRESS"];
-    delete process.env["POLYMARKET_PROXY_ADDRESS"];
+    const prevOwner = process.env["WALLET_PROXY_ADDRESS"];
+    delete process.env["WALLET_PROXY_ADDRESS"];
     const wallet = makeFakeWallet({ address: "0xfromwallet" });
     const build = (entry as unknown as { buildLiveAllowanceClient: BuildLiveAllowanceClientFn }).buildLiveAllowanceClient;
     const client = await build(wallet);
     expect(client).toBeDefined();
     expect(wallet.getAddress).toHaveBeenCalledTimes(1);
     if (prevOwner !== undefined) {
-      process.env["POLYMARKET_PROXY_ADDRESS"] = prevOwner;
+      process.env["WALLET_PROXY_ADDRESS"] = prevOwner;
     }
   });
 });

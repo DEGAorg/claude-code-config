@@ -35,7 +35,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   // Reset the module so the cached singleton is cleared each test
   vi.resetModules();
-  process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest";
+  process.env["WALLET_PRIVATE_KEY"] = "0xtest";
   const mod = await import("../client-polymarket.js");
   fetchMarketPrice = mod.fetchMarketPrice;
   searchMarkets = mod.searchMarkets;
@@ -45,7 +45,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env["POLYMARKET_PRIVATE_KEY"];
+  delete process.env["WALLET_PRIVATE_KEY"];
 });
 
 // ---------------------------------------------------------------------------
