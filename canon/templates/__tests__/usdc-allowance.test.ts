@@ -36,12 +36,17 @@ import type {
 const mockAllowance = vi.fn();
 const mockApprove = vi.fn();
 
-const ContractCtor = vi.fn(
-  (_address: string, _abi: unknown, _runner: unknown) => ({
-    allowance: mockAllowance,
-    approve: mockApprove,
-  }),
-);
+// Regular function (not arrow) so `new ContractCtor(...)` is valid.
+// ethers v5 `Contract` is a class — the adapter calls it with `new`.
+const ContractCtor = vi.fn(function ContractStub(
+  this: { allowance: unknown; approve: unknown },
+  _address: string,
+  _abi: unknown,
+  _runner: unknown,
+) {
+  this.allowance = mockAllowance;
+  this.approve = mockApprove;
+});
 
 vi.mock("ethers", () => ({
   // ethers v5 exposes both the namespace and the named export
