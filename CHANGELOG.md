@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+
+### Changed
+- core version file + natural-language version queries (`20260430-core-version`) — 2026-05-01
+
 ## [0.6.0] — 2026-04-30
 
 ### Added
