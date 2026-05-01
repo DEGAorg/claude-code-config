@@ -203,7 +203,7 @@ async function runCycle(config: StrategyConfig): Promise<void> {
   cycleCount++;
   const ts = new Date().toISOString();
 
-  out("SCAN", `Cycle ${cycleCount} — fetching NBA futures...`);
+  out("SCAN", `Pull ${cycleCount}: refreshing NBA futures odds`);
 
   // 1. Fetch championship outright odds from sportsbooks
   const events = await fetchOdds("basketball_nba_championship_winner");
@@ -254,9 +254,7 @@ async function runCycle(config: StrategyConfig): Promise<void> {
 
   // 4. Heartbeat if no signals
   if (cycleSignals === 0) {
-    const reasoning =
-      `Cycle ${cycleCount} — ${teamOdds.length} teams, ` +
-      `${markets.length} markets, ${matchedCount} matched, no edges`;
+    const reasoning = `Pull ${cycleCount}: ${teamOdds.length} teams scanned, 0 edges`;
 
     const entry: HeartbeatLogEntry = {
       ts,
@@ -322,7 +320,7 @@ async function main(): Promise<void> {
         reasoning: message,
       };
       appendLog(errorEntry);
-      out("SCAN_ERROR", `Cycle ${cycleCount} — ${message}`);
+      out("SCAN_ERROR", `Pull ${cycleCount}: scan error — ${message}`);
     }
 
     if (running) {
