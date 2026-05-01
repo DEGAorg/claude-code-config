@@ -97,8 +97,12 @@ is_live_infra_change() {
 }
 
 # True if any test file in the diff has an integration-trace shape:
-# imports `signal.js` AND the order-params helper AND has a CLOB
-# token-id regex assertion.
+# imports the order-params helper AND asserts on a CLOB token-id shape.
+#
+# Earlier versions also required a `signal.js` import. That made the gate
+# false-fail on strategies whose pure-functions module is named differently
+# (e.g. MINT-01 uses `cycle.ts`). The order-params + digit-regex pair is
+# strong evidence on its own — the digit regex is the load-bearing check.
 #
 # NOTE: collect awk output first, then run all greps over the buffer.
 # A direct `awk | grep -q` pipeline interacts badly with `pipefail`:
@@ -115,7 +119,6 @@ has_integration_trace_test() {
     }
     keep && /^\+/ { print }
   ' "${DIFF_FILE}")
-  grep -q 'signal\.js' <<<"${plus_lines}" || return 1
   grep -qE 'signalToOrderParams|order-executor\.js' <<<"${plus_lines}" || return 1
   grep -qE '\\d\{60' <<<"${plus_lines}" || return 1
   return 0
