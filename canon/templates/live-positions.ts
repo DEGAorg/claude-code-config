@@ -30,6 +30,24 @@ function emptyPortfolio(): Portfolio {
   return { total_value: 0, positions: [], daily_pnl: 0 };
 }
 
+/**
+ * Detect auth-gated SDK errors (e.g. "Trading operations require
+ * authentication"). Used to keep dry-run reconcile graceful when no
+ * wallet creds are present — `reconcile` returns an empty portfolio
+ * instead of crashing the cycle.
+ */
+function isAuthError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("authentication") ||
+    msg.includes("unauthorized") ||
+    msg.includes("credentials")
+  );
+}
+
+let warnedNoCreds = false;
+
 function mapPosition(p: ClientPosition): Position {
   return {
     market_id: p.marketId,
@@ -45,11 +63,28 @@ export function createLivePositions(): PositionDeps {
   let openOrders: OrderResponse[] = [];
 
   async function reconcile(): Promise<Portfolio> {
-    const [balances, clientPositions, orders] = await Promise.all([
-      fetchBalance(),
-      fetchPositions(),
-      fetchOpenOrders(),
-    ]);
+    let balances, clientPositions, orders;
+    try {
+      [balances, clientPositions, orders] = await Promise.all([
+        fetchBalance(),
+        fetchPositions(),
+        fetchOpenOrders(),
+      ]);
+    } catch (err) {
+      if (isAuthError(err)) {
+        if (!warnedNoCreds) {
+          warnedNoCreds = true;
+          process.stderr.write(
+            "[canon] portfolio reconcile skipped: no wallet credentials " +
+              "(dry-run mode). Set WALLET_PRIVATE_KEY for live portfolio.\n",
+          );
+        }
+        snapshot = emptyPortfolio();
+        openOrders = [];
+        return snapshot;
+      }
+      throw err;
+    }
 
     const cash = balances
       .filter((b) => b.currency === "USDC")

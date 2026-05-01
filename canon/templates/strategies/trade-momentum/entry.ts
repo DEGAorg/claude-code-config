@@ -237,9 +237,15 @@ async function main(): Promise<void> {
     : await loadCanonWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
+  const queryEnv = process.env["MOMENTUM_QUERY"];
   const { scan, executor, positions } = createEntryDeps(
     flags,
-    allowance !== undefined ? { allowance } : {},
+    {
+      ...(allowance !== undefined ? { allowance } : {}),
+      ...(queryEnv !== undefined && queryEnv.length > 0
+        ? { query: queryEnv }
+        : {}),
+    },
   );
 
   const runnerConfig: TradeMomentumRunnerConfig = {

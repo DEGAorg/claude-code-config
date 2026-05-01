@@ -57,6 +57,27 @@ export interface MultiOutcomeMatch {
  * here. Strategies that depend on the manipulation guard should plug in
  * an on-chain indexer (Phase 2/3 work) and override this value.
  */
+/**
+ * Raw market shape returned by the pmxt sidecar's `fetchMarkets`
+ * endpoint. We type only the fields the read paths consume; the
+ * sidecar surfaces additional fields (eventId, tags, image, …) that we
+ * do not currently use. Bypassing the SDK's `Polymarket(...)` wrapper
+ * means dry-run reads work without wallet creds — only order
+ * submission goes through the authenticated path.
+ */
+interface RawSidecarMarket {
+  marketId: string;
+  title: string;
+  outcomes: {
+    outcomeId?: string;
+    label: string;
+    price?: number;
+  }[];
+  volume24h?: number;
+  openInterest?: number;
+  resolutionDate?: string;
+}
+
 export interface BinaryMarketSnapshot {
   conditionId: string;
   question: string;
@@ -305,8 +326,9 @@ export async function searchMarkets(
 export async function searchMultiOutcomeMarkets(
   query: string,
 ): Promise<MultiOutcomeMatch[]> {
-  const poly = getClient();
-  const markets = await poly.fetchMarkets({ query });
+  const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+    { query },
+  ]);
   const results: MultiOutcomeMatch[] = [];
 
   for (const m of markets) {
@@ -344,8 +366,9 @@ export async function searchMultiOutcomeMarkets(
 export async function fetchBinaryMarketSnapshots(
   query: string,
 ): Promise<BinaryMarketSnapshot[]> {
-  const poly = getClient();
-  const markets = await poly.fetchMarkets({ query });
+  const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+    { query },
+  ]);
   const now = Date.now();
   const results: BinaryMarketSnapshot[] = [];
 
@@ -357,9 +380,14 @@ export async function fetchBinaryMarketSnapshots(
     if (yesOutcome.price === undefined || noOutcome.price === undefined) {
       continue;
     }
-    const closeMs = m.resolutionDate?.getTime();
-    const timeToCloseMs =
-      closeMs !== undefined ? Math.max(0, closeMs - now) : undefined;
+    if (yesOutcome.outcomeId === undefined || noOutcome.outcomeId === undefined) {
+      continue;
+    }
+    const closeMs =
+      m.resolutionDate !== undefined ? Date.parse(m.resolutionDate) : NaN;
+    const timeToCloseMs = Number.isFinite(closeMs)
+      ? Math.max(0, closeMs - now)
+      : undefined;
     results.push({
       conditionId: m.marketId,
       question: m.title,
@@ -367,7 +395,7 @@ export async function fetchBinaryMarketSnapshots(
       noTokenId: noOutcome.outcomeId,
       yesPrice: yesOutcome.price,
       noPrice: noOutcome.price,
-      volume24h: m.volume24h,
+      volume24h: m.volume24h ?? 0,
       openInterest: m.openInterest ?? 0,
       ...(timeToCloseMs !== undefined ? { timeToCloseMs } : {}),
       timestampMs: now,
@@ -383,8 +411,10 @@ export async function fetchBinaryMarketSnapshots(
  * @param tokenId - CLOB token ID (from `market.outcomes[n].outcomeId`).
  */
 export async function fetchOrderBook(tokenId: string): Promise<OrderBook> {
-  const poly = getClient();
-  const book = await poly.fetchOrderBook(tokenId);
+  const book = await callSidecar<{
+    bids: { price: number; size: number }[];
+    asks: { price: number; size: number }[];
+  }>("fetchOrderBook", [tokenId]);
 
   const mapLevel = (l: { price: number; size: number }): PriceLevel => ({
     price: l.price,
