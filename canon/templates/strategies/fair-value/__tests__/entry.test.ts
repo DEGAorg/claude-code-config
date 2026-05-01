@@ -59,6 +59,7 @@ let entry: EntryModule;
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
+  process.env["WALLET_PRIVATE_KEY"] = "0x" + "a".repeat(64);
   mockGetCapabilities.mockImplementation(async () => ({ supportsTif: true }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });

@@ -13,6 +13,7 @@ import {
   type OrderResponse,
   type Position as ClientPosition,
 } from "./client-polymarket.js";
+import { getWalletPrivateKey } from "./env.js";
 import type { Portfolio, Position } from "./types/RiskInterface.js";
 
 export interface PositionDeps {
@@ -63,6 +64,25 @@ export function createLivePositions(): PositionDeps {
   let openOrders: OrderResponse[] = [];
 
   async function reconcile(): Promise<Portfolio> {
+    // Short-circuit when no wallet private key is configured. Without
+    // creds, the SDK auth path can throw under several different error
+    // phrasings (e.g. "Authentication failed", "response.data is not
+    // iterable" from a malformed unauthed response) — string matching
+    // against any of them is fragile. Detecting the missing wallet
+    // upfront removes the entire class of error-phrasing surprises.
+    if (!getWalletPrivateKey()) {
+      if (!warnedNoCreds) {
+        warnedNoCreds = true;
+        process.stderr.write(
+          "[canon] portfolio reconcile skipped: no wallet credentials " +
+            "(dry-run mode). Set WALLET_PRIVATE_KEY for live portfolio.\n",
+        );
+      }
+      snapshot = emptyPortfolio();
+      openOrders = [];
+      return snapshot;
+    }
+
     let balances, clientPositions, orders;
     try {
       [balances, clientPositions, orders] = await Promise.all([
