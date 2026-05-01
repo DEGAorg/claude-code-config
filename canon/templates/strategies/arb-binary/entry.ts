@@ -1,96 +1,368 @@
 /**
  * ARB-01 Binary Arbitrage — Project Entry Point
  *
- * Wires the real Polymarket client into the arb-binary strategy.
- * Uses search result prices directly for signal detection — same
- * pattern as the nba-momentum template. No order book calls needed
- * for dry-run scanning.
+ * Wires the real Polymarket client into the arb-binary strategy:
+ *   - `--live`     → submits real CLOB orders via `createLiveExecutor`.
+ *   - `--dry-run`  → runs the full pipeline (scan, signal, risk) but the
+ *                    runner skips order submission.
+ *   - default      → dry-run (production safety: no flag never trades).
+ *
+ * The bootstrap exposes pure factories (`parseEntryFlags`, `createEntryRisk`,
+ * `createEntryDeps`) so unit tests can exercise the wiring without starting
+ * the poll loop. `runner.start()` only fires when the file is the process
+ * entry point.
  */
 
-import { createRunner } from "../runner.js";
-import { appendEntry } from "../execution-log.js";
-import { searchMarkets as polySearchMarkets } from "../client-polymarket.js";
-import { detectSignals } from "../strategies/arb-binary/signal.js";
-import { DEFAULT_ARB_BINARY_CONFIG } from "../strategies/arb-binary/config.js";
-import { createRiskChecker } from "../strategies/arb-binary/risk.js";
-import type { MarketData } from "../strategies/arb-binary/signal.js";
-import type { ExecutorDeps, PositionDeps } from "../runner.js";
-import type { Portfolio } from "../types/RiskInterface.js";
-import type { ExecutionLogEntry } from "../execution-log.js";
+import { pathToFileURL } from "node:url";
 
-const dryRun = process.argv.includes("--dry-run");
-const pollIntervalMs =
-  Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
+import { appendEntry } from "../../execution-log.js";
+import type { WalletStore } from "../../wallet-store.js";
+import {
+  fetchOrderBook,
+  getCapabilities,
+  searchMarkets,
+} from "../../client-polymarket.js";
+import { createLiveExecutor } from "../../live-executor.js";
+import type {
+  AllowanceClient,
+  ResolvedOrder,
+} from "../../live-executor.js";
+import { createLivePositions } from "../../live-positions.js";
+import {
+  DEFAULT_ALLOWANCE_SPENDER,
+  USDC_E_ADDRESS,
+} from "../../polygon-addresses.js";
+import { createRunner } from "../../runner.js";
+import type {
+  ExecutorDeps,
+  OnOutcome,
+  PositionDeps,
+} from "../../runner.js";
+import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
+import type { ExecutionLogEntry } from "../../execution-log.js";
+import type { TradeSignal } from "../../types/TradeSignal.js";
 
-const strategyConfig = DEFAULT_ARB_BINARY_CONFIG;
+import { DEFAULT_ARB_BINARY_CONFIG } from "./config.js";
+import type { ArbBinaryRisk } from "./risk.js";
+import { createRiskChecker } from "./risk.js";
+import { scanMarkets } from "./scan.js";
+import { detectSignals } from "./signal.js";
 
-const risk = createRiskChecker({
-  bankroll: strategyConfig.bankroll,
-  kellyFraction: strategyConfig.kellyFraction,
-  maxExposure: strategyConfig.maxExposure,
-  maxConsecutiveLosses: 3,
-});
+/** Approval is refreshed when current allowance drops below this floor. */
+const USDC_ALLOWANCE_THRESHOLD = 100_000_000_000n; // 100k USDC (6 decimals)
+/** When refreshing, allowance is set to this target. */
+const USDC_ALLOWANCE_TARGET = 1_000_000_000_000n; // 1M USDC
+/** Circuit breaker threshold — halts after this many consecutive losses. */
+const MAX_CONSECUTIVE_LOSSES = 3;
+/** Fallback price when the signal does not carry an order-book ask. */
+const FALLBACK_PRICE = 0.5;
 
-const strategy = async () => {
-  const markets = await polySearchMarkets(strategyConfig.category);
-  const marketData: MarketData[] = [];
-  for (const m of markets) {
-    // Skip dead markets with no liquidity
-    if (m.yesPrice <= 0 || m.noPrice <= 0) continue;
-    marketData.push({
-      conditionId: m.conditionId,
-      question: m.question,
-      category: strategyConfig.category,
-      yesAsk: m.yesPrice,
-      noAsk: m.noPrice,
-      yesTokenId: m.yesTokenId ?? "",
-      noTokenId: m.noTokenId ?? "",
-      estimatedSlippage: 0,
-    });
+/** Parsed CLI flags for the arb-binary entry point. */
+export interface EntryFlags {
+  /** When true, the runner logs signals but does not submit orders. */
+  dryRun: boolean;
+}
+
+/** Live executor + positions adapters wired for the runner. */
+export interface EntryDeps {
+  executor: ExecutorDeps;
+  positions: PositionDeps;
+}
+
+/**
+ * Parse `process.argv` into entry flags.
+ *
+ * `--live` flips to live execution. Anything else (including `--dry-run` or
+ * no flag at all) keeps the safe dry-run default.
+ */
+export function parseEntryFlags(argv: readonly string[]): EntryFlags {
+  if (argv.includes("--live")) return { dryRun: false };
+  return { dryRun: true };
+}
+
+/** Build the ARB-01 risk checker with the production circuit-breaker. */
+export function createEntryRisk(): ArbBinaryRisk {
+  return createRiskChecker({
+    bankroll: DEFAULT_ARB_BINARY_CONFIG.bankroll,
+    kellyFraction: DEFAULT_ARB_BINARY_CONFIG.kellyFraction,
+    maxExposure: DEFAULT_ARB_BINARY_CONFIG.maxExposure,
+    maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
+  });
+}
+
+/**
+ * Build the runner outcome callback for ARB-01.
+ *
+ * Win/loss accounting for the consecutive-loss circuit breaker
+ * (Q-2, decision (a) "both legs filled = win"):
+ *
+ * - `rejected` / `error` — record a loss and discard any pending
+ *   leg state for that market (the pair is already broken).
+ * - `submitted` — track which leg (yes/no) of the market filled.
+ *   Once both legs of the same market reach `submitted`, record a
+ *   win and reset the per-market state. A single leg in isolation
+ *   records nothing — it is neither a win (pair incomplete) nor a
+ *   loss (the leg itself succeeded).
+ *
+ * Per-market tracking lives in a closure-scoped Map so the runner's
+ * onOutcome callback observes leg pairs across the synchronous
+ * processing of a cycle's signals. See
+ * `docs/reviews/261-open-questions.md`, Q-2.
+ */
+export function createEntryOnOutcome(risk: ArbBinaryRisk): OnOutcome {
+  const filledLegs = new Map<string, Set<"yes" | "no">>();
+  return (outcome) => {
+    const marketId = outcome.signal.market.market_id;
+    if (outcome.status === "rejected" || outcome.status === "error") {
+      filledLegs.delete(marketId);
+      risk.recordOutcome(false);
+      return;
+    }
+    if (outcome.status !== "submitted") return;
+
+    const direction = outcome.signal.direction;
+    const leg: "yes" | "no" =
+      direction === "buy_yes" || direction === "sell_yes" ? "yes" : "no";
+
+    const seen = filledLegs.get(marketId) ?? new Set<"yes" | "no">();
+    seen.add(leg);
+    if (seen.has("yes") && seen.has("no")) {
+      filledLegs.delete(marketId);
+      risk.recordOutcome(true);
+      return;
+    }
+    filledLegs.set(marketId, seen);
+  };
+}
+
+/**
+ * Resolve a TradeSignal to the (tokenIds, price) pair the live executor needs.
+ *
+ * The scan layer attaches yesAsk/noAsk and the YES/NO CLOB token IDs to the
+ * signal metadata. The fallback path keeps unit tests and ad-hoc replays
+ * functional when metadata is partial.
+ */
+function resolveArbBinaryOrder(signal: TradeSignal): ResolvedOrder {
+  const meta = signal.metadata;
+  const yesTokenIdRaw = meta["yesTokenId"];
+  const noTokenIdRaw = meta["noTokenId"];
+  const yesAskRaw = meta["yesAsk"];
+  const noAskRaw = meta["noAsk"];
+
+  const yesTokenId =
+    typeof yesTokenIdRaw === "string" && yesTokenIdRaw.length > 0
+      ? yesTokenIdRaw
+      : `${signal.market.market_id}:yes`;
+  const noTokenId =
+    typeof noTokenIdRaw === "string" && noTokenIdRaw.length > 0
+      ? noTokenIdRaw
+      : `${signal.market.market_id}:no`;
+  const yesAsk = typeof yesAskRaw === "number" ? yesAskRaw : FALLBACK_PRICE;
+  const noAsk = typeof noAskRaw === "number" ? noAskRaw : FALLBACK_PRICE;
+
+  const isYesLeg =
+    signal.direction === "buy_yes" || signal.direction === "sell_yes";
+
+  return {
+    tokenIds: { yes: yesTokenId, no: noTokenId },
+    price: isYesLeg ? yesAsk : noAsk,
+    // FOK kills the leg if it can't fully execute, preventing
+    // one-sided exposure between the YES and NO legs.
+    timeInForce: "FOK",
+  };
+}
+
+/**
+ * Optional dependencies for `createEntryDeps`.
+ *
+ * `allowance` is an injection seam — `main()` builds a real
+ * `createUsdcAllowanceClient` for `--live`, while tests inject a
+ * fake `AllowanceClient` to assert the live executor consults it
+ * before submitting (Q-3).
+ */
+export interface CreateEntryDepsOptions {
+  allowance?: AllowanceClient;
+}
+
+/**
+ * Build the live executor + position adapters consumed by the runner.
+ *
+ * Both adapters are always live — the runner gates `executor.submit` on
+ * `config.dryRun`, so dry-run still exercises the wiring without sending
+ * orders. When `options.allowance` is provided, the live executor will
+ * read it before each submit and top up to `USDC_ALLOWANCE_TARGET` when
+ * the cached value falls below `USDC_ALLOWANCE_THRESHOLD`.
+ */
+export function createEntryDeps(
+  flags: EntryFlags,
+  options: CreateEntryDepsOptions = {},
+): EntryDeps {
+  void flags;
+  const executor = createLiveExecutor({
+    resolveOrder: resolveArbBinaryOrder,
+    ...(options.allowance !== undefined ? { allowance: options.allowance } : {}),
+    allowanceThreshold: USDC_ALLOWANCE_THRESHOLD,
+    allowanceTarget: USDC_ALLOWANCE_TARGET,
+  });
+  const positions = createLivePositions();
+  return { executor, positions };
+}
+
+/**
+ * `--live` start-up safety gate (Q-5).
+ *
+ * Refuses to start when the running pmxt sidecar does not advertise
+ * `supportsTif`. ARB-01 relies on FOK to keep YES/NO legs synchronised;
+ * silently degrading to a regular limit order would expose the strategy
+ * to one-sided fills.
+ */
+export async function assertLiveCapabilities(): Promise<void> {
+  const caps = await getCapabilities();
+  if (!caps.supportsTif) {
+    throw new Error(
+      "ARB-01 --live: pmxt sidecar does not advertise FOK time-in-force " +
+        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
+    );
   }
-  return detectSignals(marketData, strategyConfig);
-};
+}
 
-const stubExecutor: ExecutorDeps = {
-  async submit(signal) {
-    console.info("[dry-run] would submit:", signal.automation_id);
-    return { id: "dry-run", status: "simulated" };
-  },
-};
+/**
+ * Build a live USDC allowance client from an injected `WalletStore`.
+ *
+ * The wallet store owns key storage (canon's `.canon/wallet.env` by
+ * default; pluggable for Keychain / hardware backends). The templates
+ * layer never touches private keys directly — it asks the store.
+ *
+ * Returns undefined when the store has no wallet, when the owner
+ * address cannot be derived, or when the store throws — `main()` then
+ * skips allowance plumbing rather than placing live orders against a
+ * misconfigured wallet.
+ */
+export async function buildLiveAllowanceClient(
+  wallet: WalletStore,
+): Promise<AllowanceClient | undefined> {
+  if (!wallet.hasWallet()) return undefined;
 
-const emptyPortfolio: Portfolio = {
-  total_value: strategyConfig.bankroll,
-  positions: [],
-  daily_pnl: 0,
-};
+  let ownerAddress: string;
+  try {
+    ownerAddress = await wallet.getAddress();
+  } catch {
+    // WalletNotFoundError or any signer-side failure — surface as
+    // "no allowance adapter" so main() falls back to manual approval
+    // rather than crashing the strategy boot.
+    return undefined;
+  }
 
-const stubPositions: PositionDeps = {
-  async reconcile() {
-    return emptyPortfolio;
-  },
-  getPortfolio() {
-    return emptyPortfolio;
-  },
-};
+  const rpcUrl =
+    process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
 
-const runner = createRunner(
-  { pollIntervalMs, dryRun, baseDir: ".canon/execution", statePath: ".canon/state.json" },
-  {
-    strategy,
-    risk,
-    executor: stubExecutor,
-    positions: stubPositions,
-    log: (entry: ExecutionLogEntry) =>
-      appendEntry(".canon/execution", entry),
-  },
-);
+  return createUsdcAllowanceClient({
+    ownerAddress,
+    spenderAddress: DEFAULT_ALLOWANCE_SPENDER,
+    usdcAddress: USDC_E_ADDRESS,
+    getProvider: async () => {
+      const { providers } = await import("ethers");
+      return new providers.JsonRpcProvider(rpcUrl);
+    },
+    getSigner: async () => {
+      const { Wallet, providers } = await import("ethers");
+      return new Wallet(
+        wallet.getPrivateKey(),
+        new providers.JsonRpcProvider(rpcUrl),
+      );
+    },
+  });
+}
 
-process.stdout.write(
-  `START ARB-01 scanner (${dryRun ? "dry-run" : "live"}) poll=${String(pollIntervalMs)}ms\n`,
-);
+/**
+ * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
+ *
+ * The path is held in a runtime variable so TypeScript does not
+ * statically resolve it and pull `canon/cli` into the templates
+ * `rootDir`. The templates layer keeps a clean boundary; only this
+ * one call site reaches across to the CLI package, and only at
+ * runtime when `--live` is set.
+ */
+async function loadCanonWalletStore(): Promise<WalletStore> {
+  const specifier = "../../../cli/wallet-store.js";
+  const mod = (await import(/* @vite-ignore */ specifier)) as {
+    FileWalletStore: new () => WalletStore;
+  };
+  return new mod.FileWalletStore();
+}
 
-runner.start().catch((err: unknown) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  process.stdout.write(`SCAN_ERROR ${msg}\n`);
-  process.exitCode = 1;
-});
+async function main(): Promise<void> {
+  const flags = parseEntryFlags(process.argv);
+  const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
+
+  if (!flags.dryRun) {
+    await assertLiveCapabilities();
+  }
+
+  const risk = createEntryRisk();
+  // Bootstrap edge: the templates layer never imports from canon/cli
+  // at compile time, but main() — the composition root — pulls the
+  // concrete FileWalletStore at runtime so existing canon wallets
+  // (`.canon/wallet.env`) are reused without duplication.
+  const wallet: WalletStore | undefined = flags.dryRun
+    ? undefined
+    : await loadCanonWalletStore();
+  const allowance =
+    wallet !== undefined
+      ? await buildLiveAllowanceClient(wallet)
+      : undefined;
+  const { executor, positions } = createEntryDeps(
+    flags,
+    allowance !== undefined ? { allowance } : {},
+  );
+
+  const strategy = async (): Promise<TradeSignal[]> => {
+    const marketData = await scanMarkets(DEFAULT_ARB_BINARY_CONFIG, {
+      searchMarkets,
+      fetchOrderBook,
+    });
+    return detectSignals(marketData, DEFAULT_ARB_BINARY_CONFIG);
+  };
+
+  const onOutcome = createEntryOnOutcome(risk);
+
+  const runner = createRunner(
+    {
+      pollIntervalMs,
+      dryRun: flags.dryRun,
+      baseDir: ".canon/execution",
+      statePath: ".canon/state.json",
+    },
+    {
+      strategy,
+      risk,
+      executor,
+      positions,
+      log: (entry: ExecutionLogEntry) =>
+        appendEntry(".canon/execution", entry),
+      onOutcome,
+    },
+  );
+
+  process.stdout.write(
+    `START ARB-01 scanner (${flags.dryRun ? "dry-run" : "live"}) ` +
+      `poll=${String(pollIntervalMs)}ms\n`,
+  );
+
+  try {
+    await runner.start();
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stdout.write(`SCAN_ERROR ${msg}\n`);
+    process.exitCode = 1;
+  }
+}
+
+const entryArg = process.argv[1];
+const isMain =
+  entryArg !== undefined &&
+  import.meta.url === pathToFileURL(entryArg).href;
+
+if (isMain) {
+  void main();
+}

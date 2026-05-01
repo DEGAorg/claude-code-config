@@ -1,0 +1,2 @@
+PASS
+REASON: stop-word "Separate" is filtered; ARB and FOK keywords find evidence in diff

@@ -35,6 +35,33 @@ export interface PositionDeps {
   getPortfolio(): Portfolio;
 }
 
+/**
+ * Outcome of a submitted order, fed into strategy-level outcome
+ * tracking (e.g. consecutive-loss circuit breakers).
+ *
+ * NOTE: For ARB-01 / MINT / market-resolved strategies, "win" vs "loss"
+ * cannot be determined from the order-submit response alone — final
+ * P&L resolves at market settlement. The current contract reports a
+ * synchronous `submitted | rejected | error` summary; richer P&L
+ * tracking is deferred. See docs/reviews/261-open-questions.md.
+ */
+export interface OrderOutcome {
+  signal: TradeSignal;
+  /** Coarse status from the executor: "submitted" / "rejected" / "error". */
+  status: "submitted" | "rejected" | "error";
+  /** Order ID when the exchange returned one. */
+  orderId?: string;
+  /** Error message when `status === "error"`. */
+  error?: string;
+}
+
+/**
+ * Optional outcome callback — invoked after every executor.submit
+ * attempt (success or failure). Strategies use this to feed
+ * `risk.recordOutcome` or maintain bookkeeping.
+ */
+export type OnOutcome = (outcome: OrderOutcome) => void;
+
 /** All injectable dependencies for the runner. */
 export interface RunnerDeps {
   /** Strategy function — returns signals for the current cycle. */
@@ -47,6 +74,8 @@ export interface RunnerDeps {
   positions: PositionDeps;
   /** Execution log — records every pipeline decision. */
   log: (entry: ExecutionLogEntry) => void;
+  /** Optional outcome callback fired after every submission attempt. */
+  onOutcome?: OnOutcome;
 }
 
 /** Strategy runner instance. */
@@ -182,6 +211,13 @@ export function createRunner(
           { order_id: result.id, status: result.status },
         ),
       );
+      const submitStatus: OrderOutcome["status"] =
+        result.status === "rejected" ? "rejected" : "submitted";
+      deps.onOutcome?.({
+        signal: submittable,
+        status: submitStatus,
+        orderId: result.id,
+      });
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : String(err);
@@ -193,6 +229,11 @@ export function createRunner(
           { error: message, stage: "order_submit" },
         ),
       );
+      deps.onOutcome?.({
+        signal: submittable,
+        status: "error",
+        error: message,
+      });
     }
   }
 

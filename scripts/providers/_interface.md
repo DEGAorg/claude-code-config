@@ -176,6 +176,59 @@ Stdout:    PR URL (e.g., https://github.com/org/repo/pull/42)
 Exit:      0 on success, 1 on failure
 ```
 
+### Push and PR
+
+For lifecycle hooks and the orchestrator engine, prefer
+`scripts/gh-push-and-pr.sh` over calling `provider_pr_create` directly.
+The wrapper owns the full push → propagation-poll → diff-sanity →
+PR-create → issue-comment flow and is race-aware against GitHub's
+read-replica propagation lag.
+
+It still calls `provider_pr_create` under the hood, so the provider
+abstraction is preserved — callers just get retries, polling, and an
+idempotent issue comment for free.
+
+#### Flags
+
+```
+--worktree <path>             required — worktree to push from
+--branch <branch>             required — head branch
+--base <branch>               required — base branch
+--title <string>              required — PR title
+--body-file <path>            required — PR body file
+--issue <N>                   optional — post the PR URL as a comment
+--plan-slug <slug>            optional — key for posted.json idempotency
+                              (defaults to basename of --worktree)
+--propagation-timeout <s>     optional — default 30
+--create-retries <n>          optional — default 3
+--create-backoff <s>          optional — default 3 (multiplied by attempt)
+```
+
+Stdout is the PR URL on success. Stderr carries `<CLASS>: <details>` on
+failure.
+
+#### Exit codes
+
+| Code | Class                  | Meaning                                              |
+|------|------------------------|------------------------------------------------------|
+| 0    | `OK`                   | PR created (and comment posted, if `--issue` given)  |
+| 1    | `PROPAGATION_TIMEOUT`  | Branch never appeared on the remote within timeout   |
+| 2    | `NO_COMMITS`           | Branch has no commits ahead of base                  |
+| 3    | `AUTH`                 | Authentication or permissions failure                |
+| 4    | `VALIDATION`           | Bad arguments or missing input                       |
+| 5    | `OTHER`                | Unclassified failure                                 |
+
+The PR-create step retries the known-transient failure class
+(`Head sha can't be blank`, `Base sha can't be blank`, `No commits
+between`, `Head ref must be a branch`, `Base ref must be a branch`) up
+to `--create-retries` times with `attempt * --create-backoff` second
+sleeps. Push itself is not retried.
+
+The `--issue` comment is idempotent: the script reads and writes
+`${ORCH_STATE_DIR:-.orchestrator}/posted.json` keyed by
+`<plan-slug>:pr-link`, so re-running the script for the same plan does
+not double-post.
+
 ### Labels
 
 #### `provider_labels_get`

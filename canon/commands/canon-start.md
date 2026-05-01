@@ -136,6 +136,21 @@ After init completes, install dependencies:
 pnpm install
 ```
 
+Ensure a project-local burner wallet exists. Idempotent — generates one on
+first run, reports the address (and a funding prompt) once, and is a no-op
+on subsequent runs. This is the single entry point for wallet
+auto-instantiation:
+
+```bash
+"${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
+```
+
+The wallet lives at `.canon/wallet.env` (mode 0600). Each Canon project gets
+its own wallet, so different strategies in different projects trade from
+different accounts automatically. When `created: true` appears in the
+output, tell the user to fund the printed address with USDC.e on Polygon
+before running any strategy.
+
 Proceed to step 4 (scaffold verification).
 
 ---
@@ -430,7 +445,7 @@ Dashboard state writes degrade gracefully:
 
 **Canon TUI detection:** The session is valid if ANY of these are true:
 - `$TMUX` is set (tmux fallback)
-- `$CANON_TUI` is set (Canon TUI / conductor-view)
+- `$CANON_TUI` is set (Canon TUI / canon-tui)
 - `.canon/state.json` exists and was updated within the last 5 minutes (TUI wrote init state)
 
 Every `terminal-ui-write.sh` call in this command is already guarded with

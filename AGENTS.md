@@ -83,7 +83,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `scripts/terminal-ui-write.sh` | Writes structured data to terminal-ui |
 | `scripts/log-server.py` | WebSocket log aggregation server |
 | `scripts/log-client.sh` | Log client for structured event streaming |
-| `scripts/orch-run.sh` | Orchestrator launcher — validates, initializes state, creates tmux session, starts engine |
+| `scripts/orch-run.sh` | Orchestrator launcher — validates, initializes state, creates detached tmux session, starts engine. Pass `--attach` (or `-a`) to also open a terminal and the legacy ink dashboard window |
 | `scripts/orch-engine.sh` | Orchestrator engine — poll loop, worker spawning, review, SHIP/REVISE handling |
 | `scripts/orch-state.sh` | Orchestrator state helpers — read/write state.json, worktree management, master state |
 | `scripts/orch-parse-items.sh` | Parses plan.md progress log into JSON items with dependencies |
@@ -260,7 +260,7 @@ Active work:
 
 ### Canon TUI wiring
 
-The Canon TUI (`DEGAorg/conductor-view`, separate repo) is not auto-wired to this repo's knowledge. See `canon/docs/tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
+The Canon TUI (`DEGAorg/canon-tui`, separate repo) is not auto-wired to this repo's knowledge. See `canon/docs/tui-wiring.md` for what the TUI must do to access `canon-cli` commands and installed skills, and what it must NOT duplicate.
 
 ### Commit and push — prohibited
 
@@ -312,8 +312,15 @@ bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endp
 ```
 
 The plan path must point to a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`).
-The orchestrator creates a tmux session, spawns worker agents in isolated worktrees,
-reviews each item, and iterates until all items pass review and completion criteria are met.
+The orchestrator creates a **detached** tmux session by default, spawns worker agents in
+isolated worktrees, reviews each item, and iterates until all items pass review and
+completion criteria are met. Workers and engine state are observable via the canon-tui
+file-based surfaces (`.orchestrator/plans/<slug>/state.json`, `heartbeat`, logs).
+
+Pass `--attach` (alias `-a`) to opt into the legacy foreground experience: a terminal
+window is opened attached to the tmux session and an in-tmux `dashboard` window runs
+the ink UI (`node terminal-ui/dist/cli.js`). `--background` is accepted as a silent
+no-op for one release (its behavior is now the default).
 
 **Per-project config:** Each project provides a `dega-core.yaml` at its root with
 `max_iterations`, `warn_at_iteration`, and `success_criteria`. No per-project

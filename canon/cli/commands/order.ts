@@ -1,7 +1,7 @@
 /**
  * Order subcommand — create, cancel, and list trades.
  *
- * All operations require POLYMARKET_PRIVATE_KEY.
+ * All operations require WALLET_PRIVATE_KEY.
  *
  * Usage:
  *   canon-cli order create --token-id <id> --side <buy|sell> --size <n> --price <n> [--type <market|limit>] [--market-id <id>]

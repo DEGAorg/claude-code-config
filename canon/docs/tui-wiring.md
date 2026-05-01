@@ -1,6 +1,6 @@
 # Canon TUI Wiring
 
-How the Canon TUI (aka "conductor-view", a Toad fork at `DEGAorg/conductor-view`) accesses Canon knowledge and commands. **This is a separate repo** — it does not automatically inherit anything from `claude-code-config`.
+How the Canon TUI (aka "canon-tui", a Toad fork at `DEGAorg/canon-tui`) accesses Canon knowledge and commands. **This is a separate repo** — it does not automatically inherit anything from `claude-code-config`.
 
 ## Two surfaces the TUI needs
 
@@ -53,7 +53,7 @@ Alternative: shell out to `canon-cli help <name>` and render the JSON `data.cont
 
 ## Open items for the TUI side
 
-These need to be decided in the conductor-view repo, not here:
+These need to be decided in the canon-tui repo, not here:
 
 - Caching strategy for skill content (re-read on each render, or cache in memory).
 - Whether the TUI should spawn its own burner wallet or require `POLYMARKET_PRIVATE_KEY` to be pre-set.

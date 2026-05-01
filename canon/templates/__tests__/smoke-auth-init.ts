@@ -5,7 +5,7 @@ for (const line of env.split("\n")) {
   const m = line.match(/^([A-Z_]+)=(.*)$/);
   if (m && m[1] && !process.env[m[1]]) process.env[m[1]] = m[2];
 }
-console.log("key loaded, length:", process.env["POLYMARKET_PRIVATE_KEY"]?.length);
+console.log("key loaded, length:", process.env["WALLET_PRIVATE_KEY"]?.length);
 
 const { fetchBalance, fetchPositions } = await import("../client-polymarket.js");
 

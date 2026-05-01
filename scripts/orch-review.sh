@@ -169,9 +169,14 @@ spawn_reviewer() {
   tmux kill-window -t "${TMUX_SESSION}:${window_name}" 2>/dev/null || true
 
   # Build agent command using shim helper (handles Codex exec pattern)
-  local cmd_template agent_cmd_str
+  local cmd_template agent_cmd_str prompt_replacement
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
-  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
+  # Build replacement string first; bash ${var/pat/repl} disables parameter
+  # expansion inside single-quoted regions of the inline replacement, so the
+  # path must be expanded before the substitution.
+  # shellcheck disable=SC2016  # literal $(cat '...') is intended for tmux shell
+  prompt_replacement="\"\$(cat '${prompt_file}')\""
+  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/${prompt_replacement}}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
   local session_var
@@ -181,11 +186,19 @@ spawn_reviewer() {
     env_prefix="env -u '${session_var}'"
   fi
 
+  # Per-agent wall-clock timeout — a wedged agent is killed and the pane
+  # goes dead, so `detect_stale_reviewers` flags the item as failed on
+  # the next poll. Defaults to 300s; must be less than
+  # ORCH_REVIEW_PHASE_TIMEOUT so one stuck agent can't consume the
+  # whole phase budget.
+  local agent_timeout
+  agent_timeout="${ORCH_REVIEW_AGENT_TIMEOUT:-300}"
+
   tmux new-window -d -t "${TMUX_SESSION}" -n "${window_name}" \
     "cd '${review_cwd}' && \
 		 GH_SYNC='${GH_SYNC}' \
 		 RALPH_ROLE=reviewer RALPH_TASK_DIR='${PLAN_DIR}' RALPH_LOOP=1 \
-		 ${env_prefix} ${agent_cmd_str} ; \
+		 ${env_prefix} timeout ${agent_timeout} ${agent_cmd_str} ; \
 		 echo '--- reviewer ${item_id} exited ---'; \
 		 sleep 2"
 
@@ -223,6 +236,62 @@ kill_done_reviewers() {
       echo "orch-review: killed finished reviewer window ${window_name}"
     fi
   done
+}
+
+# --- Helper: auto-pass a review for an item that changed no files ---
+#
+# Verification-only items (no artifact to review) would otherwise wedge
+# the reviewer agent: nothing for it to look at, nothing to emit. Detect
+# those cases from the worker commit and short-circuit with a trivial
+# SHIP verdict.
+mark_review_passed_no_changes() {
+  local item_id="$1"
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local updated
+  updated=$(jq \
+    --argjson id "${item_id}" \
+    --arg now "${now}" \
+    '(.items[] | select(.id == $id)).reviewStatus = "passed" |
+		 (.items[] | select(.id == $id)).reviewVerdict = "no-changes" |
+		 .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+
+  # Write a trivial review file so downstream tooling that reads review
+  # artifacts (lifecycle hooks, state sync) stays consistent.
+  mkdir -p "${REVIEW_DIR}"
+  cat >"${REVIEW_DIR}/item-${item_id}-review.txt" <<EOF
+SHIP
+verdict: no-changes
+The worker commit for this item changed 0 files — nothing to review.
+Auto-passed by mark_review_passed_no_changes.
+EOF
+
+  echo "orch-review: item ${item_id} auto-passed (verdict=no-changes, 0 files touched)"
+}
+
+# Return 0 if the worker commit for the given item touched ≥1 file,
+# return 1 if it touched 0 files (short-circuit candidate), return 0 if
+# the commit cannot be located (safe default: fall through to spawn).
+item_has_file_changes() {
+  local item_id="$1"
+  if [[ ! -d "${WORKTREE_DIR}" ]]; then
+    return 0
+  fi
+  local commit
+  commit=$(git -C "${WORKTREE_DIR}" log --format='%H %s' 2>/dev/null |
+    grep -m1 -E "^[a-f0-9]+ orch: item ${item_id} —" |
+    awk '{print $1}')
+  if [[ -z "${commit}" ]]; then
+    return 0
+  fi
+  local changed
+  changed=$(git -C "${WORKTREE_DIR}" show --name-only --format='' \
+    "${commit}" 2>/dev/null | grep -cv '^$' || true)
+  if [[ "${changed}" -eq 0 ]]; then
+    return 1
+  fi
+  return 0
 }
 
 # --- Helper: detect stale reviewers (window dead, no review file) ---
@@ -320,6 +389,11 @@ while true; do
       if ((spawned >= available_slots)); then break; fi
       pdesc=$(jq -r ".items[] | select(.id == ${pid}) | .description" \
         "${ORCH_STATE_FILE}")
+      # No-files short-circuit: auto-pass items that changed 0 files.
+      if ! item_has_file_changes "${pid}"; then
+        mark_review_passed_no_changes "${pid}"
+        continue
+      fi
       spawn_reviewer "${pid}" "${pdesc}"
       spawned=$((spawned + 1))
     done

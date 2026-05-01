@@ -29,7 +29,7 @@ On every session start, gather state before doing anything else:
 |-------|---------------|
 | TUI alive | `canon-ctl ping` |
 | TUI widget tree | `canon-ctl snapshot` |
-| Active plans | `ls docs/exec-plans/active/` |
+| Active plans | `gh issue list --repo $(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||') --state open --label "plan:draft,plan:in-progress"` |
 | Orchestrator state | Read `.orchestrator/state.json` if it exists |
 | Git state | `git status`, `git branch`, `git worktree list` |
 | Open PRs | `gh pr list` |
@@ -85,7 +85,7 @@ Spawn the orchestrator for plan execution:
 
 ```bash
 # run_in_background
-bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/<slug>
+bash ~/.claude/scripts/orch-run.sh <YYYYMMDD-slug> --issue <N>
 ```
 
 ### Subagents
@@ -118,8 +118,25 @@ notified when background work completes. When notified:
 | Create execution plans | `/plan` skill |
 | Execute plan items | Orchestrator (`orch-run.sh`) |
 | Code implementation | `orch-worker` (via orchestrator) |
-| Code review | `orch-verifier` (via orchestrator) |
+| Per-item review | `orch-verifier` (via orchestrator) |
+| Behaviour-aware PR review | `orch-reviewer` (gates A–D, runs once per PR) |
 | Canon domain tasks | Canon agents (dev, strategy-architect, market-analyst, risk-analyst, qa, deployment-ops) |
+
+## Plan label transitions
+
+| Label | Meaning | Set by |
+|-------|---------|--------|
+| `plan:draft` | Plan written, not yet started | `/plan` skill |
+| `plan:active` | Orchestrator is running it | `orch-run.sh` |
+| `plan:tests-pass` | Worker done, all completion-criteria commands green; reviewer has not run yet | `orch-engine.sh` |
+| `plan:pr-review` | Reviewer ran, all blocking gates PASS or WAIVED | `scripts/orch-reviewer-run.sh` |
+| `plan:completed` | PR merged | `orch-engine.sh` |
+| `plan:failed` | Budget exhausted or aborted | `orch-engine.sh` |
+
+The split between `plan:tests-pass` and `plan:pr-review` exists because
+`pnpm check` exiting 0 does not prove the production path works — it
+proves the *mocked* path works. The reviewer agent's gates A–D probe
+the production path. See `docs/reviews/orch-reviewer-gates.md`.
 
 ## What You Do Directly
 
@@ -142,8 +159,8 @@ When the user asks you to do something:
 
 For tasks:
 
-- If a plan exists in `docs/exec-plans/active/`, recommend running the
-  orchestrator on it
+- If open `plan:draft` or `plan:in-progress` issues exist, recommend
+  running the orchestrator on one (`orch-run.sh <slug> --issue <N>`)
 - If no plan exists, recommend creating one via `/plan`
 - If the task is small enough to not need a plan, recommend spawning a
   single subagent directly

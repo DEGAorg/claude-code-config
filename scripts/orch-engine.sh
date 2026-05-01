@@ -14,14 +14,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-# shellcheck source=orch-state.sh
+# shellcheck source=orch-state.sh disable=SC1091
 source "${SCRIPT_DIR}/orch-state.sh"
 
-# shellcheck source=agent-shim.sh
+# shellcheck source=agent-shim.sh disable=SC1091
 source "${SCRIPT_DIR}/agent-shim.sh"
 
-# shellcheck source=providers/provider.sh
+# shellcheck source=providers/provider.sh disable=SC1091
 source "${SCRIPT_DIR}/providers/provider.sh"
+
+# shellcheck source=orch-watchdog.sh disable=SC1091
+source "${SCRIPT_DIR}/orch-watchdog.sh"
 
 # --- Parse args ---
 
@@ -260,9 +263,14 @@ spawn_worker() {
   printf '%s\n' "${prompt}" >"${prompt_file}"
 
   # Build agent command using shim helper (handles Codex exec pattern)
-  local cmd_template agent_cmd_str
+  local cmd_template agent_cmd_str prompt_replacement
   cmd_template="$(dega_agent_build_headless_cmd "DEGA_PROMPT_MARKER")"
-  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/\"\$(cat '${prompt_file}')\"}"
+  # Build replacement string first; bash ${var/pat/repl} disables parameter
+  # expansion inside single-quoted regions of the inline replacement, so the
+  # path must be expanded before the substitution.
+  # shellcheck disable=SC2016  # literal $(cat '...') is intended for tmux shell
+  prompt_replacement="\"\$(cat '${prompt_file}')\""
+  agent_cmd_str="${cmd_template/DEGA_PROMPT_MARKER/${prompt_replacement}}"
 
   # Skip env -u when session var is empty (e.g., Codex has no session var)
   local session_var
@@ -390,7 +398,76 @@ done
 # --- Post-completion: run per-item review ---
 
 echo "orch-engine: running per-item review via orch-review.sh"
-"${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+
+# Phase-level watchdog via shared helper (scripts/orch-watchdog.sh).
+# rc=124 means orch-review.sh was killed by `timeout` — one or more
+# reviewers hung with a live pane but never wrote a review file.
+set +e
+GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout review 600 \
+  "${SCRIPT_DIR}/orch-review.sh" "${SLUG}"
+review_rc=$?
+set -e
+
+if [[ "${review_rc}" -eq 124 ]]; then
+  # List still-alive reviewer windows with ages as blocking detail.
+  tmux_session="orch-${SLUG}"
+  review_blocking=""
+  if tmux has-session -t "${tmux_session}" 2>/dev/null; then
+    now_epoch=$(date +%s)
+    live_reviewers=$(tmux list-windows -t "${tmux_session}" \
+      -F '#{window_name} #{window_activity}' 2>/dev/null |
+      grep '^reviewer-' || true)
+    if [[ -n "${live_reviewers}" ]]; then
+      while IFS= read -r line; do
+        win_name=$(printf '%s' "${line}" | awk '{print $1}')
+        win_activity=$(printf '%s' "${line}" | awk '{print $2}')
+        if [[ -n "${win_activity}" ]]; then
+          age=$((now_epoch - win_activity))
+        else
+          age="?"
+        fi
+        review_blocking+="${win_name} (age=${age}s) "
+      done <<<"${live_reviewers}"
+    fi
+  fi
+  if [[ -z "${review_blocking}" ]]; then
+    review_blocking="(no alive reviewer-* windows — see state.json)"
+  fi
+
+  # Mark stuck items failed so they don't block forever in future runs.
+  reviewing_ids=$(jq -r '.items[] | select(.reviewStatus == "reviewing") | .id' \
+    "${ORCH_STATE_FILE}")
+  if [[ -n "${reviewing_ids}" ]]; then
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    state=$(cat "${ORCH_STATE_FILE}")
+    for rid in ${reviewing_ids}; do
+      state=$(printf '%s' "${state}" | jq \
+        --argjson id "${rid}" \
+        --arg now "${now}" \
+        --arg reason "phase_timeout" \
+        '(.items[] | select(.id == $id)).reviewStatus = "failed" |
+         (.items[] | select(.id == $id)).reviewReason = $reason |
+         .updatedAt = $now')
+    done
+    orch_write_state "${SLUG}" "${state}"
+  fi
+
+  review_timeout_secs=$(orch_phase_timeout_secs review 600)
+  orch_mark_phase_timeout "${SLUG}" finalReview \
+    "${review_timeout_secs}" "${review_blocking}"
+  # Force REVISE so the engine doesn't try to SHIP with unreviewed items.
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq --arg now "${now}" \
+    '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+elif [[ "${review_rc}" -ne 0 ]]; then
+  echo "orch-engine: orch-review.sh exited with rc=${review_rc} — REVISE" >&2
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq --arg now "${now}" \
+    '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+fi
+
 write_heartbeat
 
 # Fire review lifecycle hooks
@@ -405,6 +482,13 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
   # --- Completion criteria gate ---
   CC_UNCHECKED=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
+
+  # Forensics #241: completion-criteria verification is advisory by default.
+  # Resolve verify.mode from dega-core.yaml; only "enforce" gates SHIP on
+  # verify failure. Unknown / missing values are treated as advisory.
+  VERIFY_CONFIG_FILE="$(orch_resolve_config)"
+  verify_mode=$(orch_get_verify_mode "${VERIFY_CONFIG_FILE}")
+  echo "orch-engine: verify.mode=${verify_mode}"
 
   if [[ "${CC_UNCHECKED}" -gt 0 ]]; then
     echo "orch-engine: ${CC_UNCHECKED} unchecked completion criteria — spawning verifier"
@@ -423,11 +507,18 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 			.updatedAt = $now' "${ORCH_STATE_FILE}")
     orch_write_state "${SLUG}" "${updated}"
 
-    if GH_SYNC="${GH_SYNC}" "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"; then
+    # Phase-level watchdog via shared helper (scripts/orch-watchdog.sh).
+    # rc=124 means the verifier was killed by `timeout`.
+    set +e
+    GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout verify 300 \
+      "${SCRIPT_DIR}/orch-verify.sh" "${SLUG}"
+    verify_rc=$?
+    set -e
+
+    if [[ "${verify_rc}" -eq 0 ]]; then
       # Verifier succeeded — re-check criteria
       CC_AFTER=$(orch_count_unchecked_criteria "${PLAN_DIR}/plan.md")
       if [[ "${CC_AFTER}" -gt 0 ]]; then
-        echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — REVISE"
         now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         updated=$(jq \
           --arg now "${now}" \
@@ -436,7 +527,19 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					 .verification.uncheckedCount = $count |
 					 .updatedAt = $now' "${ORCH_STATE_FILE}")
         orch_write_state "${SLUG}" "${updated}"
-        REVIEW_RESULT="REVISE"
+        if orch_verify_should_gate 1 "${verify_mode}"; then
+          echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — REVISE (verify.mode=enforce)"
+          # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS
+          # so an unverifiable plan cannot loop indefinitely.
+          if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+            orch_master_deregister "${SLUG}" "failed"
+            write_heartbeat
+            exit 1
+          fi
+          REVIEW_RESULT="REVISE"
+        else
+          echo "orch-engine: verifier finished but ${CC_AFTER} criteria still unchecked — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
+        fi
       else
         echo "orch-engine: all completion criteria verified"
         now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -447,15 +550,49 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 					 .updatedAt = $now' "${ORCH_STATE_FILE}")
         orch_write_state "${SLUG}" "${updated}"
       fi
+    elif [[ "${verify_rc}" -eq 124 ]]; then
+      # Phase timeout — extract the last criterion we saw running from
+      # verify.log as blocking detail, then delegate to the watchdog helper.
+      verify_blocking=""
+      if [[ -f "${LOG_DIR}/verify.log" ]]; then
+        verify_blocking=$(grep -E '] RUN: ' "${LOG_DIR}/verify.log" | tail -n 1 | sed -E 's/^\[[^]]+\] RUN: //' || true)
+      fi
+      if [[ -z "${verify_blocking}" ]]; then
+        verify_blocking="(unknown — no RUN entry in verify.log)"
+      fi
+      verify_timeout_secs=$(orch_phase_timeout_secs verify 300)
+      orch_mark_phase_timeout "${SLUG}" verification \
+        "${verify_timeout_secs}" "${verify_blocking}"
+      if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
+        REVIEW_RESULT="REVISE"
+      else
+        echo "orch-engine: verify timed out — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
+      fi
     else
-      echo "orch-engine: verifier failed — REVISE"
       now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
       updated=$(jq \
         --arg now "${now}" \
         '.verification.status = "failed" |
 				 .updatedAt = $now' "${ORCH_STATE_FILE}")
       orch_write_state "${SLUG}" "${updated}"
-      REVIEW_RESULT="REVISE"
+      if orch_verify_should_gate "${verify_rc}" "${verify_mode}"; then
+        echo "orch-engine: verifier failed (rc=${verify_rc}) — REVISE (verify.mode=enforce)"
+        # Forensics #241: bound verify-failure REVISE re-execs by MAX_ITERATIONS.
+        if orch_verify_iteration_exhausted "${SLUG}" "${MAX_ITERATIONS}"; then
+          orch_master_deregister "${SLUG}" "failed"
+          write_heartbeat
+          exit 1
+        fi
+        REVIEW_RESULT="REVISE"
+      else
+        echo "orch-engine: verifier failed (rc=${verify_rc}) — advisory only, SHIP proceeds (verify.mode=${verify_mode})"
+      fi
     fi
   else
     echo "orch-engine: all completion criteria already checked"
@@ -555,14 +692,26 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
   write_heartbeat
 
+  # Ship steps 4-7 run inside the worktree (isolated checkout of
+  # orch/<slug>) rather than REPO_ROOT. Committing inside REPO_ROOT
+  # when it is behind origin produces stale-tree commits that silently
+  # drop files added by interim PRs on origin/main. The worktree always
+  # reflects the orch branch so its tree is consistent with what the PR
+  # will merge. Fall back to REPO_ROOT only if the worktree is absent.
+  if [[ -d "${WORKTREE_DIR}" ]]; then
+    SHIP_TARGET="${WORKTREE_DIR}"
+  else
+    SHIP_TARGET="${REPO_ROOT}"
+  fi
+
   # --- Step 4: Move plan from active/ to completed/ ---
-  COMPLETED_DIR="${REPO_ROOT}/docs/exec-plans/completed/${SLUG}"
+  COMPLETED_DIR="${SHIP_TARGET}/docs/exec-plans/completed/${SLUG}"
   if [[ "${GH_SYNC}" == true ]]; then
     echo "orch-engine: [SHIP 4/9] skipped — GH mode (no local plan move)"
   else
-    ACTIVE_PLAN_DIR="${REPO_ROOT}/docs/exec-plans/active/${SLUG}"
+    ACTIVE_PLAN_DIR="${SHIP_TARGET}/docs/exec-plans/active/${SLUG}"
     if [[ -d "${ACTIVE_PLAN_DIR}" ]]; then
-      mkdir -p "${REPO_ROOT}/docs/exec-plans/completed"
+      mkdir -p "${SHIP_TARGET}/docs/exec-plans/completed"
       if mv "${ACTIVE_PLAN_DIR}" "${COMPLETED_DIR}"; then
         echo "orch-engine: [SHIP 4/9] moved plan to completed/"
       else
@@ -587,18 +736,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   else
     # Stage the deletion of active/ (already moved by step 4) and new completed/ dir.
     # Guard each path — step 4 may have partially failed or paths may not exist.
-    git -C "${REPO_ROOT}" rm -r --cached --ignore-unmatch \
+    git -C "${SHIP_TARGET}" rm -r --cached --ignore-unmatch \
       "docs/exec-plans/active/${SLUG}" 2>/dev/null || true
-    if [[ -d "${REPO_ROOT}/docs/exec-plans/completed/${SLUG}" ]]; then
-      git -C "${REPO_ROOT}" add "docs/exec-plans/completed/${SLUG}"
+    if [[ -d "${SHIP_TARGET}/docs/exec-plans/completed/${SLUG}" ]]; then
+      git -C "${SHIP_TARGET}" add "docs/exec-plans/completed/${SLUG}"
     fi
-    if git -C "${REPO_ROOT}" diff --cached --quiet; then
+    if git -C "${SHIP_TARGET}" diff --cached --quiet; then
       echo "orch-engine: WARN — nothing to commit (plan move produced no diff)"
     else
-      if git -C "${REPO_ROOT}" commit --no-verify -m "orch: move ${SLUG} to completed"; then
+      # Allowlist matches only the active/<slug>/ and completed/<slug>/
+      # subtrees — any other staged path (e.g. a file deleted because of
+      # a stale-base mismatch) aborts the commit. Deletions under
+      # active/<slug>/ are expected because step 4 mv'd the directory,
+      # so ORCH_GUARDED_ALLOW_DELETIONS=1 is enabled for this step only.
+      if ORCH_GUARDED_ALLOW_DELETIONS=1 orch_guarded_commit \
+        "${SHIP_TARGET}" \
+        "orch: move ${SLUG} to completed" \
+        "docs/exec-plans/active/${SLUG}/*" \
+        "docs/exec-plans/completed/${SLUG}/*"; then
         echo "orch-engine: [SHIP 5/9] committed plan move"
       else
-        echo "orch-engine: ERROR — git commit failed for plan move" >&2
+        echo "orch-engine: ERROR — guarded commit failed for plan move" >&2
         SHIP_ERRORS=$((SHIP_ERRORS + 1))
       fi
     fi
@@ -611,12 +769,15 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   if [[ "${GH_SYNC}" == true ]]; then
     echo "orch-engine: [SHIP 6/9] skipped — GH mode (issues are the registry)"
   else
-    if orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
+    if ORCH_REPO_ROOT="${SHIP_TARGET}" \
+      orch_registry_append "${SLUG}" "completed" "${ITER_COUNT}" "orch"; then
       # Commit registry update
-      git -C "${REPO_ROOT}" add "docs/exec-plans/REGISTRY.md"
-      if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-        if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update plan registry for ${SLUG}"; then
-          echo "orch-engine: ERROR — git commit failed for registry update" >&2
+      git -C "${SHIP_TARGET}" add "docs/exec-plans/REGISTRY.md"
+      if ! git -C "${SHIP_TARGET}" diff --cached --quiet; then
+        if ! orch_guarded_commit "${SHIP_TARGET}" \
+          "orch: update plan registry for ${SLUG}" \
+          "docs/exec-plans/REGISTRY.md"; then
+          echo "orch-engine: ERROR — guarded commit failed for registry update" >&2
           SHIP_ERRORS=$((SHIP_ERRORS + 1))
         fi
       fi
@@ -635,15 +796,18 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
     PLAN_TITLE=$(sed -n 's/^# Plan: *//p' "${COMPLETED_DIR}/plan.md" 2>/dev/null || true)
   fi
   if [[ -n "${PLAN_TITLE}" ]]; then
-    if orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
-      git -C "${REPO_ROOT}" add "CHANGELOG.md"
-      if ! git -C "${REPO_ROOT}" diff --cached --quiet; then
-        if ! git -C "${REPO_ROOT}" commit --no-verify -m "orch: update changelog for ${SLUG}"; then
-          echo "orch-engine: ERROR — git commit failed for changelog update" >&2
+    if ORCH_REPO_ROOT="${SHIP_TARGET}" orch_changelog_append "${SLUG}" "${PLAN_TITLE}" ""; then
+      git -C "${SHIP_TARGET}" add "CHANGELOG.md"
+      if git -C "${SHIP_TARGET}" diff --cached --quiet; then
+        echo "orch-engine: [SHIP 7/9] changelog unchanged — nothing to commit"
+      else
+        if orch_guarded_commit "${SHIP_TARGET}" "orch: update changelog for ${SLUG}" "CHANGELOG.md"; then
+          echo "orch-engine: [SHIP 7/9] appended to changelog"
+        else
+          echo "orch-engine: ERROR — guarded commit failed for changelog update" >&2
           SHIP_ERRORS=$((SHIP_ERRORS + 1))
         fi
       fi
-      echo "orch-engine: [SHIP 7/9] appended to changelog"
     else
       echo "orch-engine: WARN — changelog append failed (non-fatal)"
     fi
@@ -685,49 +849,68 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
 
   WORKTREE_DIR_PUSH="${ORCH_STATE_DIR}/worktrees/${SLUG}"
   if [[ -d "${WORKTREE_DIR_PUSH}" ]]; then
-    # Push the worktree branch directly
-    if git -C "${WORKTREE_DIR_PUSH}" push -u origin "${ORCH_BRANCH}" 2>&1; then
+    # Build PR body
+    PR_BODY="## SHIP Summary"$'\n\n'
+    PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
+    PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
+    if [[ "${FAILED_COUNT}" -gt 0 ]]; then
+      PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
+    fi
+    PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
+    PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
+
+    # Add Closes #N if issue is linked
+    ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
+    if [[ -n "${ISSUE_NUMBER}" ]]; then
+      PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
+    fi
+
+    PR_TITLE="plan: ${SLUG}"
+
+    PR_BODY_FILE="$(mktemp -t orch-pr-body.XXXXXX)"
+    PR_ERR_FILE="$(mktemp -t orch-pr-err.XXXXXX)"
+    printf '%s' "${PR_BODY}" >"${PR_BODY_FILE}"
+
+    set +e
+    PR_URL=$("${SCRIPT_DIR}/gh-push-and-pr.sh" \
+      --worktree "${WORKTREE_DIR_PUSH}" \
+      --branch "${ORCH_BRANCH}" \
+      --base "${PR_TARGET}" \
+      --title "${PR_TITLE}" \
+      --body-file "${PR_BODY_FILE}" \
+      --plan-slug "${SLUG}" \
+      --issue "${ISSUE_NUMBER:-}" 2>"${PR_ERR_FILE}")
+    rc=$?
+    set -e
+
+    if [[ "${rc}" -eq 0 ]]; then
       echo "orch-engine: [SHIP 8/9] pushed branch ${ORCH_BRANCH}"
+      echo "orch-engine: PR created: ${PR_URL}"
 
-      # Build PR body
-      PR_BODY="## SHIP Summary"$'\n\n'
-      PR_BODY+="- **Plan:** \`${SLUG}\`"$'\n'
-      PR_BODY+="- **Items:** ${DONE_COUNT}/${TOTAL_COUNT} passed"$'\n'
-      if [[ "${FAILED_COUNT}" -gt 0 ]]; then
-        PR_BODY+="- **Failed:** ${FAILED_COUNT}"$'\n'
-      fi
-      PR_BODY+="- **Iterations:** ${ITER_COUNT}"$'\n'
-      PR_BODY+="- **Elapsed:** ${ELAPSED_STR}"$'\n'
-
-      # Add Closes #N if issue is linked
-      ISSUE_NUMBER=$(jq -r '.issueNumber // empty' "${ORCH_STATE_FILE}")
-      if [[ -n "${ISSUE_NUMBER}" ]]; then
-        PR_BODY+=$'\n'"Closes #${ISSUE_NUMBER}"$'\n'
-      fi
-
-      PR_TITLE="plan: ${SLUG}"
-
-      if PR_URL=$(provider_pr_create \
-        --title "${PR_TITLE}" \
-        --body "${PR_BODY}" \
-        --base "${PR_TARGET}" \
-        --head "${ORCH_BRANCH}" 2>&1); then
-        echo "orch-engine: PR created: ${PR_URL}"
-
-        # Post PR link as comment on the linked issue
-        if [[ -n "${ISSUE_NUMBER}" ]]; then
-          provider_issue_comment \
-            --issue "${ISSUE_NUMBER}" \
-            --body "PR created: ${PR_URL}" 2>&1 || {
-            echo "orch-engine: WARN — failed to post PR link on issue #${ISSUE_NUMBER}" >&2
-          }
-        fi
+      # Persist PR URL/number into state.finalReview so consumers (Canon
+      # TUI, agent-notify hook) can render the link on terminal.
+      PR_NUMBER="${PR_URL##*/}"
+      if [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+        updated=$(jq \
+          --arg url "${PR_URL}" \
+          --argjson num "${PR_NUMBER}" \
+          '.finalReview = ((.finalReview // {}) + {prUrl: $url, prNumber: $num})' \
+          "${ORCH_STATE_FILE}")
+        orch_write_state "${SLUG}" "${updated}"
       else
-        echo "orch-engine: WARN — PR creation failed (non-fatal): ${PR_URL}" >&2
+        echo "orch-engine: WARN — could not parse PR number from URL: ${PR_URL}" >&2
       fi
     else
-      echo "orch-engine: WARN — git push failed, skipping PR creation" >&2
+      case "${rc}" in
+      1) echo "orch-engine: WARN — PR creation timed out waiting for branch propagation" >&2 ;;
+      2) echo "orch-engine: WARN — branch has no commits ahead of base; nothing to PR" >&2 ;;
+      3) echo "orch-engine: ERROR — auth/permissions failure on PR create" >&2 ;;
+      *) echo "orch-engine: WARN — PR creation failed (rc=${rc})" >&2 ;;
+      esac
+      cat "${PR_ERR_FILE}" >&2 || true
     fi
+
+    rm -f "${PR_BODY_FILE}" "${PR_ERR_FILE}"
   else
     echo "orch-engine: [SHIP 8/9] skipped PR — no worktree (changes on working branch)"
   fi

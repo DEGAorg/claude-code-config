@@ -127,7 +127,7 @@ gets overwritten on the next install.
 the binary lives inside a checkout of this repo; falls back to
 `~/.degacore/config/skills/` otherwise. See `canon/cli/commands/help.ts`.
 
-**Canon TUI (`DEGAorg/conductor-view`, Toad fork):** separate repo. It
+**Canon TUI (`DEGAorg/canon-tui`, Toad fork):** separate repo. It
 does not automatically inherit these skills. See `canon/docs/tui-wiring.md`
 for the wiring contract (`canon-cli` subprocess + JSON envelope, skill
 file locations, what not to vendor/reimplement).

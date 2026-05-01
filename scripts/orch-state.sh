@@ -62,6 +62,63 @@ orch_read_config() {
   printf '%s' "${value}"
 }
 
+# --- Verify-mode config (issue #241 advisory-by-default) ---
+
+# Read .verify.mode from a YAML config file. Returns "advisory" by default
+# (file missing, key absent, empty/unknown value); returns "enforce" only
+# when explicitly set. Uses yq when available, falls back to awk so the
+# orchestrator does not require yq as a hard dependency.
+#   Usage: mode=$(orch_get_verify_mode "${ORCH_REPO_ROOT}/dega-core.yaml")
+orch_get_verify_mode() {
+  local yaml_path="$1"
+  local mode=""
+
+  if [[ ! -f "${yaml_path}" ]]; then
+    printf 'advisory'
+    return 0
+  fi
+
+  if command -v yq >/dev/null 2>&1; then
+    mode=$(yq '.verify.mode // ""' "${yaml_path}" 2>/dev/null |
+      tr -d '"' | tr -d "'" | tr -d '[:space:]')
+  fi
+
+  if [[ -z "${mode}" || "${mode}" == "null" ]]; then
+    mode=$(awk '
+      /^verify:[[:space:]]*$/ { in_block = 1; next }
+      in_block && /^[[:space:]]+mode:/ {
+        sub(/^[[:space:]]+mode:[[:space:]]*/, "")
+        sub(/[[:space:]]*#.*$/, "")
+        gsub(/[[:space:]"\047]/, "")
+        print
+        exit
+      }
+      in_block && /^[^[:space:]#]/ { in_block = 0 }
+    ' "${yaml_path}")
+  fi
+
+  case "${mode}" in
+  advisory | enforce) printf '%s' "${mode}" ;;
+  *) printf 'advisory' ;;
+  esac
+}
+
+# Decide whether a verify failure should gate SHIP. Returns 0 (true → gate
+# → set REVIEW_RESULT=REVISE) only when verify_rc is non-zero AND mode is
+# "enforce". Returns 1 (false → SHIP proceeds) in every other case,
+# including advisory-on-failure, success-in-either-mode, and unknown
+# modes (treated as advisory for safety).
+#   Usage: if orch_verify_should_gate "$verify_rc" "$mode"; then ...
+orch_verify_should_gate() {
+  local verify_rc="$1"
+  local mode="$2"
+
+  if [[ "${verify_rc}" -ne 0 && "${mode}" == "enforce" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 # --- Platform detection ---
 
 # Detect the current platform. Returns one of: macos, wsl, linux.
@@ -605,6 +662,75 @@ orch_create_worktree() {
   mkdir -p "${ORCH_STATE_DIR}/worktrees"
   git -C "${ORCH_REPO_ROOT}" worktree add "${worktree_dir}" -b "${branch}" HEAD
   echo "orch-state: created worktree at ${worktree_dir} on branch ${branch}"
+}
+
+# Commit pre-staged changes in <dir>, verifying every staged path is on
+# the allowlist and rejecting any delete entries. Ship-step commits must
+# not remove files — the guard defends against stale-base bugs where the
+# staged diff silently drops files present on origin but absent locally.
+#   Usage: orch_guarded_commit <dir> <message> <allowed_path>...
+# Caller pre-stages files; this helper only verifies + commits.
+orch_guarded_commit() {
+  local dir="$1"
+  local message="$2"
+  shift 2
+  local allowed=("$@")
+  # Opt-in: permit staged deletions (D entries) when the path matches
+  # the allowlist. Off by default so the stale-base guard still applies
+  # to single-file ship steps (CHANGELOG, REGISTRY). Step 5 (plan move)
+  # sets this to 1 because the move legitimately removes active/<slug>/.
+  local allow_deletions="${ORCH_GUARDED_ALLOW_DELETIONS:-0}"
+
+  if [[ ! -d "${dir}" ]]; then
+    echo "orch_guarded_commit: directory not found: ${dir}" >&2
+    return 1
+  fi
+
+  if ((${#allowed[@]} == 0)); then
+    echo "orch_guarded_commit: at least one allowed path is required" >&2
+    return 1
+  fi
+
+  local staged
+  staged=$(git -C "${dir}" diff --cached --name-status 2>/dev/null || true)
+
+  if [[ -z "${staged}" ]]; then
+    echo "orch_guarded_commit: no staged changes in ${dir}" >&2
+    return 1
+  fi
+
+  while IFS=$'\t' read -r change_type path rest; do
+    [[ -z "${change_type}" ]] && continue
+
+    # Rename/copy entries have form "R100<TAB>old<TAB>new" — the new path
+    # is what the commit introduces and is what must match the allowlist.
+    case "${change_type}" in
+    R* | C*) path="${rest}" ;;
+    esac
+
+    local matched=false
+    local allow
+    for allow in "${allowed[@]}"; do
+      # Unquoted RHS: enable glob matching (e.g. "docs/path/<slug>/*").
+      # shellcheck disable=SC2053
+      if [[ "${path}" == ${allow} ]]; then
+        matched=true
+        break
+      fi
+    done
+
+    if [[ "${matched}" != true ]]; then
+      echo "orch_guarded_commit: refusing to commit — staged path '${path}' not in allowlist (${allowed[*]})" >&2
+      return 1
+    fi
+
+    if [[ "${change_type}" == D* && "${allow_deletions}" != "1" ]]; then
+      echo "orch_guarded_commit: refusing to commit — staged deletion of '${path}' not allowed" >&2
+      return 1
+    fi
+  done <<<"${staged}"
+
+  git -C "${dir}" commit --no-verify -m "${message}"
 }
 
 orch_commit_worktree() {

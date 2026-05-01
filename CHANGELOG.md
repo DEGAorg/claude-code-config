@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Make orch detached-by-default; add `--attach` (`20260427-orch-detach-default`) — 2026-04-28
+
 - Add missing gh-plan scripts to /apply-core install manifest (`20260324-apply-core-gh-scripts`) — 2026-03-24
 
 - Create GitHub Issue when plan is written, not when orch starts (`20260324-issue-on-plan-create`) — 2026-03-24
@@ -16,6 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Orchestrator auto-creates GitHub Issue for local plans (`20260320-orch-auto-issue`) — 2026-03-21
 
 ### Changed
+- MINT-01 simple mint cycle (Group 2 — Minting & Market Making) (`20260430-mint-01-cycle-v3`) — 2026-04-30
+
+- ARB-01 live-execution completion (Q-2 / Q-3 / Q-4 / Q-5) (`20260430-arb01-live-completion`) — 2026-04-30
+
+- ARB-01 production-ready + shared live executor layer (`20260429-arb01-live-executor`) — 2026-04-29
+
+- Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
+
 - Wire Strategy Templates into Canon Start Pipeline (`20260415-wire-templates`) — 2026-04-16
 
 - ARB-01 Binary Arbitrage Scanner (`20260414-arb-01`) — 2026-04-16
@@ -65,6 +75,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Self-development guide (`20260315-self-development-guide`) — 2026-03-15
 
 ### Fixed
+- Fix deprecated local-plan-flow in agent prompts (`20260428-agent-prompts-flow`) — 2026-04-28
+
 - Fix CI pipeline — shellcheck severity and excluded codes (`20260321-fix-ci-pipeline`) — 2026-03-27
 
 - Fix sound interface bug in orch-engine.sh (`20260324-fix-sound-bug`) — 2026-03-24

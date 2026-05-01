@@ -32,7 +32,7 @@ Polymarket has platform-specific mechanics that affect strategy design.
 - REST API for market data, order placement, position tracking
 - WebSocket for real-time order book and trade updates
 - Rate limits: Respect rate limits to avoid API bans
-- Authentication: EOA-based by default (user provides `POLYMARKET_PRIVATE_KEY`). L2 API credentials are derived automatically from the EOA's L1 signature on first use. For order signing, `signatureType: "eoa"` (type 0). Gnosis Safe mode (type 2) is supported by pmxtjs but not wired into Canon yet.
+- Authentication: EOA-based by default. Canon auto-generates a project-local burner via `canon-cli wallet ensure` (stored at `.canon/wallet.env`, mode 0600) during `/canon-start`. `POLYMARKET_PRIVATE_KEY` env var still wins when set (CI / bring-your-own-wallet). L2 API credentials are derived automatically from the EOA's L1 signature on first use. For order signing, `signatureType: "eoa"` (type 0). Gnosis Safe mode (type 2) is supported by pmxtjs but not wired into Canon yet.
 - Order-placement requires USDC.e approval to CTFExchange / NegRiskCTFExchange / NegRiskAdapter on the EOA. This is a one-time setup per wallet.
 
 ### Resolution Process

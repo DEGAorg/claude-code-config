@@ -11,7 +11,7 @@
 set -euo pipefail
 
 REPO="DEGAorg/claude-code-config"
-BRANCH="develop"
+BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 
 FORCE=false
@@ -69,7 +69,7 @@ fetch() {
 sed_inplace() {
   local expr="$1" file="$2"
   local tmp="${file}.tmp.$$"
-  sed "${expr}" "${file}" > "${tmp}" && mv "${tmp}" "${file}"
+  sed "${expr}" "${file}" >"${tmp}" && mv "${tmp}" "${file}"
 }
 
 # ── 0. Ensure git repo exists (orchestrator needs it for worktree isolation)

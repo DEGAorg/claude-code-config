@@ -40,8 +40,8 @@ describe("kill subcommand", () => {
   let originalKey: string | undefined;
 
   beforeEach(() => {
-    originalKey = process.env["POLYMARKET_PRIVATE_KEY"];
-    process.env["POLYMARKET_PRIVATE_KEY"] = "0xtest-key";
+    originalKey = process.env["WALLET_PRIVATE_KEY"];
+    process.env["WALLET_PRIVATE_KEY"] = "0xtest-key";
     mockFetchOpenOrders.mockReset();
     mockCancelAllOrders.mockReset();
     stdoutWrite.mockReset();
@@ -53,9 +53,9 @@ describe("kill subcommand", () => {
 
   afterEach(() => {
     if (originalKey === undefined) {
-      delete process.env["POLYMARKET_PRIVATE_KEY"];
+      delete process.env["WALLET_PRIVATE_KEY"];
     } else {
-      process.env["POLYMARKET_PRIVATE_KEY"] = originalKey;
+      process.env["WALLET_PRIVATE_KEY"] = originalKey;
     }
     vi.restoreAllMocks();
   });
@@ -78,13 +78,13 @@ describe("kill subcommand", () => {
   }
 
   it("requires authentication", async () => {
-    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    delete process.env["WALLET_PRIVATE_KEY"];
     await runKill([]);
 
     const output = parseStderr() as { ok: boolean; error: string };
     expect(output.ok).toBe(false);
     expect(output.error).toMatch(/requires authentication/);
-    expect(output.error).toMatch(/POLYMARKET_PRIVATE_KEY/);
+    expect(output.error).toMatch(/WALLET_PRIVATE_KEY/);
     expect(mockFetchOpenOrders).not.toHaveBeenCalled();
   });
 
@@ -242,7 +242,7 @@ describe("kill subcommand", () => {
   });
 
   it("includes command name in auth error", async () => {
-    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    delete process.env["WALLET_PRIVATE_KEY"];
     await runKill([]);
 
     const output = parseStderr() as { ok: boolean; error: string };

@@ -1,0 +1,12 @@
+diff --git a/__tests__/live-executor.test.ts b/__tests__/live-executor.test.ts
+new file mode 100644
+--- /dev/null
++++ b/__tests__/live-executor.test.ts
+@@ -0,0 +1,8 @@
++import { vi, describe, it, expect } from "vitest";
++vi.mock("../client-polymarket.js", () => ({
++  createOrder: vi.fn(async () => ({ id: "ord", status: "ok" })),
++}));
++describe("submit", () => {
++  it("submits", async () => { expect(true).toBe(true); });
++});

@@ -2,7 +2,7 @@
  * Onboard subcommand — scan on-chain balances, swap non-USDC.e
  * assets to USDC.e so the user can start trading.
  *
- * Requires POLYMARKET_PRIVATE_KEY.
+ * Requires WALLET_PRIVATE_KEY.
  *
  * Usage:
  *   canon-cli onboard              Show plan (no swaps executed)

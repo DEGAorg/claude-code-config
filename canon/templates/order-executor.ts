@@ -4,7 +4,11 @@
  */
 
 import type { TradeSignal } from "./types/TradeSignal.js";
-import type { OrderParams, OrderResponse } from "./client-polymarket.js";
+import type {
+  OrderParams,
+  OrderResponse,
+  TimeInForce,
+} from "./client-polymarket.js";
 import { createOrder } from "./client-polymarket.js";
 
 /** Token IDs for the YES and NO outcomes of a binary market. */
@@ -77,6 +81,7 @@ export function signalToOrderParams(
   signal: TradeSignal,
   tokenIds: TokenIds,
   price: number,
+  timeInForce?: TimeInForce,
 ): OrderParams {
   if (price < 0 || price > 1) {
     throw new Error(
@@ -91,9 +96,11 @@ export function signalToOrderParams(
 
   const { side, token } = DIRECTION_MAP[signal.direction];
   const orderType: "market" | "limit" =
-    signal.urgency === "immediate" ? "market" : "limit";
+    signal.urgency === "immediate" && timeInForce === undefined
+      ? "market"
+      : "limit";
 
-  return {
+  const params: OrderParams = {
     marketId: signal.market.market_id,
     tokenId: tokenIds[token],
     side,
@@ -101,6 +108,10 @@ export function signalToOrderParams(
     price,
     orderType,
   };
+  if (timeInForce !== undefined) {
+    params.timeInForce = timeInForce;
+  }
+  return params;
 }
 
 /**

@@ -46,10 +46,20 @@ export async function scanMarkets(
   const results: MarketData[] = [];
 
   for (const market of markets) {
-    const [yesBook, noBook] = await Promise.all([
-      deps.fetchOrderBook(market.yesTokenId),
-      deps.fetchOrderBook(market.noTokenId),
-    ]);
+    if (!market.yesTokenId || !market.noTokenId) {
+      continue;
+    }
+
+    let yesBook: OrderBook;
+    let noBook: OrderBook;
+    try {
+      [yesBook, noBook] = await Promise.all([
+        deps.fetchOrderBook(market.yesTokenId),
+        deps.fetchOrderBook(market.noTokenId),
+      ]);
+    } catch {
+      continue;
+    }
 
     if (yesBook.asks.length === 0 || noBook.asks.length === 0) {
       continue;

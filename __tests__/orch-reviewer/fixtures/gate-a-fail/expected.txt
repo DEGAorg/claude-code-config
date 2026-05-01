@@ -1,0 +1,2 @@
+FAIL
+REASON: live-infra files changed but no test asserts on CLOB token-id shape (digit pattern)

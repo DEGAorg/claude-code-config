@@ -97,6 +97,8 @@ export function detectSignals(
       cost,
       yesAsk: market.yesAsk,
       noAsk: market.noAsk,
+      yesTokenId: market.yesTokenId,
+      noTokenId: market.noTokenId,
       estimatedSlippage: market.estimatedSlippage,
     };
 

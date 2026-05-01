@@ -142,7 +142,7 @@ Same notification mechanism.
   interception pattern). Replace with socket CLI usage in the Conductor
   agent prompt.
 
-### Conductor-view repo (DEGAorg/conductor-view)
+### Conductor-view repo (DEGAorg/canon-tui)
 
 - [ ] Add panel-specific socket commands (e.g.,
   `{"cmd": "panel", "id": "project_state", "action": "open"}`) so the

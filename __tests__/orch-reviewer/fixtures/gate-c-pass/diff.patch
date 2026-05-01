@@ -1,0 +1,18 @@
+diff --git a/runner.ts b/runner.ts
+--- a/runner.ts
++++ b/runner.ts
+@@ -10,6 +10,8 @@
++export type OnSyntheticFixturePassHook = (outcome: { status: string }) => void;
++
+ export interface RunnerDeps {
++  onSynthetic?: OnSyntheticFixturePassHook;
+ }
+diff --git a/entry.ts b/entry.ts
+--- a/entry.ts
++++ b/entry.ts
+@@ -50,3 +50,7 @@
++import type { OnSyntheticFixturePassHook } from "./runner.js";
++
++const onSynthetic: OnSyntheticFixturePassHook = (outcome) => {
++  if (outcome.status === "rejected") risk.recordOutcome(false);
++};

@@ -5,11 +5,14 @@ then stop. The orchestrator assigns you to a tmux pane.
 
 ## Inputs
 
+> Plans are GitHub issues; the orchestrator fetches the body into the runtime path before spawning workers.
+
 You receive these from the orchestrator via your prompt:
 
 - **Item ID**: numeric identifier for this item
 - **Item description**: what you need to do
-- **Plan path**: `docs/exec-plans/active/<slug>/plan.md`
+- **Issue number**: `<N>` — the GitHub issue that holds the canonical plan body
+- **Runtime plan path**: `.orchestrator/plans/<slug>/plan.md` (fetched from issue body by orch-run)
 - **Done-files directory**: `.orchestrator/done/<slug>/`
 - **Task Context (pre-hydrated)**: file paths, requirements, completion
   criteria, and check command extracted from the plan by the orchestrator
@@ -30,8 +33,11 @@ section into your prompt. It contains up to four subsections:
 
 **Use pre-hydrated context first.** The file paths, requirements, and check
 command are provided so you do not need to read the full plan to start
-working. Only read `plan.md` directly if the pre-hydrated context is
-missing (the prompt will show "(no pre-hydrated context available)") or
+working. The GitHub issue body is the source of truth for the plan; the
+orchestrator fetches it into the runtime plan path
+(`.orchestrator/plans/<slug>/plan.md`) before spawning workers. Only read
+that runtime `plan.md` directly if the pre-hydrated context is missing
+(the prompt will show "(no pre-hydrated context available)") or
 insufficient for your item.
 
 ## Execution
@@ -42,10 +48,12 @@ Start with the pre-hydrated Task Context in your prompt. It contains the
 requirements, completion criteria, relevant file paths, and check command —
 enough to understand what "done" looks like without reading the full plan.
 
-Only read `plan.md` at the provided path if the pre-hydrated context is
-missing or does not cover your item's needs (e.g., your item references
-the Approach section for implementation details not included in the
-context).
+The GitHub issue body is the source of truth for the plan. The
+orchestrator fetches it into the runtime path
+`.orchestrator/plans/<slug>/plan.md` before spawning you. Only read that
+runtime `plan.md` if the pre-hydrated context is missing or does not
+cover your item's needs (e.g., your item references the Approach section
+for implementation details not included in the context).
 
 If completed item summaries are provided, read them to understand what
 prior items produced. Use that context to avoid duplicating work or
@@ -120,7 +128,7 @@ normally.
 
 - **One item only** — execute exactly the item assigned to you
 - **No commits** — the orchestrator commits after all items pass review
-- **Checkbox required** — mark `[x]` in plan.md before stopping
+- **Checkbox required** — mark `[x]` in the runtime plan.md before stopping — the orch will sync the checkbox state back to the issue body
 - **Done-file required** — write `<done_dir>/item-<ID>.txt` before stopping
 - **Stay in scope** — do not refactor adjacent code or add features beyond your item
 - **Fail fast** — if blocked, write the blocker in your done-file and stop

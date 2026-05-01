@@ -15,6 +15,7 @@ const COMMANDS: Record<string, string> = {
   order: "Create, cancel, or list orders",
   kill: "Cancel all open orders (kill switch)",
   onboard: "Swap non-USDC.e assets to USDC.e (plan or --execute)",
+  wallet: "Manage the project-local burner wallet (ensure/address/info)",
   help: "Show help for a topic or list available skills",
 };
 

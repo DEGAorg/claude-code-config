@@ -29,7 +29,7 @@ After Phase 1 completes successfully:
 
 1. Fetch the Canon TUI installer command:
    ```
-   https://raw.githubusercontent.com/DEGAorg/canon-tui/canon/commands/apply-canon-tui.md
+   https://raw.githubusercontent.com/DEGAorg/canon-tui/main/commands/apply-canon-tui.md
    ```
 
 2. Read the fetched content — it contains the full installation procedure.
@@ -61,7 +61,7 @@ claude
 /apply-core
 
 # Phase 2 — Canon TUI
-uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@canon" --force --reinstall
+uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@main" --force --reinstall
 ```
 
 ---
@@ -131,5 +131,29 @@ iterates until everything passes.
 
 ## Updating
 
-Run `/apply-core` from any directory to update the core harness.
-Run `/apply-canon-tui` from any directory to update Canon TUI.
+**Re-running this `INSTALL.md` is the supported update path.** The installer is
+idempotent: executing it against an existing install brings every component
+(DEGA Core + Canon TUI) to the latest `main` HEAD of each source repo.
+
+### Shortcut — `/core-update`
+
+Inside an AI coding agent session, either of these works:
+
+- Natural language: `update dega core` (or `update core`, `upgrade dega core`)
+- Slash command: `/core-update`
+
+The `/core-update` skill is a thin wrapper that re-fetches this `INSTALL.md`
+and executes both phases. It short-circuits when the locally installed SHA
+already matches the remote `main` HEAD, and reports a diff of changed
+installer-owned files when it does update.
+
+### Manual re-run
+
+You can also just tell the agent to re-run the install:
+
+> Install DEGA Core from https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md
+
+Or run the phase installers directly from any directory:
+
+- `/apply-core` — update DEGA Core only
+- `/apply-canon-tui` — update Canon TUI only
