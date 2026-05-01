@@ -240,7 +240,7 @@ export function createRunner(
   async function cycle(): Promise<void> {
     cycleCount++;
     updateFlow("scan", []);
-    out("SCAN", `Cycle ${String(cycleCount)}`);
+    out("SCAN", `Round ${cycleCount}: scanning markets`);
 
     const portfolio = await deps.positions.reconcile();
 
@@ -257,7 +257,7 @@ export function createRunner(
     if (signals.length === 0) {
       out(
         "NO_EDGE",
-        `Cycle ${String(cycleCount)} — 0 signals, no edges`,
+        `Round ${cycleCount}: 0 edges this round`,
       );
     }
 
@@ -290,7 +290,7 @@ export function createRunner(
           errorCount++;
           const message =
             err instanceof Error ? err.message : String(err);
-          out("SCAN_ERROR", `Cycle ${String(cycleCount)} — ${message}`);
+          out("SCAN_ERROR", `Round ${cycleCount}: scan error — ${message}`);
           deps.log(
             logEntry("error", "runner", "", {
               error: message,
