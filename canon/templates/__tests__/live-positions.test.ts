@@ -36,9 +36,14 @@ vi.mock("../client-polymarket.js", () => ({
 
 let createLivePositions: () => PositionDeps;
 
+// All existing tests exercise the live SDK path (via mocks) and
+// therefore need WALLET_PRIVATE_KEY set so reconcile() does not
+// short-circuit to an empty portfolio. The no-wallet path has its own
+// dedicated describe block below where this env is explicitly unset.
 beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
+  process.env["WALLET_PRIVATE_KEY"] = "0x" + "a".repeat(64);
   const mod = await import("../live-positions.js");
   createLivePositions = mod.createLivePositions;
 });
@@ -319,5 +324,40 @@ describe("createLivePositions.getOpenOrders", () => {
   it("returns empty array before first reconcile", () => {
     const deps = createLivePositions();
     expect(deps.getOpenOrders()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// No-wallet short-circuit (dry-run path)
+// ---------------------------------------------------------------------------
+
+describe("createLivePositions.reconcile (no wallet)", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    delete process.env["WALLET_PRIVATE_KEY"];
+    delete process.env["POLYMARKET_PRIVATE_KEY"];
+    const mod = await import("../live-positions.js");
+    createLivePositions = mod.createLivePositions;
+  });
+
+  it("returns empty portfolio without calling the SDK", async () => {
+    const deps = createLivePositions();
+    const portfolio = await deps.reconcile();
+    expect(portfolio.positions).toEqual([]);
+    expect(portfolio.total_value).toBe(0);
+    expect(portfolio.daily_pnl).toBe(0);
+    expect(mockFetchBalance).not.toHaveBeenCalled();
+    expect(mockFetchPositions).not.toHaveBeenCalled();
+    expect(mockFetchOpenOrders).not.toHaveBeenCalled();
+  });
+
+  it("does not throw even when SDK would reject with non-auth phrasing", async () => {
+    mockFetchOpenOrders.mockRejectedValue(
+      new Error("response.data is not iterable"),
+    );
+    const deps = createLivePositions();
+    await expect(deps.reconcile()).resolves.toBeDefined();
+    expect(mockFetchOpenOrders).not.toHaveBeenCalled();
   });
 });
