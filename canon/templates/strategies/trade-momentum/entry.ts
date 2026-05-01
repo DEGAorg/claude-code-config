@@ -237,16 +237,21 @@ async function main(): Promise<void> {
     : await loadCanonWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
+  // MOMENTUM_QUERY defaults to "NBA" — empty queries return the entire
+  // Polymarket market index (>60s) and were observed to hang the runner.
+  // Operators must pin a category for live or dry-run to be usable.
   const queryEnv = process.env["MOMENTUM_QUERY"];
-  const { scan, executor, positions } = createEntryDeps(
-    flags,
-    {
-      ...(allowance !== undefined ? { allowance } : {}),
-      ...(queryEnv !== undefined && queryEnv.length > 0
-        ? { query: queryEnv }
-        : {}),
-    },
-  );
+  const query =
+    queryEnv !== undefined && queryEnv.length > 0 ? queryEnv : "NBA";
+  const { scan, executor, positions } = createEntryDeps(flags, {
+    ...(allowance !== undefined ? { allowance } : {}),
+    query,
+  });
+
+  // Hard cap on submitted orders per process run — bounds blast radius
+  // when --live is set without operator hand-holding. Default 3.
+  const maxOrders = Number(process.env["MAX_ORDERS"]) || 3;
+  let submittedCount = 0;
 
   const runnerConfig: TradeMomentumRunnerConfig = {
     strategy: DEFAULT_TRADE_MOMENTUM_CONFIG,
@@ -259,9 +264,23 @@ async function main(): Promise<void> {
     maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
   };
 
+  // Wrap executor.submit to enforce the per-run max-orders cap.
+  const cappedExecutor: ExecutorDeps = {
+    submit: async (signal) => {
+      if (submittedCount >= maxOrders) {
+        process.stdout.write(
+          `MAX_ORDERS reached (${String(maxOrders)}) — skipping submit\n`,
+        );
+        return { id: "max-orders-skipped", status: "rejected" };
+      }
+      submittedCount += 1;
+      return executor.submit(signal);
+    },
+  };
+
   const runner = createTradeMomentumRunner(runnerConfig, {
     scan,
-    executor,
+    executor: cappedExecutor,
     positions,
     log: (entry: ExecutionLogEntry) =>
       appendEntry(".canon/execution", entry),
@@ -269,6 +288,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(
     `START TRADE-02 scanner (${flags.dryRun ? "dry-run" : "live"}) ` +
+      `query=${query} max_orders=${String(maxOrders)} ` +
       `poll=${String(pollIntervalMs)}ms\n`,
   );
 
