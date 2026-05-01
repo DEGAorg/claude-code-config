@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-04-30
+
 ### Added
 - Make orch detached-by-default; add `--attach` (`20260427-orch-detach-default`) — 2026-04-28
 
