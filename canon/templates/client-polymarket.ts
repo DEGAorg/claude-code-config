@@ -32,6 +32,50 @@ export interface PolymarketMatch {
   resolutionDate?: string;
 }
 
+/** A single leg (outcome) of a multi-outcome Polymarket market. */
+export interface MultiOutcomeLeg {
+  /** Human-readable outcome label (e.g. "Lakers"). */
+  outcome: string;
+  /** CLOB token ID for this leg's YES outcome. */
+  tokenId: string;
+  /** Last-known YES price. */
+  yesPrice: number;
+}
+
+/** A multi-outcome (>2 outcomes) Polymarket market — NegRisk candidate. */
+export interface MultiOutcomeMatch {
+  conditionId: string;
+  question: string;
+  legs: MultiOutcomeLeg[];
+}
+
+/**
+ * Snapshot of a binary market with the time-series fields strategies
+ * like TRADE-02 momentum and IA-03 fair-value need.
+ *
+ * `topWalletShare` is not surfaced by the pmxt SDK; it is set to 0
+ * here. Strategies that depend on the manipulation guard should plug in
+ * an on-chain indexer (Phase 2/3 work) and override this value.
+ */
+export interface BinaryMarketSnapshot {
+  conditionId: string;
+  question: string;
+  yesTokenId: string;
+  noTokenId: string;
+  /** Last-known YES price (probability). */
+  yesPrice: number;
+  /** Last-known NO price (probability). */
+  noPrice: number;
+  /** 24-hour USD volume. */
+  volume24h: number;
+  /** Open interest in USD. */
+  openInterest: number;
+  /** Milliseconds until market close, or `undefined` when not surfaced. */
+  timeToCloseMs?: number;
+  /** Snapshot timestamp (ms since epoch). */
+  timestampMs: number;
+}
+
 /** A single price level in an order book. */
 export interface PriceLevel {
   price: number;
@@ -240,6 +284,93 @@ export async function searchMarkets(
       yesTokenId: yesOutcome.outcomeId,
       noTokenId: noOutcome.outcomeId,
       ...(resDate !== undefined ? { resolutionDate: resDate } : {}),
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Search Polymarket for multi-outcome (>2) markets matching a query.
+ *
+ * Returns markets whose `outcomes.length > 2` — the necessary structural
+ * condition for a NegRisk multi-condition arb. The pmxt SDK does not
+ * currently surface the `neg_risk` event flag, so callers must treat the
+ * result as a NegRisk *candidate* and apply their own confirmation
+ * (e.g. resolve every leg's order book and check Σ yes_ask < 1 — the
+ * sufficient market-driven test).
+ *
+ * @param query - Search text (e.g. "NBA Champion").
+ */
+export async function searchMultiOutcomeMarkets(
+  query: string,
+): Promise<MultiOutcomeMatch[]> {
+  const poly = getClient();
+  const markets = await poly.fetchMarkets({ query });
+  const results: MultiOutcomeMatch[] = [];
+
+  for (const m of markets) {
+    if (m.outcomes.length <= 2) continue;
+    const legs: MultiOutcomeLeg[] = [];
+    let skip = false;
+    for (const o of m.outcomes) {
+      if (o.price === undefined || o.outcomeId === undefined) {
+        skip = true;
+        break;
+      }
+      legs.push({ outcome: o.label, tokenId: o.outcomeId, yesPrice: o.price });
+    }
+    if (skip) continue;
+    results.push({
+      conditionId: m.marketId,
+      question: m.title,
+      legs,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Fetch binary-market snapshots matching a query.
+ *
+ * Returns volume / open-interest / time-to-close enriched snapshots that
+ * `TRADE-02` momentum and `IA-03` fair-value scanners consume directly.
+ * `topWalletShare` is not exposed by the SDK — strategies that rely on
+ * manipulation guards must layer their own data source.
+ *
+ * @param query - Search text (e.g. "NBA").
+ */
+export async function fetchBinaryMarketSnapshots(
+  query: string,
+): Promise<BinaryMarketSnapshot[]> {
+  const poly = getClient();
+  const markets = await poly.fetchMarkets({ query });
+  const now = Date.now();
+  const results: BinaryMarketSnapshot[] = [];
+
+  for (const m of markets) {
+    if (m.outcomes.length !== 2) continue;
+    const yesOutcome = m.outcomes[0];
+    const noOutcome = m.outcomes[1];
+    if (!yesOutcome || !noOutcome) continue;
+    if (yesOutcome.price === undefined || noOutcome.price === undefined) {
+      continue;
+    }
+    const closeMs = m.resolutionDate?.getTime();
+    const timeToCloseMs =
+      closeMs !== undefined ? Math.max(0, closeMs - now) : undefined;
+    results.push({
+      conditionId: m.marketId,
+      question: m.title,
+      yesTokenId: yesOutcome.outcomeId,
+      noTokenId: noOutcome.outcomeId,
+      yesPrice: yesOutcome.price,
+      noPrice: noOutcome.price,
+      volume24h: m.volume24h,
+      openInterest: m.openInterest ?? 0,
+      ...(timeToCloseMs !== undefined ? { timeToCloseMs } : {}),
+      timestampMs: now,
     });
   }
 

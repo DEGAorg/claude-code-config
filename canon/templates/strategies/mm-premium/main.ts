@@ -78,6 +78,8 @@ function buildSignal(
       cycleCapital: config.cycleCapital,
       offsetC,
       midpoint: snap.midpoint,
+      ...(snap.yesTokenId !== undefined ? { yesTokenId: snap.yesTokenId } : {}),
+      ...(snap.noTokenId !== undefined ? { noTokenId: snap.noTokenId } : {}),
     },
   };
 }
