@@ -48,7 +48,7 @@ into `canon/templates/` as runnable strategy directories.
 |----|------|------|------------|----------------|--------|-------|
 | IA-01 | News Front-Running | Medium | High | Yes (scanner) | Deferred | Needs Reuters/AP APIs, <500ms, Phase 3 |
 | IA-02 | Whale Copy-Trading | Medium | High | Yes (scanner) | Deferred | On-chain indexer, <2s replica, Phase 2 |
-| IA-03 | Fair Value Model | Medium | High | Yes (scanner) | Ported (live execution) | `strategies/fair-value/` — pluggable statistical model, 5pp divergence + live GTC limit (YES/NO) behind `--live`. Default `NEUTRAL_MODEL` ships with confidence=0; operators inject their probability model before deploying capital |
+| IA-03 | Fair Value Model | Medium | High | Yes (scanner) | Extension scaffold — not turnkey | `strategies/fair-value/` — live executor + scan + risk wired behind `--live`, but ships with `NEUTRAL_MODEL` (confidence=0, no signals fire). Operator must supply a numeric `ProbabilityModel` (ELO, base rates, vegas-implied — spec forbids LLM/news/sentiment, those belong to IA-01). Listed as a base for extension, not a runnable strategy out of the box |
 | IA-04 | Arb Bot Types 1-3 | Low | Medium | Yes | Planned | Production bot of ARB-01/02/03 combined |
 | IA-05 | LLM Dependency Detection | High | Very High | No | Deferred | $500k+, LLM+Solver, 15-35s latency |
 | IA-06 | Bregman+Frank-Wolfe Optimizer | Low | High | N/A (layer) | Deferred | Transversal sizing layer, not standalone |
