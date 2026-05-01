@@ -32,6 +32,71 @@ export interface PolymarketMatch {
   resolutionDate?: string;
 }
 
+/** A single leg (outcome) of a multi-outcome Polymarket market. */
+export interface MultiOutcomeLeg {
+  /** Human-readable outcome label (e.g. "Lakers"). */
+  outcome: string;
+  /** CLOB token ID for this leg's YES outcome. */
+  tokenId: string;
+  /** Last-known YES price. */
+  yesPrice: number;
+}
+
+/** A multi-outcome (>2 outcomes) Polymarket market — NegRisk candidate. */
+export interface MultiOutcomeMatch {
+  conditionId: string;
+  question: string;
+  legs: MultiOutcomeLeg[];
+}
+
+/**
+ * Snapshot of a binary market with the time-series fields strategies
+ * like TRADE-02 momentum and IA-03 fair-value need.
+ *
+ * `topWalletShare` is not surfaced by the pmxt SDK; it is set to 0
+ * here. Strategies that depend on the manipulation guard should plug in
+ * an on-chain indexer (Phase 2/3 work) and override this value.
+ */
+/**
+ * Raw market shape returned by the pmxt sidecar's `fetchMarkets`
+ * endpoint. We type only the fields the read paths consume; the
+ * sidecar surfaces additional fields (eventId, tags, image, …) that we
+ * do not currently use. Bypassing the SDK's `Polymarket(...)` wrapper
+ * means dry-run reads work without wallet creds — only order
+ * submission goes through the authenticated path.
+ */
+interface RawSidecarMarket {
+  marketId: string;
+  title: string;
+  outcomes: {
+    outcomeId?: string;
+    label: string;
+    price?: number;
+  }[];
+  volume24h?: number;
+  openInterest?: number;
+  resolutionDate?: string;
+}
+
+export interface BinaryMarketSnapshot {
+  conditionId: string;
+  question: string;
+  yesTokenId: string;
+  noTokenId: string;
+  /** Last-known YES price (probability). */
+  yesPrice: number;
+  /** Last-known NO price (probability). */
+  noPrice: number;
+  /** 24-hour USD volume. */
+  volume24h: number;
+  /** Open interest in USD. */
+  openInterest: number;
+  /** Milliseconds until market close, or `undefined` when not surfaced. */
+  timeToCloseMs?: number;
+  /** Snapshot timestamp (ms since epoch). */
+  timestampMs: number;
+}
+
 /** A single price level in an order book. */
 export interface PriceLevel {
   price: number;
@@ -142,14 +207,39 @@ export interface Trade {
 
 let client: Polymarket | undefined;
 
+/**
+ * Resolve the Polymarket signatureType for the SDK.
+ *
+ * Defaults to `'gnosis-safe'` when a proxy address is supplied (modern
+ * Polymarket accounts use a Gnosis Safe proxy that holds funds — without
+ * this hint the SDK falls back to EOA-style L2 derivation and dies with
+ * "Derived credentials are incomplete"). Falls back to undefined (SDK
+ * default) when no proxy is configured. Operators can override via
+ * `POLYMARKET_SIGNATURE_TYPE` (`'eoa' | 'poly-proxy' | 'gnosis-safe'`).
+ *
+ * Reference: pmxt-dev/pmxt SETUP_POLYMARKET.md
+ *   github.com/pmxt-dev/pmxt/blob/main/core/docs/SETUP_POLYMARKET.md
+ */
+function resolveSignatureType(
+  proxyAddress: string | undefined,
+): "eoa" | "poly-proxy" | "gnosis-safe" | undefined {
+  const override = process.env["POLYMARKET_SIGNATURE_TYPE"];
+  if (override === "eoa" || override === "poly-proxy" || override === "gnosis-safe") {
+    return override;
+  }
+  return proxyAddress ? "gnosis-safe" : undefined;
+}
+
 function getClient(): Polymarket {
   if (!client) {
     const privateKey = getWalletPrivateKey();
     const proxyAddress = getWalletProxyAddress();
+    const signatureType = resolveSignatureType(proxyAddress);
 
     client = new Polymarket({
       ...(privateKey ? { privateKey } : {}),
       ...(proxyAddress ? { proxyAddress } : {}),
+      ...(signatureType ? { signatureType } : {}),
       autoStartServer: true,
     });
   }
@@ -247,13 +337,109 @@ export async function searchMarkets(
 }
 
 /**
+ * Search Polymarket for multi-outcome (>2) markets matching a query.
+ *
+ * Returns markets whose `outcomes.length > 2` — the necessary structural
+ * condition for a NegRisk multi-condition arb. The pmxt SDK does not
+ * currently surface the `neg_risk` event flag, so callers must treat the
+ * result as a NegRisk *candidate* and apply their own confirmation
+ * (e.g. resolve every leg's order book and check Σ yes_ask < 1 — the
+ * sufficient market-driven test).
+ *
+ * @param query - Search text (e.g. "NBA Champion").
+ */
+export async function searchMultiOutcomeMarkets(
+  query: string,
+): Promise<MultiOutcomeMatch[]> {
+  const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+    { query },
+  ]);
+  const results: MultiOutcomeMatch[] = [];
+
+  for (const m of markets) {
+    if (m.outcomes.length <= 2) continue;
+    const legs: MultiOutcomeLeg[] = [];
+    let skip = false;
+    for (const o of m.outcomes) {
+      if (o.price === undefined || o.outcomeId === undefined) {
+        skip = true;
+        break;
+      }
+      legs.push({ outcome: o.label, tokenId: o.outcomeId, yesPrice: o.price });
+    }
+    if (skip) continue;
+    results.push({
+      conditionId: m.marketId,
+      question: m.title,
+      legs,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Fetch binary-market snapshots matching a query.
+ *
+ * Returns volume / open-interest / time-to-close enriched snapshots that
+ * `TRADE-02` momentum and `IA-03` fair-value scanners consume directly.
+ * `topWalletShare` is not exposed by the SDK — strategies that rely on
+ * manipulation guards must layer their own data source.
+ *
+ * @param query - Search text (e.g. "NBA").
+ */
+export async function fetchBinaryMarketSnapshots(
+  query: string,
+): Promise<BinaryMarketSnapshot[]> {
+  const markets = await callSidecar<RawSidecarMarket[]>("fetchMarkets", [
+    { query },
+  ]);
+  const now = Date.now();
+  const results: BinaryMarketSnapshot[] = [];
+
+  for (const m of markets) {
+    if (m.outcomes.length !== 2) continue;
+    const yesOutcome = m.outcomes[0];
+    const noOutcome = m.outcomes[1];
+    if (!yesOutcome || !noOutcome) continue;
+    if (yesOutcome.price === undefined || noOutcome.price === undefined) {
+      continue;
+    }
+    if (yesOutcome.outcomeId === undefined || noOutcome.outcomeId === undefined) {
+      continue;
+    }
+    const closeMs =
+      m.resolutionDate !== undefined ? Date.parse(m.resolutionDate) : NaN;
+    const timeToCloseMs = Number.isFinite(closeMs)
+      ? Math.max(0, closeMs - now)
+      : undefined;
+    results.push({
+      conditionId: m.marketId,
+      question: m.title,
+      yesTokenId: yesOutcome.outcomeId,
+      noTokenId: noOutcome.outcomeId,
+      yesPrice: yesOutcome.price,
+      noPrice: noOutcome.price,
+      volume24h: m.volume24h ?? 0,
+      openInterest: m.openInterest ?? 0,
+      ...(timeToCloseMs !== undefined ? { timeToCloseMs } : {}),
+      timestampMs: now,
+    });
+  }
+
+  return results;
+}
+
+/**
  * Fetch the current order book for a Polymarket outcome token.
  *
  * @param tokenId - CLOB token ID (from `market.outcomes[n].outcomeId`).
  */
 export async function fetchOrderBook(tokenId: string): Promise<OrderBook> {
-  const poly = getClient();
-  const book = await poly.fetchOrderBook(tokenId);
+  const book = await callSidecar<{
+    bids: { price: number; size: number }[];
+    asks: { price: number; size: number }[];
+  }>("fetchOrderBook", [tokenId]);
 
   const mapLevel = (l: { price: number; size: number }): PriceLevel => ({
     price: l.price,

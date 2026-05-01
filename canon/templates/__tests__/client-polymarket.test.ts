@@ -211,7 +211,7 @@ describe("searchMarkets", () => {
 // ---------------------------------------------------------------------------
 describe("fetchOrderBook", () => {
   it("returns mapped order book with bids and asks", async () => {
-    mockFetchOrderBook.mockResolvedValueOnce({
+    mockCallSidecar.mockResolvedValueOnce({
       bids: [
         { price: 0.55, size: 100 },
         { price: 0.50, size: 200 },
@@ -233,11 +233,13 @@ describe("fetchOrderBook", () => {
       { price: 0.60, size: 150 },
       { price: 0.65, size: 50 },
     ]);
-    expect(mockFetchOrderBook).toHaveBeenCalledWith("token-123");
+    expect(mockCallSidecar).toHaveBeenCalledWith("fetchOrderBook", [
+      "token-123",
+    ]);
   });
 
   it("returns empty bids and asks for a thin book", async () => {
-    mockFetchOrderBook.mockResolvedValueOnce({
+    mockCallSidecar.mockResolvedValueOnce({
       bids: [],
       asks: [],
     });
@@ -250,7 +252,7 @@ describe("fetchOrderBook", () => {
   });
 
   it("strips extra fields from order levels", async () => {
-    mockFetchOrderBook.mockResolvedValueOnce({
+    mockCallSidecar.mockResolvedValueOnce({
       bids: [{ price: 0.5, size: 10, extra: "ignored" }],
       asks: [{ price: 0.6, size: 20, timestamp: 12345 }],
     });

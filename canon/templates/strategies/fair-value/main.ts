@@ -135,6 +135,8 @@ function buildSignal(
     metadata: {
       orderType: "limit",
       limitOnly: true,
+      yesTokenId: snapshot.yesTokenId,
+      noTokenId: snapshot.noTokenId,
       fairValue,
       marketPrice: snapshot.marketPrice,
       divergence,

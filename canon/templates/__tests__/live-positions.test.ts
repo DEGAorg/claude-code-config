@@ -210,7 +210,7 @@ describe("createLivePositions.reconcile", () => {
     expect(portfolio.total_value).toBeCloseTo(200);
   });
 
-  it("propagates client errors from fetchBalance", async () => {
+  it("returns empty portfolio when fetchBalance fails with an auth error (dry-run path)", async () => {
     mockFetchBalance.mockRejectedValueOnce(
       new Error("AuthenticationError: credentials required"),
     );
@@ -218,7 +218,19 @@ describe("createLivePositions.reconcile", () => {
     mockFetchOpenOrders.mockResolvedValueOnce([]);
 
     const deps = createLivePositions();
-    await expect(deps.reconcile()).rejects.toThrow("AuthenticationError");
+    const portfolio = await deps.reconcile();
+    expect(portfolio.positions).toEqual([]);
+    expect(portfolio.total_value).toBe(0);
+    expect(portfolio.daily_pnl).toBe(0);
+  });
+
+  it("propagates non-auth fetchBalance errors", async () => {
+    mockFetchBalance.mockRejectedValueOnce(new Error("network down"));
+    mockFetchPositions.mockResolvedValueOnce([]);
+    mockFetchOpenOrders.mockResolvedValueOnce([]);
+
+    const deps = createLivePositions();
+    await expect(deps.reconcile()).rejects.toThrow("network down");
   });
 
   it("propagates client errors from fetchPositions", async () => {

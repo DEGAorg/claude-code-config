@@ -89,6 +89,8 @@ function buildTradeSignal(
     urgency: "normal",
     metadata: {
       entryPrice: snapshot.midpoint,
+      yesTokenId: snapshot.yesTokenId,
+      noTokenId: snapshot.noTokenId,
       exitTargetPrice: config.exitTargetPrice,
       deltaPrice: signalOutput.deltaPrice,
       volumePercentile: signalOutput.volumePercentile,
