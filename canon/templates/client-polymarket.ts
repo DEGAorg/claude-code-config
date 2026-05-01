@@ -207,14 +207,39 @@ export interface Trade {
 
 let client: Polymarket | undefined;
 
+/**
+ * Resolve the Polymarket signatureType for the SDK.
+ *
+ * Defaults to `'gnosis-safe'` when a proxy address is supplied (modern
+ * Polymarket accounts use a Gnosis Safe proxy that holds funds — without
+ * this hint the SDK falls back to EOA-style L2 derivation and dies with
+ * "Derived credentials are incomplete"). Falls back to undefined (SDK
+ * default) when no proxy is configured. Operators can override via
+ * `POLYMARKET_SIGNATURE_TYPE` (`'eoa' | 'poly-proxy' | 'gnosis-safe'`).
+ *
+ * Reference: pmxt-dev/pmxt SETUP_POLYMARKET.md
+ *   github.com/pmxt-dev/pmxt/blob/main/core/docs/SETUP_POLYMARKET.md
+ */
+function resolveSignatureType(
+  proxyAddress: string | undefined,
+): "eoa" | "poly-proxy" | "gnosis-safe" | undefined {
+  const override = process.env["POLYMARKET_SIGNATURE_TYPE"];
+  if (override === "eoa" || override === "poly-proxy" || override === "gnosis-safe") {
+    return override;
+  }
+  return proxyAddress ? "gnosis-safe" : undefined;
+}
+
 function getClient(): Polymarket {
   if (!client) {
     const privateKey = getWalletPrivateKey();
     const proxyAddress = getWalletProxyAddress();
+    const signatureType = resolveSignatureType(proxyAddress);
 
     client = new Polymarket({
       ...(privateKey ? { privateKey } : {}),
       ...(proxyAddress ? { proxyAddress } : {}),
+      ...(signatureType ? { signatureType } : {}),
       autoStartServer: true,
     });
   }
