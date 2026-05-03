@@ -5,6 +5,9 @@
  * Strategy code never touches the pmxtjs SDK directly.
  */
 
+// Side-effect: install a browser UA on axios so SDK calls clear CF's bot
+// challenge on clob.polymarket.com. Must come before any SDK import.
+import "./clob-axios-defaults.js";
 import { Polymarket } from "pmxtjs";
 import { getWalletPrivateKey, getWalletProxyAddress } from "./env.js";
 import { discoverPolymarketProxy } from "./proxy-discovery.js";
@@ -229,6 +232,32 @@ function resolveSignatureType(
     return override;
   }
   return proxyAddress ? "gnosis-safe" : undefined;
+}
+
+/**
+ * Build sidecar credentials for trading methods (createOrder, cancelOrder,
+ * buildOrder).
+ *
+ * The CLOB matcher checks balance/allowance at the **funder** address, not
+ * the signer. Strategies running through a Polymarket Safe must hand the
+ * sidecar both `funderAddress` (the Safe) and the matching `signatureType`,
+ * otherwise pmxt-core defaults to EOA mode and the order is rejected with
+ * "balance: 0" — even when the Safe holds collateral. Reads the funder
+ * from `WALLET_PROXY_ADDRESS` (and the sigtype from
+ * `POLYMARKET_SIGNATURE_TYPE` or implied by the proxy).
+ */
+function tradingCredentials(privateKey: string): {
+  privateKey: string;
+  signatureType: string;
+  funderAddress?: string;
+} {
+  const proxyAddress = getWalletProxyAddress();
+  const signatureType = resolveSignatureType(proxyAddress) ?? "eoa";
+  return {
+    privateKey,
+    signatureType,
+    ...(proxyAddress ? { funderAddress: proxyAddress } : {}),
+  };
 }
 
 /**
@@ -1004,7 +1033,7 @@ export async function createOrder(
         ? { tif: params.timeInForce }
         : {}),
     }],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     id: order.id,
@@ -1033,7 +1062,7 @@ export async function cancelOrder(
   const order = await callSidecar<{ id?: string; status?: string }>(
     "cancelOrder",
     [orderId],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     id: order.id ?? orderId,
@@ -1079,7 +1108,7 @@ export async function buildOrder(
         ? { tif: params.timeInForce }
         : {}),
     }],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     exchange: built.exchange,

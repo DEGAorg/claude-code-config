@@ -110,7 +110,11 @@ async function readLockFile(): Promise<SidecarLockData> {
 export async function callSidecar<T>(
   method: string,
   args: ReadonlyArray<unknown>,
-  credentials?: { privateKey: string; signatureType?: string },
+  credentials?: {
+    privateKey: string;
+    signatureType?: string;
+    funderAddress?: string;
+  },
 ): Promise<T> {
   const lock = await readLockFile();
 

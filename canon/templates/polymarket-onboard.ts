@@ -10,6 +10,10 @@
  * this file. A malformed config surfaces as an actionable error rather than
  * silently using stale defaults.
  */
+// Side-effect: install a browser UA on axios so the SDKs clear CF's bot
+// challenge on clob.polymarket.com. Must come before any SDK import that
+// builds an axios instance.
+import "./clob-axios-defaults.js";
 import { Contract, Wallet, providers } from "ethers";
 import {
   RelayClient,
@@ -379,10 +383,10 @@ async function ensureCredsImpl(
 
 function build(privateKey: string): OnboardClient {
   const safeFactory = loadSafeFactory();
-  // StaticJsonRpcProvider with an explicit network skips the auto-detect
-  // round-trip. Default polygon-rpc.com 401s on detection from some IPs;
-  // the static spec sidesteps it and matches what the rest of canon uses.
-  const provider = new providers.StaticJsonRpcProvider(POLYGON_RPC_URL, {
+  // Pass an explicit network spec to skip the auto-detect round-trip.
+  // Default polygon-rpc.com 401s on detection from some IPs; with a
+  // pinned network the SDK never calls eth_chainId at construction time.
+  const provider = new providers.JsonRpcProvider(POLYGON_RPC_URL, {
     name: "polygon",
     chainId: POLYGON_CHAIN_ID,
   });
