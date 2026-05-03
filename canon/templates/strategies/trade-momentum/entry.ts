@@ -19,6 +19,7 @@ import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
   ensurePolymarketProxy,
+  fetchBalance,
   fetchBinaryMarketSnapshots,
   getCapabilities,
 } from "../../client-polymarket.js";
@@ -189,6 +190,24 @@ export async function assertLiveCapabilities(): Promise<void> {
     throw new Error(
       "TRADE-02 --live: pmxt sidecar does not advertise GTC time-in-force " +
         "support; refusing to run.",
+    );
+  }
+
+  // Fail-fast auth smoke: surface a credentials problem now, with a
+  // useful message, instead of crashing on the first reconcile cycle.
+  // Skips when no wallet env is configured (orchestrator dry-run path).
+  try {
+    const balances = await fetchBalance();
+    const usdc = balances.find((b) => b.currency === "USDC");
+    process.stdout.write(
+      `TRADE-02 --live: auth OK, USDC available=${String(usdc?.available ?? 0)}\n`,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `TRADE-02 --live: auth smoke failed (fetchBalance): ${msg}. ` +
+        "Verify WALLET_PRIVATE_KEY (and WALLET_PROXY_ADDRESS if " +
+        "auto-discovery did not resolve one).",
     );
   }
 }
