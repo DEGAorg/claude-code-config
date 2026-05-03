@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "ethers": "~5.7.2",
-    "pmxtjs": "2.22.1",
-    "pmxt-core": "2.22.1"
+    "pmxtjs": "2.37.4",
+    "pmxt-core": "2.37.4"
   },
   "devDependencies": {
     "oxlint": "1.60.0",

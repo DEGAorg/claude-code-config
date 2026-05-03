@@ -12,11 +12,11 @@ importers:
         specifier: ~5.7.2
         version: 5.7.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       pmxt-core:
-        specifier: 2.22.1
-        version: 2.22.1(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
+        specifier: 2.37.4
+        version: 2.37.4(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
       pmxtjs:
-        specifier: 2.22.1
-        version: 2.22.1(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
+        specifier: 2.37.4
+        version: 2.37.4(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
     devDependencies:
       oxlint:
         specifier: 1.60.0
@@ -690,6 +690,9 @@ packages:
     resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
     engines: {node: ^14.21.3 || >=16}
 
+  '@noble/ed25519@2.3.0':
+    resolution: {integrity: sha512-M7dvXL2B92/M7dw9+gzuydL8qn/jiqNHaoR3Q+cb1q1GHV7uwE17WCyFMG+Y+TZb5izcaXk5TdJRrDUxHXL78A==}
+
   '@noble/hashes@1.3.2':
     resolution: {integrity: sha512-MVC8EAQp7MvEcm30KWENFjgR+Mkmf+D189XJTkFIlwohU5hcBbn1ZkKq7KVTi2Hme3PMGF390DaL52beVrIihQ==}
     engines: {node: '>= 16'}
@@ -837,12 +840,8 @@ packages:
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@polymarket/builder-signing-sdk@1.0.0':
-    resolution: {integrity: sha512-LNHc8Ox+2ITM6+VIEH5LH3SVh9ScE2mOUAJI789YfyNqhF4n1cNulk35Hb6IZfy1xtNfcEfNotanPLa/U8dCaw==}
-
-  '@polymarket/clob-client@5.8.1':
-    resolution: {integrity: sha512-beKC4KPc9dYyFV9wFhKiGoA16q5xWz4PjkYcnEs3BzpsOKjGQGRlZQ7KQD4HQKUd3HC5RLQT0lqWHrFyaI+2fQ==}
-    engines: {node: '>=20.10'}
+  '@polymarket/clob-client-v2@1.0.2':
+    resolution: {integrity: sha512-lC80Esug6s6y3uV8D5HnkxoXVZUnATjyP6PcK2IXO740iGDuLlp9Dvvkx3+VVygHahN+M3NY7JiYiTQkDfWoeQ==}
 
   '@prob/clob@0.5.0':
     resolution: {integrity: sha512-AvcGtWvnU0F6X2mpleg2vA6eYxnabf2jk34jqylP3K31dRT3VMadK+7AwWuUEiuhfjSHY/W4lcbKWFYvScKFtw==}
@@ -1366,8 +1365,8 @@ packages:
   brorand@1.1.0:
     resolution: {integrity: sha512-cKV8tMCEpQs4hK/ik71d6LrPOnpkpGBR0wzxqr68g2m/LB2GxVYQroAjMJZRVM1Y4BCjCKc3vAamxSzOY2RP+w==}
 
-  browser-or-node@2.1.1:
-    resolution: {integrity: sha512-8CVjaLJGuSKMVTxJ2DpBl5XnlNDiT4cQFeuCJJrvJmts9YrTZDizTX7PjC2s6W4x+MBGZeEY6dGMrF04/6Hgqg==}
+  browser-or-node@3.0.0:
+    resolution: {integrity: sha512-iczIdVJzGEYhP5DqQxYM9Hh7Ztpqqi+CXZpSmX8ALFs9ecXkQIeqRyM6TfxEfMVpwhl3dSuDvxdzzo9sUOIVBQ==}
 
   browserslist@4.28.2:
     resolution: {integrity: sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg==}
@@ -2380,8 +2379,8 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  pmxt-core@2.22.1:
-    resolution: {integrity: sha512-2Oi86V2We87b6QbacIzyP39BhIc6Z+wb97OgMyZRk7Hck2wtMH9ZalTrj8prKJ2lWYG/xllgnyEUIAmzZzSL5w==}
+  pmxt-core@2.37.4:
+    resolution: {integrity: sha512-HrW7lmoOP/R16aHotdcaIDai61lHcwxdljBFtkSISBRtorpdHWDFd8OJIfBTUsuPWlqc6nJO8EbfJiN3rjmZmQ==}
     hasBin: true
     peerDependencies:
       '@nevuamarkets/poly-websockets': ^1.0.0
@@ -2389,8 +2388,12 @@ packages:
       '@nevuamarkets/poly-websockets':
         optional: true
 
-  pmxtjs@2.22.1:
-    resolution: {integrity: sha512-siH07OI7cvqaI76Uwa95Rn+yYctL4qFSem4SNI9CTYb0gjz1oIVrBZQ3m2Sp/Xfkt7COrbp8LwOkeTA8XdPB2Q==}
+  pmxtjs@2.37.4:
+    resolution: {integrity: sha512-1WUMzbcFZEOQsAcTF4nHDi+F/LLADZvzTQk8qMtFMNH9XGWWemoTdniUx7KCXY9UxngV5EaJLBy7teVhN0CPeg==}
+
+  polymarket-us@0.1.1:
+    resolution: {integrity: sha512-jd1v6dzLAVw1wUp3pIVqCDOPbbXiu6YoGqaZcPbwGMLAomtLttotko1IZytXfj3WF83/DtqG6D573a5VtkgUDQ==}
+    engines: {node: '>=18'}
 
   postcss@8.5.10:
     resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
@@ -2703,6 +2706,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   v8-to-istanbul@9.3.0:
@@ -3990,6 +3994,8 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
+  '@noble/ed25519@2.3.0': {}
+
   '@noble/hashes@1.3.2': {}
 
   '@noble/hashes@1.8.0': {}
@@ -4074,17 +4080,13 @@ snapshots:
 
   '@pkgr/core@0.2.9': {}
 
-  '@polymarket/builder-signing-sdk@1.0.0':
+  '@polymarket/clob-client-v2@1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)':
     dependencies:
+      '@ethersproject/providers': 5.8.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@ethersproject/wallet': 5.8.0
       axios: 1.15.0
-    transitivePeerDependencies:
-      - debug
-
-  '@polymarket/clob-client@5.8.1(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)':
-    dependencies:
-      '@polymarket/builder-signing-sdk': 1.0.0
-      axios: 1.15.0
-      browser-or-node: 2.1.1
+      browser-or-node: 3.0.0
+      tslib: 2.8.1
       viem: 2.48.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
@@ -4616,7 +4618,7 @@ snapshots:
 
   brorand@1.1.0: {}
 
-  browser-or-node@2.1.1: {}
+  browser-or-node@3.0.0: {}
 
   browserslist@4.28.2:
     dependencies:
@@ -5852,11 +5854,11 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  pmxt-core@2.22.1(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6):
+  pmxt-core@2.37.4(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6):
     dependencies:
       '@limitless-exchange/sdk': 1.0.6(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@opinion-labs/opinion-clob-sdk': 0.6.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
-      '@polymarket/clob-client': 5.8.1(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
+      '@polymarket/clob-client-v2': 1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
       '@prob/clob': 0.5.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       '@solana/web3.js': 1.98.4(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
       '@types/express': 5.0.6
@@ -5868,6 +5870,7 @@ snapshots:
       express: 5.2.1
       isows: 1.0.7(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       jest: 30.3.0(@types/node@25.6.0)
+      polymarket-us: 0.1.1(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       tsx: 4.21.0
       ws: 8.20.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
@@ -5884,9 +5887,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  pmxtjs@2.22.1(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6):
+  pmxtjs@2.37.4(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6):
     dependencies:
-      pmxt-core: 2.22.1(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
+      pmxt-core: 2.37.4(@types/node@25.6.0)(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - '@nevuamarkets/poly-websockets'
       - '@types/node'
@@ -5901,6 +5904,14 @@ snapshots:
       - typescript
       - utf-8-validate
       - zod
+
+  polymarket-us@0.1.1(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+    dependencies:
+      '@noble/ed25519': 2.3.0
+      ws: 8.20.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   postcss@8.5.10:
     dependencies:

@@ -26,6 +26,7 @@ const mockFetchBalance = vi.fn(async () => []);
 const mockFetchPositions = vi.fn(async () => []);
 const mockFetchOpenOrders = vi.fn(async () => []);
 const mockGetCapabilities = vi.fn(async () => ({ supportsTif: true }));
+const mockEnsurePolymarketProxy = vi.fn(async () => undefined);
 
 vi.mock("../../../client-polymarket.js", () => ({
   createOrder: mockCreateOrder,
@@ -35,6 +36,7 @@ vi.mock("../../../client-polymarket.js", () => ({
   fetchPositions: mockFetchPositions,
   fetchOpenOrders: mockFetchOpenOrders,
   getCapabilities: mockGetCapabilities,
+  ensurePolymarketProxy: mockEnsurePolymarketProxy,
 }));
 
 interface FakeAllowanceClient {
@@ -178,14 +180,25 @@ describe("createEntryDeps", () => {
 });
 
 describe("assertLiveCapabilities", () => {
-  it("resolves when the sidecar advertises TIF support", async () => {
+  it("resolves when the sidecar advertises TIF support and auth smoke succeeds", async () => {
     mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    mockFetchBalance.mockResolvedValueOnce([]);
     await expect(entry.assertLiveCapabilities()).resolves.toBeUndefined();
   });
 
   it("rejects when the sidecar does not advertise TIF support", async () => {
     mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
     await expect(entry.assertLiveCapabilities()).rejects.toThrow(/GTC/);
+  });
+
+  it("rejects with a clear message when the auth smoke fails", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    mockFetchBalance.mockRejectedValueOnce(
+      new Error("Derived credentials are incomplete"),
+    );
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /auth smoke failed/,
+    );
   });
 });
 
