@@ -7,6 +7,7 @@
 
 import { Polymarket } from "pmxtjs";
 import { getWalletPrivateKey, getWalletProxyAddress } from "./env.js";
+import { discoverPolymarketProxy } from "./proxy-discovery.js";
 import {
   callSidecar,
   getSidecarCapabilities,
@@ -228,6 +229,41 @@ function resolveSignatureType(
     return override;
   }
   return proxyAddress ? "gnosis-safe" : undefined;
+}
+
+/**
+ * Auto-discover and persist `WALLET_PROXY_ADDRESS` for live trading.
+ *
+ * pmxt-core 2.22.1's built-in `discoverProxy()` calls a Polymarket
+ * data-api endpoint that now returns 404 — so without help, every
+ * gnosis-safe-migrated account falls back to EOA mode and trips
+ * "Derived credentials are incomplete" inside `getApiCredentials()`.
+ *
+ * This helper scrapes the proxy from the polymarket.com profile page
+ * (the one surface that still exposes it) and writes it into
+ * `process.env.WALLET_PROXY_ADDRESS` so the next call to {@link getClient}
+ * picks it up. Idempotent — if either env is already populated or no
+ * private key is configured, it does nothing.
+ *
+ * Returns the resolved proxy address (or `undefined` when the wallet is
+ * not migrated / not on Polymarket yet) so callers can log + smoke-test.
+ */
+export async function ensurePolymarketProxy(): Promise<string | undefined> {
+  if (getWalletProxyAddress()) return getWalletProxyAddress();
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) return undefined;
+
+  const { Wallet } = await import("ethers");
+  const eoa = new Wallet(privateKey).address;
+
+  const result = await discoverPolymarketProxy(eoa);
+  if (result.proxyAddress) {
+    process.env["WALLET_PROXY_ADDRESS"] = result.proxyAddress;
+    // Reset cached client so the next call picks up the discovered proxy.
+    client = undefined;
+    return result.proxyAddress;
+  }
+  return undefined;
 }
 
 function getClient(): Polymarket {

@@ -18,6 +18,7 @@ import { pathToFileURL } from "node:url";
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
+  ensurePolymarketProxy,
   fetchBinaryMarketSnapshots,
   getCapabilities,
 } from "../../client-polymarket.js";
@@ -173,6 +174,16 @@ export function createEntryDeps(
  * order would convert a passive entry into an aggressive taker.
  */
 export async function assertLiveCapabilities(): Promise<void> {
+  // Auto-discover the gnosis-safe proxy from polymarket.com so live
+  // mode works without the operator pre-populating WALLET_PROXY_ADDRESS.
+  // No-op when the env is already set or the wallet is not migrated.
+  const proxy = await ensurePolymarketProxy();
+  if (proxy) {
+    process.stdout.write(
+      `TRADE-02 --live: auto-discovered proxy ${proxy}\n`,
+    );
+  }
+
   const caps = await getCapabilities();
   if (!caps.supportsTif) {
     throw new Error(
