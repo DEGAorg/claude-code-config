@@ -107,6 +107,8 @@ interface ClobAddresses {
   negRiskAdapter: string;
   collateral: string;
   conditionalTokens: string;
+  exchangeV2: string;
+  negRiskExchangeV2: string;
 }
 
 interface ClobConfigShape {
@@ -115,6 +117,8 @@ interface ClobConfigShape {
   negRiskAdapter?: string;
   collateral?: string;
   conditionalTokens?: string;
+  exchangeV2?: string;
+  negRiskExchangeV2?: string;
 }
 
 function loadClobAddresses(): ClobAddresses {
@@ -139,12 +143,19 @@ function loadClobAddresses(): ClobAddresses {
       "polymarket-onboard: clob getContractConfig() returned an invalid config — missing 'collateral' token. Update @polymarket/clob-client-v2 — never hard-code USDC.e vs pUSD.",
     );
   }
+  if (!cfg.exchangeV2 || !cfg.negRiskExchangeV2) {
+    throw new Error(
+      "polymarket-onboard: clob getContractConfig() returned an invalid config — missing V2 spender (exchangeV2/negRiskExchangeV2). V2 markets reject orders without their approvals.",
+    );
+  }
   return {
     exchange: cfg.exchange,
     negRiskExchange: cfg.negRiskExchange,
     negRiskAdapter: cfg.negRiskAdapter,
     collateral: cfg.collateral,
     conditionalTokens: cfg.conditionalTokens,
+    exchangeV2: cfg.exchangeV2,
+    negRiskExchangeV2: cfg.negRiskExchangeV2,
   };
 }
 
@@ -207,11 +218,19 @@ function erc20SpenderList(addr: ClobAddresses): readonly string[] {
     addr.negRiskExchange,
     addr.negRiskAdapter,
     addr.conditionalTokens,
+    addr.exchangeV2,
+    addr.negRiskExchangeV2,
   ];
 }
 
 function erc1155OperatorList(addr: ClobAddresses): readonly string[] {
-  return [addr.exchange, addr.negRiskExchange, addr.negRiskAdapter];
+  return [
+    addr.exchange,
+    addr.negRiskExchange,
+    addr.negRiskAdapter,
+    addr.exchangeV2,
+    addr.negRiskExchangeV2,
+  ];
 }
 
 interface OnboardCtx {
