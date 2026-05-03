@@ -24,6 +24,7 @@ import type { Transaction } from "@polymarket/builder-relayer-client";
 // `getContractConfig` in tests, and add a static subpath import as the
 // runtime fallback used only when the namespace shape is missing it.
 import * as builderRelayer from "@polymarket/builder-relayer-client";
+import { BuilderConfig } from "@polymarket/builder-signing-sdk";
 import { getContractConfig as relayerSubpathGetContractConfig } from "@polymarket/builder-relayer-client/dist/config/index.js";
 import {
   ClobClient,
@@ -43,7 +44,7 @@ const RELAYER_URL =
 const CLOB_HOST =
   process.env["POLYMARKET_CLOB_HOST"] ?? "https://clob.polymarket.com";
 const POLYGON_RPC_URL =
-  process.env["POLYGON_RPC_URL"] ?? "https://polygon-rpc.com";
+  process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
 
 const COLLATERAL_DECIMALS = 6;
 const MAX_UINT256: bigint = (1n << 256n) - 1n;
@@ -378,10 +379,31 @@ async function ensureCredsImpl(
 
 function build(privateKey: string): OnboardClient {
   const safeFactory = loadSafeFactory();
-  const wallet = new Wallet(privateKey);
+  // StaticJsonRpcProvider with an explicit network skips the auto-detect
+  // round-trip. Default polygon-rpc.com 401s on detection from some IPs;
+  // the static spec sidesteps it and matches what the rest of canon uses.
+  const provider = new providers.StaticJsonRpcProvider(POLYGON_RPC_URL, {
+    name: "polygon",
+    chainId: POLYGON_CHAIN_ID,
+  });
+  // builder-abstract-signer's EthersSigner constructor calls
+  // signer.provider.getNetwork() at instantiation; passing a Wallet
+  // without a provider trips "signer is missing provider".
+  const wallet = new Wallet(privateKey, provider);
   const safeAddress = deriveSafe(wallet.address, safeFactory);
-  const provider = new providers.JsonRpcProvider(POLYGON_RPC_URL);
-  const relay = new RelayClient(RELAYER_URL, POLYGON_CHAIN_ID, wallet);
+  const builderConfig = loadBuilderConfig();
+  // pnpm hoisting can give us a `BuilderConfig` instance whose private
+  // members don't structurally match the one the relayer-client typed
+  // its constructor against — the runtime class is identical. Erase the
+  // type at the boundary; the actual call is fine.
+  const relay = builderConfig
+    ? new RelayClient(
+        RELAYER_URL,
+        POLYGON_CHAIN_ID,
+        wallet,
+        builderConfig as unknown as ConstructorParameters<typeof RelayClient>[3],
+      )
+    : new RelayClient(RELAYER_URL, POLYGON_CHAIN_ID, wallet);
   const clob = new ClobClient({
     host: CLOB_HOST,
     chain: POLYGON_CHAIN_ID as unknown as Chain,
@@ -401,3 +423,25 @@ export const polymarketOnboard: MarketVenueOnboard = {
   chainId: POLYGON_CHAIN_ID,
   build,
 };
+
+/**
+ * Load Polymarket builder credentials from env, when present.
+ *
+ * Polymarket's relayer requires authenticated builder headers on every
+ * mutative call (Safe deploy, batched approvals, wraps). Credentials
+ * come from the `clob-client-v2` `createBuilderApiKey()` flow or the
+ * UI at polymarket.com/settings?tab=builder. Without them the relayer
+ * answers 401 — onboarding cannot proceed.
+ *
+ * Returns `undefined` when any of the three env vars is missing, so
+ * read-only paths (e.g. status()) keep working without auth.
+ */
+function loadBuilderConfig(): BuilderConfig | undefined {
+  const key = process.env["POLYMARKET_BUILDER_API_KEY"];
+  const secret = process.env["POLYMARKET_BUILDER_SECRET"];
+  const passphrase = process.env["POLYMARKET_BUILDER_PASSPHRASE"];
+  if (!key || !secret || !passphrase) return undefined;
+  return new BuilderConfig({
+    localBuilderCreds: { key, secret, passphrase },
+  });
+}

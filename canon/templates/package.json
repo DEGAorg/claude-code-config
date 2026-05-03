@@ -16,7 +16,7 @@
   "dependencies": {
     "@polymarket/builder-relayer-client": "0.0.9",
     "@polymarket/clob-client-v2": "^1.0.0",
-    "ethers": "~5.7.2",
+    "ethers": "5.8.0",
     "pmxtjs": "2.37.4",
     "pmxt-core": "2.37.4"
   },

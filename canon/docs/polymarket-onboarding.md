@@ -274,6 +274,147 @@ present, valid creds derivable, EOA owns the Safe.
 
 ---
 
+## Live verification findings — 2026-05-03
+
+Findings from running the full chain end-to-end against a real EOA + Safe
+on Polygon mainnet. Documented here so future agents don't re-discover
+them and so the open follow-ups are tracked.
+
+### Builder credentials are programmatic, not UI-only
+
+The docs imply you grab them from `polymarket.com/settings?tab=builder`,
+but `@polymarket/clob-client-v2` exposes the same surface:
+
+```ts
+const tempClient = new ClobClient({ host, chain: 137, signer, signatureType: 2, funderAddress: safeAddress });
+const tradingCreds = await tempClient.createOrDeriveApiKey();   // L2 trading creds
+const client = new ClobClient({ host, chain: 137, signer, creds: tradingCreds, signatureType: 2, funderAddress: safeAddress });
+const builderCreds = await client.createBuilderApiKey();         // builder creds
+// → { key, secret, passphrase }
+client.getBuilderApiKeys();   // list
+client.revokeBuilderApiKey(); // rotate
+```
+
+Canon should auto-create builder creds on first onboard, persist them to
+`.env`, and treat manual UI fetch as a fallback only.
+
+### The Onramp rejects native USDC
+
+Despite Polymarket's announcement saying both native USDC and USDC.e are
+accepted, the deployed `CollateralOnramp` at
+`0x93070a847efEf7F70739046A929D47a521F5B8ee` returns
+`paused(USDC_NATIVE) = true` on Polygon. **Only USDC.e (`0x2791…4174`)
+is unpaused.** Trying to wrap native USDC reverts.
+
+Implication for the end-user request: ask the user to send native USDC,
+but route it through Uniswap → USDC.e → Onramp.wrap → pUSD on the Safe.
+This is a single batched Safe tx via the relayer:
+
+1. `USDC.approve(SwapRouter, max)`
+2. `SwapRouter.exactInputSingle({USDC → USDC.e, recipient: Safe})`
+3. `USDC.e.approve(Onramp, max)`
+4. `Onramp.wrap(USDC.e, Safe, amount)`
+
+Verified live: tx `0x41b0e160efa24c839ddff80900b5d948c02441e91d15394e49afc4d12dfe993f`.
+
+### `clob-client-v2.getContractConfig(137)` returns BOTH legacy and V2 spenders
+
+Shape:
+
+```json
+{
+  "exchange":         "0x4bFb…982E",  // legacy CTFExchange (V1)
+  "negRiskExchange":  "0xC5d5…f80a",  // legacy NegRisk (V1)
+  "exchangeV2":       "0xE111…996B",  // post-April-2026 V2
+  "negRiskExchangeV2":"0xe2222d27…0F59",
+  "negRiskAdapter":   "0xd91E…5296",
+  "collateral":       "0xC011…2DFB",  // pUSD
+  "conditionalTokens":"0x4D97…6045"
+}
+```
+
+`polymarket-onboard.ts` currently approves only V1 (`exchange`,
+`negRiskExchange`). Post-cutover orders are signed against V2 — the V2
+spenders also need approvals. **Open follow-up:** extend the spender
+list to include `exchangeV2` and `negRiskExchangeV2`.
+
+### Geo-banned addresses are flagged at the CLOB matcher, not at signup
+
+When an EOA appears on Polymarket's compliance blocklist (Venezuela,
+US, OFAC-sanctioned), the CLOB rejects orders with:
+
+```
+{"error":"'<address>' address banned","status":400}
+```
+
+`getClosedOnlyMode()` returns `closed_only: false` — this is a *hard*
+ban, not a "close-only" restriction. Onboarding (Safe deploy, approvals,
+creds) succeeds; only `postOrder` fails.
+
+Implication: surface this as its own status flag in `OnboardClient`
+("addressBanned") and short-circuit `--live` with a clear message,
+instead of letting it surface mid-cycle as a generic 400.
+
+### Signer must carry a provider, and provider must be StaticJsonRpcProvider
+
+`@polymarket/builder-abstract-signer`'s `EthersSigner` constructor calls
+`signer.provider.getNetwork()` synchronously. Two gotchas:
+- `new Wallet(privateKey)` without a provider → "signer is missing
+  provider".
+- `new providers.JsonRpcProvider(url)` triggers an auto-detect round
+  trip; some Polygon RPCs (the official `polygon-rpc.com`) 401 on the
+  detect call, breaking the SDK on cold start.
+
+Both fixed in `polymarket-onboard.ts:build()` by using
+`StaticJsonRpcProvider` with an explicit `{name: "polygon", chainId: 137}`
+network spec, attached to the wallet at construction time.
+
+### pnpm hoisting and `BuilderConfig` type identity
+
+`@polymarket/builder-signing-sdk`'s `BuilderConfig` may be hoisted to two
+paths in `node_modules/.pnpm`. Even though the runtime class is the
+same, TypeScript treats them as distinct types (private member
+discriminant). Cast at the `RelayClient` call site:
+
+```ts
+new RelayClient(url, 137, wallet, builderConfig as unknown as ConstructorParameters<typeof RelayClient>[3])
+```
+
+### End-to-end flow that worked live
+
+```
+[onboarding chain]
+  status (pre):     {funderDeployed:true, approvalsReady:false, credsReady:true, fundedCollateral:9.83}
+  ensureFunder:     deployed=true (Safe already there, no-op)
+  ensureApprovals:  approved=true tx=0x6561…34b8  (4-call batched Safe tx)
+  ensureCreds:      key=e41f08a9… (derived L1 → L2)
+  status (post):    {funderDeployed:true, approvalsReady:true, credsReady:true, fundedCollateral:9.83}
+
+[order placement]
+  market:  "2026 NBA Champion - Will the Oklahoma City Thunder win the 2026 NBA Finals?"
+  result:  CLOB rejected — address banned (compliance, not code)
+```
+
+The flow works. The wallet was on Polymarket's blocklist. A fresh,
+non-flagged EOA from a non-restricted jurisdiction will complete the
+test.
+
+### Open follow-ups (tracked)
+
+1. Extend `polymarket-onboard.ts` spender list to V2 (`exchangeV2`,
+   `negRiskExchangeV2`).
+2. Add `addressBanned` flag to `OnboardStatus` and check it in
+   `assertLiveCapabilities()` so the runner refuses to start with an
+   actionable message instead of crashing on the first order.
+3. Auto-create builder creds on first onboard via `createBuilderApiKey`
+   instead of requiring manual env entry.
+4. Bridge native USDC → USDC.e → pUSD chain into the canonical
+   `ensureFunder()` / `ensureFunded()` flow so an end user can deposit
+   any of {native USDC, USDC.e, USDT, pUSD, POL} and onboard
+   automatically.
+
+---
+
 ## Sources
 
 - [Polymarket safe-wallet-integration](https://github.com/Polymarket/safe-wallet-integration)
