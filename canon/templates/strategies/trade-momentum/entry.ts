@@ -18,11 +18,12 @@ import { pathToFileURL } from "node:url";
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
-  ensurePolymarketProxy,
   fetchBalance,
   fetchBinaryMarketSnapshots,
   getCapabilities,
 } from "../../client-polymarket.js";
+import { getWalletPrivateKey } from "../../env.js";
+import { polymarketOnboard } from "../../polymarket-onboard.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -175,21 +176,55 @@ export function createEntryDeps(
  * order would convert a passive entry into an aggressive taker.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  // Auto-discover the gnosis-safe proxy from polymarket.com so live
-  // mode works without the operator pre-populating WALLET_PROXY_ADDRESS.
-  // No-op when the env is already set or the wallet is not migrated.
-  const proxy = await ensurePolymarketProxy();
-  if (proxy) {
-    process.stdout.write(
-      `TRADE-02 --live: auto-discovered proxy ${proxy}\n`,
-    );
-  }
-
   const caps = await getCapabilities();
   if (!caps.supportsTif) {
     throw new Error(
       "TRADE-02 --live: pmxt sidecar does not advertise GTC time-in-force " +
         "support; refusing to run.",
+    );
+  }
+
+  // Authoritative onboarding gate. Replaces the legacy proxy HTML-scrape:
+  // the polymarketOnboard adapter reports funder deployment, CLOB spender
+  // approvals, and API-creds derivability in a single read. When any flag
+  // is false the operator gets a concrete remediation (run the CLI or
+  // send collateral) instead of a downstream signing failure.
+  const pk = getWalletPrivateKey();
+  if (pk !== undefined && pk.length > 0) {
+    const status = await polymarketOnboard.build(pk).status();
+    const blockers: string[] = [];
+    if (!status.funderDeployed) {
+      blockers.push(
+        `funder Safe is not deployed at ${status.funderAddress} — ` +
+          "run `canon-cli onboard --execute --venue polymarket`",
+      );
+    } else if (status.fundedCollateral <= 0) {
+      blockers.push(
+        `funder ${status.funderAddress} holds no collateral — ` +
+          "send USDC.e/pUSD collateral to that address",
+      );
+    }
+    if (!status.approvalsReady) {
+      blockers.push(
+        "CLOB spender approvals are missing — " +
+          "run `canon-cli onboard --execute --venue polymarket`",
+      );
+    }
+    if (!status.credsReady) {
+      blockers.push(
+        "CLOB API credentials are not derivable — " +
+          "run `canon-cli onboard --execute --venue polymarket`",
+      );
+    }
+    if (blockers.length > 0) {
+      throw new Error(
+        "TRADE-02 --live: Polymarket wallet is not onboarded:\n  - " +
+          blockers.join("\n  - "),
+      );
+    }
+    process.stdout.write(
+      `TRADE-02 --live: onboard ready, funder=${status.funderAddress} ` +
+        `collateral=${String(status.fundedCollateral)}\n`,
     );
   }
 
@@ -206,8 +241,9 @@ export async function assertLiveCapabilities(): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(
       `TRADE-02 --live: auth smoke failed (fetchBalance): ${msg}. ` +
-        "Verify WALLET_PRIVATE_KEY (and WALLET_PROXY_ADDRESS if " +
-        "auto-discovery did not resolve one).",
+        "Verify WALLET_PRIVATE_KEY (and run " +
+        "`canon-cli onboard --execute --venue polymarket` " +
+        "if creds are missing).",
     );
   }
 }
