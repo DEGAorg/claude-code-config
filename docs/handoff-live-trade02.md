@@ -1,267 +1,161 @@
-# Handoff — TRADE-02 Live Execution
+# Handoff — TRADE-02 Live Execution (CONTINUED, 2026-05-03)
 
-Single-purpose doc for a fresh session focused on getting trade-momentum
-running live end-to-end, programmatic from start to finish (matching what
-the prior POC managed by hand). Read top to bottom; don't skim.
-
----
-
-## Goal
-
-Run TRADE-02 in `--live` mode against real Polymarket markets, with the
-strategy submitting GTC limit orders the agent can manage without human
-intervention. Reproduce what the prior POC achieved, but as a single
-programmatic flow agents can re-run.
-
-**Acceptance:** `mkdir foo && cd foo && canon` → inside the TUI, type
-`/canon-start`, pick `trade-momentum`, then *"run it live"* — and at least
-one real order lands on the Polymarket order book without manual setup,
-with `MAX_ORDERS=3` capping risk.
+Replaces the previous handoff. Read top to bottom; we landed the live order
+end-to-end and now have a clear remaining-work list.
 
 ---
 
-## Current state (as of 2026-05-03)
+## What we proved live
 
-### What works (turnkey today, post-merge of PR #280)
+Order placed on Polymarket V2 from a fresh wallet that **never held POL**:
 
-- `/canon-start` is a **single global slash command** that bootstraps an
-  empty dir into a runnable Canon strategy project.
-- 6 strategy templates ship in `canon/templates/strategies/`: `arb-binary`,
-  `arb-negrisk-buy`, `trade-momentum`, `fair-value`, `mm-premium`,
-  `mint-01`. Index: `canon/templates/strategies/STRATEGY-INDEX.md`.
-- TRADE-02 dry-run runs cleanly **without wallet creds**:
-  - `client-polymarket.ts` read paths bypass the SDK auth wrapper via
-    `callSidecar` (sidecar HTTP at `/api/polymarket/<method>`).
-  - `live-positions.reconcile()` short-circuits to empty portfolio when
-    `WALLET_PRIVATE_KEY` is unset.
-- `MOMENTUM_QUERY` defaults to `"NBA"`, `MAX_ORDERS` defaults to `3`. Both
-  surface in the START log line.
-- Sidecar TIF preflight (`assertLiveCapabilities`) refuses to start
-  `--live` if the pmxt sidecar lacks GTC time-in-force.
-- `signatureType: 'gnosis-safe'` is the default in `getClient()` whenever
-  a proxy address is configured (modern Polymarket accounts).
+- **Order ID:** `0x274f73e1ec4ed3ad80ace7ac11c3c1e019edba7aab2df687616f6300e98ff38b`
+- **Market:** *2026 NBA Champion — Will the Oklahoma City Thunder win the 2026 NBA Finals?*
+- 5 shares @ $0.01 GTC, status `open`, then cancelled cleanly.
+- All gas paid by Polymarket's relayer.
 
-### What's known-broken or partial
+Branch: **`orch/281-20260503-polymarket-onboarding`** (PR **#282** open, label `plan:pr-review`, base `develop`).
 
-- **Auto-discovery of proxy address is broken at the API end.**
-  pmxt-core 2.22.1 calls `https://data-api.polymarket.com/profiles/<EOA>`
-  which now returns 404. Polymarket changed the surface; pmxt-core
-  hasn't caught up. Manual proxy entry is the only working path right
-  now. Reference: `node_modules/.pnpm/pmxt-core@2.22.1.../dist/exchanges/polymarket/auth.js:90` (`discoverProxy()`).
-- **`isAuthError()` filter is too narrow.** It matches `authentication |
-  unauthorized | credentials` but pmxtjs's `fetchOpenOrders` occasionally
-  rejects with `"response.data is not iterable"` (BadRequest wrapping a
-  malformed response). Our short-circuit covers the wallet-NOT-set case;
-  the wallet-IS-set case can still SCAN_ERROR on transient sidecar
-  flakiness. Observed in last demo run on cycle 4 (cycles 3 and 5 were
-  fine — runner recovers, doesn't crash). Fix: broaden filter to also
-  catch `"is not iterable"`. ~5 min commit. Code at `canon/templates/live-positions.ts:34-46`.
-
-### What's pending (separate work, not blocking live)
-
-- `mint-01` and `mm-premium` — live executor wired, cycle loop pending
-  (~2-3h each). Not on demo path.
-- `IA-03 fair-value` — extension scaffold only; ships with neutral model
-  (no signals fire). Not on demo path.
-- Stale-token integration test (`canon/templates/__tests__/integration.test.ts:83`) — skipped, refresh fixture eventually.
+PR #282 stacks on top of `feat/trade-02-live-execution` (commits a42eb8a4 → 51fd08e4 — initial proxy/sidecar/pmxt-core fixes + the orch's onboarding plan + today's live-run fixes).
 
 ---
 
-## What you need from the user before live
+## The flow that worked (production non-coder, gasless)
 
-1. **`WALLET_PROXY_ADDRESS`** — gnosis-safe proxy address for the funded
-   wallet. **You must ask the user to grab this manually**: hover their
-   profile in the top-right of polymarket.com (post-migration), copy the
-   `0x...` address. pmxt-core's auto-discovery will not work; do not waste
-   cycles trying to derive it from on-chain factories or the data-api.
-   Document this clearly when you ask.
-2. **Confirmation that the wallet was migrated.** The user did the
-   ~7-signature Polymarket migration recently; their EOA
-   (`0x7b2d23fd477bbC52D98620cD36e2EAa470e0fC8C`) now has a deployed
-   gnosis-safe proxy holding USDC.e. If they're unsure, the profile URL
-   loading with positions/history confirms it.
+1. Generate fresh EOA (any way — `ethers.Wallet.createRandom()` or canon's wallet store).
+2. **Programmatically** create builder credentials:
+   ```ts
+   const tempClient = new ClobClient({ host, chain:137, signer:wallet, signatureType:2, funderAddress:safeAddress });
+   const tradingCreds = await tempClient.createOrDeriveApiKey();
+   const client = new ClobClient({ ...tempClient, creds: tradingCreds });
+   const builderCreds = await client.createBuilderApiKey();   // {key, secret, passphrase}
+   ```
+   No UI. `polymarket.com/settings?tab=builder` is the fallback if this ever breaks.
+3. User sends **native USDC on Polygon** to the **EOA** (any small amount).
+4. EOA signs an EIP-2612 permit off-chain (no gas, no chain interaction).
+5. Single batched Safe tx via the gasless relayer:
+   - `relay.deploy()` (if Safe not yet deployed)
+   - `permit()` → `transferFrom(EOA → Safe)` → `USDC.approve(SwapRouter)` → `SwapRouter.exactInputSingle(USDC → USDC.e)` → `USDC.e.approve(Onramp)` → `Onramp.wrap(USDC.e, Safe, amount)`
+6. Approvals batch (V1 + V2 spenders, ERC-20 + ERC-1155).
+7. Trading creds derived → ClobClient → orders sign with `signatureType=2 (POLY_GNOSIS_SAFE)`, `funderAddress=Safe`.
+8. Order accepted by matcher.
 
----
-
-## What the prior POC did (and what we need to replicate)
-
-The user's prior POC dirs from April 17–21:
-
-- `~/demo-strategy/` (Apr 9)
-- `~/nba-strategy/` (Mar 30)
-- `~/dega/test-arb-bu/` (Apr 21)
-
-Those POCs successfully:
-- Generated a wallet
-- Funded it (user-driven, on-chain)
-- Did USDC.e approvals to the CTFExchange
-- Submitted real CLOB orders via pmxtjs
-- Saw fills on Polymarket
-
-What we don't know about the POCs (worth checking the dirs):
-- Whether they had `WALLET_PROXY_ADDRESS` set in env at the time. If yes,
-  the user must have grabbed it manually (matching today's path).
-- pmxtjs version they used (`~/demo-strategy/node_modules/.pnpm/pmxtjs@1.1.2`
-  is the older 1.x line — the auth flow may have differed). Worth
-  diffing 1.1.2 vs 2.22.1 to see if 1.x had a working auto-discovery.
-- Whether the approvals happened via the strategy code or via a separate
-  helper script.
-
-**Don't try to "find" the proxy on-chain** unless the user says they
-can't grab it from the profile page. We already tried etherscan, drpc,
-data-api — all paths blocked or broken. The profile hover is the cheap
-deterministic answer.
+EOA never paid gas. User sent only USDC. Everything else is agent-driven.
 
 ---
 
-## Sequence to follow
+## What landed in code today (PR #282 contains all of this)
 
-### 0. Pre-flight (no code changes yet)
+### Existing onboarding adapter (orch's work, item 1–8)
+- `canon/templates/types/OnboardClient.ts` — venue-agnostic interface (`status`, `ensureFunder`, `ensureApprovals`, `ensureCreds`).
+- `canon/templates/types/MarketVenueOnboard.ts` — registry hook for future venues.
+- `canon/templates/polymarket-onboard.ts` — Polymarket adapter wrapping `@polymarket/builder-relayer-client` + `@polymarket/clob-client-v2`.
+- `canon/cli/commands/onboard.ts` — `canon-cli onboard --status|--execute --venue polymarket`.
+- `canon/templates/__tests__/onboarding.test.ts` + `onboarding-adapter.test.ts` — 30 tests, all passing.
+- `canon/templates/__tests__/smoke-onboarding.ts` — `RUN_LIVE=1` smoke harness.
 
-- Confirm latest fixes are on `main` (PR #280 merged).
-- Confirm user's environment is current: `/core-update` (or fresh
-  agentic install from
-  `https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/INSTALL.md`).
-- Confirm pmxt sidecar is running and advertises TIF: `curl
-  -X POST -H "x-pmxt-access-token: $(jq -r .accessToken ~/.pmxt/server.lock)"
-  -H 'Content-Type: application/json' -d '{"args":[]}' http://localhost:$(jq
-  -r .port ~/.pmxt/server.lock)/api/polymarket/getCapabilities`. Expect
-  `"supportsTif":true`.
+### Live-run fixes I added today (commit `51fd08e4`)
+- `canon/templates/clob-axios-defaults.ts` — side-effect import that overrides axios's User-Agent to a browser string. Without this, Cloudflare 403s every cold SDK call. Imported from `client-polymarket.ts` and `polymarket-onboard.ts`.
+- `canon/templates/client-polymarket.ts` — replaced three hardcoded `{signatureType:"eoa"}` sites with `tradingCredentials(privateKey)` which reads `WALLET_PROXY_ADDRESS` + `POLYMARKET_SIGNATURE_TYPE` and forwards `funderAddress` to the sidecar. Without this, orders were being signed with funder=EOA, matcher rejected with `balance: 0`.
+- `canon/templates/sidecar.ts` — widened `callSidecar`'s `credentials` type to include `funderAddress`.
+- `canon/templates/polymarket-onboard.ts` — provider gets explicit `{name, chainId}` (skip auto-detect 401), wallet attached to provider at construction, `BuilderConfig` cast at the `RelayClient` boundary (pnpm hoisting).
+- `package.json` — `axios` is now a direct dep.
 
-### 1. Broaden the reconcile filter (recommended pre-live)
-
-```ts
-// canon/templates/live-positions.ts:34-46 — isAuthError()
-const msg = err.message.toLowerCase();
-return (
-  msg.includes("authentication") ||
-  msg.includes("unauthorized") ||
-  msg.includes("credentials") ||
-  msg.includes("is not iterable")  // ADD THIS
-);
-```
-
-Add a unit test in `canon/templates/__tests__/live-positions.test.ts`
-mirroring the existing auth-error test but with the new phrase. Commit
-to develop, sync to main.
-
-### 2. Make a fresh project
-
-```bash
-mkdir ~/dega/demo-live-final && cd ~/dega/demo-live-final
-canon
-```
-
-Inside the TUI: `/canon-start` → pick `trade-momentum`.
-
-### 3. Set live env in the project's `.env`
-
-Ask the user for `WALLET_PROXY_ADDRESS`. Then write:
-
-```
-WALLET_PRIVATE_KEY=0x89be47f5fe5e33921a0328de26b0517917246c2426da56623ea99942c84b7744
-WALLET_PROXY_ADDRESS=<from user>
-# POLYGON_RPC_URL=https://polygon.drpc.org   # default OK; uncomment + override only if drpc flakes
-```
-
-(Wallet PK is the user's funded one. Address: `0x7b2d23fd477bbC52D98620cD36e2EAa470e0fC8C`.)
-
-`canon-runner.sh:72-77` sources `.env` automatically — strategy inherits
-both vars.
-
-### 4. Smoke `fetchBalance` before --live
-
-Don't go straight to `--live`. Run a tiny script first to confirm auth:
-
-```bash
-cat > _smoke.mjs <<'EOF'
-import { fetchBalance } from "./client-polymarket.ts";
-console.log(await fetchBalance());
-EOF
-pnpm exec tsx _smoke.mjs
-trash _smoke.mjs
-```
-
-Expect: array with one entry showing `currency: "USDC"`, `available: <num>`.
-If that works, auth chain is healthy.
-
-If auth fails: verify `WALLET_PROXY_ADDRESS` is correct; check
-`POLYMARKET_SIGNATURE_TYPE` if non-default needed (defaults to
-`gnosis-safe` when proxy is set; `eoa` and `poly-proxy` are alternates).
-
-### 5. Live run
-
-In the TUI session: *"run it live"*. The agent runs `pnpm exec tsx
-src/main.ts --live`. Expected START line:
-
-```
-START TRADE-02 scanner (live) query=NBA max_orders=3 poll=...ms
-```
-
-Cycles run; on signal, the executor submits a GTC limit buy on the YES
-token at the entry price. `MAX_ORDERS=3` caps the run; further signals
-log `MAX_ORDERS reached — skipping submit`.
-
-### 6. Verify a real order landed
-
-`fetchOpenOrders` from another shell, or check the wallet on
-polymarket.com under "open orders." If at least one shows up, success.
+### Doc
+- `canon/docs/polymarket-onboarding.md` — has a "Live verification findings" section with all the gotchas (Onramp `paused(USDC_NATIVE)=true`, V1+V2 spender split, geo-ban behavior, signer/provider requirements, pnpm-hoisting cast, end-to-end trace).
 
 ---
 
-## Reference paths
+## What's still required to merge PR #282 cleanly
 
-- Strategy templates: `canon/templates/strategies/`
-- Strategy index + status: `canon/templates/strategies/STRATEGY-INDEX.md`
-- Live executor + allowance: `canon/templates/live-executor.ts`,
-  `canon/templates/usdc-allowance.ts`
-- Polymarket client (read paths via callSidecar; auth path via SDK):
-  `canon/templates/client-polymarket.ts`
-- Reconcile + short-circuit: `canon/templates/live-positions.ts`
-- Sidecar wire: `canon/templates/sidecar.ts`
-- canon-start recipe: `canon/commands/canon-start.md` (also at
-  `commands/canon-start.md` for global install)
-- Scaffold script: `scripts/canon-scaffold.sh` (fetches from `develop`)
+These are the four things I ran by hand today that need to live in the adapter so the next user does `canon-cli onboard --execute` and is done:
 
-## Reference commits
+1. **V2 spender approvals.** `polymarket-onboard.ts:ensureApprovals()` currently approves only V1 (`exchange`, `negRiskExchange`). `clob-client-v2.getContractConfig(137)` also returns `exchangeV2` and `negRiskExchangeV2` — V2 orders fail without their approvals (verified live: NegRisk markets route through `0xe2222…0F59` which needs pUSD allowance from the Safe). Extend the spender list. **~10 LOC.**
+2. **`ensureFunded()` step** — implement the permit-based meta-transfer + Uniswap swap + Onramp wrap as a method on the adapter. This is the chain I ran from `_full_permit_chain.mjs`. Eliminates the EOA POL requirement entirely. **~80 LOC + tests.**
+3. **Auto-create builder creds.** First `--execute` should call `createBuilderApiKey()` if env is missing, persist to `.env`/wallet store. **~20 LOC.**
+4. **Persist `WALLET_PROXY_ADDRESS`** to env or canon's wallet store after derivation, so canon's `client-polymarket.ts` picks up the funder without manual config. **~10 LOC.**
 
-- `f24d3140` — canon-start sed-rewrite for src/main.ts imports
-- `41ecc409` — live-positions short-circuit when no wallet env
-- `3670e16b` — skip stale integration test
-- `c6305531` — `commands/canon-start.md` global install
-- `6d8fb013` — original 4-strategy live wiring (PR #277)
+Plus the propagation work the user originally asked about:
+
+5. **Template-wide rollout.** Only `trade-momentum/entry.ts` consults `polymarketOnboard`. Five sibling strategies still have copy-pasted `assertLiveCapabilities()`. Right shape: extract `canon/templates/live-preflight.ts` exporting `assertReadyForLive()` (TIF check + onboarding gate), reduce each strategy's `assertLiveCapabilities` to a one-line delegation. **6 small items: 1 helper + 5 strategy patches + 1 shared test.**
+
+---
+
+## Verified contract addresses (Polygon, chain 137)
+
+Looked up at runtime via `getContractConfig(137)` — DON'T hard-code these in production paths.
+
+| Contract | Address |
+|---|---|
+| pUSD (collateral) | `0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB` |
+| Collateral Onramp | `0x93070a847efEf7F70739046A929D47a521F5B8ee` |
+| CTF Exchange (V1) | `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E` |
+| NegRisk Exchange (V1) | `0xC5d563A36AE78145C45a50134d48A1215220f80a` |
+| **CTF Exchange V2** | `0xE111180000d2663C0091e4f400237545B87B996B` |
+| **NegRisk Exchange V2** | `0xe2222d279d744050d28e00520010520000310F59` |
+| NegRisk Adapter | `0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296` |
+| Conditional Tokens | `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045` |
+| SafeFactory | `0xaacFeEa03eb1561C4e67d661e40682Bd20E3541b` |
+| SafeMultisend | `0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761` |
+| USDC.e | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| Native USDC (Circle) | `0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359` |
+| Uniswap V3 SwapRouter | `0xE592427A0AEce92De3Edee1F18E0157C05861564` |
+| Uniswap V3 QuoterV2 | `0x61fFE014bA17989E743c5F6cB21bF9697530B21e` |
+| Polymarket Relayer (prod) | `https://relayer-v2.polymarket.com` |
+
+---
+
+## Gotchas that bit me — don't re-discover
+
+- **Onramp rejects native USDC** (`paused(USDC_NATIVE)=true`). Only `USDC.e` is unpaused. Always swap native USDC → USDC.e via Uniswap before wrapping.
+- **Cloudflare 403s SDK calls** by default User-Agent. Override before any SDK loads. (Fixed in `clob-axios-defaults.ts`.)
+- **Relayer requires builder creds** for any mutative Safe call (deploy, approvals, wrap). Read-only stuff works without. Builder creds are programmatic via `createBuilderApiKey()`.
+- **Relayer is gasless ONLY for Safe-initiated txs.** EOA-initiated txs still need gas. That's why we use permit + transferFrom inside a Safe batch.
+- **Order signer = always the EOA.** "Funder" can be EOA (sigtype 0) or Safe (sigtype 2). The CLOB matcher checks balance/allowance at the funder address.
+- **Geo-banned EOAs are flagged at the matcher**, not at signup. `getClosedOnlyMode()` returns `closed_only:false` even for hard-banned addresses; the actual rejection comes from `postOrder` with `{"error":"'<addr>' address banned"}`. Surface this as its own status flag.
+- **Honduras isn't on the blocklist** (US, UK, France, Belgium, Singapore, Taiwan, Thailand, Australia, Poland, Ontario + OFAC: Cuba, Iran, NK, Syria, Crimea/Donetsk/Luhansk, Venezuela are).
+- **Old wallet `0x7b2d23fd…fC8C` is banned.** PK `0x89be…744`. Don't use it.
+- **`canon/templates/.env` is gitignored.** Currently holds the fresh test wallet PK + builder creds. Sweep + abandon when you're done testing or rotate via `client.revokeBuilderApiKey()`.
+
+---
+
+## Test wallet currently used
+
+(In `canon/templates/.env`, gitignored — do NOT commit.)
+
+- EOA: `0x99Cb243C0d1803e76eD0567bB363DEBB5b24BfEf`
+- Safe: `0x18eB5185aCb92EA493E5F73FFc08E574F744Eec7` (deployed)
+- Currently holds 9.83 pUSD on the Safe; 0 elsewhere.
+- Builder creds active: `019df002-3fb1-78ee-8018-447d9b49d232`.
+
+If continuing tests, just re-use this wallet — Safe is deployed, V1 + V2 approvals are set, builder creds work. Reset by sweeping the pUSD or generating a new wallet.
+
+---
+
+## How to resume in a fresh session
+
+1. `git checkout orch/281-20260503-polymarket-onboarding && git pull`.
+2. `cd canon/templates && pnpm install --ignore-scripts`.
+3. Confirm `.env` exists (or recreate from this doc's "Test wallet" section).
+4. Sanity test: `pnpm exec vitest run` (580 passing, 11 skipped).
+5. Pick from the "What's still required to merge PR #282 cleanly" list. Recommended order: (1) V2 spenders → (2) `ensureFunded()` permit → (3) auto-builder-creds → (4) persist proxy → then (5) template-wide rollout in a separate PR.
+6. To re-run the live smoke: `set -a; source canon/templates/.env; set +a; RUN_LIVE=1 pnpm --filter canon-templates exec tsx __tests__/smoke-onboarding.ts`.
 
 ---
 
 ## Don'ts
 
-- Don't try to derive the proxy address programmatically. We tried
-  etherscan, drpc, data-api, factory address lookups — none worked
-  end-to-end. Hand-off the profile-hover step to the user. 30 seconds
-  vs. 30 minutes of failed exploration.
-- Don't downgrade pmxtjs to 1.x to chase whatever the POC used. The 2.x
-  signatureType + manual proxy approach lands; 1.x carries different
-  risks.
-- Don't run `--live` without a successful `fetchBalance` smoke. If auth
-  is broken you'll burn time debugging mid-flight while orders haven't
-  fired.
-- Don't enable the canon-cli auto-generated burner wallet for live
-  (`canon-cli wallet ensure`). It creates a fresh unfunded EOA at
-  `.canon/wallet.env`. Use the funded wallet from the user's existing
-  `.env` only.
+- Don't hardcode contract addresses anywhere mutable. Always read from `getContractConfig(chainId)`.
+- Don't downgrade pmxt-core below 2.37.4 — we depend on `clob-client-v2` for V2 order signing.
+- Don't approve only V1 spenders — V2 markets fail silently without V2 approvals.
+- Don't rely on the Polymarket data-api `/profiles/<eoa>` endpoint (404). The Safe address is derived deterministically via `deriveSafe(eoa, factory)` — that's the canonical answer.
+- Don't ask the user for pUSD or USDC.e directly. Ask for native USDC and have canon do the conversion.
+- Don't forget the User-Agent override before any SDK loads.
 
-## Open questions worth asking the user up front
+---
 
-1. **Proxy address?** Hover polymarket.com profile, paste it.
-2. **Wallet still funded?** Confirm USDC.e balance >$0 on the proxy.
-   They can check at polymarket.com or via the smoke `fetchBalance`.
-3. **Order size budget?** The default `bankroll: 10_000` × `maxExposure:
-   0.10` = $1k per signal. With `MAX_ORDERS=3` that's up to $3k of
-   working capital. Tunable via the strategy config or env override —
-   confirm what they want.
+## Open questions
 
-## When live works
-
-Mark MINT-01 + MM-PREMIUM cycle loops as the next priority — they're
-the closest to landing as turnkey strategies (#5 and #6 of the index).
-~2–3h each, mirror `mint-01/cycle.ts` pattern.
+- Should `canon-cli onboard --execute` accept `--asset` (any of `USDC|USDC.e|USDT|POL|pUSD`) and route accordingly, or always assume native USDC? (Today, only native USDC has been verified live.)
+- Should we file an upstream issue with Polymarket about the Cloudflare bot-challenge SDK conflict? Their fix would be one of: whitelist `@polymarket/*` UAs, or update the SDK's default UA.
+- pUSD migration: legacy USDC.e on Safes from the old POC era still exists. Should `ensureFunder()` detect leftover USDC.e and wrap it on first run?
