@@ -16,11 +16,15 @@ import {
   deriveSafe,
 } from "@polymarket/builder-relayer-client";
 import type { Transaction } from "@polymarket/builder-relayer-client";
-// `getContractConfig` lives at @polymarket/builder-relayer-client/dist/config
-// and is not re-exported from the package root in 0.0.9. Pull it via the
-// namespace and cast — vitest's `vi.mock("@polymarket/builder-relayer-client")`
-// still replaces the whole module at runtime.
+// `getContractConfig` lives at `@polymarket/builder-relayer-client/dist/config`
+// and the package's `index.d.ts` re-exports it so namespace access typechecks,
+// but `dist/index.js` does NOT — so at runtime the symbol is `undefined`. We
+// keep the namespace import so vitest's
+// `vi.mock("@polymarket/builder-relayer-client")` continues to drive
+// `getContractConfig` in tests, and add a static subpath import as the
+// runtime fallback used only when the namespace shape is missing it.
 import * as builderRelayer from "@polymarket/builder-relayer-client";
+import { getContractConfig as relayerSubpathGetContractConfig } from "@polymarket/builder-relayer-client/dist/config/index.js";
 import {
   ClobClient,
   getContractConfig as getClobContractConfig,
@@ -144,14 +148,25 @@ interface RelayConfigShape {
 }
 
 function loadSafeFactory(): string {
-  const fn = (
+  const namespaceFn = (
     builderRelayer as unknown as {
       getContractConfig?: (chainId: number) => RelayConfigShape;
     }
   ).getContractConfig;
-  if (typeof fn !== "function") {
+  // Prefer the namespace export so vi.mock can override it in tests; fall
+  // back to the subpath import so live runs work against the unmodified
+  // `0.0.9` package whose root entry never re-exports `getContractConfig`.
+  const fn: ((chainId: number) => RelayConfigShape) | undefined =
+    typeof namespaceFn === "function"
+      ? namespaceFn
+      : typeof relayerSubpathGetContractConfig === "function"
+        ? (relayerSubpathGetContractConfig as unknown as (
+            chainId: number,
+          ) => RelayConfigShape)
+        : undefined;
+  if (!fn) {
     throw new Error(
-      "polymarket-onboard: @polymarket/builder-relayer-client does not export getContractConfig from the package root — refusing to derive Safe address with no config source.",
+      "polymarket-onboard: @polymarket/builder-relayer-client does not export getContractConfig from the package root or the dist/config subpath — refusing to derive Safe address with no config source.",
     );
   }
   const cfg = fn(POLYGON_CHAIN_ID);
