@@ -24,6 +24,43 @@ are agent-driven.
 
 ---
 
+## Implementation in canon
+
+This flow is implemented as the venue-agnostic `OnboardClient` interface plus
+a single Polymarket adapter:
+
+| Layer | Path |
+|---|---|
+| Interface | [`canon/templates/types/OnboardClient.ts`](../templates/types/OnboardClient.ts) |
+| Registry hook | [`canon/templates/types/MarketVenueOnboard.ts`](../templates/types/MarketVenueOnboard.ts) |
+| Adapter (this flow) | [`canon/templates/polymarket-onboard.ts`](../templates/polymarket-onboard.ts) |
+| CLI driver | [`canon/cli/commands/onboard.ts`](../cli/commands/onboard.ts) |
+| Adapter unit tests | [`canon/templates/__tests__/onboarding.test.ts`](../templates/__tests__/onboarding.test.ts) |
+| Cross-adapter contract test | [`canon/templates/__tests__/onboarding-adapter.test.ts`](../templates/__tests__/onboarding-adapter.test.ts) |
+| Live smoke (`RUN_LIVE=1`) | [`canon/templates/__tests__/smoke-onboarding.ts`](../templates/__tests__/smoke-onboarding.ts) |
+
+Operator entry points:
+
+- `canon-cli onboard --status --venue polymarket` — read-only JSON dump of
+  `funderDeployed` / `approvalsReady` / `credsReady` / `fundedCollateral` /
+  `funderAddress`.
+- `canon-cli onboard --execute --venue polymarket` — drives
+  `ensureFunder → ensureApprovals → ensureCreds`. Idempotent; second run is a
+  near-no-op.
+
+Strategy `assertLiveCapabilities` (in
+`canon/templates/strategies/trade-momentum/entry.ts`) calls
+`polymarketOnboard.build(pk).status()` and throws an actionable message
+(e.g. "send collateral to <funderAddress>" / "run `canon-cli onboard
+--execute`") when any flag is false — replacing the previous
+`ensurePolymarketProxy` HTML-scrape.
+
+Adding another venue (Kalshi, etc.) means writing one adapter against the
+same `MarketVenueOnboard` contract. The CLI driver and the contract test
+suite stay unchanged.
+
+---
+
 ## Concepts
 
 | Term | Meaning |
