@@ -11,6 +11,9 @@ importers:
       '@polymarket/builder-relayer-client':
         specifier: 0.0.9
         version: 0.0.9(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      '@polymarket/builder-signing-sdk':
+        specifier: 0.0.8
+        version: 0.0.8
       '@polymarket/clob-client-v2':
         specifier: ^1.0.0
         version: 1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@6.0.6)
