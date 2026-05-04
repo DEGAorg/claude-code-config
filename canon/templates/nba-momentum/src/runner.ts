@@ -9,8 +9,8 @@
  *
  * Stdout protocol — each line is tagged for dashboard parsing:
  *   START <message>       Runner started
- *   SCAN <message>        Cycle started, fetching data
- *   NO_EDGE <message>     Scan cycle complete, no opportunities
+ *   SCAN <message>        Iteration started, fetching data
+ *   NO_EDGE <message>     Scan iteration complete, no opportunities
  *   SIGNAL <message>      Mispricing detected (dry-run skip)
  *   SCAN_ERROR <message>  Scan cycle failed
  *   STOP <message>        Runner shutting down
@@ -203,7 +203,7 @@ async function runCycle(config: StrategyConfig): Promise<void> {
   cycleCount++;
   const ts = new Date().toISOString();
 
-  out("SCAN", `Cycle ${cycleCount} — fetching NBA futures...`);
+  out("SCAN", `#${cycleCount} — fetching NBA futures...`);
 
   // 1. Fetch championship outright odds from sportsbooks
   const events = await fetchOdds("basketball_nba_championship_winner");
@@ -255,7 +255,7 @@ async function runCycle(config: StrategyConfig): Promise<void> {
   // 4. Heartbeat if no signals
   if (cycleSignals === 0) {
     const reasoning =
-      `Cycle ${cycleCount} — ${teamOdds.length} teams, ` +
+      `#${cycleCount} — ${teamOdds.length} teams, ` +
       `${markets.length} markets, ${matchedCount} matched, no edges`;
 
     const entry: HeartbeatLogEntry = {
@@ -301,7 +301,7 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => {
     out(
       "STOP",
-      `Shutting down — ${cycleCount} cycles, ` +
+      `Shutting down — ${cycleCount} iterations, ` +
         `${signalCount} signals, ${errorCount} errors`,
     );
     running = false;
@@ -322,7 +322,7 @@ async function main(): Promise<void> {
         reasoning: message,
       };
       appendLog(errorEntry);
-      out("SCAN_ERROR", `Cycle ${cycleCount} — ${message}`);
+      out("SCAN_ERROR", `#${cycleCount} — ${message}`);
     }
 
     if (running) {
@@ -332,7 +332,7 @@ async function main(): Promise<void> {
 
   out(
     "STOP",
-    `Runner stopped — ${cycleCount} cycles, ` +
+    `Runner stopped — ${cycleCount} iterations, ` +
       `${signalCount} signals, ${errorCount} errors`,
   );
 }
