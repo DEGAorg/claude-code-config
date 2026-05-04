@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-05-04
+
+First formal versioned release. Captures the install-procedure restoration,
+template-side wallet-store relocation, and the install/runtime correctness
+fixes shipped tonight (#284–#287), on top of every prior `[Unreleased]`
+entry below.
+
+### Added
+- canon-cli onboard chain — Polymarket gasless deploy + V1+V2 approvals + EIP-2612 permit + Uniswap swap + Onramp wrap (`20260503-polymarket-onboarding`) — 2026-05-03
+- `/canon-start --live` transition flow — deposit → onboard → live runner; idempotent (`20260503-polymarket-onboarding`) — 2026-05-03
+- `scripts/canon-live-readiness.sh` — Phase 8 spine for the live transition (`20260503-polymarket-onboarding`) — 2026-05-03
+- Templates-side `FileWalletStore` in `canon/templates/wallet-store.ts` (#282) — 2026-05-04
+- Orchestrator status watchdog — engine EXIT/INT/TERM trap, `orch_state_reap_stale` heartbeat reaper, per-item stale detection (#282) — 2026-05-03
+- canon-start Step 0 pre-flight — unconditional `canon-ctl screen.show_state` action before phase logic (#282) — 2026-05-04
+
+### Changed
+- Restore `commands/apply-core.md` to the full 819-line agentic install procedure (was reduced to a 25-line circular pointer in #229) (#284) — 2026-05-04
+- canon-cli launcher → shell wrapper invoking local `tsx` instead of direct `.ts` symlink (#287) — 2026-05-04
+- Strategy entry.ts files use static `import { FileWalletStore }` instead of dynamic cross-package import (#282) — 2026-05-04
+- Runner log strings drop the literal "Cycle" word — `SCAN #N` instead of `SCAN Cycle N` (#285) — 2026-05-04
+
+### Fixed
+- `@polymarket/builder-signing-sdk` declared as a direct dep in `canon/templates/package.json` (was only present transitively, broke fresh-scaffold runtime imports) (#286) — 2026-05-04
+- `~/.degacore/canon-cli/node_modules/canon-templates` retargeted post-install to `~/.degacore/canon/templates/` (the `file:../templates` resolution mismatch between source and install layout) (#287) — 2026-05-04
+- Manifest gaps in `commands/apply-core.md` for the 12 days of files added since the deprecation: `commands/canon-start.md`, `commands/core-update.md`, `scripts/canon-live-readiness.sh`, `canon/cli/env.ts`, `canon/cli/commands/index.ts` (#284) — 2026-05-04
+
 ### Added
 - Make orch detached-by-default; add `--attach` (`20260427-orch-detach-default`) — 2026-04-28
 
