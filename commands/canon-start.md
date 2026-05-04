@@ -18,6 +18,21 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
+## 0. Pre-flight — open the State panel
+
+**ALWAYS run this bash block first**, before any phase detection, before
+the live-mode short-circuit, before anything else. It opens the TUI's
+State panel so the user can watch `.canon/state.json` updates land while
+phases run. Silent no-op if `canon-ctl` is not on PATH. This step is
+unconditional — it runs on every invocation, including `--live` reruns
+that jump straight to Phase 8.
+
+```bash
+command -v canon-ctl >/dev/null && canon-ctl action "screen.show_state" || true
+```
+
+---
+
 ## 1. Initialize
 
 **State write convention:** Every `terminal-ui-write.sh` call in steps 2–7 is guarded.
