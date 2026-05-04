@@ -43,6 +43,28 @@ vi.mock("../../../client-polymarket.js", () => ({
   getCapabilities: mockGetCapabilities,
 }));
 
+const mockOnboardStatus = vi.fn(async () => ({
+  funderDeployed: true,
+  approvalsReady: true,
+  credsReady: true,
+  fundedCollateral: 100,
+  funderAddress: "0xFunder000000000000000000000000000000000F",
+}));
+
+vi.mock("../../../polymarket-onboard.js", () => ({
+  polymarketOnboard: {
+    venue: "polymarket",
+    chainId: 137,
+    build: () => ({
+      status: mockOnboardStatus,
+      ensureFunder: vi.fn(),
+      ensureApprovals: vi.fn(),
+      ensureCreds: vi.fn(),
+      ensureFunded: vi.fn(),
+    }),
+  },
+}));
+
 interface FakeAllowanceClient {
   getAllowance: (() => Promise<bigint>) & ReturnType<typeof vi.fn>;
   approve: ((amount: bigint) => Promise<{ txHash: string }>) &

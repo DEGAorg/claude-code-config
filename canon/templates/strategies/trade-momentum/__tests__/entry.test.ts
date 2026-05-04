@@ -37,6 +37,51 @@ vi.mock("../../../client-polymarket.js", () => ({
   getCapabilities: mockGetCapabilities,
 }));
 
+interface OnboardStatusShape {
+  funderDeployed: boolean;
+  approvalsReady: boolean;
+  credsReady: boolean;
+  fundedCollateral: number;
+  funderAddress: string;
+}
+
+const HAPPY_ONBOARD_STATUS: OnboardStatusShape = {
+  funderDeployed: true,
+  approvalsReady: true,
+  credsReady: true,
+  fundedCollateral: 1234.56,
+  funderAddress: "0xFunder000000000000000000000000000000000F",
+};
+
+const mockOnboardStatus = vi.fn(async (): Promise<OnboardStatusShape> => HAPPY_ONBOARD_STATUS);
+const mockOnboardEnsureFunder = vi.fn(async () => ({ deployed: true }));
+const mockOnboardEnsureApprovals = vi.fn(async () => ({ approved: true }));
+const mockOnboardEnsureCreds = vi.fn(async () => ({
+  key: "k",
+  secret: "s",
+  passphrase: "p",
+}));
+const mockOnboardEnsureFunded = vi.fn(async () => ({
+  funded: true,
+  amount: 0n,
+  expectedOut: 0n,
+}));
+const mockOnboardBuild = vi.fn(() => ({
+  status: mockOnboardStatus,
+  ensureFunder: mockOnboardEnsureFunder,
+  ensureApprovals: mockOnboardEnsureApprovals,
+  ensureCreds: mockOnboardEnsureCreds,
+  ensureFunded: mockOnboardEnsureFunded,
+}));
+
+vi.mock("../../../polymarket-onboard.js", () => ({
+  polymarketOnboard: {
+    venue: "polymarket",
+    chainId: 137,
+    build: mockOnboardBuild,
+  },
+}));
+
 interface FakeAllowanceClient {
   getAllowance: (() => Promise<bigint>) & ReturnType<typeof vi.fn>;
   approve: ((amount: bigint) => Promise<{ txHash: string }>) &
@@ -69,6 +114,14 @@ beforeEach(async () => {
   vi.resetModules();
   process.env["WALLET_PRIVATE_KEY"] = "0x" + "a".repeat(64);
   mockGetCapabilities.mockImplementation(async () => ({ supportsTif: true }));
+  mockOnboardStatus.mockImplementation(async () => HAPPY_ONBOARD_STATUS);
+  mockOnboardBuild.mockImplementation(() => ({
+    status: mockOnboardStatus,
+    ensureFunder: mockOnboardEnsureFunder,
+    ensureApprovals: mockOnboardEnsureApprovals,
+    ensureCreds: mockOnboardEnsureCreds,
+    ensureFunded: mockOnboardEnsureFunded,
+  }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });
 
@@ -178,14 +231,82 @@ describe("createEntryDeps", () => {
 });
 
 describe("assertLiveCapabilities", () => {
-  it("resolves when the sidecar advertises TIF support", async () => {
+  it("resolves when the sidecar advertises TIF support and auth smoke succeeds", async () => {
     mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    mockFetchBalance.mockResolvedValueOnce([]);
     await expect(entry.assertLiveCapabilities()).resolves.toBeUndefined();
   });
 
   it("rejects when the sidecar does not advertise TIF support", async () => {
     mockGetCapabilities.mockResolvedValueOnce({ supportsTif: false });
     await expect(entry.assertLiveCapabilities()).rejects.toThrow(/GTC/);
+  });
+
+  it("rejects with a clear message when the auth smoke fails", async () => {
+    mockGetCapabilities.mockResolvedValueOnce({ supportsTif: true });
+    mockFetchBalance.mockRejectedValueOnce(
+      new Error("Derived credentials are incomplete"),
+    );
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /auth smoke failed/,
+    );
+  });
+
+  it("calls polymarketOnboard.build(pk).status() with the wallet PK", async () => {
+    await entry.assertLiveCapabilities();
+    expect(mockOnboardBuild).toHaveBeenCalledTimes(1);
+    expect(mockOnboardBuild).toHaveBeenCalledWith(
+      "0x" + "a".repeat(64),
+    );
+    expect(mockOnboardStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects with `canon-cli onboard --execute` when funder is not deployed", async () => {
+    mockOnboardStatus.mockResolvedValueOnce({
+      ...HAPPY_ONBOARD_STATUS,
+      funderDeployed: false,
+      fundedCollateral: 0,
+    });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /funder Safe is not deployed.*canon-cli onboard --execute/s,
+    );
+  });
+
+  it("rejects with a 'send native USDC' message when the funder is empty", async () => {
+    mockOnboardStatus.mockResolvedValueOnce({
+      ...HAPPY_ONBOARD_STATUS,
+      fundedCollateral: 0,
+    });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /holds no collateral.*send native USDC/i,
+    );
+  });
+
+  it("rejects with `canon-cli onboard --execute` when approvals are missing", async () => {
+    mockOnboardStatus.mockResolvedValueOnce({
+      ...HAPPY_ONBOARD_STATUS,
+      approvalsReady: false,
+    });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /CLOB spender approvals.*canon-cli onboard --execute/s,
+    );
+  });
+
+  it("rejects with `canon-cli onboard --execute` when CLOB creds are not derivable", async () => {
+    mockOnboardStatus.mockResolvedValueOnce({
+      ...HAPPY_ONBOARD_STATUS,
+      credsReady: false,
+    });
+    await expect(entry.assertLiveCapabilities()).rejects.toThrow(
+      /CLOB API credentials.*canon-cli onboard --execute/s,
+    );
+  });
+
+  it("does not call onboard.status() when WALLET_PRIVATE_KEY is unset", async () => {
+    delete process.env["WALLET_PRIVATE_KEY"];
+    await entry.assertLiveCapabilities();
+    expect(mockOnboardBuild).not.toHaveBeenCalled();
+    expect(mockOnboardStatus).not.toHaveBeenCalled();
   });
 });
 

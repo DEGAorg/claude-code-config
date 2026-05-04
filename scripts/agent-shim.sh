@@ -104,7 +104,7 @@ dega_agent_headless_flags() {
   local provider
   provider="$(dega_agent_type)"
   case "${provider}" in
-  claude) echo "--dangerously-skip-permissions" ;;
+  claude) echo "--dangerously-skip-permissions --verbose --output-format stream-json" ;;
   gemini) echo "--yolo" ;;
   codex) echo "--yolo" ;;
   *) echo "--headless" ;;

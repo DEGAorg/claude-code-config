@@ -25,10 +25,8 @@ import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
-import {
-  fetchBinaryMarketSnapshots,
-  getCapabilities,
-} from "../../client-polymarket.js";
+import { fetchBinaryMarketSnapshots } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -45,6 +43,7 @@ import type {
 } from "../../runner.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_MM_PREMIUM_CONFIG } from "./config.js";
@@ -164,18 +163,15 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. MINT-04 uses GTC limit orders for the premium sell
- * legs; degrading would convert resting quotes into aggressive takers.
+ * Delegates to the shared `assertReadyForLive` helper. MINT-04 uses GTC
+ * limit orders for the premium sell legs; degrading would convert
+ * resting quotes into aggressive takers.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "MINT-04 --live: pmxt sidecar does not advertise GTC time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "MINT-04",
+    requiredTif: "GTC",
+  });
 }
 
 /** Build a live USDC allowance client from an injected `WalletStore`. */
@@ -212,14 +208,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -230,7 +218,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
   const { scan, executor, positions } = createEntryDeps(

@@ -31,31 +31,19 @@ import {
   USDC_E_ADDRESS,
 } from "../../../polygon-addresses.js";
 import { createUsdcAllowanceClient } from "../../../usdc-allowance.js";
-import type { WalletStore } from "../../../wallet-store.js";
+import { FileWalletStore } from "../../../wallet-store.js";
 import { assertLiveCapabilities } from "../entry.js";
 
-interface FileWalletStoreCtor {
-  new (): WalletStore;
-}
-async function loadWalletStore(): Promise<WalletStore> {
-  // Bootstrap edge: path held in a runtime variable so the templates
-  // rootDir contract holds (TS won't statically pull canon/cli in).
-  const specifier = "../../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: FileWalletStoreCtor;
-  };
-  return new mod.FileWalletStore();
-}
-
 const LIVE_ENABLED = process.env["CANON_LIVE_TEST"] === "1";
-const HAS_WALLET = await (async () => {
-  if (!LIVE_ENABLED) return false;
-  try {
-    return (await loadWalletStore()).hasWallet();
-  } catch {
-    return false;
-  }
-})();
+const HAS_WALLET = LIVE_ENABLED
+  ? (() => {
+      try {
+        return new FileWalletStore().hasWallet();
+      } catch {
+        return false;
+      }
+    })()
+  : false;
 const RPC_URL =
   process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
 
@@ -79,7 +67,7 @@ describe.runIf(LIVE_ENABLED)("ARB-01 live smoke (CANON_LIVE_TEST=1)", () => {
     "Q-3 — USDC allowance adapter against a live RPC",
     () => {
       it("getAllowance() returns a non-negative bigint", async () => {
-        const wallet = await loadWalletStore();
+        const wallet = new FileWalletStore();
         const ownerAddress = await wallet.getAddress();
 
         const client = createUsdcAllowanceClient({

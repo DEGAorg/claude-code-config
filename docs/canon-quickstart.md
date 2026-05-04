@@ -48,7 +48,26 @@ on the right.
 2. **Strategy** — asks which strategy to use (template, market scan, or custom)
 3. **Build** — the Conductor drives agents to implement the strategy
 4. **Review** — automated code review, iterates until it ships
-5. **Run** — launches the strategy scanner in the background
+5. **Run** — launches the strategy scanner in the background as a **dry-run**.
+   No real orders are placed. Watch the dashboard to confirm signals fire.
+
+### Going live
+
+After `/canon-start` validates the strategy in dry-run, switch to live
+trading with:
+
+```
+/canon-start --live
+```
+
+This collects a native-USDC deposit at your EOA, runs the gasless
+onboarding chain (deploys the Polymarket Safe, sets V1+V2 approvals,
+provisions builder creds, swaps native USDC → USDC.e → pUSD), then
+launches the strategy with `--live`. The full flow is documented in
+[**Canon Live Trading**](canon-live-trading.md).
+
+`/canon-start --live` requires a prior `/canon-start` invocation —
+it's the *transition* path, not the initial build.
 
 ## What gets created
 

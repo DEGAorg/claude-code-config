@@ -55,10 +55,24 @@ echo ""
 
 state phase=init status=running log.info="Canon init starting for '${PROJECT_NAME}'"
 
-# ── Helper: fetch a file from GitHub ─────────────────────────────────────────
+# ── Helper: fetch a file (local-first, GitHub fallback) ─────────────────────
+# Local-first lookup keeps a dev/test install in sync with the working
+# tree it was symlinked from. The DEGA_CORE_HOME layout mirrors the
+# repo, so `${DEGA_CORE_HOME}/${src}` is the canonical local source for
+# any file scaffold normally pulls from `${BASE_URL}/${src}`. When that
+# path resolves (file or symlink), copy it; otherwise fall back to the
+# pinned BRANCH on GitHub. This is what makes Option B ("symlink the
+# install at ~/.degacore to a working tree") work end-to-end without
+# the scaffolded project getting a stale main fetch over the local
+# changes.
 fetch() {
   local src="$1" dst="$2"
   mkdir -p "$(dirname "${dst}")"
+  local local_src="${DEGA_CORE_HOME}/${src}"
+  if [[ -f "${local_src}" ]]; then
+    cp "${local_src}" "${dst}"
+    return 0
+  fi
   if ! curl -sfL "${BASE_URL}/${src}" -o "${dst}"; then
     echo "error: failed to fetch ${src}" >&2
     exit 1

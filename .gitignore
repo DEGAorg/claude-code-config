@@ -19,6 +19,9 @@ __pycache__/
 /hello-world.md
 /tests/scratch/
 
+# Top-level workspace node_modules (pnpm)
+/node_modules/
+
 # POC artifacts
 poc/*/node_modules/
 poc/*/dist/

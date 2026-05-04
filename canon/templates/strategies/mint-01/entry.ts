@@ -23,9 +23,7 @@
  */
 import { pathToFileURL } from "node:url";
 
-import {
-  getCapabilities,
-} from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -38,6 +36,7 @@ import {
 } from "../../polygon-addresses.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_MINT_01_CONFIG } from "./config.js";
@@ -211,17 +210,14 @@ export function createEntryDeps(
  * sidecar — but the same `supportsTif` check applies because the
  * executor forwards `timeInForce` regardless. A sidecar that drops `tif`
  * would silently default to whatever the exchange default is, breaking
- * the per-leg semantics this strategy depends on. Refuse to run unless
- * the sidecar advertises `tif` support.
+ * the per-leg semantics this strategy depends on.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "MINT-01 --live: pmxt sidecar does not advertise time-in-force " +
-        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "MINT-01",
+    requiredTif: "GTC",
+    tifReason: "See docs/reviews/261-open-questions.md (Q-5).",
+  });
 }
 
 /**
@@ -265,21 +261,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-/**
- * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
- *
- * Held in a runtime variable so TypeScript does not pull `canon/cli`
- * into the templates `rootDir`. Only this call site reaches across
- * package boundaries, and only at runtime when `--live` is set.
- */
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
 
@@ -289,7 +270,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined
       ? await buildLiveAllowanceClient(wallet)

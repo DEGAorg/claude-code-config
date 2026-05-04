@@ -40,6 +40,7 @@ The orchestrator, planner, and all hooks run identically under any supported age
 - [Web Browsing](#web-browsing)
 - [Fast Mode](#fast-mode)
 - [Commands](#commands)
+- [Canon: Prediction Market Trading](#canon-prediction-market-trading)
 - [Orchestrator](#orchestrator)
 - [Writing Skills and Agents](#writing-skills-and-agents)
 - [Recommended Skills](#recommended-skills)
@@ -528,6 +529,37 @@ The `/apply-core` command installs all commands to `~/.degacore/config/commands/
 [`commands/fix-issue.md`](commands/fix-issue.md) -- Takes a GitHub issue and fully autonomously completes it -- plans, implements, tests, creates a PR, self-reviews with parallel agents, fixes its own findings, and comments on the issue when done. Invoke with `/fix-issue 123` where `123` is the issue number.
 
 Once a workflow is a command, it's not just faster for you -- it's something an agent can run too. You can point `/fix-issue` at 50 issues in parallel across worktrees, run `/review-pr` on every open PR in a repo, or schedule either as part of CI. Commands turn manual workflows into scalable operations.
+
+## Canon: Prediction Market Trading
+
+[Canon](docs/canon-quickstart.md) is the layer that turns DEGA Core into a
+prediction-market trading harness. It ships a TypeScript runner, a venue
+adapter for Polymarket (with Kalshi planned), six pre-built strategies
+(`trade-momentum`, `arb-binary`, `arb-negrisk-buy`, `fair-value`,
+`mint-01`, `mm-premium`), and a single slash command — `/canon-start` —
+that drives a fresh project from empty directory to validated dry-run.
+
+### Going live
+
+After `/canon-start` validates the strategy, switch to live trading with:
+
+```
+/canon-start --live
+```
+
+This collects a native-USDC deposit at your EOA, deploys the Polymarket
+Safe, sets V1+V2 spender approvals, provisions builder credentials,
+swaps native USDC → USDC.e → pUSD via a single batched relayer-paid
+Safe transaction, and launches the strategy with `--live`. The user
+only sends native USDC; Canon does the chain conversion. The EOA never
+needs POL for gas. See [**Canon Live Trading**](docs/canon-live-trading.md)
+for the full flow, state machine, and failure modes.
+
+The two-step model (build first, fund + go live second) is intentional:
+dry-run is the validation gate, live is opt-in via the explicit flag.
+The transition itself is agentic — `/canon-start --live` polls for the
+deposit, runs onboarding, and stops the dry-run runner before launching
+its live counterpart.
 
 ## Orchestrator
 
