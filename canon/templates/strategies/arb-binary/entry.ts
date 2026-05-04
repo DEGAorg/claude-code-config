@@ -15,6 +15,10 @@
 
 import { pathToFileURL } from "node:url";
 
+import {
+  formatBankrollBanner,
+  resolveBankroll,
+} from "../../bankroll.js";
 import { appendEntry } from "../../execution-log.js";
 import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
@@ -62,6 +66,12 @@ const FALLBACK_PRICE = 0.5;
 export interface EntryFlags {
   /** When true, the runner logs signals but does not submit orders. */
   dryRun: boolean;
+  /**
+   * Optional `--bankroll <amount>` override. Persisted to
+   * `.canon/bankroll.json` when present; subsequent runs without the
+   * flag read the stored value back.
+   */
+  bankroll?: number | undefined;
 }
 
 /** Live executor + positions adapters wired for the runner. */
@@ -73,18 +83,40 @@ export interface EntryDeps {
 /**
  * Parse `process.argv` into entry flags.
  *
- * `--live` flips to live execution. Anything else (including `--dry-run` or
- * no flag at all) keeps the safe dry-run default.
+ * `--live` flips to live execution. `--bankroll <amount>` sets and
+ * persists the bankroll (positive USD number). Anything else
+ * (including `--dry-run` or no flag) keeps the safe dry-run default.
  */
 export function parseEntryFlags(argv: readonly string[]): EntryFlags {
-  if (argv.includes("--live")) return { dryRun: false };
-  return { dryRun: true };
+  const dryRun = !argv.includes("--live");
+
+  const flagIndex = argv.indexOf("--bankroll");
+  if (flagIndex === -1) {
+    return { dryRun };
+  }
+  const raw = argv[flagIndex + 1];
+  if (raw === undefined) {
+    throw new Error("--bankroll requires a positive USD amount");
+  }
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error(`--bankroll must be a positive number, got "${raw}"`);
+  }
+  return { dryRun, bankroll: amount };
 }
 
-/** Build the ARB-01 risk checker with the production circuit-breaker. */
-export function createEntryRisk(): ArbBinaryRisk {
+/**
+ * Build the ARB-01 risk checker with the production circuit-breaker.
+ *
+ * `bankroll` defaults to the config default so existing call sites
+ * (and tests) continue to work; `main()` passes the resolved live
+ * bankroll from `.canon/bankroll.json`.
+ */
+export function createEntryRisk(
+  bankroll: number = DEFAULT_ARB_BINARY_CONFIG.bankroll,
+): ArbBinaryRisk {
   return createRiskChecker({
-    bankroll: DEFAULT_ARB_BINARY_CONFIG.bankroll,
+    bankroll,
     kellyFraction: DEFAULT_ARB_BINARY_CONFIG.kellyFraction,
     maxExposure: DEFAULT_ARB_BINARY_CONFIG.maxExposure,
     maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
@@ -280,7 +312,6 @@ async function main(): Promise<void> {
     await assertLiveCapabilities();
   }
 
-  const risk = createEntryRisk();
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
     : new FileWalletStore();
@@ -293,12 +324,24 @@ async function main(): Promise<void> {
     allowance !== undefined ? { allowance } : {},
   );
 
+  const bankroll = await resolveBankroll({
+    override: flags.bankroll,
+    dryRun: flags.dryRun,
+    dryRunDefault: DEFAULT_ARB_BINARY_CONFIG.bankroll,
+    fetchPortfolio: () => positions.reconcile(),
+  });
+  process.stdout.write(`${formatBankrollBanner(bankroll)}\n`);
+
+  const risk = createEntryRisk(bankroll.amount);
   const strategy = async (): Promise<TradeSignal[]> => {
-    const marketData = await scanMarkets(DEFAULT_ARB_BINARY_CONFIG, {
-      searchMarkets,
-      fetchOrderBook,
+    const marketData = await scanMarkets(
+      { ...DEFAULT_ARB_BINARY_CONFIG, bankroll: bankroll.amount },
+      { searchMarkets, fetchOrderBook },
+    );
+    return detectSignals(marketData, {
+      ...DEFAULT_ARB_BINARY_CONFIG,
+      bankroll: bankroll.amount,
     });
-    return detectSignals(marketData, DEFAULT_ARB_BINARY_CONFIG);
   };
 
   const onOutcome = createEntryOnOutcome(risk);

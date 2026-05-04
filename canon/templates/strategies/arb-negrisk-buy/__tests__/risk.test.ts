@@ -191,6 +191,47 @@ describe("createRiskChecker", () => {
       expect(decision.per_leg_size!).toBeLessThanOrEqual(400 + 1e-6);
     });
 
+    it("clamps total bundle to live wallet capital when bankroll is stale", () => {
+      // Persisted bankroll = $10k, but the wallet only holds $9.83.
+      // Bundle exposure cap = 5% × $10k = $500; Kelly bundle would be
+      // sized at the smaller of those, but live capital ($9.83) binds
+      // tighter still and clamps the total bundle.
+      const risk = createRiskChecker(makeRiskConfig({ bankroll: 10_000 }));
+      const portfolio = makePortfolio({ total_value: 9.83, positions: [] });
+      const decision = risk.preTradeCheck(makeOpportunity(), portfolio);
+
+      expect(decision.approved).toBe(true);
+      expect(decision.total_size).toBeCloseTo(9.83, 2);
+    });
+
+    it("rejects when no headroom remains under any cap", () => {
+      const risk = createRiskChecker(makeRiskConfig());
+      const portfolio = makePortfolio({ total_value: 0 });
+      const decision = risk.preTradeCheck(makeOpportunity(), portfolio);
+
+      expect(decision.approved).toBe(false);
+      expect(decision.rejection_reason).toMatch(/headroom|capital/i);
+    });
+
+    it("rejects when Kelly bundle size has no edge (netEdge ≤ 0)", () => {
+      const risk = createRiskChecker(makeRiskConfig());
+      const market = makeMarket({
+        // Sum of bids ≥ 1.0 → grossEdge ≤ 0 → netEdge negative.
+        legs: [
+          makeLeg({ tokenId: "A", yesBid: 0.40, liquidity: 1_000 }),
+          makeLeg({ tokenId: "B", yesBid: 0.35, liquidity: 1_000 }),
+          makeLeg({ tokenId: "C", yesBid: 0.30, liquidity: 1_000 }),
+        ],
+      });
+      const decision = risk.preTradeCheck(
+        makeOpportunity({ market }),
+        makePortfolio(),
+      );
+
+      expect(decision.approved).toBe(false);
+      expect(decision.rejection_reason).toMatch(/kelly|edge/i);
+    });
+
     it("triggers circuit breaker after consecutive losses", () => {
       const risk = createRiskChecker(
         makeRiskConfig({ maxConsecutiveLosses: 3 }),
