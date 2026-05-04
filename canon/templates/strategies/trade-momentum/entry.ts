@@ -20,10 +20,8 @@ import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
   fetchBalance,
   fetchBinaryMarketSnapshots,
-  getCapabilities,
 } from "../../client-polymarket.js";
-import { getWalletPrivateKey } from "../../env.js";
-import { polymarketOnboard } from "../../polymarket-onboard.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -171,81 +169,23 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. TRADE-02 uses GTC limit orders; degrading to a market
- * order would convert a passive entry into an aggressive taker.
+ * Delegates to the shared `assertReadyForLive` helper: TIF check +
+ * Polymarket onboarding gate + auth smoke. TRADE-02 uses GTC limit
+ * orders; degrading to a market order would convert a passive entry
+ * into an aggressive taker.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "TRADE-02 --live: pmxt sidecar does not advertise GTC time-in-force " +
-        "support; refusing to run.",
-    );
-  }
-
-  // Authoritative onboarding gate. Replaces the legacy proxy HTML-scrape:
-  // the polymarketOnboard adapter reports funder deployment, CLOB spender
-  // approvals, and API-creds derivability in a single read. When any flag
-  // is false the operator gets a concrete remediation (run the CLI or
-  // send collateral) instead of a downstream signing failure.
-  const pk = getWalletPrivateKey();
-  if (pk !== undefined && pk.length > 0) {
-    const status = await polymarketOnboard.build(pk).status();
-    const blockers: string[] = [];
-    if (!status.funderDeployed) {
-      blockers.push(
-        `funder Safe is not deployed at ${status.funderAddress} — ` +
-          "run `canon-cli onboard --execute --venue polymarket`",
-      );
-    } else if (status.fundedCollateral <= 0) {
-      blockers.push(
-        `funder ${status.funderAddress} holds no collateral — ` +
-          "send USDC.e/pUSD collateral to that address",
-      );
-    }
-    if (!status.approvalsReady) {
-      blockers.push(
-        "CLOB spender approvals are missing — " +
-          "run `canon-cli onboard --execute --venue polymarket`",
-      );
-    }
-    if (!status.credsReady) {
-      blockers.push(
-        "CLOB API credentials are not derivable — " +
-          "run `canon-cli onboard --execute --venue polymarket`",
-      );
-    }
-    if (blockers.length > 0) {
-      throw new Error(
-        "TRADE-02 --live: Polymarket wallet is not onboarded:\n  - " +
-          blockers.join("\n  - "),
-      );
-    }
-    process.stdout.write(
-      `TRADE-02 --live: onboard ready, funder=${status.funderAddress} ` +
-        `collateral=${String(status.fundedCollateral)}\n`,
-    );
-  }
-
-  // Fail-fast auth smoke: surface a credentials problem now, with a
-  // useful message, instead of crashing on the first reconcile cycle.
-  // Skips when no wallet env is configured (orchestrator dry-run path).
-  try {
-    const balances = await fetchBalance();
-    const usdc = balances.find((b) => b.currency === "USDC");
-    process.stdout.write(
-      `TRADE-02 --live: auth OK, USDC available=${String(usdc?.available ?? 0)}\n`,
-    );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `TRADE-02 --live: auth smoke failed (fetchBalance): ${msg}. ` +
-        "Verify WALLET_PRIVATE_KEY (and run " +
-        "`canon-cli onboard --execute --venue polymarket` " +
-        "if creds are missing).",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "TRADE-02",
+    requiredTif: "GTC",
+    authSmoke: async () => {
+      const balances = await fetchBalance();
+      const usdc = balances.find((b) => b.currency === "USDC");
+      return {
+        summary: `auth OK, USDC available=${String(usdc?.available ?? 0)}`,
+      };
+    },
+  });
 }
 
 /** Build a live USDC allowance client from an injected `WalletStore`. */

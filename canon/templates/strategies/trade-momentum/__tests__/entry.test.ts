@@ -272,13 +272,13 @@ describe("assertLiveCapabilities", () => {
     );
   });
 
-  it("rejects with a 'send collateral' message when the funder is empty", async () => {
+  it("rejects with a 'send native USDC' message when the funder is empty", async () => {
     mockOnboardStatus.mockResolvedValueOnce({
       ...HAPPY_ONBOARD_STATUS,
       fundedCollateral: 0,
     });
     await expect(entry.assertLiveCapabilities()).rejects.toThrow(
-      /send .*collateral to/i,
+      /holds no collateral.*send native USDC/i,
     );
   });
 

@@ -25,10 +25,8 @@ import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
-import {
-  fetchBinaryMarketSnapshots,
-  getCapabilities,
-} from "../../client-polymarket.js";
+import { fetchBinaryMarketSnapshots } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -164,18 +162,15 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. MINT-04 uses GTC limit orders for the premium sell
- * legs; degrading would convert resting quotes into aggressive takers.
+ * Delegates to the shared `assertReadyForLive` helper. MINT-04 uses GTC
+ * limit orders for the premium sell legs; degrading would convert
+ * resting quotes into aggressive takers.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "MINT-04 --live: pmxt sidecar does not advertise GTC time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "MINT-04",
+    requiredTif: "GTC",
+  });
 }
 
 /** Build a live USDC allowance client from an injected `WalletStore`. */

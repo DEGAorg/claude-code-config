@@ -51,6 +51,32 @@ vi.mock("../../../client-polymarket.js", () => ({
   getCapabilities: mockGetCapabilities,
 }));
 
+// `assertReadyForLive` (used inside entry.assertLiveCapabilities) builds a
+// `polymarketOnboard` adapter when `WALLET_PRIVATE_KEY` is set. Mock it so
+// the suite stays hermetic — the tests in this file are about the strategy
+// gate, not the live SDK.
+const mockOnboardStatus = vi.fn(async () => ({
+  funderDeployed: true,
+  approvalsReady: true,
+  credsReady: true,
+  fundedCollateral: 100,
+  funderAddress: "0xFunder000000000000000000000000000000000F",
+}));
+
+vi.mock("../../../polymarket-onboard.js", () => ({
+  polymarketOnboard: {
+    venue: "polymarket",
+    chainId: 137,
+    build: () => ({
+      status: mockOnboardStatus,
+      ensureFunder: vi.fn(),
+      ensureApprovals: vi.fn(),
+      ensureCreds: vi.fn(),
+      ensureFunded: vi.fn(),
+    }),
+  },
+}));
+
 interface FakeAllowanceClient {
   getAllowance: ((() => Promise<bigint>) & ReturnType<typeof vi.fn>);
   approve: ((amount: bigint) => Promise<{ txHash: string }>) &

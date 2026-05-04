@@ -19,9 +19,9 @@ import { appendEntry } from "../../execution-log.js";
 import type { WalletStore } from "../../wallet-store.js";
 import {
   fetchOrderBook,
-  getCapabilities,
   searchMarkets,
 } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -211,19 +211,16 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate (Q-5).
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. ARB-01 relies on FOK to keep YES/NO legs synchronised;
- * silently degrading to a regular limit order would expose the strategy
- * to one-sided fills.
+ * Delegates to the shared `assertReadyForLive` helper. ARB-01 relies on
+ * FOK to keep YES/NO legs synchronised; silently degrading to a regular
+ * limit order would expose the strategy to one-sided fills.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "ARB-01 --live: pmxt sidecar does not advertise FOK time-in-force " +
-        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "ARB-01",
+    requiredTif: "FOK",
+    tifReason: "See docs/reviews/261-open-questions.md (Q-5).",
+  });
 }
 
 /**

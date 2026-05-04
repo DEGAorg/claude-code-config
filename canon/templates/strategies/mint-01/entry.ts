@@ -23,9 +23,7 @@
  */
 import { pathToFileURL } from "node:url";
 
-import {
-  getCapabilities,
-} from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -211,17 +209,14 @@ export function createEntryDeps(
  * sidecar — but the same `supportsTif` check applies because the
  * executor forwards `timeInForce` regardless. A sidecar that drops `tif`
  * would silently default to whatever the exchange default is, breaking
- * the per-leg semantics this strategy depends on. Refuse to run unless
- * the sidecar advertises `tif` support.
+ * the per-leg semantics this strategy depends on.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "MINT-01 --live: pmxt sidecar does not advertise time-in-force " +
-        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "MINT-01",
+    requiredTif: "GTC",
+    tifReason: "See docs/reviews/261-open-questions.md (Q-5).",
+  });
 }
 
 /**

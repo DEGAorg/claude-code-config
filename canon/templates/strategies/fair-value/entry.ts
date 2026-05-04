@@ -19,10 +19,8 @@ import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
-import {
-  fetchBinaryMarketSnapshots,
-  getCapabilities,
-} from "../../client-polymarket.js";
+import { fetchBinaryMarketSnapshots } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -182,18 +180,15 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. IA-03 uses GTC limit orders; degrading would convert a
- * passive entry into an aggressive taker.
+ * Delegates to the shared `assertReadyForLive` helper. IA-03 uses GTC
+ * limit orders; degrading would convert a passive entry into an
+ * aggressive taker.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "IA-03 --live: pmxt sidecar does not advertise GTC time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "IA-03",
+    requiredTif: "GTC",
+  });
 }
 
 /** Build a live USDC allowance client from an injected `WalletStore`. */

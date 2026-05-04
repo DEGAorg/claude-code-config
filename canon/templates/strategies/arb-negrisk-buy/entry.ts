@@ -22,9 +22,9 @@ import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
   fetchOrderBook as polyFetchOrderBook,
-  getCapabilities,
   searchMultiOutcomeMarkets,
 } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -172,19 +172,16 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. ARB-03 relies on FOK to keep all N legs of the bundle
- * synchronised; silently degrading to a regular limit order would
- * expose the strategy to partial-bundle fills.
+ * Delegates to the shared `assertReadyForLive` helper. ARB-03 relies on
+ * FOK to keep all N legs of the bundle synchronised; silently degrading
+ * to a regular limit order would expose the strategy to partial-bundle
+ * fills.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "ARB-03 --live: pmxt sidecar does not advertise FOK time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "ARB-03",
+    requiredTif: "FOK",
+  });
 }
 
 /**
