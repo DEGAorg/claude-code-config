@@ -18,9 +18,10 @@ import { pathToFileURL } from "node:url";
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
+  fetchBalance,
   fetchBinaryMarketSnapshots,
-  getCapabilities,
 } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -37,6 +38,7 @@ import type {
 } from "../../runner.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_TRADE_MOMENTUM_CONFIG } from "./config.js";
@@ -168,18 +170,23 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. TRADE-02 uses GTC limit orders; degrading to a market
- * order would convert a passive entry into an aggressive taker.
+ * Delegates to the shared `assertReadyForLive` helper: TIF check +
+ * Polymarket onboarding gate + auth smoke. TRADE-02 uses GTC limit
+ * orders; degrading to a market order would convert a passive entry
+ * into an aggressive taker.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "TRADE-02 --live: pmxt sidecar does not advertise GTC time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "TRADE-02",
+    requiredTif: "GTC",
+    authSmoke: async () => {
+      const balances = await fetchBalance();
+      const usdc = balances.find((b) => b.currency === "USDC");
+      return {
+        summary: `auth OK, USDC available=${String(usdc?.available ?? 0)}`,
+      };
+    },
+  });
 }
 
 /** Build a live USDC allowance client from an injected `WalletStore`. */
@@ -216,14 +223,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -234,7 +233,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
   // MOMENTUM_QUERY defaults to "NBA" — empty queries return the entire

@@ -22,9 +22,9 @@ import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
   fetchOrderBook as polyFetchOrderBook,
-  getCapabilities,
   searchMultiOutcomeMarkets,
 } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -41,6 +41,7 @@ import type {
 } from "../../runner.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_NEGRISK_BUY_CONFIG } from "./config.js";
@@ -172,19 +173,16 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate.
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. ARB-03 relies on FOK to keep all N legs of the bundle
- * synchronised; silently degrading to a regular limit order would
- * expose the strategy to partial-bundle fills.
+ * Delegates to the shared `assertReadyForLive` helper. ARB-03 relies on
+ * FOK to keep all N legs of the bundle synchronised; silently degrading
+ * to a regular limit order would expose the strategy to partial-bundle
+ * fills.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "ARB-03 --live: pmxt sidecar does not advertise FOK time-in-force " +
-        "support; refusing to run.",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "ARB-03",
+    requiredTif: "FOK",
+  });
 }
 
 /**
@@ -228,20 +226,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-/**
- * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
- *
- * Held in a runtime variable so TypeScript does not statically resolve
- * the path and pull `canon/cli` into the templates `rootDir`.
- */
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -252,7 +236,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
   const { scan, executor, positions } = createEntryDeps(

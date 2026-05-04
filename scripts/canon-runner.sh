@@ -5,7 +5,11 @@
 # Proper signal traps ensure the dashboard always reflects actual state.
 #
 # Usage:
-#   bash "$DEGA_CORE_HOME/scripts/canon-runner.sh" [--dry-run]
+#   bash "$DEGA_CORE_HOME/scripts/canon-runner.sh" [--live]
+#
+# Default mode is dry-run (matches the strategy entry point's
+# `parseEntryFlags` default). Pass `--live` to submit real CLOB orders;
+# the runner forwards the flag to `tsx src/main.ts --live`.
 #
 # Must be run from a Canon project root (where src/main.ts and
 # .canon/state.json exist).
@@ -52,11 +56,14 @@ tui() {
 }
 
 # ── Flags ────────────────────────────────────────────────────────────────────
-DRY_RUN_FLAG=""
-MODE="live"
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN_FLAG="--dry-run"
-  MODE="dry-run"
+# main.ts's parseEntryFlags defaults to dry-run unless --live is set.
+# Track MODE separately so the dashboard label reflects what's actually
+# happening, not just what the runner thinks it's doing.
+RUN_FLAG=""
+MODE="dry-run"
+if [[ "${1:-}" == "--live" ]]; then
+  RUN_FLAG="--live"
+  MODE="live"
 fi
 
 # ── Counters ─────────────────────────────────────────────────────────────────
@@ -66,13 +73,26 @@ _ERRORS=0
 _GAMES=0
 _MARKETS=0
 
-# ── Load .env if present ─────────────────────────────────────────────────────
+# ── Load .env and .canon/wallet.env if present ───────────────────────────────
 # Node.js does not auto-load .env files. Export vars so the runner child
-# process inherits them.
+# process inherits them. `.canon/wallet.env` (gitignored, mode 0600) is
+# where canon-cli persists WALLET_PRIVATE_KEY, WALLET_PROXY_ADDRESS, and
+# POLYMARKET_BUILDER_* after `canon-cli onboard --execute`. Without
+# WALLET_PROXY_ADDRESS exported, `client-polymarket.ts:tradingCredentials`
+# falls back to EOA-mode signing and the matcher rejects every order
+# with "balance: 0" — the canonical bug from the live verification
+# handoff. Wallet env is loaded after .env so persisted canon values
+# beat any stale .env shadow.
 if [[ -f ".env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source .env
+  set +a
+fi
+if [[ -f ".canon/wallet.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .canon/wallet.env
   set +a
 fi
 
@@ -125,7 +145,7 @@ trap 'exit 143' TERM
 
 # ── Launch runner ────────────────────────────────────────────────────────────
 # shellcheck disable=SC2086
-pnpm exec tsx src/main.ts ${DRY_RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
+pnpm exec tsx src/main.ts ${RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
 RUNNER_PID=$!
 echo "${RUNNER_PID}" >"${PID_FILE}"
 

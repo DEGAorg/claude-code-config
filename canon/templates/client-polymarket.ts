@@ -5,8 +5,12 @@
  * Strategy code never touches the pmxtjs SDK directly.
  */
 
+// Side-effect: install a browser UA on axios so SDK calls clear CF's bot
+// challenge on clob.polymarket.com. Must come before any SDK import.
+import "./clob-axios-defaults.js";
 import { Polymarket } from "pmxtjs";
 import { getWalletPrivateKey, getWalletProxyAddress } from "./env.js";
+import { discoverPolymarketProxy } from "./proxy-discovery.js";
 import {
   callSidecar,
   getSidecarCapabilities,
@@ -228,6 +232,67 @@ function resolveSignatureType(
     return override;
   }
   return proxyAddress ? "gnosis-safe" : undefined;
+}
+
+/**
+ * Build sidecar credentials for trading methods (createOrder, cancelOrder,
+ * buildOrder).
+ *
+ * The CLOB matcher checks balance/allowance at the **funder** address, not
+ * the signer. Strategies running through a Polymarket Safe must hand the
+ * sidecar both `funderAddress` (the Safe) and the matching `signatureType`,
+ * otherwise pmxt-core defaults to EOA mode and the order is rejected with
+ * "balance: 0" — even when the Safe holds collateral. Reads the funder
+ * from `WALLET_PROXY_ADDRESS` (and the sigtype from
+ * `POLYMARKET_SIGNATURE_TYPE` or implied by the proxy).
+ */
+function tradingCredentials(privateKey: string): {
+  privateKey: string;
+  signatureType: string;
+  funderAddress?: string;
+} {
+  const proxyAddress = getWalletProxyAddress();
+  const signatureType = resolveSignatureType(proxyAddress) ?? "eoa";
+  return {
+    privateKey,
+    signatureType,
+    ...(proxyAddress ? { funderAddress: proxyAddress } : {}),
+  };
+}
+
+/**
+ * Auto-discover and persist `WALLET_PROXY_ADDRESS` for live trading.
+ *
+ * pmxt-core 2.22.1's built-in `discoverProxy()` calls a Polymarket
+ * data-api endpoint that now returns 404 — so without help, every
+ * gnosis-safe-migrated account falls back to EOA mode and trips
+ * "Derived credentials are incomplete" inside `getApiCredentials()`.
+ *
+ * This helper scrapes the proxy from the polymarket.com profile page
+ * (the one surface that still exposes it) and writes it into
+ * `process.env.WALLET_PROXY_ADDRESS` so the next call to {@link getClient}
+ * picks it up. Idempotent — if either env is already populated or no
+ * private key is configured, it does nothing.
+ *
+ * Returns the resolved proxy address (or `undefined` when the wallet is
+ * not migrated / not on Polymarket yet) so callers can log + smoke-test.
+ */
+export async function ensurePolymarketProxy(): Promise<string | undefined> {
+  if (getWalletProxyAddress()) return getWalletProxyAddress();
+  const privateKey = getWalletPrivateKey();
+  if (!privateKey) return undefined;
+
+  const { Wallet } = await import("ethers");
+  const eoa = new Wallet(privateKey).address;
+
+  const result = await discoverPolymarketProxy(eoa);
+  if (result.proxyAddress) {
+    process.env["WALLET_PROXY_ADDRESS"] = result.proxyAddress;
+    // Reset cached client so the next call picks up the discovered proxy.
+    client = undefined;
+    return result.proxyAddress;
+  }
+  return undefined;
 }
 
 function getClient(): Polymarket {
@@ -968,7 +1033,7 @@ export async function createOrder(
         ? { tif: params.timeInForce }
         : {}),
     }],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     id: order.id,
@@ -997,7 +1062,7 @@ export async function cancelOrder(
   const order = await callSidecar<{ id?: string; status?: string }>(
     "cancelOrder",
     [orderId],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     id: order.id ?? orderId,
@@ -1043,7 +1108,7 @@ export async function buildOrder(
         ? { tif: params.timeInForce }
         : {}),
     }],
-    { privateKey, signatureType: "eoa" },
+    tradingCredentials(privateKey),
   );
   return {
     exchange: built.exchange,

@@ -37,6 +37,11 @@ source "${SCRIPT_DIR}/orch-state.sh"
 # shellcheck source=read-github-config.sh
 source "${SCRIPT_DIR}/read-github-config.sh"
 
+# Reap any preexisting state.json files whose engine died ungracefully on a
+# previous run. Keeps canon-tui's plan-execution panel honest after a kill,
+# crash, sleep, or ctrl-c. No-op when no plans dir exists yet.
+orch_state_reap_stale
+
 # --- Check dependencies ---
 
 check_deps() {

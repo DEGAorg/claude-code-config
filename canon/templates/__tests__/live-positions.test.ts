@@ -229,6 +229,24 @@ describe("createLivePositions.reconcile", () => {
     expect(portfolio.daily_pnl).toBe(0);
   });
 
+  it("treats 'is not iterable' rejection as auth-gated and returns empty portfolio", async () => {
+    // pmxtjs's fetchOpenOrders sometimes throws "response.data is not
+    // iterable" when wrapping a BadRequest response from the CLOB.
+    // The reconcile path should swallow this as auth-gated so the
+    // strategy cycle keeps running.
+    mockFetchBalance.mockResolvedValueOnce([balance()]);
+    mockFetchPositions.mockResolvedValueOnce([]);
+    mockFetchOpenOrders.mockRejectedValueOnce(
+      new Error("response.data is not iterable"),
+    );
+
+    const deps = createLivePositions();
+    const portfolio = await deps.reconcile();
+    expect(portfolio.positions).toEqual([]);
+    expect(portfolio.total_value).toBe(0);
+    expect(portfolio.daily_pnl).toBe(0);
+  });
+
   it("propagates non-auth fetchBalance errors", async () => {
     mockFetchBalance.mockRejectedValueOnce(new Error("network down"));
     mockFetchPositions.mockResolvedValueOnce([]);

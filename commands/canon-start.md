@@ -18,12 +18,37 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
+## 0. Pre-flight — open the State panel
+
+**ALWAYS run this bash block first**, before any phase detection, before
+the live-mode short-circuit, before anything else. It opens the TUI's
+State panel so the user can watch `.canon/state.json` updates land while
+phases run. Silent no-op if `canon-ctl` is not on PATH. This step is
+unconditional — it runs on every invocation, including `--live` reruns
+that jump straight to Phase 8.
+
+```bash
+command -v canon-ctl >/dev/null && canon-ctl action "screen.show_state" || true
+```
+
+---
+
 ## 1. Initialize
 
 **State write convention:** Every `terminal-ui-write.sh` call in steps 2–7 is guarded.
 Before each call, check if the script exists and skip silently if it does not.
 
-Proceed directly to step 2.
+**Live-mode short-circuit.** If the user invoked `/canon-start --live` (look
+for `--live` in the argument the slash command was called with), the project
+must already be in dry-run-validated state from a prior `/canon-start`
+invocation. Skip phases 2–7 entirely and jump to **Phase 8: live**. That
+phase calls a deterministic shell script that handles deposit collection,
+onboarding, and the live runner launch — do not reimplement any of it
+inline. If `src/main.ts` does not exist, the script will fail with a clear
+"run /canon-start in dry-run first" message and exit non-zero; do not
+fall back to the dry-run flow.
+
+For the standard (no `--live`) invocation, proceed directly to step 2.
 
 ---
 
@@ -235,14 +260,27 @@ mkdir -p docs
 cp strategies/<name>/strategy.md docs/strategy-<name>.md
 ```
 
-2. Copy the strategy's pre-built entry point to `src/main.ts`. Each strategy
-   directory includes an `entry.ts` that wires the real API clients, config
-   defaults, and runner deps — no generation needed:
+2. Copy the strategy's pre-built entry point to `src/main.ts` and rewrite
+   its relative imports for the new location. The template at
+   `strategies/<name>/entry.ts` uses `"../../*.js"` (two levels up to project
+   root) and `"./*.js"` (sibling files); from `src/main.ts` those need to
+   become `"../*.js"` and `"../strategies/<name>/*.js"` respectively.
+
+   Use this deterministic two-step transform — do **not** rely on the agent
+   to figure out path rewrites on the fly:
 
 ```bash
 mkdir -p src
-cp strategies/<name>/entry.ts src/main.ts
+NAME="<name>"  # the strategy you selected, e.g. "trade-momentum"
+sed -e 's|"\.\./\.\./|"\.\./|g' \
+    -e "s|\"\\./|\"\\.\\./strategies/${NAME}/|g" \
+    "strategies/${NAME}/entry.ts" > src/main.ts
 ```
+
+   The first expression rewrites `"../../"` → `"../"` (project-root paths
+   shift by one level when moving from `strategies/<name>/` to `src/`).
+   The second rewrites `"./"` → `"../strategies/<name>/"` (sibling
+   imports become explicit cross-directory imports).
 
 3. Copy the strategy's flow definition for the TUI pipeline diagram:
 
@@ -397,7 +435,9 @@ Proceed to step 7.
 
 ## 7. Phase: run
 
-All checks pass and QA is approved. The strategy is ready for execution.
+All checks pass and QA is approved. The strategy is ready for execution
+in **dry-run mode**. This is the validation step before going live —
+never auto-runs real orders.
 
 Run this **single** bash block to verify the entry point exists, launch the runner, and confirm:
 
@@ -412,7 +452,7 @@ fi
 # Create empty .env if missing (some strategies run without auth)
 touch .env
 
-bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" --dry-run &
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" &
 RUNNER_PID=$!
 disown
 sleep 2
@@ -427,8 +467,52 @@ fi
 
 Handle the output:
 - `NO_ENTRY` → tell the user: `No entry point at src/main.ts — run strategy selection first (phase 5).`
-- `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>`
+- `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>. Switch to live: /canon-start --live`
 - `FAIL` → print the log tail, nothing else.
+
+---
+
+## 8. Phase: live
+
+Reached only when the user invoked `/canon-start --live`. Drives the
+project from "dry-run validated" to "live trading" by collecting a
+native-USDC deposit at the EOA, running the gasless onboarding chain
+that pulls funds into the Polymarket Safe (V1+V2 approvals + builder
+creds + EIP-2612 permit + Uniswap swap + Onramp wrap), and launching
+`canon-runner.sh --live`.
+
+Run this **single** bash block. Do not split into multiple tool calls —
+the script is the deterministic spine, this command stays a thin
+wrapper:
+
+```bash
+bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-live-readiness.sh"
+```
+
+Behaviour:
+- The script writes its own state into `.canon/state.json` at every
+  transition (`deposit-pending` → `funds-detected` → `onboarding` →
+  `ready` → `running`). The TUI surfaces those.
+- If `src/main.ts` does not exist, the script exits non-zero with a
+  message telling the user to run `/canon-start` (no flag) first. Do
+  not auto-fall-back to the build phases — `--live` is for the
+  transition, never for the initial scaffold.
+- If the wallet is already onboarded (Safe deployed, V1+V2 approvals
+  set, creds derivable, collateral > 0), the script skips deposit
+  polling and goes straight to launching the live runner. Re-running
+  `/canon-start --live` is therefore safe and idempotent.
+- Deposit polling defaults to 10s cadence with a 30-min timeout
+  (`CANON_LIVE_POLL_SECS` and `CANON_LIVE_TIMEOUT_SECS` override).
+- On timeout, the script writes `phase=live, status=timeout` so the
+  TUI keeps the EOA address visible. Re-running resumes polling.
+
+When the script exits 0, print:
+
+`Live runner started. PID and live status are in .canon/state.json. Stop: kill <pid>.`
+
+When the script exits non-zero, print the `error` field from
+`.canon/state.json` (if present) and stop. Do not retry automatically;
+let the operator inspect and decide.
 
 ---
 

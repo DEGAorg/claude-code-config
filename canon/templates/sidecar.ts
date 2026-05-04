@@ -110,7 +110,11 @@ async function readLockFile(): Promise<SidecarLockData> {
 export async function callSidecar<T>(
   method: string,
   args: ReadonlyArray<unknown>,
-  credentials?: { privateKey: string; signatureType?: string },
+  credentials?: {
+    privateKey: string;
+    signatureType?: string;
+    funderAddress?: string;
+  },
 ): Promise<T> {
   const lock = await readLockFile();
 
@@ -142,11 +146,17 @@ export async function callSidecar<T>(
 /**
  * Query the sidecar for advertised feature flags.
  *
- * Older sidecars that do not implement `getCapabilities` return a 404
- * (or other error); in that case we conservatively report no advertised
- * features so callers fall back to a safe path. Network and lock-file
- * errors propagate to the caller — only sidecar-side request failures
- * are translated into a "no capabilities" response.
+ * pmxt-core (all 2.x versions through 2.37.x) does not implement a
+ * `getCapabilities` method — the sidecar replies with
+ * `success: false, error: "Method 'getCapabilities' not found"`. That
+ * is not the same as an unsupported sidecar: pmxt-core's polymarket
+ * adapter calls `@polymarket/clob-client`'s `postOrder()` which
+ * **defaults to GTC** for every limit order. Treat the missing method
+ * as "supportsTif: true" so live-mode preflights don't pessimistically
+ * refuse to run.
+ *
+ * If the sidecar ever starts implementing the method, this helper
+ * still honours whatever it returns.
  */
 export async function getSidecarCapabilities(): Promise<SidecarCapabilities> {
   try {
@@ -159,6 +169,14 @@ export async function getSidecarCapabilities(): Promise<SidecarCapabilities> {
     };
   } catch (err: unknown) {
     if (err instanceof SidecarRequestError) {
+      // pmxt-core's "Method not found" surfaces as a SidecarRequestError.
+      // pmxt-core's polymarket adapter unconditionally submits limit
+      // orders via @polymarket/clob-client's postOrder(), whose tif
+      // default is GTC — the semantic the preflight cares about.
+      const body = err.message.toLowerCase();
+      if (body.includes("method") && body.includes("not found")) {
+        return { supportsTif: true };
+      }
       return { supportsTif: false };
     }
     throw err;

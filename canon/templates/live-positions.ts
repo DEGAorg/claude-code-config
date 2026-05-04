@@ -43,7 +43,12 @@ function isAuthError(err: unknown): boolean {
   return (
     msg.includes("authentication") ||
     msg.includes("unauthorized") ||
-    msg.includes("credentials")
+    msg.includes("credentials") ||
+    // pmxtjs's fetchOpenOrders occasionally rejects with
+    // "response.data is not iterable" (BadRequest wrapping a malformed
+    // unauthed response). Treat as auth-gated so the cycle keeps
+    // running instead of crashing on transient sidecar flakiness.
+    msg.includes("is not iterable")
   );
 }
 

@@ -14,9 +14,12 @@
     "node": ">=22"
   },
   "dependencies": {
-    "ethers": "~5.7.2",
-    "pmxtjs": "2.22.1",
-    "pmxt-core": "2.22.1"
+    "@polymarket/builder-relayer-client": "0.0.9",
+    "@polymarket/clob-client-v2": "^1.0.0",
+    "axios": "^1.16.0",
+    "ethers": "5.8.0",
+    "pmxt-core": "2.37.4",
+    "pmxtjs": "2.37.4"
   },
   "devDependencies": {
     "oxlint": "1.60.0",

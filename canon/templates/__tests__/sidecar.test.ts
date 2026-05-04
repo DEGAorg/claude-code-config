@@ -174,3 +174,47 @@ describe("callSidecar", () => {
     );
   });
 });
+
+describe("getSidecarCapabilities", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockHomedir.mockReturnValue("/mock-home");
+    vi.stubGlobal("fetch", mockFetch);
+    mockReadFile.mockResolvedValue(VALID_LOCK);
+  });
+
+  it("returns supportsTif=true when the sidecar advertises it", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: { supportsTif: true } }),
+    });
+    const { getSidecarCapabilities } = await import("../sidecar.js");
+    const caps = await getSidecarCapabilities();
+    expect(caps.supportsTif).toBe(true);
+  });
+
+  it("treats 'Method not found' as supportsTif=true (pmxt-core defaults to GTC)", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 200,
+      text: () =>
+        Promise.resolve(
+          '{"success":false,"error":"Method \'getCapabilities\' not found on polymarket"}',
+        ),
+    });
+    const { getSidecarCapabilities } = await import("../sidecar.js");
+    const caps = await getSidecarCapabilities();
+    expect(caps.supportsTif).toBe(true);
+  });
+
+  it("returns supportsTif=false on other sidecar request errors", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("internal server error"),
+    });
+    const { getSidecarCapabilities } = await import("../sidecar.js");
+    const caps = await getSidecarCapabilities();
+    expect(caps.supportsTif).toBe(false);
+  });
+});

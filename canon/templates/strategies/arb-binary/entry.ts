@@ -16,12 +16,13 @@
 import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 import {
   fetchOrderBook,
-  getCapabilities,
   searchMarkets,
 } from "../../client-polymarket.js";
+import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
@@ -211,19 +212,16 @@ export function createEntryDeps(
 /**
  * `--live` start-up safety gate (Q-5).
  *
- * Refuses to start when the running pmxt sidecar does not advertise
- * `supportsTif`. ARB-01 relies on FOK to keep YES/NO legs synchronised;
- * silently degrading to a regular limit order would expose the strategy
- * to one-sided fills.
+ * Delegates to the shared `assertReadyForLive` helper. ARB-01 relies on
+ * FOK to keep YES/NO legs synchronised; silently degrading to a regular
+ * limit order would expose the strategy to one-sided fills.
  */
 export async function assertLiveCapabilities(): Promise<void> {
-  const caps = await getCapabilities();
-  if (!caps.supportsTif) {
-    throw new Error(
-      "ARB-01 --live: pmxt sidecar does not advertise FOK time-in-force " +
-        "support; refusing to run. See docs/reviews/261-open-questions.md (Q-5).",
-    );
-  }
+  await assertReadyForLive({
+    strategyName: "ARB-01",
+    requiredTif: "FOK",
+    tifReason: "See docs/reviews/261-open-questions.md (Q-5).",
+  });
 }
 
 /**
@@ -274,23 +272,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-/**
- * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
- *
- * The path is held in a runtime variable so TypeScript does not
- * statically resolve it and pull `canon/cli` into the templates
- * `rootDir`. The templates layer keeps a clean boundary; only this
- * one call site reaches across to the CLI package, and only at
- * runtime when `--live` is set.
- */
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -300,13 +281,9 @@ async function main(): Promise<void> {
   }
 
   const risk = createEntryRisk();
-  // Bootstrap edge: the templates layer never imports from canon/cli
-  // at compile time, but main() — the composition root — pulls the
-  // concrete FileWalletStore at runtime so existing canon wallets
-  // (`.canon/wallet.env`) are reused without duplication.
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined
       ? await buildLiveAllowanceClient(wallet)
