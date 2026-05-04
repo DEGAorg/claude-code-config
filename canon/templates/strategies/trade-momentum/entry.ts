@@ -38,6 +38,7 @@ import type {
 } from "../../runner.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_TRADE_MOMENTUM_CONFIG } from "./config.js";
@@ -222,14 +223,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -240,7 +233,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
   // MOMENTUM_QUERY defaults to "NBA" — empty queries return the entire

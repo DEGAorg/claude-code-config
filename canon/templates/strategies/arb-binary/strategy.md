@@ -104,7 +104,7 @@ any unrelated argv entry leaves the strategy in dry-run.
 
 **Live execution prerequisites:**
 - A funded Polymarket wallet configured at `.canon/wallet.env`
-  (loaded via `canon/cli/wallet-store.ts` → `FileWalletStore`).
+  (loaded via `wallet-store.ts` → `FileWalletStore`).
 - USDC balance on Polygon for the orders being placed.
 - USDC allowance to the CTFExchange. The live executor manages this
   idempotently: `getAllowance()` is consulted lazily; `approve()` is

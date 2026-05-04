@@ -36,6 +36,7 @@ import {
 } from "../../polygon-addresses.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_MINT_01_CONFIG } from "./config.js";
@@ -260,21 +261,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-/**
- * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
- *
- * Held in a runtime variable so TypeScript does not pull `canon/cli`
- * into the templates `rootDir`. Only this call site reaches across
- * package boundaries, and only at runtime when `--live` is set.
- */
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
 
@@ -284,7 +270,7 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined
       ? await buildLiveAllowanceClient(wallet)

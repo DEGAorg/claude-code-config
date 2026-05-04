@@ -16,6 +16,7 @@
 import { pathToFileURL } from "node:url";
 
 import { appendEntry } from "../../execution-log.js";
+import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 import {
   fetchOrderBook,
@@ -271,23 +272,6 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-/**
- * Load `canon/cli`'s `FileWalletStore` at the bootstrap edge.
- *
- * The path is held in a runtime variable so TypeScript does not
- * statically resolve it and pull `canon/cli` into the templates
- * `rootDir`. The templates layer keeps a clean boundary; only this
- * one call site reaches across to the CLI package, and only at
- * runtime when `--live` is set.
- */
-async function loadCanonWalletStore(): Promise<WalletStore> {
-  const specifier = "../../../cli/wallet-store.js";
-  const mod = (await import(/* @vite-ignore */ specifier)) as {
-    FileWalletStore: new () => WalletStore;
-  };
-  return new mod.FileWalletStore();
-}
-
 async function main(): Promise<void> {
   const flags = parseEntryFlags(process.argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
@@ -297,13 +281,9 @@ async function main(): Promise<void> {
   }
 
   const risk = createEntryRisk();
-  // Bootstrap edge: the templates layer never imports from canon/cli
-  // at compile time, but main() — the composition root — pulls the
-  // concrete FileWalletStore at runtime so existing canon wallets
-  // (`.canon/wallet.env`) are reused without duplication.
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : await loadCanonWalletStore();
+    : new FileWalletStore();
   const allowance =
     wallet !== undefined
       ? await buildLiveAllowanceClient(wallet)
