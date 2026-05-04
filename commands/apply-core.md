@@ -604,14 +604,49 @@ Write the agent discovery skills:
 Safe to overwrite — these are CLI source files and skills with no user
 customization.
 
-Then install dependencies and create the bin link:
+Then install dependencies. After `pnpm install`, two post-install steps
+are required because `canon-cli/package.json` declares
+`"canon-templates": "file:../templates"` — that path is relative to the
+**source repo** layout (`canon/cli` and `canon/templates` are siblings
+there), not the install layout where `canon-cli` lives at
+`~/.degacore/canon-cli/` and templates live at
+`~/.degacore/canon/templates/`. After install, `pnpm` resolves
+`file:../templates` to `~/.degacore/templates/` (a stale or absent dir),
+not the current templates we just laid down. Retarget the symlink so
+`import "canon-templates/<file>.js"` from `canon-cli` resolves to the
+real templates directory.
+
+Also, `canon-cli.ts`'s shebang is `#!/usr/bin/env tsx`, which requires
+`tsx` on global `PATH`. After `pnpm install`, `tsx` is only at
+`~/.degacore/canon-cli/node_modules/.bin/tsx`. So instead of symlinking
+the `.ts` directly, write a shell wrapper at `~/.degacore/bin/canon-cli`
+that explicitly invokes the local `tsx`.
+
 ```bash
 cd ~/.degacore/canon-cli && pnpm install
-chmod +x ~/.degacore/canon-cli/canon-cli.ts
-ln -sf ~/.degacore/canon-cli/canon-cli.ts ~/.degacore/bin/canon-cli
+
+# Retarget the canon-templates link to the actual templates dir installed
+# by Canon Bootstrap above. Idempotent — overwrites any prior link.
+trash ~/.degacore/canon-cli/node_modules/canon-templates 2>/dev/null || true
+ln -sf ~/.degacore/canon/templates ~/.degacore/canon-cli/node_modules/canon-templates
+
+# Also pnpm install the templates package so its own deps (e.g.
+# @polymarket/builder-signing-sdk) get hoisted into
+# ~/.degacore/canon/templates/node_modules/ where canon-cli's runtime
+# imports of canon-templates/polymarket-onboard.js can resolve them.
+cd ~/.degacore/canon/templates && pnpm install
+
+# Write a shell wrapper that uses the local tsx (canon-cli node_modules).
+cat > ~/.degacore/bin/canon-cli <<'WRAPPER'
+#!/bin/sh
+# Canon CLI launcher — runs canon-cli.ts via local tsx (installed by canon-cli package).
+exec "$HOME/.degacore/canon-cli/node_modules/.bin/tsx" "$HOME/.degacore/canon-cli/canon-cli.ts" "$@"
+WRAPPER
+chmod +x ~/.degacore/bin/canon-cli
 ```
 
-If `pnpm` is not available, fall back to `npm install`.
+If `pnpm` is not available, fall back to `npm install` (the wrapper and
+symlink steps are unchanged).
 
 Verify the install works:
 ```bash
