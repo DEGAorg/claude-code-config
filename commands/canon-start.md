@@ -260,14 +260,27 @@ mkdir -p docs
 cp strategies/<name>/strategy.md docs/strategy-<name>.md
 ```
 
-2. Copy the strategy's pre-built entry point to `src/main.ts`. Each strategy
-   directory includes an `entry.ts` that wires the real API clients, config
-   defaults, and runner deps — no generation needed:
+2. Copy the strategy's pre-built entry point to `src/main.ts` and rewrite
+   its relative imports for the new location. The template at
+   `strategies/<name>/entry.ts` uses `"../../*.js"` (two levels up to project
+   root) and `"./*.js"` (sibling files); from `src/main.ts` those need to
+   become `"../*.js"` and `"../strategies/<name>/*.js"` respectively.
+
+   Use this deterministic two-step transform — do **not** rely on the agent
+   to figure out path rewrites on the fly:
 
 ```bash
 mkdir -p src
-cp strategies/<name>/entry.ts src/main.ts
+NAME="<name>"  # the strategy you selected, e.g. "trade-momentum"
+sed -e 's|"\.\./\.\./|"\.\./|g' \
+    -e "s|\"\\./|\"\\.\\./strategies/${NAME}/|g" \
+    "strategies/${NAME}/entry.ts" > src/main.ts
 ```
+
+   The first expression rewrites `"../../"` → `"../"` (project-root paths
+   shift by one level when moving from `strategies/<name>/` to `src/`).
+   The second rewrites `"./"` → `"../strategies/<name>/"` (sibling
+   imports become explicit cross-directory imports).
 
 3. Copy the strategy's flow definition for the TUI pipeline diagram:
 

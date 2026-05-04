@@ -105,8 +105,8 @@ _engine_on_exit() {
        | $fr + (if ($fr.status // "") == "running"
                 then {"status":"aborted"}
                 else {} end))' \
-    "${ORCH_STATE_FILE}" >"${ORCH_STATE_FILE}.tmp" \
-    && mv "${ORCH_STATE_FILE}.tmp" "${ORCH_STATE_FILE}"
+    "${ORCH_STATE_FILE}" >"${ORCH_STATE_FILE}.tmp" &&
+    mv "${ORCH_STATE_FILE}.tmp" "${ORCH_STATE_FILE}"
 }
 trap '_engine_on_exit' EXIT INT TERM
 

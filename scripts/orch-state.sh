@@ -595,8 +595,8 @@ orch_state_reap_stale() {
            | $fr + (if ($fr.status // "") == "running"
                     then {"status":"aborted"}
                     else {} end))' \
-        "${state_file}" >"${state_file}.tmp" \
-        && mv "${state_file}.tmp" "${state_file}"
+        "${state_file}" >"${state_file}.tmp" &&
+        mv "${state_file}.tmp" "${state_file}"
     fi
   done
 }

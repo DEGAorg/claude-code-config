@@ -86,6 +86,21 @@ export class FileWalletStore implements WalletStore {
       if (name === KEY_NAME) modern = value;
       else if (name === LEGACY_KEY_NAME) legacy = value;
     }
-    return modern ?? legacy;
+    if (modern !== undefined) return modern;
+    if (legacy !== undefined) {
+      warnLegacyKeyOnce(this.path);
+      return legacy;
+    }
+    return undefined;
   }
+}
+
+let legacyKeyWarned = false;
+function warnLegacyKeyOnce(path: string): void {
+  if (legacyKeyWarned) return;
+  legacyKeyWarned = true;
+  process.stderr.write(
+    `[canon] ${path}: ${LEGACY_KEY_NAME} is deprecated; ` +
+      `rename the line to ${KEY_NAME} (back-compat will be dropped in a future release).\n`,
+  );
 }

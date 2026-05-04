@@ -85,8 +85,8 @@ is_ready() {
   ar=$(printf '%s' "${s}" | jq -r '.data.approvalsReady // false')
   cr=$(printf '%s' "${s}" | jq -r '.data.credsReady // false')
   fc=$(printf '%s' "${s}" | jq -r '.data.fundedCollateral // 0')
-  [[ "${fd}" == "true" && "${ar}" == "true" && "${cr}" == "true" ]] \
-    && gt0 "${fc}"
+  [[ "${fd}" == "true" && "${ar}" == "true" && "${cr}" == "true" ]] &&
+    gt0 "${fc}"
 }
 
 # ── Stage 1+2+3: deposit → detect → onboard (skipped if already ready) ───────
@@ -146,9 +146,9 @@ else
     fi
 
     bal_json=$("${CANON_CLI}" balance 2>/dev/null || echo '{"data":[]}')
-    detected_amount=$(printf '%s' "${bal_json}" \
-      | jq -r '.data[]? | select(.currency == "USDC") | .amount // 0' 2>/dev/null \
-      | head -n1)
+    detected_amount=$(printf '%s' "${bal_json}" |
+      jq -r '.data[]? | select(.currency == "USDC") | .amount // 0' 2>/dev/null |
+      head -n1)
     detected_amount="${detected_amount:-0}"
 
     if gt0 "${detected_amount}"; then
