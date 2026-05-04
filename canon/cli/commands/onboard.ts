@@ -25,6 +25,7 @@
 
 import { requireAuth, AuthError } from "../auth.js";
 import { stripFormatFlags, writeError, writeSuccess } from "../output.js";
+import { FileWalletStore } from "../wallet-store.js";
 import type { MarketVenueOnboard } from "canon-templates/types/MarketVenueOnboard.js";
 
 type SwapSource = "USDC" | "USDT" | "POL";
@@ -100,32 +101,66 @@ async function runVenueStatus(
   }
 }
 
+interface VenueExecuteOptions {
+  /** Run the gasless permit-chain to move EOA's USDC into the Safe. */
+  fund?: boolean;
+  /**
+   * Cap for `ensureFunded()` in 6-decimal USDC base units. Defaults to
+   * the EOA's full balance.
+   */
+  fundAmountBaseUnits?: bigint;
+}
+
+const COLLATERAL_BASE_UNITS_PER_USDC = 1_000_000n;
+
 async function runVenueExecute(
   rawArgs: readonly string[],
   pk: string,
   venue: string,
+  opts: VenueExecuteOptions = {},
 ): Promise<void> {
   try {
+    // Builder creds must exist BEFORE we build the adapter — its
+    // RelayClient picks them up from `process.env` once at construction.
+    // Without them every relayer call answers 401 and ensureFunder fails.
+    if (venue === "polymarket") {
+      await ensureBuilderCreds(pk);
+    }
     const adapter = await loadAdapter(venue);
     const client = adapter.build(pk);
     const funder = await client.ensureFunder();
+    const status = await client.status();
+    persistFunderAddress(venue, status.funderAddress);
     const approvals = await client.ensureApprovals();
     const creds = await client.ensureCreds();
-    const status = await client.status();
+    const funded = opts.fund
+      ? await client.ensureFunded(opts.fundAmountBaseUnits)
+      : undefined;
+    const finalStatus = opts.fund ? await client.status() : status;
     writeSuccess(
       {
         venue: adapter.venue,
         chainId: adapter.chainId,
         funder,
         approvals,
+        ...(funded
+          ? {
+              funded: {
+                funded: funded.funded,
+                amount: funded.amount.toString(),
+                expectedOut: funded.expectedOut.toString(),
+                ...(funded.txHash ? { txHash: funded.txHash } : {}),
+              },
+            }
+          : {}),
         // Don't echo the secret to stdout; expose only the readiness flag.
         credsReady: !!(creds.key && creds.secret && creds.passphrase),
         status: {
-          funderAddress: status.funderAddress,
-          funderDeployed: status.funderDeployed,
-          approvalsReady: status.approvalsReady,
-          credsReady: status.credsReady,
-          fundedCollateral: status.fundedCollateral,
+          funderAddress: finalStatus.funderAddress,
+          funderDeployed: finalStatus.funderDeployed,
+          approvalsReady: finalStatus.approvalsReady,
+          credsReady: finalStatus.credsReady,
+          fundedCollateral: finalStatus.fundedCollateral,
         },
       },
       rawArgs,
@@ -133,6 +168,58 @@ async function runVenueExecute(
   } catch (err: unknown) {
     writeError(err instanceof Error ? err.message : String(err), rawArgs);
   }
+}
+
+/**
+ * Persist the funder address (Polymarket Safe) to the wallet store and
+ * `process.env` so subsequent canon calls — `client-polymarket.ts`
+ * `tradingCredentials()` reads `WALLET_PROXY_ADDRESS` to route orders
+ * through the Safe — pick it up without manual config. Only written
+ * after the funder is confirmed deployed by `ensureFunder()`.
+ */
+function persistFunderAddress(venue: string, funderAddress: string): void {
+  if (venue !== "polymarket") return;
+  if (!funderAddress || !/^0x[0-9a-fA-F]{40}$/.test(funderAddress)) return;
+  const store = new FileWalletStore();
+  store.setEnv("WALLET_PROXY_ADDRESS", funderAddress);
+  process.env["WALLET_PROXY_ADDRESS"] = funderAddress;
+}
+
+/**
+ * Bootstrap Polymarket builder credentials when missing.
+ *
+ * Polymarket's relayer requires authenticated builder headers on every
+ * mutative Safe call. The CLOB exposes `createBuilderApiKey()` for
+ * programmatic provisioning — call it once on the user's first
+ * `--execute` and persist the resulting creds to the wallet store so
+ * subsequent runs (and `client-polymarket.ts`) pick them up from
+ * `process.env`. No-op when all three env vars are already populated.
+ */
+async function ensureBuilderCreds(pk: string): Promise<void> {
+  if (
+    process.env["POLYMARKET_BUILDER_API_KEY"] &&
+    process.env["POLYMARKET_BUILDER_SECRET"] &&
+    process.env["POLYMARKET_BUILDER_PASSPHRASE"]
+  ) {
+    return;
+  }
+  const mod = (await import(
+    "canon-templates/polymarket-onboard.js"
+  )) as {
+    bootstrapBuilderCreds: (pk: string) => Promise<{
+      key: string;
+      secret: string;
+      passphrase: string;
+    }>;
+  };
+  const creds = await mod.bootstrapBuilderCreds(pk);
+  const store = new FileWalletStore();
+  store.setEnv("POLYMARKET_BUILDER_API_KEY", creds.key);
+  store.setEnv("POLYMARKET_BUILDER_SECRET", creds.secret);
+  store.setEnv("POLYMARKET_BUILDER_PASSPHRASE", creds.passphrase);
+  process.env["POLYMARKET_BUILDER_API_KEY"] = creds.key;
+  process.env["POLYMARKET_BUILDER_SECRET"] = creds.secret;
+  process.env["POLYMARKET_BUILDER_PASSPHRASE"] = creds.passphrase;
 }
 
 export async function run(rawArgs: string[]): Promise<void> {
@@ -154,15 +241,32 @@ export async function run(rawArgs: string[]): Promise<void> {
   const assetArg = getFlag(args, "--asset");
   const amountArg = getFlag(args, "--amount");
 
-  // Venue mode: triggered by --status or --venue. Default venue is polymarket.
-  if (status || venueArg !== undefined) {
+  // Venue mode: triggered by --status, --venue, or --fund. Default venue
+  // is polymarket. The `--fund` flag opts in to the gasless permit chain
+  // that pulls native USDC from the EOA into the Safe; without it,
+  // `--execute` only handles deploy/approvals/creds.
+  const fund = args.includes("--fund");
+  if (status || venueArg !== undefined || fund) {
     const venue = venueArg ?? "polymarket";
     if (status) {
       await runVenueStatus(rawArgs, pk, venue);
       return;
     }
     if (execute) {
-      await runVenueExecute(rawArgs, pk, venue);
+      const opts: VenueExecuteOptions = { fund };
+      if (fund && amountArg !== undefined) {
+        const usdc = Number(amountArg);
+        if (!Number.isFinite(usdc) || usdc <= 0) {
+          writeError(
+            `Invalid --amount "${amountArg}": must be a positive USDC amount`,
+            rawArgs,
+          );
+          return;
+        }
+        opts.fundAmountBaseUnits =
+          BigInt(Math.round(usdc * Number(COLLATERAL_BASE_UNITS_PER_USDC)));
+      }
+      await runVenueExecute(rawArgs, pk, venue, opts);
       return;
     }
     // --venue alone (no --status / --execute): default to read-only status.

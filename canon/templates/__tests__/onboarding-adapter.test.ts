@@ -65,6 +65,7 @@ const ClobClientCtor = vi.fn(function ClobClientStub(
 
 vi.mock("@polymarket/clob-client-v2", () => ({
   ClobClient: ClobClientCtor,
+  SignatureTypeV2: { EOA: 0, POLY_PROXY: 1, POLY_GNOSIS_SAFE: 2 },
   getContractConfig: mockClobContractConfig,
 }));
 
@@ -75,12 +76,16 @@ vi.mock("@polymarket/clob-client-v2", () => ({
 const mockAllowance = vi.fn();
 const mockIsApprovedForAll = vi.fn();
 const mockBalanceOf = vi.fn();
+const mockNonces = vi.fn();
+const mockQuoteExactInputSingle = vi.fn();
 
 const ContractCtor = vi.fn(function ContractStub(
   this: {
     allowance: unknown;
     isApprovedForAll: unknown;
     balanceOf: unknown;
+    nonces: unknown;
+    callStatic: { quoteExactInputSingle: unknown };
   },
   _address: string,
   _abi: unknown,
@@ -89,32 +94,46 @@ const ContractCtor = vi.fn(function ContractStub(
   this.allowance = mockAllowance;
   this.isApprovedForAll = mockIsApprovedForAll;
   this.balanceOf = mockBalanceOf;
+  this.nonces = mockNonces;
+  this.callStatic = { quoteExactInputSingle: mockQuoteExactInputSingle };
 });
 
 const EOA = "0x1111111111111111111111111111111111111111";
 
+const mockSignTypedData = vi.fn();
+
 const WalletCtor = vi.fn(function WalletStub(
-  this: { address: string; privateKey: string },
+  this: {
+    address: string;
+    privateKey: string;
+    _signTypedData: unknown;
+  },
   privateKey: string,
 ) {
   this.address = EOA;
   this.privateKey = privateKey;
+  this._signTypedData = mockSignTypedData;
 });
 
 const JsonRpcProviderCtor = vi.fn(function ProviderStub() {
   // empty stub — adapter only passes it as a runner to Contract
 });
 
-vi.mock("ethers", () => ({
-  ethers: {
+vi.mock("ethers", async () => {
+  const actual = await vi.importActual<typeof import("ethers")>("ethers");
+  return {
+    ...actual,
+    ethers: {
+      ...actual,
+      Contract: ContractCtor,
+      Wallet: WalletCtor,
+      providers: { JsonRpcProvider: JsonRpcProviderCtor },
+    },
     Contract: ContractCtor,
     Wallet: WalletCtor,
     providers: { JsonRpcProvider: JsonRpcProviderCtor },
-  },
-  Contract: ContractCtor,
-  Wallet: WalletCtor,
-  providers: { JsonRpcProvider: JsonRpcProviderCtor },
-}));
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -293,12 +312,13 @@ function runAdapterContract(
         expect(fixture.adapter.chainId).toBeGreaterThan(0);
       });
 
-      it("build(privateKey) returns an OnboardClient with the four methods", () => {
+      it("build(privateKey) returns an OnboardClient with the five methods", () => {
         const client = fixture.adapter.build(fixture.privateKey);
         expect(typeof client.status).toBe("function");
         expect(typeof client.ensureFunder).toBe("function");
         expect(typeof client.ensureApprovals).toBe("function");
         expect(typeof client.ensureCreds).toBe("function");
+        expect(typeof client.ensureFunded).toBe("function");
       });
     });
 

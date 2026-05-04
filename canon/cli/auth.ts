@@ -26,6 +26,19 @@ export function getPrivateKey(): string | undefined {
 }
 
 /**
+ * Hydrate `process.env` from the project-local wallet store.
+ *
+ * Idempotent — keys already present in `process.env` win, so explicit
+ * shell exports override persisted values. Run at CLI bootstrap so
+ * subsequent `process.env` reads (e.g. `WALLET_PROXY_ADDRESS`,
+ * `POLYMARKET_BUILDER_*`) see values written by prior `--execute` runs.
+ */
+export function hydrateWalletEnv(): void {
+  const store = new FileWalletStore();
+  store.loadEnvIntoProcess();
+}
+
+/**
  * Require auth for a write command.
  *
  * Returns the private key from the env or the project-local wallet
@@ -35,6 +48,7 @@ export function getPrivateKey(): string | undefined {
  * @param command - The command name (for error messages).
  */
 export function requireAuth(command: string): string {
+  hydrateWalletEnv();
   const fromEnv = getPrivateKey();
   if (fromEnv) return fromEnv;
 

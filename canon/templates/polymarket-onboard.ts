@@ -14,7 +14,7 @@
 // challenge on clob.polymarket.com. Must come before any SDK import that
 // builds an axios instance.
 import "./clob-axios-defaults.js";
-import { Contract, Wallet, providers } from "ethers";
+import { Contract, Wallet, providers, utils } from "ethers";
 import {
   RelayClient,
   deriveSafe,
@@ -32,6 +32,7 @@ import { BuilderConfig } from "@polymarket/builder-signing-sdk";
 import { getContractConfig as relayerSubpathGetContractConfig } from "@polymarket/builder-relayer-client/dist/config/index.js";
 import {
   ClobClient,
+  SignatureTypeV2,
   getContractConfig as getClobContractConfig,
 } from "@polymarket/clob-client-v2";
 import type { Chain } from "@polymarket/clob-client-v2";
@@ -49,6 +50,26 @@ const CLOB_HOST =
   process.env["POLYMARKET_CLOB_HOST"] ?? "https://clob.polymarket.com";
 const POLYGON_RPC_URL =
   process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
+
+// Polygon mainnet addresses for the gasless funding path. These are NOT
+// surfaced through `getContractConfig(137)` — Polymarket's SDK only
+// returns Safe + CLOB addresses. Each is verified in
+// `canon/templates/__tests__/_reference_permit_chain.mjs` (live-run
+// 2026-05-03). Don't move them into the SDK config — they're chain
+// infrastructure, not Polymarket-controlled.
+const USDC_NATIVE_POLYGON = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359";
+const USDC_E_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
+const POLYMARKET_ONRAMP = "0x93070a847efEf7F70739046A929D47a521F5B8ee";
+const UNISWAP_SWAP_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
+const UNISWAP_QUOTER_V2 = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
+// Uniswap V3 USDC↔USDC.e pools exist at three fee tiers; try the
+// cheapest first. 0.5% slippage (`9950 / 10_000`) matches the reference
+// prototype's tolerance.
+const UNISWAP_FEE_TIERS = [100, 500, 3000] as const;
+const SLIPPAGE_NUMERATOR = 9950n;
+const SLIPPAGE_DENOMINATOR = 10_000n;
+const PERMIT_DEADLINE_SECONDS = 3600;
+const SWAP_DEADLINE_SECONDS = 600;
 
 const COLLATERAL_DECIMALS = 6;
 const MAX_UINT256: bigint = (1n << 256n) - 1n;
@@ -238,6 +259,11 @@ interface OnboardCtx {
   // The ethers v5 provider used for read calls. Typed loosely to avoid
   // pinning the impl to a specific subclass.
   provider: providers.Provider;
+  // The EOA's wallet — needed to sign EIP-2612 permits for gasless
+  // funding (`ensureFunded`). The relayer-driven mutations
+  // (deploy / approvals / wrap) only require the wallet via the
+  // `RelayClient` it was constructed with.
+  wallet: Wallet;
   relay: RelayClient;
   clob: ClobClient;
 }
@@ -400,6 +426,258 @@ async function ensureCredsImpl(
   return creds;
 }
 
+// ABIs scoped to ensureFunded — kept inline so the call surface is
+// auditable in one place rather than scattered across a constants file.
+const PERMIT_ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function nonces(address owner) view returns (uint256)",
+];
+
+const QUOTER_ABI = [
+  "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256,uint160,uint32,uint256)",
+];
+
+const ERC20_PERMIT_TRANSFER_APPROVE_ABI = new utils.Interface([
+  "function permit(address,address,uint256,uint256,uint8,bytes32,bytes32)",
+  "function transferFrom(address,address,uint256) returns (bool)",
+  "function approve(address,uint256)",
+]);
+
+const SWAP_ROUTER_ABI = new utils.Interface([
+  "function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256)",
+]);
+
+const ONRAMP_ABI = new utils.Interface([
+  "function wrap(address,address,uint256)",
+]);
+
+const PERMIT_TYPED_DATA_TYPES = {
+  Permit: [
+    { name: "owner", type: "address" },
+    { name: "spender", type: "address" },
+    { name: "value", type: "uint256" },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint256" },
+  ],
+} as const;
+
+interface NonceContract {
+  balanceOf(owner: string): Promise<unknown>;
+  nonces(owner: string): Promise<unknown>;
+}
+
+interface QuoterCallStatic {
+  quoteExactInputSingle(params: {
+    tokenIn: string;
+    tokenOut: string;
+    amountIn: bigint;
+    fee: number;
+    sqrtPriceLimitX96: number;
+  }): Promise<readonly [bigint, ...unknown[]]>;
+}
+
+interface QuoterContract {
+  callStatic: QuoterCallStatic;
+}
+
+async function quoteSwap(
+  ctx: OnboardCtx,
+  amount: bigint,
+): Promise<{ fee: number; expectedOut: bigint }> {
+  const quoter = new Contract(
+    UNISWAP_QUOTER_V2,
+    QUOTER_ABI,
+    ctx.provider,
+  ) as unknown as QuoterContract;
+  for (const fee of UNISWAP_FEE_TIERS) {
+    try {
+      const q = await quoter.callStatic.quoteExactInputSingle({
+        tokenIn: USDC_NATIVE_POLYGON,
+        tokenOut: USDC_E_POLYGON,
+        amountIn: amount,
+        fee,
+        sqrtPriceLimitX96: 0,
+      });
+      const expectedOut = asBigInt(q[0]);
+      if (expectedOut > 0n) return { fee, expectedOut };
+    } catch {
+      // Pool absent at this fee tier — try the next one. A revert here is
+      // not informative; only the absence of any pool is fatal (handled
+      // after the loop).
+    }
+  }
+  throw new Error(
+    "polymarket-onboard: no Uniswap V3 USDC→USDC.e pool returned a quote at fee tiers 100/500/3000 — refusing to fund without a swap path.",
+  );
+}
+
+async function buildPermitChainBatch(
+  ctx: OnboardCtx,
+  amount: bigint,
+  nonce: bigint,
+  expectedOut: bigint,
+  fee: number,
+): Promise<Transaction[]> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const permitDeadline = BigInt(nowSec + PERMIT_DEADLINE_SECONDS);
+  const swapDeadline = BigInt(nowSec + SWAP_DEADLINE_SECONDS);
+  const minOut =
+    (expectedOut * SLIPPAGE_NUMERATOR) / SLIPPAGE_DENOMINATOR;
+
+  const permitDomain = {
+    name: "USD Coin",
+    version: "2",
+    chainId: POLYGON_CHAIN_ID,
+    verifyingContract: USDC_NATIVE_POLYGON,
+  };
+  // ethers v5's Wallet exposes `_signTypedData` (typed-data signer not
+  // yet de-underscored at the v5 release we're pinned to).
+  const sig = await (
+    ctx.wallet as unknown as {
+      _signTypedData: (
+        domain: typeof permitDomain,
+        types: typeof PERMIT_TYPED_DATA_TYPES,
+        value: Record<string, unknown>,
+      ) => Promise<string>;
+    }
+  )._signTypedData(permitDomain, PERMIT_TYPED_DATA_TYPES, {
+    owner: ctx.wallet.address,
+    spender: ctx.safeAddress,
+    value: amount,
+    nonce,
+    deadline: permitDeadline,
+  });
+  const { r, s, v } = utils.splitSignature(sig);
+
+  return [
+    {
+      to: USDC_NATIVE_POLYGON,
+      value: "0",
+      data: ERC20_PERMIT_TRANSFER_APPROVE_ABI.encodeFunctionData("permit", [
+        ctx.wallet.address,
+        ctx.safeAddress,
+        amount,
+        permitDeadline,
+        v,
+        r,
+        s,
+      ]),
+    },
+    {
+      to: USDC_NATIVE_POLYGON,
+      value: "0",
+      data: ERC20_PERMIT_TRANSFER_APPROVE_ABI.encodeFunctionData(
+        "transferFrom",
+        [ctx.wallet.address, ctx.safeAddress, amount],
+      ),
+    },
+    {
+      to: USDC_NATIVE_POLYGON,
+      value: "0",
+      data: ERC20_PERMIT_TRANSFER_APPROVE_ABI.encodeFunctionData("approve", [
+        UNISWAP_SWAP_ROUTER,
+        MAX_UINT256,
+      ]),
+    },
+    {
+      to: UNISWAP_SWAP_ROUTER,
+      value: "0",
+      data: SWAP_ROUTER_ABI.encodeFunctionData("exactInputSingle", [
+        {
+          tokenIn: USDC_NATIVE_POLYGON,
+          tokenOut: USDC_E_POLYGON,
+          fee,
+          recipient: ctx.safeAddress,
+          deadline: swapDeadline,
+          amountIn: amount,
+          amountOutMinimum: minOut,
+          sqrtPriceLimitX96: 0,
+        },
+      ]),
+    },
+    {
+      to: USDC_E_POLYGON,
+      value: "0",
+      data: ERC20_PERMIT_TRANSFER_APPROVE_ABI.encodeFunctionData("approve", [
+        POLYMARKET_ONRAMP,
+        MAX_UINT256,
+      ]),
+    },
+    {
+      to: POLYMARKET_ONRAMP,
+      value: "0",
+      data: ONRAMP_ABI.encodeFunctionData("wrap", [
+        USDC_E_POLYGON,
+        ctx.safeAddress,
+        minOut,
+      ]),
+    },
+  ];
+}
+
+async function ensureFundedImpl(
+  ctx: OnboardCtx,
+  amountBaseUnits?: bigint,
+): Promise<{
+  funded: boolean;
+  amount: bigint;
+  expectedOut: bigint;
+  txHash?: string;
+}> {
+  if (!(await ctx.relay.getDeployed(ctx.safeAddress))) {
+    throw new Error(
+      "polymarket-onboard: ensureFunded() requires the funder Safe to be deployed first. Call ensureFunder() before ensureFunded().",
+    );
+  }
+  const usdc = new Contract(
+    USDC_NATIVE_POLYGON,
+    PERMIT_ERC20_ABI,
+    ctx.provider,
+  ) as unknown as NonceContract;
+  const balance = asBigInt(await usdc.balanceOf(ctx.wallet.address));
+  if (balance === 0n) {
+    return { funded: false, amount: 0n, expectedOut: 0n };
+  }
+  const amount = amountBaseUnits ?? balance;
+  if (amount <= 0n) {
+    return { funded: false, amount: 0n, expectedOut: 0n };
+  }
+  if (amount > balance) {
+    throw new Error(
+      `polymarket-onboard: requested ensureFunded amount ${amount.toString()} exceeds EOA native USDC balance ${balance.toString()} — refusing to sign a permit that would revert on transferFrom.`,
+    );
+  }
+
+  const nonce = asBigInt(await usdc.nonces(ctx.wallet.address));
+  const { fee, expectedOut } = await quoteSwap(ctx, amount);
+  const txs = await buildPermitChainBatch(
+    ctx,
+    amount,
+    nonce,
+    expectedOut,
+    fee,
+  );
+
+  let submission: RelayerTxLike;
+  try {
+    submission = (await ctx.relay.execute(
+      txs,
+      "canon: ensureFunded — permit + transferFrom + swap + wrap",
+    )) as unknown as RelayerTxLike;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `polymarket-onboard: relayer rejected the permit-chain batch — ${msg}`,
+    );
+  }
+  const receipt = await submission.wait();
+  const txHash =
+    receipt?.transactionHash ?? submission.transactionHash ?? submission.hash;
+  return txHash !== undefined
+    ? { funded: true, amount, expectedOut, txHash }
+    : { funded: true, amount, expectedOut };
+}
+
 function build(privateKey: string): OnboardClient {
   const safeFactory = loadSafeFactory();
   // Pass an explicit network spec to skip the auto-detect round-trip.
@@ -432,12 +710,14 @@ function build(privateKey: string): OnboardClient {
     chain: POLYGON_CHAIN_ID as unknown as Chain,
     signer: wallet,
   });
-  const ctx: OnboardCtx = { safeAddress, provider, relay, clob };
+  const ctx: OnboardCtx = { safeAddress, provider, wallet, relay, clob };
   return {
     status: () => statusImpl(ctx),
     ensureFunder: () => ensureFunderImpl(ctx),
     ensureApprovals: () => ensureApprovalsImpl(ctx),
     ensureCreds: () => ensureCredsImpl(ctx),
+    ensureFunded: (amountBaseUnits?: bigint) =>
+      ensureFundedImpl(ctx, amountBaseUnits),
   };
 }
 
@@ -446,6 +726,85 @@ export const polymarketOnboard: MarketVenueOnboard = {
   chainId: POLYGON_CHAIN_ID,
   build,
 };
+
+/**
+ * Bootstrap Polymarket builder credentials for a fresh wallet.
+ *
+ * The relayer requires authenticated builder headers on every mutative
+ * Safe call (deploy, batched approvals, wraps) — without them every
+ * `--execute` is rejected 401. This helper does the two-step dance
+ * described in the live-verification handoff:
+ *
+ *   1. Create a temp ClobClient pinned to the Safe funder
+ *      (`signatureType=POLY_GNOSIS_SAFE`, `funderAddress=<safe>`) and
+ *      derive trading creds — required to L2-authenticate the next call.
+ *   2. Re-init the client with those trading creds attached and call
+ *      `createBuilderApiKey()` — returns the persistent builder creds
+ *      that `loadBuilderConfig()` reads from env on subsequent runs.
+ *
+ * Idempotent only at the env layer: callers should check for existing
+ * `POLYMARKET_BUILDER_*` env vars before invoking. Calling twice creates
+ * a second builder key — Polymarket allows this, but it's wasteful.
+ *
+ * Throws when either CLOB call returns incomplete creds (missing
+ * key/secret/passphrase) so persistence never silently writes a partial
+ * record.
+ */
+export async function bootstrapBuilderCreds(privateKey: string): Promise<{
+  key: string;
+  secret: string;
+  passphrase: string;
+}> {
+  const safeFactory = loadSafeFactory();
+  const provider = new providers.JsonRpcProvider(POLYGON_RPC_URL, {
+    name: "polygon",
+    chainId: POLYGON_CHAIN_ID,
+  });
+  const wallet = new Wallet(privateKey, provider);
+  const safeAddress = deriveSafe(wallet.address, safeFactory);
+
+  const tempClient = new ClobClient({
+    host: CLOB_HOST,
+    chain: POLYGON_CHAIN_ID as unknown as Chain,
+    signer: wallet,
+    signatureType: SignatureTypeV2.POLY_GNOSIS_SAFE,
+    funderAddress: safeAddress,
+  });
+  const tradingCreds = await tempClient.createOrDeriveApiKey();
+  if (
+    !tradingCreds?.key ||
+    !tradingCreds.secret ||
+    !tradingCreds.passphrase
+  ) {
+    throw new Error(
+      "polymarket-onboard: CLOB createOrDeriveApiKey returned incomplete trading creds — cannot bootstrap builder credentials.",
+    );
+  }
+
+  const authedClient = new ClobClient({
+    host: CLOB_HOST,
+    chain: POLYGON_CHAIN_ID as unknown as Chain,
+    signer: wallet,
+    signatureType: SignatureTypeV2.POLY_GNOSIS_SAFE,
+    funderAddress: safeAddress,
+    creds: tradingCreds,
+  });
+  const builderCreds = await authedClient.createBuilderApiKey();
+  if (
+    !builderCreds?.key ||
+    !builderCreds.secret ||
+    !builderCreds.passphrase
+  ) {
+    throw new Error(
+      "polymarket-onboard: CLOB createBuilderApiKey returned incomplete builder creds.",
+    );
+  }
+  return {
+    key: builderCreds.key,
+    secret: builderCreds.secret,
+    passphrase: builderCreds.passphrase,
+  };
+}
 
 /**
  * Load Polymarket builder credentials from env, when present.

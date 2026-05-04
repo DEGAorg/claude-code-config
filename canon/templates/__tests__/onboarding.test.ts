@@ -69,26 +69,32 @@ vi.mock("@polymarket/builder-relayer-client", () => ({
 const mockDeriveApiKey = vi.fn();
 const mockCreateApiKey = vi.fn();
 const mockCreateOrDeriveApiKey = vi.fn();
+const mockCreateBuilderApiKey = vi.fn();
 const mockGetBalanceAllowance = vi.fn();
 const mockClobContractConfig = vi.fn();
+const clobConstructorCalls: Array<Record<string, unknown>> = [];
 
 const ClobClientCtor = vi.fn(function ClobClientStub(
   this: {
     deriveApiKey: unknown;
     createApiKey: unknown;
     createOrDeriveApiKey: unknown;
+    createBuilderApiKey: unknown;
     getBalanceAllowance: unknown;
   },
-  _opts: unknown,
+  opts: Record<string, unknown>,
 ) {
+  clobConstructorCalls.push(opts);
   this.deriveApiKey = mockDeriveApiKey;
   this.createApiKey = mockCreateApiKey;
   this.createOrDeriveApiKey = mockCreateOrDeriveApiKey;
+  this.createBuilderApiKey = mockCreateBuilderApiKey;
   this.getBalanceAllowance = mockGetBalanceAllowance;
 });
 
 vi.mock("@polymarket/clob-client-v2", () => ({
   ClobClient: ClobClientCtor,
+  SignatureTypeV2: { EOA: 0, POLY_PROXY: 1, POLY_GNOSIS_SAFE: 2 },
   getContractConfig: mockClobContractConfig,
 }));
 
@@ -99,12 +105,16 @@ vi.mock("@polymarket/clob-client-v2", () => ({
 const mockAllowance = vi.fn();
 const mockIsApprovedForAll = vi.fn();
 const mockBalanceOf = vi.fn();
+const mockNonces = vi.fn();
+const mockQuoteExactInputSingle = vi.fn();
 
 const ContractCtor = vi.fn(function ContractStub(
   this: {
     allowance: unknown;
     isApprovedForAll: unknown;
     balanceOf: unknown;
+    nonces: unknown;
+    callStatic: { quoteExactInputSingle: unknown };
   },
   _address: string,
   _abi: unknown,
@@ -113,34 +123,46 @@ const ContractCtor = vi.fn(function ContractStub(
   this.allowance = mockAllowance;
   this.isApprovedForAll = mockIsApprovedForAll;
   this.balanceOf = mockBalanceOf;
+  this.nonces = mockNonces;
+  this.callStatic = { quoteExactInputSingle: mockQuoteExactInputSingle };
 });
 
+const mockSignTypedData = vi.fn();
+
+const EOA = "0x1111111111111111111111111111111111111111";
+
 const WalletCtor = vi.fn(function WalletStub(
-  this: { address: string; privateKey: string },
+  this: {
+    address: string;
+    privateKey: string;
+    _signTypedData: unknown;
+  },
   privateKey: string,
 ) {
   this.address = EOA;
   this.privateKey = privateKey;
+  this._signTypedData = mockSignTypedData;
 });
 
 const JsonRpcProviderCtor = vi.fn(function ProviderStub() {
   // empty stub — adapter only passes it as a runner to Contract
 });
 
-const EOA = "0x1111111111111111111111111111111111111111";
-
-vi.mock("ethers", () => ({
-  ethers: {
+vi.mock("ethers", async () => {
+  const actual = await vi.importActual<typeof import("ethers")>("ethers");
+  return {
+    ...actual,
+    ethers: {
+      ...actual,
+      Contract: ContractCtor,
+      Wallet: WalletCtor,
+      providers: { JsonRpcProvider: JsonRpcProviderCtor },
+    },
     Contract: ContractCtor,
     Wallet: WalletCtor,
     providers: { JsonRpcProvider: JsonRpcProviderCtor },
-    constants: { MaxUint256: { toBigInt: () => MAX_UINT256 } },
-  },
-  Contract: ContractCtor,
-  Wallet: WalletCtor,
-  providers: { JsonRpcProvider: JsonRpcProviderCtor },
-  constants: { MaxUint256: { toBigInt: () => MAX_UINT256 } },
-}));
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Constants and helpers
@@ -227,13 +249,26 @@ beforeEach(async () => {
   mockAllowance.mockResolvedValue(bigNumberLike(MAX_UINT256));
   mockIsApprovedForAll.mockResolvedValue(true);
   mockBalanceOf.mockResolvedValue(bigNumberLike(0n));
+  mockNonces.mockResolvedValue(bigNumberLike(0n));
+  mockQuoteExactInputSingle.mockResolvedValue([
+    bigNumberLike(0n),
+    bigNumberLike(0n),
+    0,
+    bigNumberLike(0n),
+  ]);
+  // 65-byte canonical signature: r=ab×32, s=cd×32, v=0x1c (28).
+  mockSignTypedData.mockResolvedValue(
+    `0x${"ab".repeat(32)}${"cd".repeat(32)}1c`,
+  );
   mockDeriveApiKey.mockResolvedValue(FULL_CREDS);
   mockCreateApiKey.mockResolvedValue(NEW_CREDS);
   mockCreateOrDeriveApiKey.mockResolvedValue(FULL_CREDS);
+  mockCreateBuilderApiKey.mockResolvedValue(NEW_CREDS);
   mockGetBalanceAllowance.mockResolvedValue({
     balance: "0",
     allowance: MAX_UINT256.toString(),
   });
+  clobConstructorCalls.length = 0;
 
   const mod = await import("../polymarket-onboard.js");
   polymarketOnboard = mod.polymarketOnboard;
@@ -406,6 +441,43 @@ describe("ensureApprovals()", () => {
     expect((firstCall?.[0] as unknown[]).length).toBeGreaterThan(0);
   });
 
+  it("approves both V1 and V2 spenders — V2 markets fail silently without their approvals", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockAllowance.mockResolvedValue(bigNumberLike(0n));
+    mockIsApprovedForAll.mockResolvedValue(false);
+    mockRelayExecute.mockResolvedValue(txReceiptLike("0xv2approve"));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    await client.ensureApprovals();
+
+    // Each Safe sub-tx encodes the spender into the calldata's last 40 hex
+    // chars (after the selector + zero-padding). Decode and assert every
+    // V1 + V2 spender appears at least once across the batch.
+    const txs = mockRelayExecute.mock.calls[0]?.[0] as Array<{
+      to: string;
+      data: string;
+    }>;
+    const spendersSeen = new Set(
+      txs.map((tx) => `0x${tx.data.slice(34, 74)}`.toLowerCase()),
+    );
+
+    for (const expected of [
+      EXCHANGE,
+      NEG_RISK_EXCHANGE,
+      NEG_RISK_ADAPTER,
+      // V2 spenders — same addresses as V1 in the mock, but the contract
+      // uses identifiers that resolve through `exchangeV2`/`negRiskExchangeV2`
+      // independently. The assertion is that the batch is built from
+      // every key in `getContractConfig(137)` we depend on.
+    ]) {
+      expect(spendersSeen.has(expected.toLowerCase())).toBe(true);
+    }
+    // Six ERC-20 spender approvals (4 V1-shape + 2 V2) plus five ERC-1155
+    // operator approvals — assert the count rather than each address since
+    // the mock collapses V1 and V2 to the same addresses.
+    expect(txs.length).toBe(11);
+  });
+
   it("submits only the approvals that are missing (mixed state)", async () => {
     mockRelayGetDeployed.mockResolvedValue(true);
     // Half the ERC-20 spenders are missing; ERC-1155s are all good.
@@ -484,6 +556,135 @@ describe("ensureCreds()", () => {
 });
 
 // ---------------------------------------------------------------------------
+// ensureFunded()
+// ---------------------------------------------------------------------------
+
+describe("ensureFunded()", () => {
+  const ONE_USDC = 1_000_000n; // 1 USDC in 6-decimal base units.
+
+  it("requires the funder Safe to be deployed first", async () => {
+    mockRelayGetDeployed.mockResolvedValue(false);
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    await expect(client.ensureFunded()).rejects.toThrow(
+      /requires the funder Safe to be deployed/i,
+    );
+  });
+
+  it("returns funded=false when the EOA's native USDC balance is zero", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(0n));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    const result = await client.ensureFunded();
+
+    expect(result).toEqual({ funded: false, amount: 0n, expectedOut: 0n });
+    expect(mockRelayExecute).not.toHaveBeenCalled();
+  });
+
+  it("submits a 6-call permit + swap + wrap batch when the EOA holds USDC", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(ONE_USDC));
+    mockNonces.mockResolvedValue(bigNumberLike(7n));
+    // First fee tier returns a quote — adapter must take it.
+    mockQuoteExactInputSingle.mockResolvedValueOnce([
+      bigNumberLike((ONE_USDC * 9990n) / 10000n),
+      bigNumberLike(0n),
+      0,
+      bigNumberLike(0n),
+    ]);
+    mockRelayExecute.mockResolvedValue(txReceiptLike("0xfundbeef"));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    const result = await client.ensureFunded();
+
+    expect(result.funded).toBe(true);
+    expect(result.amount).toBe(ONE_USDC);
+    expect(result.txHash).toBe("0xfundbeef");
+    expect(mockSignTypedData).toHaveBeenCalledTimes(1);
+    expect(mockRelayExecute).toHaveBeenCalledTimes(1);
+
+    const txs = mockRelayExecute.mock.calls[0]?.[0] as Array<{
+      to: string;
+      data: string;
+    }>;
+    // permit, transferFrom, approve(SwapRouter), swap, approve(Onramp), wrap.
+    expect(txs).toHaveLength(6);
+    expect(txs[0]?.to.toLowerCase()).toBe(
+      "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",
+    ); // native USDC
+    expect(txs[3]?.to.toLowerCase()).toBe(
+      "0xe592427a0aece92de3edee1f18e0157c05861564",
+    ); // Uniswap V3 SwapRouter
+    expect(txs[5]?.to.toLowerCase()).toBe(
+      "0x93070a847efef7f70739046a929d47a521f5b8ee",
+    ); // Polymarket Onramp
+  });
+
+  it("falls back through Uniswap fee tiers until one returns a quote", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(ONE_USDC));
+    mockNonces.mockResolvedValue(bigNumberLike(0n));
+    mockQuoteExactInputSingle
+      .mockRejectedValueOnce(new Error("no pool at fee=100"))
+      .mockRejectedValueOnce(new Error("no pool at fee=500"))
+      .mockResolvedValueOnce([
+        bigNumberLike(ONE_USDC),
+        bigNumberLike(0n),
+        0,
+        bigNumberLike(0n),
+      ]);
+    mockRelayExecute.mockResolvedValue(txReceiptLike("0xfundtier"));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    const result = await client.ensureFunded();
+    expect(result.funded).toBe(true);
+    expect(mockQuoteExactInputSingle).toHaveBeenCalledTimes(3);
+  });
+
+  it("throws when no Uniswap fee tier returns a quote", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(ONE_USDC));
+    mockNonces.mockResolvedValue(bigNumberLike(0n));
+    mockQuoteExactInputSingle.mockRejectedValue(new Error("no pool"));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    await expect(client.ensureFunded()).rejects.toThrow(
+      /no Uniswap V3 USDC.*pool/i,
+    );
+    expect(mockRelayExecute).not.toHaveBeenCalled();
+  });
+
+  it("rejects amounts greater than the EOA's balance", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(ONE_USDC));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    await expect(client.ensureFunded(ONE_USDC * 2n)).rejects.toThrow(
+      /exceeds EOA native USDC balance/i,
+    );
+  });
+
+  it("wraps relayer errors with a clear actionable message", async () => {
+    mockRelayGetDeployed.mockResolvedValue(true);
+    mockBalanceOf.mockResolvedValue(bigNumberLike(ONE_USDC));
+    mockNonces.mockResolvedValue(bigNumberLike(0n));
+    mockQuoteExactInputSingle.mockResolvedValueOnce([
+      bigNumberLike(ONE_USDC),
+      bigNumberLike(0n),
+      0,
+      bigNumberLike(0n),
+    ]);
+    mockRelayExecute.mockRejectedValue(new Error("Relayer 401: bad creds"));
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+    await expect(client.ensureFunded()).rejects.toThrow(
+      /relayer rejected.*401|relayer rejected.*creds/i,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Malformed `getContractConfig` payload
 // ---------------------------------------------------------------------------
 
@@ -516,6 +717,98 @@ describe("malformed getContractConfig", () => {
 
     await expect(client.status()).rejects.toThrow(
       /collateral|config|invalid/i,
+    );
+  });
+
+  it("status() throws when the CLOB config is missing exchangeV2 or negRiskExchangeV2", async () => {
+    mockClobContractConfig.mockReturnValue({
+      exchange: EXCHANGE,
+      negRiskAdapter: NEG_RISK_ADAPTER,
+      negRiskExchange: NEG_RISK_EXCHANGE,
+      collateral: COLLATERAL,
+      conditionalTokens: CTF,
+      // exchangeV2 / negRiskExchangeV2 missing
+    });
+
+    const client = polymarketOnboard.build(PRIVATE_KEY);
+
+    await expect(client.status()).rejects.toThrow(
+      /v2|exchangev2|negriskexchangev2/i,
+    );
+  });
+
+  it("bootstrapBuilderCreds returns builder creds and pins the funder Safe", async () => {
+    mockCreateOrDeriveApiKey.mockResolvedValue({
+      key: "trading-key",
+      secret: "trading-secret",
+      passphrase: "trading-pass",
+    });
+    mockCreateBuilderApiKey.mockResolvedValue({
+      key: "builder-key",
+      secret: "builder-secret",
+      passphrase: "builder-pass",
+    });
+
+    const mod = await import("../polymarket-onboard.js");
+    const creds = await mod.bootstrapBuilderCreds(PRIVATE_KEY);
+
+    expect(creds).toEqual({
+      key: "builder-key",
+      secret: "builder-secret",
+      passphrase: "builder-pass",
+    });
+
+    // Both ClobClient calls must pin sigtype=POLY_GNOSIS_SAFE and
+    // funderAddress=Safe — without that, trading creds end up scoped to
+    // the EOA and createBuilderApiKey rejects them.
+    const builderConstructorOpts = clobConstructorCalls.filter(
+      (o) => o["funderAddress"] === SAFE,
+    );
+    expect(builderConstructorOpts.length).toBeGreaterThanOrEqual(2);
+    for (const opts of builderConstructorOpts) {
+      expect(opts["signatureType"]).toBe(2);
+      expect(opts["funderAddress"]).toBe(SAFE);
+    }
+
+    // The second client must carry the trading creds so the builder-key
+    // call has L2 auth headers.
+    const authedOpts = builderConstructorOpts[1];
+    expect(authedOpts?.["creds"]).toEqual({
+      key: "trading-key",
+      secret: "trading-secret",
+      passphrase: "trading-pass",
+    });
+  });
+
+  it("bootstrapBuilderCreds throws when CLOB returns incomplete trading creds", async () => {
+    mockCreateOrDeriveApiKey.mockResolvedValue({
+      key: "",
+      secret: "",
+      passphrase: "",
+    });
+
+    const mod = await import("../polymarket-onboard.js");
+    await expect(mod.bootstrapBuilderCreds(PRIVATE_KEY)).rejects.toThrow(
+      /incomplete trading creds/i,
+    );
+    expect(mockCreateBuilderApiKey).not.toHaveBeenCalled();
+  });
+
+  it("bootstrapBuilderCreds throws when CLOB returns incomplete builder creds", async () => {
+    mockCreateOrDeriveApiKey.mockResolvedValue({
+      key: "trading-key",
+      secret: "trading-secret",
+      passphrase: "trading-pass",
+    });
+    mockCreateBuilderApiKey.mockResolvedValue({
+      key: "builder-key",
+      secret: "",
+      passphrase: "builder-pass",
+    });
+
+    const mod = await import("../polymarket-onboard.js");
+    await expect(mod.bootstrapBuilderCreds(PRIVATE_KEY)).rejects.toThrow(
+      /incomplete builder creds/i,
     );
   });
 

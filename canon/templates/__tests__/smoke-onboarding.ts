@@ -71,6 +71,20 @@ async function main(privateKey: string): Promise<void> {
     `ensureCreds: key=${creds.key.slice(0, 8)}... (secret/passphrase present)`,
   );
 
+  // Optional permit-chain funding — opt in with RUN_FUND=1 when the EOA
+  // holds native USDC and you want the smoke to verify the full path
+  // EOA→Safe in one shot. Without this flag the smoke assumes the Safe
+  // is already funded out-of-band.
+  if (process.env["RUN_FUND"] === "1") {
+    const funded = await onboard.ensureFunded();
+    console.log(
+      `ensureFunded: funded=${String(funded.funded)}` +
+        ` amount=${funded.amount.toString()}` +
+        ` expectedOut=${funded.expectedOut.toString()}` +
+        (funded.txHash !== undefined ? ` tx=${funded.txHash}` : ""),
+    );
+  }
+
   const after = await onboard.status();
   console.log(`status (post): ${JSON.stringify(after)}`);
 

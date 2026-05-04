@@ -45,8 +45,16 @@ Operator entry points:
   `funderDeployed` / `approvalsReady` / `credsReady` / `fundedCollateral` /
   `funderAddress`.
 - `canon-cli onboard --execute --venue polymarket` — drives
-  `ensureFunder → ensureApprovals → ensureCreds`. Idempotent; second run is a
-  near-no-op.
+  `bootstrapBuilderCreds → ensureFunder → ensureApprovals → ensureCreds`.
+  Persists `WALLET_PROXY_ADDRESS` and `POLYMARKET_BUILDER_*` to
+  `.canon/wallet.env` so subsequent runs and the live trading client
+  pick them up automatically. Idempotent; second run is a near-no-op.
+- `canon-cli onboard --execute --fund [--amount <usdc>]` — additionally
+  runs `ensureFunded()`: pulls native USDC from the EOA into the Safe via
+  an off-chain EIP-2612 permit, swaps to USDC.e on Uniswap V3, and wraps
+  to pUSD via Polymarket's Onramp — all in a single batched relayer-paid
+  Safe tx. Without `--amount`, pulls the EOA's full native USDC balance.
+  The EOA never needs POL.
 
 Strategy `assertLiveCapabilities` (in
 `canon/templates/strategies/trade-momentum/entry.ts`) calls

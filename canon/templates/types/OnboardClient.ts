@@ -30,4 +30,24 @@ export interface OnboardClient {
   ensureApprovals(): Promise<{ approved: boolean; txHash?: string }>;
   /** Derive (or create) CLOB API creds. Idempotent. */
   ensureCreds(): Promise<{ key: string; secret: string; passphrase: string }>;
+  /**
+   * Move the EOA's collateral into the funder, gaslessly.
+   *
+   * Pulls the source token (e.g. native USDC on Polygon) from the EOA via
+   * an off-chain EIP-2612 permit, swaps to the venue's tradeable form on a
+   * DEX, and wraps into the venue's collateral token — all in one batched
+   * funder-initiated tx paid for by the relayer. The EOA never touches gas.
+   *
+   * No-op (`funded: false`) when the EOA holds zero of the source token.
+   * `amountBaseUnits` (6-decimal base units for USDC) caps the pull;
+   * defaults to the EOA's full balance.
+   */
+  ensureFunded(amountBaseUnits?: bigint): Promise<{
+    funded: boolean;
+    /** Source amount pulled from the EOA, in base units. */
+    amount: bigint;
+    /** Expected collateral amount delivered to the funder, in base units. */
+    expectedOut: bigint;
+    txHash?: string;
+  }>;
 }

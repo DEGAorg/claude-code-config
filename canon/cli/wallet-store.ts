@@ -21,6 +21,19 @@ export interface WalletStore {
   getPrivateKey(): string;
   getAddress(): Promise<string>;
   ensure(): Promise<EnsureResult>;
+  /** Read a value persisted in the store. Returns undefined when absent. */
+  getEnv(name: string): string | undefined;
+  /** Persist or replace a `KEY=value` line in the store, preserving mode 0600. */
+  setEnv(name: string, value: string): void;
+  /**
+   * Load every persisted `KEY=value` line into `process.env`.
+   *
+   * Skips keys already populated in `process.env` so explicit shell exports
+   * still win. Use at CLI bootstrap so adapters that read `process.env`
+   * directly (e.g. `WALLET_PROXY_ADDRESS`, `POLYMARKET_BUILDER_*`) pick up
+   * values written by previous `--execute` runs.
+   */
+  loadEnvIntoProcess(): void;
 }
 
 export interface EnsureResult {
@@ -85,6 +98,73 @@ export class FileWalletStore implements WalletStore {
       { mode: 0o600 },
     );
     return { address: wallet.address, created: true };
+  }
+
+  getEnv(name: string): string | undefined {
+    return this.readAllPairs().get(name);
+  }
+
+  setEnv(name: string, value: string): void {
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+      throw new Error(
+        `FileWalletStore.setEnv: invalid env name "${name}" — must match /^[A-Z][A-Z0-9_]*$/`,
+      );
+    }
+    if (/[\n\r]/.test(value)) {
+      throw new Error(
+        `FileWalletStore.setEnv: value for "${name}" contains a newline — refusing to corrupt wallet.env`,
+      );
+    }
+    mkdirSync(dirname(this.path), { recursive: true });
+    const existing = existsSync(this.path)
+      ? readFileSync(this.path, "utf8")
+      : "";
+    const lines = existing === "" ? [] : existing.split("\n");
+    let replaced = false;
+    const next = lines.map((raw) => {
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.startsWith("#")) return raw;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) return raw;
+      const key = trimmed.slice(0, eq).trim();
+      if (key === name) {
+        replaced = true;
+        return `${name}=${value}`;
+      }
+      return raw;
+    });
+    if (!replaced) {
+      // Drop a trailing empty line so we don't accumulate blank lines on
+      // repeated upserts.
+      if (next.length > 0 && next[next.length - 1] === "") next.pop();
+      next.push(`${name}=${value}`);
+    }
+    writeFileSync(this.path, `${next.join("\n")}\n`, { mode: 0o600 });
+  }
+
+  loadEnvIntoProcess(): void {
+    for (const [name, value] of this.readAllPairs()) {
+      if (process.env[name] === undefined || process.env[name] === "") {
+        process.env[name] = value;
+      }
+    }
+  }
+
+  private readAllPairs(): Map<string, string> {
+    const out = new Map<string, string>();
+    if (!existsSync(this.path)) return out;
+    const text = readFileSync(this.path, "utf8");
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq === -1) continue;
+      const name = line.slice(0, eq).trim();
+      const value = line.slice(eq + 1).trim();
+      if (name.length === 0) continue;
+      out.set(name, value);
+    }
+    return out;
   }
 
   /**

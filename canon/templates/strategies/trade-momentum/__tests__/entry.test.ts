@@ -61,11 +61,17 @@ const mockOnboardEnsureCreds = vi.fn(async () => ({
   secret: "s",
   passphrase: "p",
 }));
+const mockOnboardEnsureFunded = vi.fn(async () => ({
+  funded: true,
+  amount: 0n,
+  expectedOut: 0n,
+}));
 const mockOnboardBuild = vi.fn(() => ({
   status: mockOnboardStatus,
   ensureFunder: mockOnboardEnsureFunder,
   ensureApprovals: mockOnboardEnsureApprovals,
   ensureCreds: mockOnboardEnsureCreds,
+  ensureFunded: mockOnboardEnsureFunded,
 }));
 
 vi.mock("../../../polymarket-onboard.js", () => ({
@@ -114,6 +120,7 @@ beforeEach(async () => {
     ensureFunder: mockOnboardEnsureFunder,
     ensureApprovals: mockOnboardEnsureApprovals,
     ensureCreds: mockOnboardEnsureCreds,
+    ensureFunded: mockOnboardEnsureFunded,
   }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });
