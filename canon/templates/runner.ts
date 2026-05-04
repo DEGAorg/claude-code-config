@@ -128,10 +128,7 @@ export function createRunner(
     process.stdout.write(`${tag} ${msg}\n`);
   }
 
-  const flowPath = join(
-    config.baseDir.replace(/\/execution$/, ""),
-    "flow.json",
-  );
+  const flowPath = join(config.baseDir, "flow.json");
 
   function updateFlow(
     active: string,

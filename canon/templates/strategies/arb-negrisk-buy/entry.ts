@@ -249,7 +249,7 @@ async function main(): Promise<void> {
     runner: {
       pollIntervalMs,
       dryRun: flags.dryRun,
-      baseDir: ".canon/execution",
+      baseDir: ".",
       statePath: ".canon/state.json",
     },
     maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
@@ -260,7 +260,7 @@ async function main(): Promise<void> {
     executor,
     positions,
     log: (entry: ExecutionLogEntry) =>
-      appendEntry(".canon/execution", entry),
+      appendEntry(".", entry),
   });
 
   process.stdout.write(

@@ -80,15 +80,26 @@ describe("createRiskChecker (fair-value)", () => {
       expect(decision.rejection_reason).toBeUndefined();
     });
 
-    it("rejects when requested size exceeds the 10% per-position exposure cap", () => {
+    it("clamps requested size to the 10% per-position exposure cap", () => {
       const risk = createRiskChecker(makeConfig(), () => NOW);
-      // $1,500 = 15% of $10k — above 10% per-position cap.
+      // $1,500 = 15% of $10k — above 10% per-position cap, clamped to $1,000.
       const decision = risk.preTradeCheck(
         makeSignal({ size: 1_500 }),
         makePortfolio(),
       );
-      expect(decision.approved).toBe(false);
-      expect(decision.rejection_reason).toMatch(/exposure|size|position/i);
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(1_000);
+    });
+
+    it("clamps signal size to live wallet capital when bankroll is stale", () => {
+      // Persisted bankroll = $10k, but the wallet only holds $9.83.
+      const risk = createRiskChecker(makeConfig({ bankroll: 10_000 }), () => NOW);
+      const decision = risk.preTradeCheck(
+        makeSignal({ size: 1_000 }),
+        makePortfolio({ total_value: 9.83, positions: [] }),
+      );
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(9.83);
     });
 
     it("rejects a 6th concurrent position (maxConcurrent = 5)", () => {

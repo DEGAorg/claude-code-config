@@ -307,7 +307,7 @@ async function main(): Promise<void> {
     {
       pollIntervalMs,
       dryRun: flags.dryRun,
-      baseDir: ".canon/execution",
+      baseDir: ".",
       statePath: ".canon/state.json",
     },
     {
@@ -316,7 +316,7 @@ async function main(): Promise<void> {
       executor,
       positions,
       log: (entry: ExecutionLogEntry) =>
-        appendEntry(".canon/execution", entry),
+        appendEntry(".", entry),
       onOutcome,
     },
   );
