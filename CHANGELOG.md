@@ -6,6 +6,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-04
+
+Live-mode template fixes uncovered during test-live-4. Strategies now
+size signals against a persisted bankroll (init from Polymarket
+balance on first live run) and clamp orders against the live wallet
+capital — fixing the regression where signals at the config bankroll
+were rejected against a much smaller funded balance.
+
+### Added
+- `canon/templates/bankroll.ts` — persisted bankroll resolution
+  (`--bankroll <amount>` → `.canon/bankroll.json` → dry-run default →
+  live init from `positions.reconcile().total_value`). Once persisted
+  the value is not auto-updated; operators reset by passing the flag
+  again — 2026-05-04
+- `canon/templates/risk-clamp.ts` — shared `clampToHeadroom(requested,
+  caps[])` primitive that approves at the binding cap (via
+  `modified_size`) instead of rejecting, with a fillable-size floor
+  for true no-headroom cases — 2026-05-04
+- `--bankroll <amount>` flag on all five strategy entry points
+  (trade-momentum, arb-binary, arb-negrisk-buy, mm-premium,
+  fair-value) — 2026-05-04
+- Live-wallet capital floor in every `risk.ts`: aggregate exposure can
+  never exceed `portfolio.total_value`, so the strategy will not
+  submit orders the wallet cannot cover even when the persisted
+  bankroll is stale — 2026-05-04
+
+### Changed
+- All five strategies now use `clampToHeadroom` for per-position,
+  aggregate, and live-capital caps; signals over a cap are clamped via
+  `modified_size` rather than rejected outright — 2026-05-04
+- Strategy signal sizing reads `config.bankroll` consistently, mutated
+  at runtime from `.canon/bankroll.json` — 2026-05-04
+
+### Fixed
+- Execution log path doubling — every strategy's `entry.ts` was
+  passing `.canon/execution` as `baseDir`, producing
+  `.canon/execution/.canon/execution/YYYY-MM-DD.jsonl`. Now passes the
+  project root; the `runner.ts` `.replace(/\/execution$/, "")`
+  band-aid is removed — 2026-05-04
+- Bankroll-vs-portfolio mismatch where signals sized from
+  `config.bankroll` (\$10k default) were rejected by the risk checker
+  against a `portfolio.total_value` of \$9.83 — every order rejected
+  during live-test-4 — 2026-05-04
+- arb-negrisk-buy approving zero-size bundles when `netEdge ≤ 0`; now
+  rejected explicitly with a Kelly-no-edge reason — 2026-05-04
+
 ## [0.1.0] — 2026-05-04
 
 First formal versioned release. Captures the install-procedure restoration,

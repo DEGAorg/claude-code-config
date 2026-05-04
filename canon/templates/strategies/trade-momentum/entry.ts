@@ -15,6 +15,10 @@
 
 import { pathToFileURL } from "node:url";
 
+import {
+  formatBankrollBanner,
+  resolveBankroll,
+} from "../../bankroll.js";
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
 import {
@@ -59,6 +63,12 @@ const FALLBACK_PRICE = 0.5;
 export interface EntryFlags {
   /** When true, the runner logs signals but does not submit orders. */
   dryRun: boolean;
+  /**
+   * Optional `--bankroll <amount>` override. Persisted to
+   * `.canon/bankroll.json` when present; subsequent runs without the
+   * flag read the stored value back.
+   */
+  bankroll?: number | undefined;
 }
 
 /** Live executor + positions + scan adapters wired for the runner. */
@@ -70,11 +80,25 @@ export interface EntryDeps {
 
 /**
  * Parse `process.argv` into entry flags. `--live` opts in to live
- * execution; anything else (including no flag) is dry-run.
+ * execution; `--bankroll <amount>` sets and persists the bankroll
+ * (positive USD number); anything else (including no flag) is dry-run.
  */
 export function parseEntryFlags(argv: readonly string[]): EntryFlags {
-  if (argv.includes("--live")) return { dryRun: false };
-  return { dryRun: true };
+  const dryRun = !argv.includes("--live");
+
+  const flagIndex = argv.indexOf("--bankroll");
+  if (flagIndex === -1) {
+    return { dryRun };
+  }
+  const raw = argv[flagIndex + 1];
+  if (raw === undefined) {
+    throw new Error("--bankroll requires a positive USD amount");
+  }
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error(`--bankroll must be a positive number, got "${raw}"`);
+  }
+  return { dryRun, bankroll: amount };
 }
 
 /**
@@ -252,12 +276,20 @@ async function main(): Promise<void> {
   const maxOrders = Number(process.env["MAX_ORDERS"]) || 3;
   let submittedCount = 0;
 
+  const bankroll = await resolveBankroll({
+    override: flags.bankroll,
+    dryRun: flags.dryRun,
+    dryRunDefault: DEFAULT_TRADE_MOMENTUM_CONFIG.bankroll,
+    fetchPortfolio: () => positions.reconcile(),
+  });
+  process.stdout.write(`${formatBankrollBanner(bankroll)}\n`);
+
   const runnerConfig: TradeMomentumRunnerConfig = {
-    strategy: DEFAULT_TRADE_MOMENTUM_CONFIG,
+    strategy: { ...DEFAULT_TRADE_MOMENTUM_CONFIG, bankroll: bankroll.amount },
     runner: {
       pollIntervalMs,
       dryRun: flags.dryRun,
-      baseDir: ".canon/execution",
+      baseDir: ".",
       statePath: ".canon/state.json",
     },
     maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
@@ -282,7 +314,7 @@ async function main(): Promise<void> {
     executor: cappedExecutor,
     positions,
     log: (entry: ExecutionLogEntry) =>
-      appendEntry(".canon/execution", entry),
+      appendEntry(".", entry),
   });
 
   process.stdout.write(

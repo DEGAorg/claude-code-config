@@ -2,14 +2,22 @@
  * TRADE-02 Momentum Trading — Risk Checks
  *
  * Implements RiskInterface for pre-trade risk gating:
- * - Per-position exposure cap (10% of bankroll)
- * - Max concurrent open positions (3)
- * - Aggregate exposure cap (30% = maxExposure × maxConcurrent)
+ * - Per-position exposure cap (10% of bankroll) — clamped via modified_size
+ * - Aggregate exposure cap (30% = maxExposure × maxConcurrent) — clamped
+ * - Live capital floor: total exposure cannot exceed portfolio.total_value
+ * - Max concurrent open positions (3) — hard reject
  * - Hard floor: reject if timeToClose < 24h
  * - Manipulation guard: reject if topWalletShare > maxTopWalletShare
  * - Circuit breaker halts all approvals once tripped
+ *
+ * Sizing math uses `config.bankroll` (the persisted bankroll set at
+ * project init, see `bankroll.ts`). The live `portfolio.total_value`
+ * is used only as a hard floor — the strategy will never approve more
+ * exposure than the wallet can actually cover, even if the persisted
+ * bankroll is stale or operator-overridden.
  */
 
+import { clampToHeadroom } from "../../risk-clamp.js";
 import type { RiskInterface } from "../../types/RiskInterface.js";
 import type { TradeMomentumConfig } from "./config.js";
 
@@ -22,9 +30,9 @@ const HOUR_MS = 60 * 60 * 1000;
  * 1. Circuit breaker
  * 2. Wallet-concentration manipulation guard
  * 3. 24h hard floor (timeToClose cutoff)
- * 4. Per-position exposure cap
- * 5. Max concurrent positions
- * 6. Aggregate exposure cap
+ * 4. Max concurrent positions
+ * 5. Compute headroom from per-position cap, aggregate cap, live capital
+ * 6. Approve at clamped size (or reject if no headroom remains)
  */
 export function createRiskChecker(
   config: TradeMomentumConfig,
@@ -68,21 +76,6 @@ export function createRiskChecker(
         };
       }
 
-      const bankroll = portfolio.total_value > 0
-        ? portfolio.total_value
-        : config.bankroll;
-
-      const perPositionCap = bankroll * config.maxExposure;
-      if (signal.size > perPositionCap) {
-        return {
-          approved: false,
-          rejection_reason:
-            `Exposure: requested size $${signal.size.toFixed(2)}`
-            + ` exceeds per-position cap $${perPositionCap.toFixed(2)}`
-            + ` (${(config.maxExposure * 100).toFixed(0)}% of bankroll)`,
-        };
-      }
-
       if (portfolio.positions.length >= config.maxConcurrent) {
         return {
           approved: false,
@@ -92,22 +85,26 @@ export function createRiskChecker(
         };
       }
 
-      const aggregateCap =
-        bankroll * config.maxExposure * config.maxConcurrent;
       const currentExposure = portfolio.positions.reduce(
         (sum, pos) => sum + pos.size,
         0,
       );
-      if (currentExposure + signal.size > aggregateCap) {
-        return {
-          approved: false,
-          rejection_reason:
-            `Aggregate exposure $${(currentExposure + signal.size).toFixed(2)}`
-            + ` would exceed cap $${aggregateCap.toFixed(2)}`,
-        };
-      }
-
-      return { approved: true };
+      return clampToHeadroom(signal.size, [
+        {
+          name: "per-position",
+          value: config.bankroll * config.maxExposure,
+        },
+        {
+          name: "aggregate headroom",
+          value:
+            config.bankroll * config.maxExposure * config.maxConcurrent
+            - currentExposure,
+        },
+        {
+          name: "live capital",
+          value: portfolio.total_value - currentExposure,
+        },
+      ]);
     },
 
     getExposure() {

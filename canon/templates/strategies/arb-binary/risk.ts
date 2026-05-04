@@ -2,12 +2,20 @@
  * ARB-01 Binary Arbitrage — Risk Checks
  *
  * Implements RiskInterface for pre-trade risk gating:
- * - Kelly fractional position sizing (quarter Kelly)
- * - Max bankroll exposure cap (8%)
  * - Circuit breaker on consecutive losses
+ * - Kelly-with-no-edge upfront reject (clearer than no-headroom)
+ * - Exposure clamp: signal size is capped to the smaller of the
+ *   per-position cap (`maxExposure × bankroll`), the Kelly-fractional
+ *   size, and the live wallet capital — so the strategy never submits
+ *   more than it can cover even if the persisted bankroll is stale or
+ *   operator-overridden.
  *
+ * Sizing math uses `config.bankroll` (the persisted bankroll set at
+ * project init, see `bankroll.ts`). `portfolio.total_value` is used
+ * only as a hard floor.
  */
 
+import { clampToHeadroom } from "../../risk-clamp.js";
 import type { RiskInterface } from "../../types/RiskInterface.js";
 
 /** Configuration for the ARB-01 risk checker. */
@@ -33,9 +41,9 @@ export interface ArbBinaryRisk extends RiskInterface {
  *
  * The checker gates every signal through:
  * 1. Circuit breaker — reject if consecutive losses >= threshold
- * 2. Exposure check — reject if signal size > maxExposure * bankroll
- * 3. Kelly sizing — reduce size to bankroll * kellyFraction * netReturn
- *    (reject if Kelly size rounds to zero)
+ * 2. Kelly-no-edge — reject if `kellyFraction × netReturn × bankroll ≤ 0`
+ * 3. Clamp `signal.size` to the binding cap among per-position, Kelly,
+ *    and live capital headroom; reject if no cap leaves fillable size.
  */
 export function createRiskChecker(config: RiskConfig): ArbBinaryRisk {
   let consecutiveLosses = 0;
@@ -45,7 +53,6 @@ export function createRiskChecker(config: RiskConfig): ArbBinaryRisk {
       const { bankroll, kellyFraction, maxExposure, maxConsecutiveLosses } =
         config;
 
-      // 1. Circuit breaker — halt after too many consecutive losses
       if (consecutiveLosses >= maxConsecutiveLosses) {
         return {
           approved: false,
@@ -55,21 +62,8 @@ export function createRiskChecker(config: RiskConfig): ArbBinaryRisk {
         };
       }
 
-      // 2. Exposure check — reject if size exceeds max exposure
-      const exposureLimit = maxExposure * bankroll;
-      if (signal.size > exposureLimit) {
-        return {
-          approved: false,
-          rejection_reason:
-            `Exposure limit: $${signal.size} exceeds` +
-            ` $${exposureLimit} (${maxExposure * 100}% of bankroll)`,
-        };
-      }
-
-      // 3. Kelly fractional sizing
       const netReturn = Number(signal.metadata["netReturn"] ?? 0);
       const kellySize = bankroll * kellyFraction * netReturn;
-
       if (kellySize <= 0) {
         return {
           approved: false,
@@ -79,16 +73,18 @@ export function createRiskChecker(config: RiskConfig): ArbBinaryRisk {
         };
       }
 
-      // Approve — reduce size if Kelly is smaller than requested
-      if (kellySize < signal.size) {
-        return {
-          approved: true,
-          modified_size: kellySize,
-        };
-      }
-
-      void portfolio;
-      return { approved: true };
+      const currentExposure = portfolio.positions.reduce(
+        (sum, pos) => sum + pos.size,
+        0,
+      );
+      return clampToHeadroom(signal.size, [
+        { name: "per-position", value: maxExposure * bankroll },
+        { name: "kelly", value: kellySize },
+        {
+          name: "live capital",
+          value: portfolio.total_value - currentExposure,
+        },
+      ]);
     },
 
     getExposure() {

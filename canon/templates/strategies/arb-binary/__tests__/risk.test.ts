@@ -76,9 +76,9 @@ describe("createRiskChecker", () => {
       expect(decision.modified_size).toBeUndefined();
     });
 
-    it("rejects when trade exceeds 8% bankroll exposure", () => {
+    it("clamps trade to 8% bankroll exposure cap", () => {
       // maxExposure = 0.08 × $10,000 = $800
-      // signal size $900 > $800 → rejected
+      // signal size $900 > $800 → clamped to $800.
       const risk = createRiskChecker(makeRiskConfig());
       const signal = makeSignal({
         size: 900,
@@ -93,9 +93,31 @@ describe("createRiskChecker", () => {
 
       const decision = risk.preTradeCheck(signal, portfolio);
 
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(800);
+    });
+
+    it("clamps signal size to live wallet capital when bankroll is stale", () => {
+      // Persisted bankroll = $10k, but the wallet only holds $9.83.
+      const risk = createRiskChecker(makeRiskConfig({ bankroll: 10_000 }));
+      const signal = makeSignal({ size: 500 });
+      const portfolio = makePortfolio({ total_value: 9.83, positions: [] });
+
+      const decision = risk.preTradeCheck(signal, portfolio);
+
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(9.83);
+    });
+
+    it("rejects when no headroom remains under any cap", () => {
+      const risk = createRiskChecker(makeRiskConfig());
+      const signal = makeSignal({ size: 200 });
+      const portfolio = makePortfolio({ total_value: 0 });
+
+      const decision = risk.preTradeCheck(signal, portfolio);
+
       expect(decision.approved).toBe(false);
-      expect(decision.rejection_reason).toBeDefined();
-      expect(decision.rejection_reason).toMatch(/exposure/i);
+      expect(decision.rejection_reason).toMatch(/headroom|capital/i);
     });
 
     it("rejects when Kelly sizing reduces to zero", () => {

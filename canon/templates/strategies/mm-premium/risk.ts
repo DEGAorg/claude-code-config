@@ -5,9 +5,17 @@
  *   - Circuit breaker halt
  *   - Market-close cutoff (reject < 24h to close)
  *   - Hurdle rate gate (projectedNet / cycleCapital ≥ 1.33%)
- *   - Exposure cap (≤ 25% of bankroll across active cycles)
+ *   - Exposure clamp: signal size is capped to the smaller of the
+ *     bankroll exposure cap (≤ 25% across active cycles) and the live
+ *     wallet capital — so the strategy never submits more than it can
+ *     cover even if the persisted bankroll is stale or operator-set.
+ *
+ * Sizing math uses `config.bankroll` (the persisted bankroll set at
+ * project init, see `bankroll.ts`). `portfolio.total_value` is used
+ * only as a hard floor.
  */
 
+import { clampToHeadroom } from "../../risk-clamp.js";
 import type {
   AutomationExposure,
   Portfolio,
@@ -63,23 +71,22 @@ function hurdleReject(
   return undefined;
 }
 
-function exposureReject(
+function exposureClamp(
   signal: TradeSignal,
   portfolio: Portfolio,
   config: MintPremiumConfig,
-): RiskDecision | undefined {
-  const bankroll = portfolio.total_value || config.bankroll;
-  const limit = config.maxExposure * bankroll;
-  const projected = currentExposure(portfolio) + signal.size;
-  if (projected > limit) {
-    return {
-      approved: false,
-      rejection_reason:
-        `Exposure cap exceeded: $${projected} > $${limit}` +
-        ` (${config.maxExposure * 100}% of $${bankroll}).`,
-    };
-  }
-  return undefined;
+): RiskDecision {
+  const exposed = currentExposure(portfolio);
+  return clampToHeadroom(signal.size, [
+    {
+      name: "bankroll exposure",
+      value: config.maxExposure * config.bankroll - exposed,
+    },
+    {
+      name: "live capital",
+      value: portfolio.total_value - exposed,
+    },
+  ]);
 }
 
 /** MINT-04 risk checker. */
@@ -103,7 +110,7 @@ export function createRiskChecker(config: MintPremiumConfig): MintPremiumRisk {
     return (
       cutoffReject(signal, config) ??
       hurdleReject(signal, config) ??
-      exposureReject(signal, portfolio, config) ?? { approved: true }
+      exposureClamp(signal, portfolio, config)
     );
   }
 

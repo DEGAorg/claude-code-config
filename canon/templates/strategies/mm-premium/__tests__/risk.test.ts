@@ -117,10 +117,10 @@ describe("createRiskChecker (mm-premium)", () => {
       expect(decision.rejection_reason).toMatch(/hurdle/i);
     });
 
-    it("rejects when active cycles would exceed 25% exposure cap", () => {
+    it("clamps signal size to remaining 25% bankroll exposure headroom", () => {
       // bankroll $10,000 × 25% = $2,500 exposure limit.
       // Two open $1,000 cycles already deployed (= $2,000).
-      // New $1,000 cycle would push exposure to $3,000 > $2,500.
+      // New $1,000 cycle would push exposure to $3,000; clamped to $500.
       const risk = createRiskChecker(makeConfig());
       const portfolio = makePortfolio({
         positions: [
@@ -130,11 +130,31 @@ describe("createRiskChecker (mm-premium)", () => {
       });
       const decision = risk.preTradeCheck(makeSignal(), portfolio);
 
-      expect(decision.approved).toBe(false);
-      expect(decision.rejection_reason).toMatch(/exposure/i);
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(500);
     });
 
-    it("approves when active exposure is under cap", () => {
+    it("clamps signal size to live wallet capital when bankroll is stale", () => {
+      // Persisted bankroll = $10k, but the wallet only holds $9.83.
+      // Signal of $1,000 must clamp to live capital.
+      const risk = createRiskChecker(makeConfig({ bankroll: 10_000 }));
+      const portfolio = makePortfolio({ total_value: 9.83, positions: [] });
+      const decision = risk.preTradeCheck(makeSignal(), portfolio);
+
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(9.83);
+    });
+
+    it("rejects when no headroom remains under any cap", () => {
+      const risk = createRiskChecker(makeConfig());
+      const portfolio = makePortfolio({ total_value: 0 });
+      const decision = risk.preTradeCheck(makeSignal(), portfolio);
+
+      expect(decision.approved).toBe(false);
+      expect(decision.rejection_reason).toMatch(/headroom|capital/i);
+    });
+
+    it("approves at full size when active exposure is under cap", () => {
       // $1,000 deployed + $1,000 new = $2,000 <= $2,500 limit.
       const risk = createRiskChecker(makeConfig());
       const portfolio = makePortfolio({
@@ -143,6 +163,7 @@ describe("createRiskChecker (mm-premium)", () => {
       const decision = risk.preTradeCheck(makeSignal(), portfolio);
 
       expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBeUndefined();
     });
   });
 

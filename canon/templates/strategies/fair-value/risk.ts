@@ -2,11 +2,17 @@
  * IA-03 Fair Value — Risk Gate
  *
  * Implements `RiskInterface` for the fair-value scanner: signal TTL,
- * per-position exposure cap, concurrent-position cap, aggregate
- * portfolio cap, time-to-close floor, liquidity floors, limit-only
- * intent enforcement, and circuit breaker.
+ * limit-only intent enforcement, time-to-close floor, liquidity floors,
+ * concurrent-position count cap, exposure clamp (per-position cap,
+ * aggregate headroom, live-wallet capital), and circuit breaker.
+ *
+ * Sizing math uses `config.bankroll` (the persisted bankroll set at
+ * project init, see `bankroll.ts`). `portfolio.total_value` is used
+ * only as a hard floor — the strategy will never approve more exposure
+ * than the wallet can actually cover.
  */
 
+import { clampToHeadroom } from "../../risk-clamp.js";
 import type {
   AutomationExposure,
   Portfolio,
@@ -93,15 +99,6 @@ export function createRiskChecker(
       );
     }
 
-    const perPositionCap =
-      portfolio.total_value * config.maxExposurePerPosition;
-    if (signal.size > perPositionCap) {
-      return reject(
-        `Exposure: position size $${signal.size} exceeds per-position cap ` +
-          `$${perPositionCap} (${config.maxExposurePerPosition * 100}%)`,
-      );
-    }
-
     if (portfolio.positions.length >= config.maxConcurrent) {
       return reject(
         `Max concurrent positions reached: ` +
@@ -113,18 +110,24 @@ export function createRiskChecker(
       (sum, p) => sum + p.size,
       0,
     );
-    const aggregateCap =
-      portfolio.total_value *
-      config.maxExposurePerPosition *
-      config.maxConcurrent;
-    if (openExposure + signal.size > aggregateCap) {
-      return reject(
-        `Exposure: portfolio aggregate $${openExposure + signal.size} ` +
-          `exceeds cap $${aggregateCap}`,
-      );
-    }
-
-    return { approved: true };
+    return clampToHeadroom(signal.size, [
+      {
+        name: "per-position",
+        value: config.bankroll * config.maxExposurePerPosition,
+      },
+      {
+        name: "aggregate headroom",
+        value:
+          config.bankroll
+          * config.maxExposurePerPosition
+          * config.maxConcurrent
+          - openExposure,
+      },
+      {
+        name: "live capital",
+        value: portfolio.total_value - openExposure,
+      },
+    ]);
   }
 
   function getExposure(): AutomationExposure {

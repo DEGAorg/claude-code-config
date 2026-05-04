@@ -100,15 +100,41 @@ describe("createRiskChecker (trade-momentum)", () => {
       expect(decision.rejection_reason).toMatch(/close|cutoff|ttc|runway|time/i);
     });
 
-    it("rejects when requested size exceeds the 10% per-position exposure cap", () => {
+    it("clamps requested size to the 10% per-position exposure cap", () => {
       const risk = createRiskChecker(makeConfig());
-      // $1,500 = 15% of $10k — above 10% cap.
+      // $1,500 = 15% of $10k — above 10% cap, clamped to $1,000.
       const decision = risk.preTradeCheck(
         makeSignal({ size: 1_500 }),
         makePortfolio(),
       );
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(1_000);
+    });
+
+    it("clamps signal size to live portfolio capital when bankroll is stale", () => {
+      // Persisted bankroll = $10k, but the wallet only holds $9.83.
+      // Signal sized at the 10% per-position cap = $1,000 must clamp to
+      // the live total_value so the executor never submits an order the
+      // wallet cannot cover. This is the live-test-4 regression.
+      const risk = createRiskChecker(makeConfig({ bankroll: 10_000 }));
+      const decision = risk.preTradeCheck(
+        makeSignal({ size: 1_000 }),
+        makePortfolio({ total_value: 9.83, positions: [] }),
+      );
+      expect(decision.approved).toBe(true);
+      expect(decision.modified_size).toBe(9.83);
+    });
+
+    it("rejects when no headroom remains under any cap", () => {
+      // Bankroll $10k, no open positions, but live total_value is $0
+      // — the wallet has nothing to spend, so the signal is rejected.
+      const risk = createRiskChecker(makeConfig());
+      const decision = risk.preTradeCheck(
+        makeSignal({ size: 1_000 }),
+        makePortfolio({ total_value: 0 }),
+      );
       expect(decision.approved).toBe(false);
-      expect(decision.rejection_reason).toMatch(/exposure|size|position/i);
+      expect(decision.rejection_reason).toMatch(/headroom|capital/i);
     });
 
     it("rejects a 4th concurrent position (maxConcurrent = 3)", () => {
