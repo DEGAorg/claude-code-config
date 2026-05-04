@@ -451,14 +451,32 @@ orch_promote_ready_items() {
 orch_detect_stale_workers() {
   local slug="$1"
   local tmux_session="orch-${slug}"
+  local state_file
+  state_file=$(orch_plan_state_file "${slug}")
 
-  # Bail if tmux session doesn't exist
+  # tmux session is gone — the workers it once held can't be reached.
+  # Surface every running item as aborted/stale-no-output so canon-tui's
+  # plan-execution panel reflects the dead state instead of leaving items
+  # at "running" with no producer behind them. Distinct from the inside-
+  # tmux path below which retries pane-dead items.
   if ! tmux has-session -t "${tmux_session}" 2>/dev/null; then
+    [[ -f "${state_file}" ]] || return 0
+    local running_count
+    running_count=$(jq '[.items[] | select(.status == "running")] | length' \
+      "${state_file}" 2>/dev/null || echo 0)
+    [[ "${running_count}" -gt 0 ]] || return 0
+    local now
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local updated
+    updated=$(jq --arg now "${now}" \
+      '(.items[] | select(.status == "running")) |=
+         (.status = "aborted" | .lastResult = "stale-no-output")
+       | .updatedAt = $now' \
+      "${state_file}")
+    orch_write_state "${slug}" "${updated}"
     return 0
   fi
 
-  local state_file
-  state_file=$(orch_plan_state_file "${slug}")
   local state
   state=$(cat "${state_file}")
 
@@ -526,6 +544,61 @@ orch_detect_stale_workers() {
   if [[ "${changed}" == "true" ]]; then
     orch_write_state "${slug}" "${state}"
   fi
+}
+
+# --- Stale state reaper ---
+
+# Sweep every plan's state.json once. Any plan that claims `status: running`
+# but whose heartbeat sidecar is older than ORCH_STALE_HEARTBEAT_SECS gets
+# flipped to `status: aborted` so canon-tui's plan-execution panel stops
+# rendering "● LIVE" for engines that died ungracefully.
+#
+# Designed for one-shot startup invocation from orch-run.sh — cheap, idempotent,
+# and safe to call when no plans exist (no-op).
+#
+# Threshold:
+#   ORCH_STALE_HEARTBEAT_SECS env var, default 120 (two minutes — longer than
+#   the worst-case poll cycle).
+orch_state_reap_stale() {
+  local threshold="${ORCH_STALE_HEARTBEAT_SECS:-120}"
+  local plans_dir="${ORCH_STATE_DIR}/plans"
+  [[ -d "${plans_dir}" ]] || return 0
+
+  local now_epoch
+  now_epoch=$(date -u +%s)
+  local now_iso
+  now_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+  local plan_dir state_file hb_file status hb_epoch age
+  for plan_dir in "${plans_dir}"/*/; do
+    state_file="${plan_dir}state.json"
+    hb_file="${plan_dir}heartbeat"
+    [[ -f "${state_file}" ]] || continue
+
+    status=$(jq -r '.status // "unknown"' "${state_file}" 2>/dev/null || echo "")
+    [[ "${status}" == "running" ]] || continue
+
+    if [[ -f "${hb_file}" ]]; then
+      hb_epoch=$(cat "${hb_file}" 2>/dev/null || echo 0)
+      [[ "${hb_epoch}" =~ ^[0-9]+$ ]] || hb_epoch=0
+    else
+      hb_epoch=0
+    fi
+
+    age=$((now_epoch - hb_epoch))
+    if ((age > threshold)); then
+      jq --arg now "${now_iso}" --arg age "${age}" \
+        '.status = "aborted"
+         | .updatedAt = $now
+         | .lastError = ("heartbeat stale (process dead, age=" + $age + "s)")
+         | .finalReview = ((.finalReview // {}) as $fr
+           | $fr + (if ($fr.status // "") == "running"
+                    then {"status":"aborted"}
+                    else {} end))' \
+        "${state_file}" >"${state_file}.tmp" \
+        && mv "${state_file}.tmp" "${state_file}"
+    fi
+  done
 }
 
 # --- Master state registry ---

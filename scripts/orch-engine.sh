@@ -80,6 +80,36 @@ write_heartbeat() {
   date +%s >"${HEARTBEAT_FILE}"
 }
 
+# Catch ungraceful exits (Ctrl-C, kill, OOM, machine sleep, parent crash)
+# and flip the top-level state from "running" to "failed" so canon-tui's
+# plan-execution panel doesn't lie about a dead engine. ERR is already
+# handled by `ship_crash_handler` further down — this trap covers EXIT,
+# INT, and TERM specifically so the caller's exit code is preserved.
+_engine_on_exit() {
+  local code=$?
+  # Fast-path: nothing to do for graceful zero exits — the calling code
+  # already wrote the terminal state.
+  [[ "${code}" -eq 0 ]] && return 0
+  # Only mutate state when state.json still claims we're alive.
+  [[ -f "${ORCH_STATE_FILE}" ]] || return 0
+  local cur
+  cur=$(jq -r '.status // ""' "${ORCH_STATE_FILE}" 2>/dev/null || echo "")
+  [[ "${cur}" == "running" ]] || return 0
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  jq --arg now "${now}" --arg code "${code}" \
+    '.status = "failed"
+     | .updatedAt = $now
+     | .lastError = ("engine exited with code " + $code)
+     | .finalReview = ((.finalReview // {}) as $fr
+       | $fr + (if ($fr.status // "") == "running"
+                then {"status":"aborted"}
+                else {} end))' \
+    "${ORCH_STATE_FILE}" >"${ORCH_STATE_FILE}.tmp" \
+    && mv "${ORCH_STATE_FILE}.tmp" "${ORCH_STATE_FILE}"
+}
+trap '_engine_on_exit' EXIT INT TERM
+
 # Plan dir points to the worktree copy so workers never touch main repo
 if [[ "${GH_SYNC}" == true ]]; then
   PLAN_DIR="${WORKTREE_DIR}/.orchestrator/plans/${SLUG}"
