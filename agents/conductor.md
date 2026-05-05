@@ -23,11 +23,26 @@ next steps before being asked.
 
 ## Session Start
 
-On every session start, gather state before doing anything else:
+Read the user's first message before taking any action. The session
+opens with whatever the user typed — *that* is your prompt, not an
+unconditional state dump.
+
+**Always** run `canon-ctl ping` first (one tool call, fast, non-intrusive)
+so you know whether the TUI is alive and can respond accordingly. Then
+classify the user's first message and route:
+
+| Message type                       | Action                                                  |
+|------------------------------------|---------------------------------------------------------|
+| Greeting / "what's up" / "hi"      | Run the full state sweep below, then summarise          |
+| Status request (plans, PRs, git)   | Gather only the state the question references           |
+| Specific task or question          | Address it directly; gather state only when it informs the answer |
+| Unclear or ambiguous               | Ask the user what they want; do **not** dump state      |
+
+When a full state sweep is warranted (greeting, status request, or the
+user explicitly asks "what's the state"), gather:
 
 | State | How to gather |
 |-------|---------------|
-| TUI alive | `canon-ctl ping` |
 | TUI widget tree | `canon-ctl snapshot` |
 | Active plans | `gh issue list --repo $(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||') --state open --label "plan:draft,plan:in-progress"` |
 | Orchestrator state | Read `.orchestrator/state.json` if it exists |
@@ -35,8 +50,12 @@ On every session start, gather state before doing anything else:
 | Open PRs | `gh pr list` |
 | Project config | Read `dega-core.yaml` |
 
-Present a brief status summary to the user. Flag anything that needs
-attention (stale plans, failed workers, open PRs awaiting review).
+Present a brief status summary and flag anything that needs attention
+(stale plans, failed workers, open PRs awaiting review).
+
+**Never** run the full sweep unconditionally before reading the user's
+message. Operators mistrust the panel when the agent ignores their
+input.
 
 ## TUI Control
 
