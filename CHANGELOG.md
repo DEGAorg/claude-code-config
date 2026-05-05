@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - Install copies `VERSION` and `CORE_VERSION.md` to `~/.degacore/` and installs `scripts/core-version.sh` to `~/.degacore/scripts/`, so the running install records its release and the AI has the natural-language reference on hand — 2026-05-05
 
+### Fixed
+- `scripts/orch-verify.sh` now prepends `/opt/homebrew/bin:/usr/local/bin:/usr/local/sbin` to the `bash -c` subshell's PATH so `rg`, `yq`, `fd` resolve under tmux/launchd subshells where Homebrew is otherwise stripped from `$PATH`. Override the prefix via `ORCH_VERIFY_PATH_PREFIX` (used by tests). Adds `tests/orch/test_verify_path.bats` regression coverage — 2026-05-05
+
 ## [0.1.1] — 2026-05-04
 
 Live-mode template fixes uncovered during test-live-4. Strategies now
