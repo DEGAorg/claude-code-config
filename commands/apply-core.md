@@ -51,6 +51,9 @@ Files available:
 - `settings-template.json`
 - `scripts/log-server.py`
 - `scripts/statusline.sh`
+- `scripts/core-version.sh`
+- `VERSION`
+- `CORE_VERSION.md`
 - `dega-core.yaml`
 - `scripts/ralph-check.sh`
 - `scripts/ralph-loop.sh`
@@ -766,6 +769,38 @@ cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 ```
 
 Same skip-and-warn handling: user files with the same name take precedence.
+
+---
+
+### 5b. Record the install version
+
+Copy the repo's `VERSION` and `CORE_VERSION.md` files to `~/.degacore/` so
+the install records which release it is on and the AI has the
+natural-language reference on hand when asked "what core version am I on?".
+
+Fetch and write each file:
+
+```
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/VERSION
+https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/CORE_VERSION.md
+```
+
+Write to `~/.degacore/VERSION` and `~/.degacore/CORE_VERSION.md`. Safe to
+overwrite — both files are installer-owned.
+
+Also install `scripts/core-version.sh` to `~/.degacore/scripts/core-version.sh`
+and `chmod +x` it. The helper prints
+`installed=<x>  latest=<y>  status=<up-to-date|behind|ahead|unknown>`
+by reading `~/.degacore/VERSION` and `gh api …/contents/VERSION`.
+
+After writing, run the helper as a sanity check:
+
+```bash
+bash ~/.degacore/scripts/core-version.sh
+```
+
+It should print `status=up-to-date` (or `unknown` if `gh` is not on PATH —
+that's fine, the install still succeeded).
 
 ---
 

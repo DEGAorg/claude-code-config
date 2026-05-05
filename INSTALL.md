@@ -19,9 +19,21 @@ visualization for agent activity). Follow both phases in order.
    - Ask the user which components to install
    - Fetch all selected files from GitHub
    - Install shared artifacts to `~/.degacore/`
+   - Copy `VERSION` and `CORE_VERSION.md` from the repo root to
+     `~/.degacore/` so the install records its release version and the
+     AI has the natural-language reference (`CORE_VERSION.md`) on hand
+     when asked "what core version am I on?" — see
+     [`CORE_VERSION.md`](CORE_VERSION.md)
    - Detect installed agents (Claude, Gemini, Codex)
    - Generate per-agent config (settings, commands, rules)
    - Self-install `/apply-core` so future updates work from any directory
+
+   Manual fallback (run from the repo root if Phase 1 is performed by hand):
+
+   ```bash
+   mkdir -p ~/.degacore
+   cp VERSION CORE_VERSION.md ~/.degacore/
+   ```
 
 ### Phase 2 — Install Canon TUI
 
