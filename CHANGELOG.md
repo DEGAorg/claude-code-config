@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `CORE_VERSION.md` — natural-language reference for where the version lives, how to read the installed/remote pair, and how the AI should answer "what core version am I on?" — 2026-05-05
+- `scripts/core-version.sh` — helper that prints `installed=<x>  latest=<y>  status=<up-to-date|behind|ahead|unknown>` by comparing `~/.degacore/VERSION` against the remote `main` `VERSION` (override with `DEGACORE_VERSION_FILE` / `DEGACORE_REMOTE_REPO`) — 2026-05-05
+
+### Changed
+- Install copies `VERSION` and `CORE_VERSION.md` to `~/.degacore/` and installs `scripts/core-version.sh` to `~/.degacore/scripts/`, so the running install records its release and the AI has the natural-language reference on hand — 2026-05-05
+
 ## [0.1.1] — 2026-05-04
 
 Live-mode template fixes uncovered during test-live-4. Strategies now

@@ -55,6 +55,7 @@ Canon scaffold (.canon/ directory): see `Canon_MVP_Technical_Roadmap.md` lines 5
 | `README.md` | Full reference guide — source of truth for all config explanations |
 | `DECISIONS.md` | Settled architecture decisions for Core + Canon |
 | `AGENTS.md` | Project-level agent configuration — single source of truth (this file) |
+| `VERSION` / `CORE_VERSION.md` | Core release version (single-line semver) and natural-language reference for how to read/compare it — see [`CORE_VERSION.md`](CORE_VERSION.md) |
 | `CLAUDE.md` | Shim — points agents to `AGENTS.md` (Claude Code auto-discovery) |
 | `GEMINI.md` | Shim — points agents to `AGENTS.md` (Gemini auto-discovery) |
 | `.cursorrules` | Shim — points agents to `AGENTS.md` (Cursor auto-discovery) |
