@@ -549,9 +549,12 @@ orch_detect_stale_workers() {
 # --- Stale state reaper ---
 
 # Sweep every plan's state.json once. Any plan that claims `status: running`
-# but whose heartbeat sidecar is older than ORCH_STALE_HEARTBEAT_SECS gets
-# flipped to `status: aborted` so canon-tui's plan-execution panel stops
-# rendering "● LIVE" for engines that died ungracefully.
+# or `status: verifying` but whose heartbeat sidecar is older than
+# ORCH_STALE_HEARTBEAT_SECS gets flipped to `status: aborted` so canon-tui's
+# plan-execution panel stops rendering "● LIVE" for engines that died
+# ungracefully (Ctrl-C, kill, OOM, machine sleep, parent crash) — including
+# crashes that happened mid-verify, where the engine wrote `verifying` and
+# never flipped back.
 #
 # Designed for one-shot startup invocation from orch-run.sh — cheap, idempotent,
 # and safe to call when no plans exist (no-op).
@@ -576,7 +579,7 @@ orch_state_reap_stale() {
     [[ -f "${state_file}" ]] || continue
 
     status=$(jq -r '.status // "unknown"' "${state_file}" 2>/dev/null || echo "")
-    [[ "${status}" == "running" ]] || continue
+    [[ "${status}" == "running" || "${status}" == "verifying" ]] || continue
 
     if [[ -f "${hb_file}" ]]; then
       hb_epoch=$(cat "${hb_file}" 2>/dev/null || echo 0)
