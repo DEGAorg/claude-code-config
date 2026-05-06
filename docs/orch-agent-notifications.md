@@ -75,3 +75,43 @@ Remove the `01-orch-notify.sh` entry from the `hooks.Stop` array in
 will keep writing files for Canon TUI to consume, but the agent will
 no longer be auto-notified at Stop time. To also stop writing files,
 remove `02-agent-notify.sh` from the orch lifecycle hooks directory.
+
+## Testing
+
+Three layers of test coverage live alongside the hooks:
+
+| Test                                       | What it covers                                                                 |
+|--------------------------------------------|-------------------------------------------------------------------------------|
+| `tests/orch/test_notify_lifecycle.bats`    | Lifecycle hook in isolation: schema, value mapping for the `ship` event.       |
+| `tests/orch/test_notify_stop_hook.bats`    | Stop hook in isolation: block-JSON output, idempotency, no-op without dir.     |
+| `tests/orch/test_notify_handshake.bats`    | Both hooks against a shared fixture: catches schema drift between the pair.    |
+
+A wrapper script bundles the bats run and provides setup/teardown for
+the live Claude Code integration check that bats cannot perform on its
+own:
+
+```bash
+bash scripts/test-orch-notify-live.sh unit       # run all three bats files
+bash scripts/test-orch-notify-live.sh setup      # wire stop hook + seed notification
+bash scripts/test-orch-notify-live.sh status     # inspect current state
+bash scripts/test-orch-notify-live.sh teardown   # restore settings + remove fixtures
+```
+
+`setup` writes its changes to this repo's `.claude/settings.local.json`
+(gitignored) and seeds a fake notification under `.orchestrator/`. After
+running `setup`:
+
+1. Exit your Claude Code session (`/exit`) and open a new one in this
+   repo so the new hook entry is loaded.
+2. Send a trivial prompt, let it answer, end the turn.
+3. The next turn should open with a system-reminder citing the seeded
+   plan slug and PR url.
+
+When the integration check is done, run `teardown` to restore
+`.claude/settings.local.json` from the backup and delete the seeded
+fixture files.
+
+This is the recommended pre-release validation any time
+`hooks/orch-lifecycle/02-agent-notify.sh` or
+`hooks/stop/01-orch-notify.sh` change, before the develop → main
+release PR.
