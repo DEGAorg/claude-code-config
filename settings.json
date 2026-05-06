@@ -138,6 +138,10 @@
           {
             "type": "command",
             "command": "bash ~/.degacore/scripts/hooks/play-sound.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PROJECT_DIR}/hooks/stop/01-orch-notify.sh"
           }
         ]
       }
