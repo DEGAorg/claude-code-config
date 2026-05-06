@@ -13,6 +13,8 @@ const adapterCtor = vi.fn();
 function makeStubAdapter(): MarketClient {
   return {
     searchMarkets: vi.fn(),
+    fetchMarketSnapshots: vi.fn(),
+    searchMultiOutcomeMarkets: vi.fn(),
     fetchMarketPrice: vi.fn(),
     fetchOrderBook: vi.fn(),
     fetchOHLCV: vi.fn(),
@@ -25,6 +27,8 @@ function makeStubAdapter(): MarketClient {
     buildOrder: vi.fn(),
     watchOrderBook: vi.fn(),
     watchTrades: vi.fn(),
+    getCapabilities: vi.fn(),
+    ensureAccount: vi.fn(),
   };
 }
 
@@ -64,6 +68,8 @@ describe("MarketClient interface contract", () => {
 
     const required: Array<keyof MarketClient> = [
       "searchMarkets",
+      "fetchMarketSnapshots",
+      "searchMultiOutcomeMarkets",
       "fetchMarketPrice",
       "fetchOrderBook",
       "fetchOHLCV",
@@ -76,6 +82,8 @@ describe("MarketClient interface contract", () => {
       "buildOrder",
       "watchOrderBook",
       "watchTrades",
+      "getCapabilities",
+      "ensureAccount",
     ];
 
     for (const method of required) {

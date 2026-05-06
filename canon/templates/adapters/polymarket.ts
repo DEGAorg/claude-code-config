@@ -232,8 +232,10 @@ export class PolymarketAdapter implements MarketClient {
   }
 
   async fetchOrderBook(outcomeId: string): Promise<OrderBook> {
-    const poly = this.getClient();
-    const book = await poly.fetchOrderBook(outcomeId);
+    const book = await callSidecar<{
+      bids: { price: number; size: number }[];
+      asks: { price: number; size: number }[];
+    }>("fetchOrderBook", [outcomeId]);
     return {
       outcomeId,
       bids: book.bids.map(mapLevel),

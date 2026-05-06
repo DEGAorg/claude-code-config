@@ -219,7 +219,7 @@ describe("PolymarketAdapter.fetchMarketPrice", () => {
 // ---------------------------------------------------------------------------
 describe("PolymarketAdapter.fetchOrderBook", () => {
   it("returns mapped order book for a token", async () => {
-    mockFetchOrderBook.mockResolvedValueOnce({
+    mockCallSidecar.mockResolvedValueOnce({
       bids: [
         { price: 0.55, size: 100 },
         { price: 0.5, size: 200 },
@@ -235,11 +235,13 @@ describe("PolymarketAdapter.fetchOrderBook", () => {
       { price: 0.5, size: 200 },
     ]);
     expect(book.asks).toEqual([{ price: 0.6, size: 150 }]);
-    expect(mockFetchOrderBook).toHaveBeenCalledWith("token-123");
+    expect(mockCallSidecar).toHaveBeenCalledWith("fetchOrderBook", [
+      "token-123",
+    ]);
   });
 
   it("strips extra fields from price levels", async () => {
-    mockFetchOrderBook.mockResolvedValueOnce({
+    mockCallSidecar.mockResolvedValueOnce({
       bids: [{ price: 0.5, size: 10, extra: "ignored" }],
       asks: [{ price: 0.6, size: 20, timestamp: 12345 }],
     });
