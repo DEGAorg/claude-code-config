@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-05-06
+
+Adds an agent-bump notification mechanism so orchestrator plan
+completions surface back to the user automatically on the next
+Claude Code turn — no need to ask. Lands a starter library of portable
+Claude Code and Codex skills under `skills/{claude,codex}/`. Adds a
+repeatable end-to-end test for the notification hook pair so future
+changes to the lifecycle/Stop pair can be validated locally before
+release.
+
+### Added
+- `hooks/orch-lifecycle/02-agent-notify.sh` — writes
+  `.orchestrator/notifications/<slug>.json` on terminal events
+  (`ship`, `verify` when failed, `revise` when the engine bails). The
+  schema is shared with Canon TUI per
+  `docs/specs/canon-tui-plan-completion.md` so both consumers can
+  read the same files (#260) — 2026-05-06
+- `hooks/stop/01-orch-notify.sh` — Stop hook that reads unseen
+  notifications, builds a single human-readable message (capped at
+  6 detailed entries; remainder summarized), and emits
+  `{"decision":"block","reason":"..."}` so the agent surfaces
+  "plan X completed: PR Y" on the next turn. Idempotent (marks each
+  entry `seen: true` via atomic rewrite); no-op outside this repo
+  (#260) — 2026-05-06
+- `docs/orch-agent-notifications.md` — user-facing reference for the
+  notification mechanism: trigger events, file location, schema,
+  Stop-hook behavior, how to disable, and a Testing section linking
+  to the bats coverage and the live-test wrapper script
+  (#260, #294) — 2026-05-06
+- `tests/orch/test_notify_lifecycle.bats` and
+  `tests/orch/test_notify_stop_hook.bats` — bats coverage for the
+  schema, JSON output, idempotency, and dir-absent no-op
+  (#260) — 2026-05-06
+- `tests/orch/test_notify_handshake.bats` — end-to-end bats that
+  runs both hooks against a single shared fixture (`ship` and
+  `verify`-failed paths), so a schema drift between the lifecycle
+  hook output and the Stop hook input gets caught (#294) — 2026-05-06
+- `scripts/test-orch-notify-live.sh` — wrapper with `unit` /
+  `setup` / `status` / `teardown` subcommands that automate the
+  manual Claude Code integration check, scoped to this repo's
+  `.claude/settings.local.json` so it never touches the global
+  config (#294) — 2026-05-06
+- `skills/claude/` and `skills/codex/` — eight portable skills
+  packaged for both harnesses: `no-edits`, `git-update`, `ls`,
+  `make-universal-skill`, `calendar-create-event`, `transcribe-yt`,
+  `transcribe-ig`, `word-docx-redlines`. Includes bundled Python
+  helpers for transcription and Word Track Changes generation
+  (#242) — 2026-05-06
+
+### Changed
+- `settings.json` registers `hooks/stop/01-orch-notify.sh` in the
+  existing `hooks.Stop` array (after `orch-done-sync.sh`) so the
+  agent-bump fires automatically on every Claude Code session
+  Stop event (#260) — 2026-05-06
+- `README.md` Plugins-and-Skills + Adding-a-Skill sections
+  rewritten to distinguish shared `skills/*.md`
+  (installer-distributed) from packaged
+  `skills/{claude,codex}/<name>/` (manual copy until installer
+  support lands), document the per-harness frontmatter contracts,
+  and add a privacy/portability scan recipe (#242) — 2026-05-06
+
 ## [0.1.2] — 2026-05-05
 
 Closes the canon-tui audit findings (`docs/core-request-pending.md`):

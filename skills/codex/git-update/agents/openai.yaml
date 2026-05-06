@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Update"
+  short_description: "Stage, commit, and push safely."
+  default_prompt: "Use $git-update to stage the relevant changed files, commit them with a concise why-focused message, and push the current branch to its tracking remote."
