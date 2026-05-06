@@ -112,6 +112,8 @@ Files available:
 - `scripts/read-github-config.sh`
 - `scripts/create-exec-plan.sh`
 - `hooks/orch-lifecycle/01-gh-plan-sync.sh`
+- `hooks/orch-lifecycle/02-agent-notify.sh`
+- `hooks/stop/01-orch-notify.sh`
 - `canon/cli/package.json`
 - `canon/cli/tsconfig.json`
 - `canon/cli/canon-cli.ts`
@@ -182,6 +184,7 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/log-server.py`
 - `~/.degacore/scripts/hooks/` (any files)
 - `~/.degacore/scripts/hooks/orch-lifecycle/` (any files)
+- `~/.degacore/scripts/hooks/stop/` (any files)
 - `~/.degacore/scripts/terminal-session.sh`
 - `~/.degacore/scripts/terminal-ui-write.sh`
 - `~/.degacore/scripts/terminal-ui/` (any files)
@@ -284,13 +287,16 @@ Components:
   scripts (`ensure-gh.sh`, `gh-plan-fetch.sh`, `gh-plan-sync.sh`,
   `plan-create.sh`, `plan-upload.sh`, `read-github-config.sh`,
   `create-exec-plan.sh`) to `~/.degacore/scripts/`, done-file sync hook
-  (`orch-done-sync.sh`) and lifecycle hook (`orch-lifecycle/01-gh-plan-sync.sh`)
+  (`orch-done-sync.sh`), lifecycle hooks
+  (`orch-lifecycle/01-gh-plan-sync.sh`,
+  `orch-lifecycle/02-agent-notify.sh`), and Stop hook
+  (`stop/01-orch-notify.sh` — surfaces plan completions back to the agent)
   to `~/.degacore/scripts/hooks/`, Ink dashboard components to
   `~/.degacore/scripts/terminal-ui/src/`, and agent definitions
-  (`orch-worker.md`, `orch-verifier.md`) to `~/.degacore/config/agents/`. Polling
-  interval controlled by `poll_interval_seconds` in `dega-core.yaml`
-  (default 30). Requires Terminal UI and tmux. Invoke via
-  `~/.degacore/scripts/orch-run.sh <slug>`.
+  (`orch-worker.md`, `orch-verifier.md`) to `~/.degacore/config/agents/`.
+  Polling interval controlled by `poll_interval_seconds` in
+  `dega-core.yaml` (default 30). Requires Terminal UI and tmux. Invoke
+  via `~/.degacore/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.degacore/scripts/orch-run.sh` is missing)
 - **Planner** — autonomous planner loop that reads `focus.yaml`, assesses the
   project, writes execution plans, and launches the orchestrator. Installs
@@ -324,7 +330,7 @@ the GitHub URLs above. Extract the raw file content from each response.
 Create the `~/.degacore/` directory tree if it doesn't exist:
 
 ```bash
-mkdir -p ~/.degacore/{bin,config/{commands,skills,rules,agents},scripts/{adapters,hooks/orch-lifecycle,terminal-ui/src},state/{logs,planner},sounds,canon-cli/commands}
+mkdir -p ~/.degacore/{bin,config/{commands,skills,rules,agents},scripts/{adapters,hooks/{orch-lifecycle,stop},terminal-ui/src},state/{logs,planner},sounds,canon-cli/commands}
 ```
 
 Also install the agent-shim and adapter scripts (always, regardless of
@@ -503,11 +509,20 @@ Write GitHub plan scripts to `~/.degacore/scripts/`:
 
 Run `chmod +x` on all `.sh` files above after writing.
 
-Write the done-sync hook and lifecycle hook:
+Write the done-sync hook, lifecycle hooks, and Stop hook:
 - `hooks/orch-done-sync.sh` -> `~/.degacore/scripts/hooks/orch-done-sync.sh`
 - `hooks/orch-lifecycle/01-gh-plan-sync.sh` -> `~/.degacore/scripts/hooks/orch-lifecycle/01-gh-plan-sync.sh`
+- `hooks/orch-lifecycle/02-agent-notify.sh` -> `~/.degacore/scripts/hooks/orch-lifecycle/02-agent-notify.sh`
+- `hooks/stop/01-orch-notify.sh` -> `~/.degacore/scripts/hooks/stop/01-orch-notify.sh`
 
-Run `chmod +x` on both after writing.
+Run `chmod +x` on all four after writing. The Stop hook
+(`01-orch-notify.sh`) is wired into `settings-template.json`'s
+`hooks.Stop` array using the absolute path
+`~/.degacore/scripts/hooks/stop/01-orch-notify.sh` so it works from any
+project directory, not just this repo. The hook itself reads
+`${CLAUDE_PROJECT_DIR:-${PWD}}/.orchestrator/notifications/`, so it
+correctly watches the current project's notifications dir regardless of
+where the script lives.
 
 Write each Ink component to `~/.degacore/scripts/terminal-ui/src/`:
 - `scripts/terminal-ui/src/orch-types.ts` -> `~/.degacore/scripts/terminal-ui/src/orch-types.ts`

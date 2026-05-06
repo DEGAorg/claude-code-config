@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-05-06
+
+Fixes the install path for the agent-bump Stop hook from #260 so it
+fires from any project, not just `claude-code-config`. The 0.1.3
+release shipped a `settings.json` entry pointing at
+`${CLAUDE_PROJECT_DIR}/hooks/stop/01-orch-notify.sh` (a path that only
+resolves inside this repo) and an `apply-core` manifest that did not
+include the two new hook scripts at all — so a fresh install from
+0.1.3 left the agent-bump non-functional outside of this repo and
+silently broken on every Stop event in any other project.
+
+### Fixed
+- `settings.json` `hooks.Stop` entry for `01-orch-notify.sh` now uses
+  the absolute path `~/.degacore/scripts/hooks/stop/01-orch-notify.sh`,
+  matching every other hook in the file (#260 follow-up) — 2026-05-06
+- `commands/apply-core.md` manifest now lists
+  `hooks/orch-lifecycle/02-agent-notify.sh` and
+  `hooks/stop/01-orch-notify.sh`, includes `~/.degacore/scripts/hooks/stop/`
+  in the inventory check + `mkdir -p` layout, and adds an explicit
+  install step that writes both files to
+  `~/.degacore/scripts/hooks/{orch-lifecycle,stop}/` and `chmod +x`s
+  them. The Orchestrator component description now mentions the
+  agent-bump hooks explicitly so users see what the install adds
+  (#260 follow-up) — 2026-05-06
+
+### Notes
+- `scripts/test-orch-notify-live.sh` is intentionally **not** in the
+  install manifest. It uses `git rev-parse --show-toplevel` and
+  references hook paths under the source-repo layout, so it only
+  works from a checkout of this repo. It remains available to hook
+  developers via `git clone`; end users do not need it.
+
 ## [0.1.3] — 2026-05-06
 
 Adds an agent-bump notification mechanism so orchestrator plan
