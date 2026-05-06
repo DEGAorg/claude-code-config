@@ -141,7 +141,7 @@
           },
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PROJECT_DIR}/hooks/stop/01-orch-notify.sh"
+            "command": "bash ~/.degacore/scripts/hooks/stop/01-orch-notify.sh"
           }
         ]
       }
