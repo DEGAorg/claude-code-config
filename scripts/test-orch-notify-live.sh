@@ -98,8 +98,8 @@ cmd_setup() {
 }
 JSON
 
-  ( cd "${REPO_ROOT}" && \
-    bash "${LIFECYCLE_HOOK}" ship "${SLUG}" --items 1 --passed 1 --elapsed 1s )
+  (cd "${REPO_ROOT}" &&
+    bash "${LIFECYCLE_HOOK}" ship "${SLUG}" --items 1 --passed 1 --elapsed 1s)
 
   cat <<EOF
 
@@ -148,7 +148,7 @@ cmd_status() {
   echo "settings:  ${SETTINGS_FILE}"
   if [[ -f "${SETTINGS_FILE}" ]] && command -v jq >/dev/null 2>&1; then
     if jq -e '.hooks.Stop // [] | map(.hooks[]?.command // "") | any(. | contains("01-orch-notify.sh"))' \
-       "${SETTINGS_FILE}" >/dev/null 2>&1; then
+      "${SETTINGS_FILE}" >/dev/null 2>&1; then
       echo "  Stop hook wired:   yes"
     else
       echo "  Stop hook wired:   no"
@@ -176,13 +176,25 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  unit)     shift; cmd_unit "$@" ;;
-  setup)    shift; cmd_setup "$@" ;;
-  teardown) shift; cmd_teardown "$@" ;;
-  status)   shift; cmd_status "$@" ;;
-  -h | --help | "") usage 0 ;;
-  *)
-    echo "error: unknown subcommand '$1'" >&2
-    usage 1
-    ;;
+unit)
+  shift
+  cmd_unit "$@"
+  ;;
+setup)
+  shift
+  cmd_setup "$@"
+  ;;
+teardown)
+  shift
+  cmd_teardown "$@"
+  ;;
+status)
+  shift
+  cmd_status "$@"
+  ;;
+-h | --help | "") usage 0 ;;
+*)
+  echo "error: unknown subcommand '$1'" >&2
+  usage 1
+  ;;
 esac
