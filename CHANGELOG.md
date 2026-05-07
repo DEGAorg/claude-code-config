@@ -210,6 +210,8 @@ entry below.
 
 - ARB-01 production-ready + shared live executor layer (`20260429-arb01-live-executor`) — 2026-04-29
 
+- MarketClient abstraction (Phase 1 — interface + adapter, no consumer migration) (`20260428-market-client-abstraction`) — 2026-04-28
+
 - Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
 
 - Wire Strategy Templates into Canon Start Pipeline (`20260415-wire-templates`) — 2026-04-16
