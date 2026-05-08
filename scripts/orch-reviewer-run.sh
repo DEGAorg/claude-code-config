@@ -287,7 +287,6 @@ gate_c() {
 # in any executable position; type annotations, type-only imports, and
 # comments do not match. Files under `__tests__/` and any path ending in
 # `.test.ts` are filtered out so test-only call sites do not count.
-# shellcheck disable=SC2329  # invoked from gate_c_ast; dispatched in a follow-up plan item
 has_production_call_expr() {
   local name="$1"
   local matches
@@ -297,7 +296,6 @@ has_production_call_expr() {
   [[ -n "${matches}" ]]
 }
 
-# shellcheck disable=SC2329  # added to dispatch in a follow-up plan item
 gate_c_ast() {
   local hooks unwired=""
   hooks=$(exported_hooks || true)
@@ -380,11 +378,13 @@ gate_d() {
 gate_a
 gate_b
 gate_c
+gate_c_ast
 gate_d
 
 a=$(cat "${OUT_DIR}/gate-a.verdict")
 b=$(cat "${OUT_DIR}/gate-b.verdict")
 c=$(cat "${OUT_DIR}/gate-c.verdict")
+c_ast=$(cat "${OUT_DIR}/gate-c.ast.verdict")
 d=$(cat "${OUT_DIR}/gate-d.verdict")
 
 aggregate="PASS"
@@ -416,6 +416,7 @@ cat >"${VERDICT}" <<JSON
   "gateA": "${a}",
   "gateB": "${b}",
   "gateC": "${c}",
+  "gateCAst": "${c_ast}",
   "gateD": "${d}",
   "aggregate": "${aggregate}",
   "blocking_gates": [${blocking_json}]
@@ -436,6 +437,10 @@ $(cat "${OUT_DIR}/gate-b.reason")
 ## Gate C — Wiring graph
 **Verdict:** ${c}
 $(cat "${OUT_DIR}/gate-c.reason")
+
+## Gate C v2 — Wiring graph (AST-based, advisory)
+**Verdict:** ${c_ast}
+$(cat "${OUT_DIR}/gate-c.ast.reason")
 
 ## Gate D — Mock-coverage delta (advisory)
 **Verdict:** ${d}
