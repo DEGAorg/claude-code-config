@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-05-07
+
+Fixes a blocker in `/canon-start --live` where deposit detection never
+fired even after the EOA was funded. `scripts/canon-live-readiness.sh`
+called `canon-cli balance`, `canon-cli wallet address`, and `canon-cli
+onboard --status` without first sourcing `.canon/wallet.env`, so every
+balance lookup returned `POLYMARKET_PRIVATE_KEY required` and the poll
+loop treated it as zero — the script timed out after 30 minutes with
+funds visibly present at the EOA.
+
+### Fixed
+- `scripts/canon-live-readiness.sh` now sources `.canon/wallet.env`
+  before any `canon-cli` invocation, exports
+  `POLYMARKET_PRIVATE_KEY` from `WALLET_PRIVATE_KEY`, and exits early
+  with a clear message if no wallet credentials are present. Verified
+  end-to-end on a fresh `test-live5` run: deposit detection, Safe
+  deployment, V1+V2 approvals, USDC swap, and live runner launch all
+  completed.
+
 ## [0.1.5] — 2026-05-07
 
 Introduces a venue-agnostic `MarketClient` interface in `canon/templates`
