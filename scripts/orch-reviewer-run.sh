@@ -270,6 +270,59 @@ gate_c() {
 }
 
 # ---------------------------------------------------------------------------
+# Gate C v2 — Wiring graph (AST-based, advisory)
+# ---------------------------------------------------------------------------
+#
+# Augments gate_c with a structural ast-grep check requiring a
+# call-expression `Name(...)` in non-test .ts code. v1's text grep cannot
+# distinguish a real call site from a type-only reference (import, type
+# annotation, comment); v2 closes that gap by matching the AST shape
+# `$NAME($$$)`. The verdict is written to gate-c.ast.verdict for
+# observation; the aggregate keeps gating on gate-c.verdict (v1) until a
+# follow-up plan flips it once we trust the AST detector across real PRs.
+
+# True if `name` appears as a call-expression in at least one non-test
+# `.ts` file under REPO_ROOT. Uses ast-grep's structural pattern
+# `$NAME($$$)` against the typescript grammar — this matches `name(...)`
+# in any executable position; type annotations, type-only imports, and
+# comments do not match. Files under `__tests__/` and any path ending in
+# `.test.ts` are filtered out so test-only call sites do not count.
+# shellcheck disable=SC2329  # invoked from gate_c_ast; dispatched in a follow-up plan item
+has_production_call_expr() {
+  local name="$1"
+  local matches
+  matches=$(ast-grep --pattern "${name}(\$\$\$)" --lang ts "${REPO_ROOT}" 2>/dev/null |
+    grep -v '/__tests__/' |
+    grep -v '\.test\.ts:') || true
+  [[ -n "${matches}" ]]
+}
+
+# shellcheck disable=SC2329  # added to dispatch in a follow-up plan item
+gate_c_ast() {
+  local hooks unwired=""
+  hooks=$(exported_hooks || true)
+  if [[ -z "${hooks}" ]]; then
+    echo "PASS" >"${OUT_DIR}/gate-c.ast.verdict"
+    echo "no new hooks/adapters introduced" >"${OUT_DIR}/gate-c.ast.reason"
+    return
+  fi
+  while IFS= read -r name; do
+    [[ -z "${name}" ]] && continue
+    if ! has_production_call_expr "${name}"; then
+      unwired="${unwired}${name}; "
+    fi
+  done <<<"${hooks}"
+
+  if [[ -n "${unwired}" ]]; then
+    echo "FAIL" >"${OUT_DIR}/gate-c.ast.verdict"
+    echo "exported but no call-expression in production code: ${unwired}" >"${OUT_DIR}/gate-c.ast.reason"
+  else
+    echo "PASS" >"${OUT_DIR}/gate-c.ast.verdict"
+    echo "all new hooks have call-expression in production code" >"${OUT_DIR}/gate-c.ast.reason"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Gate D — Mock-coverage delta (advisory)
 # ---------------------------------------------------------------------------
 
