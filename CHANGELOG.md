@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Gate C v2 — AST-based detector (advisory) in `scripts/orch-reviewer-run.sh`.
+  `gate_c_ast()` runs alongside the existing v1 grep detector and uses
+  `ast-grep --pattern '$NAME($$$)' --lang ts` over non-test `.ts` files to
+  decide whether each newly exported hook has a real call-expression — not
+  just a text reference, type-position mention, or re-export. The verdict
+  lands in `${OUT_DIR}/gate-c.ast.verdict` (`PASS` / `FAIL` / `SKIP`),
+  `${OUT_DIR}/gate-c.ast.reason`, the `verdict.json` `gateCAst` field, and
+  a "Gate C v2" section in `findings.md`. The aggregate SHIP/FAIL still
+  gates on the v1 grep verdict (`gate-c.verdict`) — the AST verdict is
+  recorded for observation until a follow-up plan flips the aggregate. If
+  `ast-grep` is not on `PATH`, the gate writes `SKIP` with reason
+  "ast-grep not installed on PATH" and continues (fail-open). Bats coverage
+  in `tests/orch/test_gate_c_ast.bats`; advisory rollout documented under
+  "Known limitations (v1)" in `docs/reviews/orch-reviewer-gates.md`
+  (#266) — 2026-05-08
+
 ## [0.1.5] — 2026-05-07
 
 Introduces a venue-agnostic `MarketClient` interface in `canon/templates`
