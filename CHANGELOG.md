@@ -15,6 +15,8 @@ shadowed the current copy with pre-flip code (`BACKGROUND=false` default
 detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
 
 ### Added
+- Add per-item DOCUMENTING phase to orchestrator (`302`) — 2026-05-08
+
 - "Use it at your own risk" disclaimer surfaced in three install/init
   touchpoints so users see it before any live action: the
   `scripts/canon.sh` welcome banner (above the `Launching Canon TUI`
