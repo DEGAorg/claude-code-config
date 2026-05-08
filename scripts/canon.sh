@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=agent-shim.sh
+# shellcheck source=agent-shim.sh disable=SC1091
 source "${SCRIPT_DIR}/agent-shim.sh"
 
 PROJECT_DIR="$(pwd)"
@@ -18,6 +18,15 @@ else
   printf '{"phase":"init","status":"idle","startedAt":"%s","updatedAt":"%s","logs":[],"error":null,"metrics":{}}\n' \
     "$(date -u +%FT%TZ)" "$(date -u +%FT%TZ)" >"${STATE}"
 fi
+
+# ── Disclaimer banner ────────────────────────────────────────────────
+echo ""
+echo "═══════════════════════════════════════════════════════════════════"
+echo "  Canon helps create automation for prediction markets."
+echo "  The configuration and risk are your responsibility —"
+echo "  use it at your own risk."
+echo "═══════════════════════════════════════════════════════════════════"
+echo ""
 
 # ── Launch mode: Canon TUI (preferred) or tmux (fallback) ────────────
 if command -v canon >/dev/null 2>&1; then
