@@ -15,6 +15,14 @@ shadowed the current copy with pre-flip code (`BACKGROUND=false` default
 detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
 
 ### Added
+- "Use it at your own risk" disclaimer surfaced in three install/init
+  touchpoints so users see it before any live action: the
+  `scripts/canon.sh` welcome banner (above the `Launching Canon TUI`
+  echo and the tmux fallback), `INSTALL.md` (after the "For AI
+  agents — bootstrap instructions" intro paragraph), and
+  `commands/canon-init.md` (as the first printed step in the init
+  walkthrough). Informative-only, no acknowledgment gate — agent-native
+  UX prefers no friction (#152) — 2026-05-07
 - `tests/orch/test_no_stale_claude_scripts_refs.bats` — bats regression
   asserting `AGENTS.md` and `agents/conductor.md` never reintroduce the
   stale `~/.claude/scripts/orch-run.sh` path (#300) — 2026-05-07
