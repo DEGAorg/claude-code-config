@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-05-07
+
+Introduces a venue-agnostic `MarketClient` interface in `canon/templates`
+(#251) so non-Polymarket adapters (Kalshi etc.) can be added later without
+a rewrite. Phase 1 — interface, Polymarket adapter, and a re-export shim
+that preserves the legacy named-function API. No consumer migration
+required.
+
+### Added
+- `canon/templates/client-market.ts` — `MarketClient` interface, shared
+  types, and `getMarketClient()` factory that selects the adapter via the
+  `MARKET_VENUE` env var (defaults to `polymarket`)
+- `canon/templates/adapters/polymarket.ts` — `PolymarketAdapter implements
+  MarketClient`, ports the public market functions from the previous
+  monolithic `client-polymarket.ts` (preserves the sidecar workaround for
+  `fetchOHLCV` / `watchOrderBook` / `watchTrades`)
+- Tests: `canon/templates/__tests__/client-market.test.ts` and
+  `canon/templates/__tests__/adapters/polymarket.test.ts`
+- `docs/market-client-smoke-test.md` — post-install verification procedure
+  across four risk tiers
+
+### Changed
+- `canon/templates/client-polymarket.ts` reduced to a re-export shim that
+  delegates market methods to a default `getMarketClient()` instance and
+  re-exports on-chain helpers from `adapters/polymarket-onchain.ts`. The
+  legacy named-function API (`searchMarkets`, `fetchOrderBook`,
+  `createOrder`, …) still works unchanged for existing callers.
+
 ## [0.1.4] — 2026-05-06
 
 Fixes the install path for the agent-bump Stop hook from #260 so it
@@ -209,6 +237,8 @@ entry below.
 - ARB-01 live-execution completion (Q-2 / Q-3 / Q-4 / Q-5) (`20260430-arb01-live-completion`) — 2026-04-30
 
 - ARB-01 production-ready + shared live executor layer (`20260429-arb01-live-executor`) — 2026-04-29
+
+- MarketClient abstraction (Phase 1 — interface + adapter, no consumer migration) (`20260428-market-client-abstraction`) — 2026-04-28
 
 - Extract gh-push-and-pr.sh (`20260427-extract-gh-push-and-pr`) — 2026-04-27
 
