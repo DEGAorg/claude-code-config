@@ -5,6 +5,9 @@
 You are installing DEGA Core (AI development harness) and Canon TUI (terminal
 visualization for agent activity). Follow both phases in order.
 
+> **Disclaimer:** Canon helps create automation for prediction markets. The
+> configuration and risk are your responsibility — use it at your own risk.
+
 ### Phase 1 — Install DEGA Core
 
 1. Fetch the Core installer command:
