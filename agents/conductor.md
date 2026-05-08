@@ -104,7 +104,7 @@ Spawn the orchestrator for plan execution:
 
 ```bash
 # run_in_background
-bash ~/.claude/scripts/orch-run.sh <YYYYMMDD-slug> --issue <N>
+bash ~/.degacore/scripts/orch-run.sh <YYYYMMDD-slug> --issue <N>
 ```
 
 ### Subagents
