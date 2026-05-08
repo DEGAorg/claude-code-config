@@ -264,13 +264,46 @@ PASS; the bug was real.
 
 Reliable distinction needs AST analysis (ts-morph, ast-grep with TS
 support) rather than text search. Tracked as a v2 enhancement —
-filed as a follow-up issue against this same plan family.
+shipped as `gate_c_ast` in plan #266 and documented in the next
+subsection.
 
 **Mitigation today.** Gate A often catches the same class of failure
 from a different angle: an unwired hook usually means the production
 path is missing something testable. The aggregate verdict on PR #262
 was FAIL via Gate A even though Gate C false-passed — defence in depth
 worked.
+
+### Gate C v2 — AST-based detector (advisory)
+
+Plan #266 ships a second pass for Gate C that uses
+`ast-grep --pattern '$NAME($$$)' --lang ts` to look for actual
+call-expression matches rather than text references. It runs
+alongside the v1 grep detector on every PR.
+
+**Where the v2 verdict lives:**
+
+- `${OUT_DIR}/gate-c.ast.verdict` — `PASS`, `FAIL`, or `SKIP`.
+- `${OUT_DIR}/gate-c.ast.reason` — human-readable reason string.
+- `verdict.json` — exposed as the `gateCAst` field for observation.
+- `findings.md` — section `## Gate C v2 — Wiring graph (AST-based, advisory)`.
+
+**Advisory until the aggregate flip.** The aggregate verdict still
+gates on the v1 grep result (`gate-c.verdict`). The AST verdict is
+recorded but does **not** influence aggregate `PASS`/`FAIL`/`INCONCLUSIVE`
+in this release. Once observation across real plans shows the AST
+detector is reliable, a follow-up plan flips the aggregate to read
+`gate-c.ast.verdict` instead of (or alongside) `gate-c.verdict`.
+
+**Fail-open when `ast-grep` is missing.** If `ast-grep` is not on
+`PATH` at run time, the v2 gate writes `SKIP` with reason
+`ast-grep not installed`. The aggregate is unaffected — `SKIP` is
+treated the same as a missing v2 verdict.
+
+**What this changes for plan authors today.** Nothing yet. Watch the
+`findings.md` "Gate C v2" section and the `verdict.json` `gateCAst`
+field for divergence from the v1 grep verdict, and report surprising
+PASS-vs-FAIL splits on the v2 follow-up issue so the aggregate flip
+lands with calibration data.
 
 ### Gate D — advisory in v1, by design
 

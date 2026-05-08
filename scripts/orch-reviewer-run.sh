@@ -298,6 +298,11 @@ has_production_call_expr() {
 
 gate_c_ast() {
   local hooks unwired=""
+  if ! command -v ast-grep >/dev/null 2>&1; then
+    echo "SKIP" >"${OUT_DIR}/gate-c.ast.verdict"
+    echo "ast-grep not installed on PATH" >"${OUT_DIR}/gate-c.ast.reason"
+    return
+  fi
   hooks=$(exported_hooks || true)
   if [[ -z "${hooks}" ]]; then
     echo "PASS" >"${OUT_DIR}/gate-c.ast.verdict"
