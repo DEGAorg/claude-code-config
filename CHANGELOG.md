@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- "Use it at your own risk" disclaimer surfaced in three install/init
+  touchpoints so users see it before any live action: the
+  `scripts/canon.sh` welcome banner (above the `Launching Canon TUI`
+  echo and the tmux fallback), `INSTALL.md` (after the "For AI
+  agents — bootstrap instructions" intro paragraph), and
+  `commands/canon-init.md` (as the first printed step in the init
+  walkthrough). Informative-only, no acknowledgment gate — agent-native
+  UX prefers no friction.
+
 ## [0.1.5] — 2026-05-07
 
 Introduces a venue-agnostic `MarketClient` interface in `canon/templates`
