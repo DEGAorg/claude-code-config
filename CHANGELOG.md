@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Canonicalizes the orchestrator launcher path in the agent docs to
+`~/.degacore/scripts/orch-run.sh` and adds a stale-install detection step
+to `/apply-core`. Two doc references still pointed at the legacy
+`~/.claude/scripts/orch-run.sh`, which on machines with both installs
+shadowed the current copy with pre-flip code (`BACKGROUND=false` default
++ unconditional `tmux new-session ... -n dashboard`), reverting the
+detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
+
 ### Added
 - "Use it at your own risk" disclaimer surfaced in three install/init
   touchpoints so users see it before any live action: the
@@ -14,7 +22,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   agents — bootstrap instructions" intro paragraph), and
   `commands/canon-init.md` (as the first printed step in the init
   walkthrough). Informative-only, no acknowledgment gate — agent-native
-  UX prefers no friction.
+  UX prefers no friction (#152) — 2026-05-07
+- `tests/orch/test_no_stale_claude_scripts_refs.bats` — bats regression
+  asserting `AGENTS.md` and `agents/conductor.md` never reintroduce the
+  stale `~/.claude/scripts/orch-run.sh` path (#300) — 2026-05-07
+- `commands/apply-core.md` Step 0b — stale-install detection that runs
+  `[[ -e ~/.claude/scripts/orch-run.sh ]]` and, on hit, prints a warning
+  block explaining the pre-flip code shadowing risk and the recommended
+  `trash ~/.claude/scripts/` command. Advisory only — destructive removal
+  under `$HOME` requires explicit operator approval, so the step never
+  auto-executes (#300) — 2026-05-07
+
+### Changed
+- `AGENTS.md` (line ~312) and `agents/conductor.md` (line ~107) now
+  reference `~/.degacore/scripts/orch-run.sh` instead of
+  `~/.claude/scripts/orch-run.sh`, matching every other doc
+  (`README.md`, `commands/plan.md`, `agent-template.md`,
+  `commands/core-init.md`, `canon/skills/orchestrator.md`) (#300)
+  — 2026-05-07
 
 ## [0.1.5] — 2026-05-07
 

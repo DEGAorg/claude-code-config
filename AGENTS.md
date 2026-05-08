@@ -309,7 +309,7 @@ In this repo, `github.pr_target` is currently `ace-work`: open PRs against `ace-
 with per-item review, completion criteria gates, and automatic SHIP/merge/archive:
 
 ```bash
-bash ~/.claude/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
+bash ~/.degacore/scripts/orch-run.sh docs/exec-plans/active/20260302-add-auth-endpoint
 ```
 
 The plan path must point to a directory in `docs/exec-plans/active/` (format: `YYYYMMDD-slug`).
