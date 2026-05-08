@@ -168,6 +168,11 @@ orch_plan_review_dir() {
   printf '%s/reviews' "$(orch_plan_dir "${slug}")"
 }
 
+orch_plan_documenting_dir() {
+  local slug="$1"
+  printf '%s/documenting' "$(orch_plan_dir "${slug}")"
+}
+
 orch_plan_log_dir() {
   local slug="$1"
   printf '%s/logs' "$(orch_plan_dir "${slug}")"
@@ -184,6 +189,7 @@ orch_ensure_plan_dirs() {
   local slug="$1"
   mkdir -p "$(orch_plan_done_dir "${slug}")"
   mkdir -p "$(orch_plan_review_dir "${slug}")"
+  mkdir -p "$(orch_plan_documenting_dir "${slug}")"
   mkdir -p "$(orch_plan_log_dir "${slug}")"
 }
 
