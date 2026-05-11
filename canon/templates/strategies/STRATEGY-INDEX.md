@@ -9,7 +9,6 @@ into `canon/templates/` as runnable strategy directories.
 ## Status legend
 
 - **Turnkey (live)** — runs end-to-end live with `--live`. No operator code required.
-- **Live executor wired, cycle loop pending** — `--live` plumbing done (executor, allowance, sidecar preflight) but the orchestration loop that drives a complete cycle is not. Cannot trade today.
 - **Extension scaffold** — wiring in place as a community example / base for extension. Not a runnable strategy out of the box and not on Canon's roadmap to complete.
 - **Planned** — will be ported, not yet started.
 - **Deferred** — requires infrastructure not yet built (Phase 2/3).
@@ -39,7 +38,7 @@ resume after the freeze lifts.
 | MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | **Turnkey (live)** | `strategies/mint-01/` — `cycle.ts:runCycle` orchestrates scan → `splitPosition` mint → dual-leg GTC sell at midpoint+0.75¢ → fill-poll with 5¢ stop-loss → 24h reconcile / cancel. CTF allowance, mint client, and live executor all wired through `entry.ts:main()` behind `--live`. Self-contained |
 | MINT-02 | Split Mint $500+$500 | Very Low | Low | No (exec) | Planned | Two sub-cycles, adjustable between |
 | MINT-03 | MM at Midpoint (Passive) | Medium | Medium | No (exec) | Planned | LP rewards only, loses on execution |
-| MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | **Live executor wired, cycle loop pending** | `strategies/mm-premium/` — scanner with tiered offset (1.0¢ / 0.75¢ / 0.5¢), risk gate, live GTC sell limit executor wired behind `--live`. Missing: own `cycle.ts` helpers (mirror `mint-01/cycle.ts`) and the orchestration loop (splitPosition mint + dual leg + 24h reconcile). Cannot trade today |
+| MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | **Turnkey (live)** | `strategies/mm-premium/` — `cycle.ts:runMmPremiumCycle` orchestrates scan → tier-offset selection (1.0¢ / 0.75¢ / 0.5¢, latched at cycle start) → `splitPosition` mint → dual-leg GTC sell at `midpoint ± offsetC` → fill-poll with 5¢ stop-loss → 24h reconcile / cancel. CTF allowance, mint client, and live executor all wired through `entry.ts:main()` behind `--live`. Self-contained |
 | MINT-05 | MM Sweet Spot (Dynamic) | Low | Medium | No (exec) | Planned | Auto-adjusts offset 0.25-0.50c |
 | MINT-06 | Compounding Multi-Cycle | Low | Low | No (exec) | Planned | Meta-strategy, reinvests MINT-01/04 |
 
@@ -68,12 +67,8 @@ resume after the freeze lifts.
 
 ## Demo-ready summary (at code freeze)
 
-**Turnkey live (4):** ARB-01, ARB-03, MINT-01, TRADE-02 — run `--live`
-end-to-end today, no operator code or pending pieces.
-
-**Live executor wired, cycle loop pending (1):** MINT-04 — wiring and
-helpers built; orchestration loop missing (~2–3h work). Cannot trade
-today.
+**Turnkey live (5):** ARB-01, ARB-03, MINT-01, MINT-04, TRADE-02 — run
+`--live` end-to-end today, no operator code or pending pieces.
 
 **Extension scaffold (1):** IA-03 — community template; not on Canon
 roadmap.
@@ -83,10 +78,7 @@ MINT-05, MINT-06, IA-01, IA-02, IA-04, IA-05, IA-06.
 
 ## Post-freeze priority order
 
-1. **MINT-04 cycle loop** — mirror the MINT-01 shape (scan →
-   splitPosition → dual-leg → reconcile) on top of mm-premium's own
-   `cycle.ts` helpers with the tiered offset (1.0¢ / 0.75¢ / 0.5¢).
-2. New strategies from the planned list (ARB-02, MINT-02, etc.)
+1. New strategies from the planned list (ARB-02, MINT-02, etc.)
    based on demand.
 
 ## Implementation path (for future ports)

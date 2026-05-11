@@ -52,6 +52,15 @@ export interface MintPremiumConfig {
   signalTtlMs: number;
   /** Total available bankroll (USD). */
   bankroll: number;
+  /**
+   * Stop-loss drift threshold in dollars. If `|currentMidpoint − entryMidpoint|`
+   * exceeds this value, both legs are cancelled and the cycle exits.
+   */
+  stopLossDrift: number;
+  /** Override the fill-poll interval (ms). */
+  fillPollIntervalMs: number;
+  /** Maximum duration to keep an unfilled cycle open before forcing reconcile. */
+  maxCycleDurationMs: number;
 }
 
 /** C2/D2 production defaults for MINT-04. */
@@ -77,6 +86,9 @@ export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
   timeToCloseAdjustMs: 48 * 60 * 60 * 1000,
   signalTtlMs: 6 * 60 * 60 * 1000,
   bankroll: 10_000,
+  stopLossDrift: 0.05,
+  fillPollIntervalMs: 60_000,
+  maxCycleDurationMs: 24 * 60 * 60 * 1000,
 };
 
 /**
