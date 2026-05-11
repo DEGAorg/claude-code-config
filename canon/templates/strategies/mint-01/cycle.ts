@@ -17,6 +17,11 @@
  * with the live-executor and `ctf-mint` SDK wrappers.
  */
 
+import {
+  planTwoLegs,
+  withinDriftBand,
+} from "../../mint-cycle-helpers.js";
+
 import type { Mint01Config } from "./config.js";
 
 /**
@@ -113,13 +118,10 @@ export function selectMarket(
 /**
  * Plan the two sell legs for a MINT-01 cycle.
  *
- * `yesMidpoint` is the YES outcome midpoint price in (0, 1). The NO midpoint
- * is the binary complement, `1 − yesMidpoint`. Both legs are sold at their
- * respective midpoint + `premiumOffset` (in dollars).
- *
- * Size is the number of outcome-token units to sell on each leg. Because
- * `splitPosition($cycleCapital)` mints `cycleCapital` matched YES + NO pairs
- * (each pair backed by $1 USDC), the leg size equals `cycleCapital`.
+ * Thin adapter over the shared `planTwoLegs` helper that binds the offset
+ * to `config.premiumOffset` and the size to `config.cycleCapital`. Because
+ * `splitPosition($cycleCapital)` mints `cycleCapital` matched YES + NO
+ * pairs (each pair backed by $1 USDC), leg size equals `cycleCapital`.
  *
  * Throws when `yesMidpoint` is outside (0, 1) or when the premium would
  * push either leg price above $1 (an unfillable above-cap quote).
@@ -128,21 +130,7 @@ export function planLegs(
   yesMidpoint: number,
   config: Mint01Config,
 ): CycleLegs {
-  if (yesMidpoint <= 0 || yesMidpoint >= 1) {
-    throw new Error(
-      `planLegs: yesMidpoint ${yesMidpoint} must be in (0, 1).`,
-    );
-  }
-  const yesPrice = yesMidpoint + config.premiumOffset;
-  const noPrice = 1 - yesMidpoint + config.premiumOffset;
-  if (yesPrice >= 1 || noPrice >= 1) {
-    throw new Error(
-      `planLegs: leg price >= 1 (yes=${yesPrice}, no=${noPrice}); ` +
-        `midpoint ${yesMidpoint} too close to 0 or 1 for premium ` +
-        `${config.premiumOffset}.`,
-    );
-  }
-  return { yesPrice, noPrice, size: config.cycleCapital };
+  return planTwoLegs(yesMidpoint, config.premiumOffset, config.cycleCapital);
 }
 
 /**
@@ -150,13 +138,14 @@ export function planLegs(
  *
  * Returns `true` when the YES midpoint has drifted strictly more than
  * `config.stopLossDrift` dollars from the entry midpoint in either
- * direction. Caller is responsible for cancelling both legs and unwinding
- * via resolution.
+ * direction. Negation of the shared `withinDriftBand` (which is inclusive
+ * at the boundary). Caller is responsible for cancelling both legs and
+ * unwinding via resolution.
  */
 export function shouldStopLoss(
   entryMidpoint: number,
   currentMidpoint: number,
   config: Mint01Config,
 ): boolean {
-  return Math.abs(currentMidpoint - entryMidpoint) > config.stopLossDrift;
+  return !withinDriftBand(entryMidpoint, currentMidpoint, config.stopLossDrift);
 }
