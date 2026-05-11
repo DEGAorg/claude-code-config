@@ -36,7 +36,7 @@ resume after the freeze lifts.
 
 | ID | Name | Risk | Complexity | Scanner-ready? | Status | Notes |
 |----|------|------|------------|----------------|--------|-------|
-| MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | **Live executor wired, cycle loop pending** | `strategies/mint-01/` — `cycle.ts` helpers (`selectMarket`, `planLegs`, `shouldStopLoss`), `ctf-mint.ts` splitPosition wrapper, live executor + allowance + sidecar preflight all built. `main()` does **not** orchestrate them yet — running `--live` today prints START and exits. Cannot trade. |
+| MINT-01 | Simple Mint $1,000 | Low | Low | No (exec) | **Turnkey (live)** | `strategies/mint-01/` — `cycle.ts:runCycle` orchestrates scan → `splitPosition` mint → dual-leg GTC sell at midpoint+0.75¢ → fill-poll with 5¢ stop-loss → 24h reconcile / cancel. CTF allowance, mint client, and live executor all wired through `entry.ts:main()` behind `--live`. Self-contained |
 | MINT-02 | Split Mint $500+$500 | Very Low | Low | No (exec) | Planned | Two sub-cycles, adjustable between |
 | MINT-03 | MM at Midpoint (Passive) | Medium | Medium | No (exec) | Planned | LP rewards only, loses on execution |
 | MINT-04 | MM Premium +0.75c | Low | Medium | No (exec) | **Live executor wired, cycle loop pending** | `strategies/mm-premium/` — scanner with tiered offset (1.0¢ / 0.75¢ / 0.5¢), risk gate, live GTC sell limit executor wired behind `--live`. Missing: own `cycle.ts` helpers (mirror `mint-01/cycle.ts`) and the orchestration loop (splitPosition mint + dual leg + 24h reconcile). Cannot trade today |
@@ -68,12 +68,12 @@ resume after the freeze lifts.
 
 ## Demo-ready summary (at code freeze)
 
-**Turnkey live (3):** ARB-01, ARB-03, TRADE-02 — run `--live` end-to-end
-today, no operator code or pending pieces.
+**Turnkey live (4):** ARB-01, ARB-03, MINT-01, TRADE-02 — run `--live`
+end-to-end today, no operator code or pending pieces.
 
-**Live executor wired, cycle loop pending (2):** MINT-01, MINT-04 —
-wiring and helpers built; orchestration loop missing (~2–3h work
-each). Cannot trade today.
+**Live executor wired, cycle loop pending (1):** MINT-04 — wiring and
+helpers built; orchestration loop missing (~2–3h work). Cannot trade
+today.
 
 **Extension scaffold (1):** IA-03 — community template; not on Canon
 roadmap.
@@ -83,11 +83,10 @@ MINT-05, MINT-06, IA-01, IA-02, IA-04, IA-05, IA-06.
 
 ## Post-freeze priority order
 
-1. **MINT-01 cycle loop** — completes the pieces already built; turns
-   wired-but-dormant into a fifth turnkey strategy.
-2. **MINT-04 cycle loop** — same shape as MINT-01 plus its own
-   `cycle.ts` helpers with tiered offset.
-3. New strategies from the planned list (ARB-02, MINT-02, etc.)
+1. **MINT-04 cycle loop** — mirror the MINT-01 shape (scan →
+   splitPosition → dual-leg → reconcile) on top of mm-premium's own
+   `cycle.ts` helpers with the tiered offset (1.0¢ / 0.75¢ / 0.5¢).
+2. New strategies from the planned list (ARB-02, MINT-02, etc.)
    based on demand.
 
 ## Implementation path (for future ports)
