@@ -1,24 +1,21 @@
 /**
  * MINT-04 Market Making Premium — Project Entry Point
  *
- * Wires the real Polymarket client into the mm-premium strategy:
- *   - `--live`     → submits real CLOB GTC limit sell orders via
- *                    `createLiveExecutor`. The YES sell leg of each
- *                    cycle flows through the production live executor.
+ * Wires the real Polymarket client + CTF mint adapter into the
+ * mm-premium strategy:
+ *   - `--live`     → runs one full MINT-04 cycle via `runMmPremiumCycle`:
+ *                    scan → tiered-offset selection → splitPosition →
+ *                    dual leg sell-limit at midpoint ± offsetC → 24h
+ *                    reconcile (or stop-loss exit).
  *   - default      → dry-run (production safety: no flag never trades).
+ *                    Keeps using the shared scanner runner from `main.ts`,
+ *                    which emits a single `sell_yes` advisory per viable
+ *                    market without minting or posting orders.
  *
- * A complete MINT-04 cycle is:
- *   1. `splitPosition($cycleCapital)` — mint matched YES + NO pairs.
- *   2. Post YES sell-limit at midpoint + offsetC.
- *   3. Post NO  sell-limit at (1 − midpoint) + offsetC.
- *   4. 24h reconcile / kill remaining.
- *
- * Steps 1 + 3 + 4 are not yet wired here — they require a cycle loop
- * mirroring `strategies/mint-01/cycle.ts`. The current bootstrap covers
- * the live executor + allowance + sidecar preflight pieces shared with
- * the rest of the live-capable templates; the cycle loop is the
- * follow-up. The exposed `createEntryDeps` is the production seam
- * exercised by unit tests.
+ * The dry-run path and the live cycle share `createEntryDeps` for live-
+ * executor + scan wiring; only the live path adds the mint plumbing
+ * (`mintClient`, CTF allowance) and the cycle-loop adapters
+ * (`fetchOrderStatus`, `fetchMidpoint`, `now`, `sleep`).
  */
 
 import { pathToFileURL } from "node:url";
@@ -29,28 +26,36 @@ import {
 } from "../../bankroll.js";
 import { appendEntry } from "../../execution-log.js";
 import type { ExecutionLogEntry } from "../../execution-log.js";
-import { fetchBinaryMarketSnapshots } from "../../client-polymarket.js";
+import {
+  fetchBinaryMarketSnapshots,
+  fetchMarketPrice,
+  fetchOpenOrders,
+} from "../../client-polymarket.js";
+import type { OrderResponse } from "../../client-polymarket.js";
+import { createCtfMintClient } from "../../ctf-mint.js";
+import type { CtfMintClient } from "../../ctf-mint.js";
 import { assertReadyForLive } from "../../live-preflight.js";
 import { createLiveExecutor } from "../../live-executor.js";
 import type {
   AllowanceClient,
+  LiveExecutor,
   ResolvedOrder,
 } from "../../live-executor.js";
 import { createLivePositions } from "../../live-positions.js";
 import {
-  DEFAULT_ALLOWANCE_SPENDER,
+  CONDITIONAL_TOKENS_ADDRESS,
+  CTF_EXCHANGE_ADDRESS,
   USDC_E_ADDRESS,
 } from "../../polygon-addresses.js";
-import type {
-  ExecutorDeps,
-  PositionDeps,
-} from "../../runner.js";
+import type { PositionDeps } from "../../runner.js";
 import { createUsdcAllowanceClient } from "../../usdc-allowance.js";
 import type { TradeSignal } from "../../types/TradeSignal.js";
 import { FileWalletStore } from "../../wallet-store.js";
 import type { WalletStore } from "../../wallet-store.js";
 
 import { DEFAULT_MM_PREMIUM_CONFIG } from "./config.js";
+import { runMmPremiumCycle } from "./cycle.js";
+import type { RunMmPremiumCycleDeps } from "./cycle.js";
 import { createMintPremiumRunner } from "./main.js";
 import type { MintPremiumRunnerConfig } from "./main.js";
 import type { ScanDeps } from "./scan.js";
@@ -80,8 +85,20 @@ export interface EntryFlags {
 /** Live executor + positions + scan adapters wired for the runner. */
 export interface EntryDeps {
   scan: ScanDeps;
-  executor: ExecutorDeps;
+  executor: LiveExecutor;
   positions: PositionDeps;
+  /**
+   * CTF mint adapter for `splitPosition` / `mergePositions`. Present
+   * only when `options.mintClient` is supplied; `main()` builds it from
+   * the `WalletStore` via `buildLiveMintClient` in `--live`.
+   */
+  mintClient?: CtfMintClient;
+  /**
+   * USDC→ConditionalTokens allowance client (distinct from the CTF
+   * Exchange allowance threaded into the executor). Present only when
+   * `options.ctfAllowance` is supplied.
+   */
+  ctfAllowance?: AllowanceClient;
 }
 
 /**
@@ -110,11 +127,9 @@ export function parseEntryFlags(argv: readonly string[]): EntryFlags {
 /**
  * Resolve a mint-premium signal to (tokenIds, price).
  *
- * The current strategy emits a single `sell_yes` signal per viable
- * cycle; the live executor sells YES at midpoint + offsetC. TIF is GTC
- * (resting limit, urgency `opportunistic`). The NO leg + splitPosition
- * mint are handled by the (pending) cycle loop, mirroring
- * `mint-01/cycle.ts`.
+ * Both legs route through the same executor; `direction` picks which
+ * side of the pair the order targets (`sell_yes` → YES at midpoint +
+ * offsetC, `sell_no` → NO at (1 − midpoint) + offsetC). TIF is GTC.
  */
 function resolveMmPremiumOrder(signal: TradeSignal): ResolvedOrder {
   const meta = signal.metadata;
@@ -150,7 +165,16 @@ function resolveMmPremiumOrder(signal: TradeSignal): ResolvedOrder {
 
 /** Optional dependencies for `createEntryDeps`. */
 export interface CreateEntryDepsOptions {
+  /** Inject a USDC→CTFExchange `AllowanceClient` for the sell-limit legs. */
   allowance?: AllowanceClient;
+  /**
+   * Inject a USDC→ConditionalTokens `AllowanceClient`. The Gnosis CTF
+   * contract is a distinct spender from the CTF Exchange (it pulls USDC
+   * during `splitPosition`), so a second allowance row is required.
+   */
+  ctfAllowance?: AllowanceClient;
+  /** Inject a CTF mint adapter (real one built by `buildLiveMintClient`). */
+  mintClient?: CtfMintClient;
   /** Search query for binary-market snapshots (defaults to empty). */
   query?: string;
 }
@@ -184,7 +208,15 @@ export function createEntryDeps(
       }));
     },
   };
-  return { scan, executor, positions };
+  return {
+    scan,
+    executor,
+    positions,
+    ...(options.mintClient !== undefined ? { mintClient: options.mintClient } : {}),
+    ...(options.ctfAllowance !== undefined
+      ? { ctfAllowance: options.ctfAllowance }
+      : {}),
+  };
 }
 
 /**
@@ -219,7 +251,7 @@ export async function buildLiveAllowanceClient(
 
   return createUsdcAllowanceClient({
     ownerAddress,
-    spenderAddress: DEFAULT_ALLOWANCE_SPENDER,
+    spenderAddress: CTF_EXCHANGE_ADDRESS,
     usdcAddress: USDC_E_ADDRESS,
     getProvider: async () => {
       const { providers } = await import("ethers");
@@ -235,8 +267,159 @@ export async function buildLiveAllowanceClient(
   });
 }
 
-async function main(): Promise<void> {
-  const flags = parseEntryFlags(process.argv);
+/**
+ * Build a USDC allowance client whose spender is the Gnosis
+ * ConditionalTokens contract.
+ *
+ * Mirrors `buildLiveAllowanceClient` exactly, but swaps the spender to
+ * `CONDITIONAL_TOKENS_ADDRESS`. MINT-04 needs both rows: the CTF Exchange
+ * allowance lets the sell-limit legs settle, while the ConditionalTokens
+ * allowance lets `splitPosition` pull USDC.e from the wallet.
+ */
+export async function buildCtfAllowanceClient(
+  wallet: WalletStore,
+): Promise<AllowanceClient | undefined> {
+  if (!wallet.hasWallet()) return undefined;
+
+  let ownerAddress: string;
+  try {
+    ownerAddress = await wallet.getAddress();
+  } catch {
+    return undefined;
+  }
+
+  const rpcUrl =
+    process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
+
+  return createUsdcAllowanceClient({
+    ownerAddress,
+    spenderAddress: CONDITIONAL_TOKENS_ADDRESS,
+    usdcAddress: USDC_E_ADDRESS,
+    getProvider: async () => {
+      const { providers } = await import("ethers");
+      return new providers.JsonRpcProvider(rpcUrl);
+    },
+    getSigner: async () => {
+      const { Wallet, providers } = await import("ethers");
+      return new Wallet(
+        wallet.getPrivateKey(),
+        new providers.JsonRpcProvider(rpcUrl),
+      );
+    },
+  });
+}
+
+/**
+ * Build a live `CtfMintClient` from an injected `WalletStore`.
+ *
+ * Returns `undefined` when the store has no wallet or when resolving the
+ * address fails — `main()` then skips the mint plumbing rather than
+ * crashing the strategy boot. Construction is lazy: the inner
+ * `getSigner` / `getProvider` hooks are only invoked when
+ * `splitPosition` / `mergePositions` actually fires.
+ */
+export async function buildLiveMintClient(
+  wallet: WalletStore,
+): Promise<CtfMintClient | undefined> {
+  if (!wallet.hasWallet()) return undefined;
+
+  try {
+    await wallet.getAddress();
+  } catch {
+    return undefined;
+  }
+
+  const rpcUrl =
+    process.env["POLYGON_RPC_URL"] ?? "https://polygon.drpc.org";
+
+  return createCtfMintClient({
+    conditionalTokensAddress: CONDITIONAL_TOKENS_ADDRESS,
+    collateralAddress: USDC_E_ADDRESS,
+    getProvider: async () => {
+      const { providers } = await import("ethers");
+      return new providers.JsonRpcProvider(rpcUrl);
+    },
+    getSigner: async () => {
+      const { Wallet, providers } = await import("ethers");
+      return new Wallet(
+        wallet.getPrivateKey(),
+        new providers.JsonRpcProvider(rpcUrl),
+      );
+    },
+  });
+}
+
+/**
+ * Build the `RunMmPremiumCycleDeps` consumed by `runMmPremiumCycle` from
+ * a live `EntryDeps` plus the resolved strategy config.
+ *
+ * Wires the venue-neutral fetchers exported by `client-polymarket` into
+ * the `fetchOrderStatus` / `fetchMidpoint` adapters the cycle expects:
+ *
+ *   - `fetchOrderStatus(id)` — polls `fetchOpenOrders()` for the live id;
+ *     if the order is no longer in the open set the orchestrator treats
+ *     it as `filled` (sidecar drops cancelled/filled orders from the open
+ *     listing). Cancelled legs surface via the same path because
+ *     `executor.cancel` removes them from `fetchOpenOrders`.
+ *   - `fetchMidpoint(conditionId)` — reads the YES-side price as the
+ *     midpoint signal, matching the scan adapter's `yesPrice → midpoint`
+ *     mapping in `scan.ts`.
+ *
+ * Sleep uses `setTimeout` and `now` uses `Date.now` so the cycle's 24h
+ * deadline math runs against real wall-clock time.
+ */
+function buildLiveCycleDeps(args: {
+  executor: LiveExecutor;
+  mintClient: CtfMintClient;
+  scan: ScanDeps;
+  config: RunMmPremiumCycleDeps["config"];
+}): RunMmPremiumCycleDeps {
+  return {
+    config: args.config,
+    scan: args.scan,
+    mintClient: args.mintClient,
+    executor: args.executor,
+    fetchOrderStatus: async (orderId: string): Promise<OrderResponse> => {
+      const open = await fetchOpenOrders();
+      const found = open.find((o) => o.id === orderId);
+      if (found !== undefined) return found;
+      return {
+        id: orderId,
+        marketId: "",
+        outcomeId: "",
+        side: "sell",
+        type: "limit",
+        amount: 0,
+        price: 0,
+        status: "filled",
+        filled: 0,
+        remaining: 0,
+      };
+    },
+    fetchMidpoint: async (conditionId: string): Promise<number> => {
+      const price = await fetchMarketPrice(conditionId);
+      return price.yes;
+    },
+    log: (entry: ExecutionLogEntry) => appendEntry(".", entry),
+    now: () => Date.now(),
+    sleep: (ms: number) =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+      }),
+  };
+}
+
+/** Options accepted by `main()`. Tests inject `argv` + a `wallet`. */
+export interface MainOptions {
+  /** Override the argv used for flag parsing (defaults to `process.argv`). */
+  argv?: readonly string[];
+  /** Override the wallet store. Tests inject a fake; live runs use `FileWalletStore`. */
+  wallet?: WalletStore;
+}
+
+export async function main(opts: MainOptions = {}): Promise<void> {
+  const argv = opts.argv ?? process.argv;
+  const flags = parseEntryFlags(argv);
   const pollIntervalMs = Number(process.env["POLL_INTERVAL_MS"]) || 30_000;
 
   if (!flags.dryRun) {
@@ -245,53 +428,77 @@ async function main(): Promise<void> {
 
   const wallet: WalletStore | undefined = flags.dryRun
     ? undefined
-    : new FileWalletStore();
+    : (opts.wallet ?? new FileWalletStore());
   const allowance =
     wallet !== undefined ? await buildLiveAllowanceClient(wallet) : undefined;
-  const { scan, executor, positions } = createEntryDeps(
-    flags,
-    allowance !== undefined ? { allowance } : {},
-  );
+  const ctfAllowance =
+    wallet !== undefined ? await buildCtfAllowanceClient(wallet) : undefined;
+  const mintClient =
+    wallet !== undefined ? await buildLiveMintClient(wallet) : undefined;
+
+  const deps = createEntryDeps(flags, {
+    ...(allowance !== undefined ? { allowance } : {}),
+    ...(ctfAllowance !== undefined ? { ctfAllowance } : {}),
+    ...(mintClient !== undefined ? { mintClient } : {}),
+  });
 
   const bankroll = await resolveBankroll({
     override: flags.bankroll,
     dryRun: flags.dryRun,
     dryRunDefault: DEFAULT_MM_PREMIUM_CONFIG.bankroll,
-    fetchPortfolio: () => positions.reconcile(),
+    fetchPortfolio: () => deps.positions.reconcile(),
   });
   process.stdout.write(`${formatBankrollBanner(bankroll)}\n`);
 
-  const runnerConfig: MintPremiumRunnerConfig = {
-    strategy: { ...DEFAULT_MM_PREMIUM_CONFIG, bankroll: bankroll.amount },
-    runner: {
-      pollIntervalMs,
-      dryRun: flags.dryRun,
-      baseDir: ".",
-      statePath: ".canon/state.json",
-    },
-    maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
-  };
-
-  const runner = createMintPremiumRunner(runnerConfig, {
-    scan,
-    executor,
-    positions,
-    log: (entry: ExecutionLogEntry) =>
-      appendEntry(".", entry),
-  });
+  const config = { ...DEFAULT_MM_PREMIUM_CONFIG, bankroll: bankroll.amount };
 
   process.stdout.write(
-    `START MINT-04 scanner (${flags.dryRun ? "dry-run" : "live"}) ` +
+    `START MINT-04 ${flags.dryRun ? "scanner (dry-run)" : "cycle (live)"} ` +
       `poll=${String(pollIntervalMs)}ms\n`,
   );
 
-  try {
-    await runner.start();
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    process.stdout.write(`SCAN_ERROR ${msg}\n`);
-    process.exitCode = 1;
+  if (flags.dryRun) {
+    const runnerConfig: MintPremiumRunnerConfig = {
+      strategy: config,
+      runner: {
+        pollIntervalMs,
+        dryRun: true,
+        baseDir: ".",
+        statePath: ".canon/state.json",
+      },
+      maxConsecutiveLosses: MAX_CONSECUTIVE_LOSSES,
+    };
+    const runner = createMintPremiumRunner(runnerConfig, {
+      scan: deps.scan,
+      executor: deps.executor,
+      positions: deps.positions,
+      log: (entry: ExecutionLogEntry) => appendEntry(".", entry),
+    });
+    try {
+      await runner.start();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stdout.write(`SCAN_ERROR ${msg}\n`);
+      process.exitCode = 1;
+    }
+    return;
   }
+
+  if (deps.mintClient === undefined) {
+    throw new Error(
+      "MINT-04: --live requires a wallet at .canon/wallet.env " +
+        "(run `canon-cli wallet ensure`).",
+    );
+  }
+
+  await runMmPremiumCycle(
+    buildLiveCycleDeps({
+      executor: deps.executor,
+      mintClient: deps.mintClient,
+      scan: deps.scan,
+      config,
+    }),
+  );
 }
 
 const entryArg = process.argv[1];
