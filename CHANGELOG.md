@@ -49,6 +49,8 @@ detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
   (#266) — 2026-05-08
 
 ### Changed
+- MINT-04 cycle loop — wire splitPosition + dual-leg with tiered offset + 24h reconcile (`20260510-mint-04-cycle-loop`) — 2026-05-11
+
 - MINT-01 cycle loop — fully wire splitPosition + dual-leg + 24h reconcile (`20260510-mint-01-cycle-loop`) — 2026-05-11
 
 - `AGENTS.md` (line ~312) and `agents/conductor.md` (line ~107) now
