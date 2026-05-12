@@ -38,6 +38,22 @@ DEGA_CORE_HOME="${DEGA_CORE_HOME:-${HOME}/.degacore}"
 TUI_WRITE="${DEGA_CORE_HOME}/scripts/terminal-ui-write.sh"
 CANON_CLI="${CANON_CLI:-${DEGA_CORE_HOME}/bin/canon-cli}"
 
+# ── Load wallet credentials ──────────────────────────────────────────────────
+# canon-cli needs POLYMARKET_PRIVATE_KEY to derive the EOA, query balances,
+# and run the onboarding chain. The key lives in .canon/wallet.env, created
+# by `canon-cli wallet ensure`. Without this, every `canon-cli balance` call
+# fails with `POLYMARKET_PRIVATE_KEY required` and the deposit poll silently
+# treats it as a zero balance, never transitioning past deposit-pending.
+if [[ -f .canon/wallet.env ]]; then
+  # shellcheck source=/dev/null
+  source .canon/wallet.env
+  export POLYMARKET_PRIVATE_KEY="${WALLET_PRIVATE_KEY:-${POLYMARKET_PRIVATE_KEY:-}}"
+fi
+if [[ -z "${POLYMARKET_PRIVATE_KEY:-}" ]]; then
+  echo "error: no wallet credentials — run 'canon-cli wallet ensure' first" >&2
+  exit 1
+fi
+
 # ── State writer (idempotent if TUI helper missing) ──────────────────────────
 tui() {
   if [[ -f "${TUI_WRITE}" ]]; then
