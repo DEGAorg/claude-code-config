@@ -217,9 +217,9 @@ for id in 1 2 3; do
 done
 
 # Item 1 PASS, item 2 BLOCKED → FAIL, item 3 PASS
-printf 'PASS\nstatus: PASS\nitem_id: 1\n'    >"${DOC_DIR}/item-1.txt"
+printf 'PASS\nstatus: PASS\nitem_id: 1\n' >"${DOC_DIR}/item-1.txt"
 printf 'FAIL\nstatus: BLOCKED\nitem_id: 2\n' >"${DOC_DIR}/item-2.txt"
-printf 'PASS\nstatus: PASS\nitem_id: 3\n'    >"${DOC_DIR}/item-3.txt"
+printf 'PASS\nstatus: PASS\nitem_id: 3\n' >"${DOC_DIR}/item-3.txt"
 
 orch_sync_documenting_files "${TEST_SLUG}"
 
@@ -266,9 +266,9 @@ DS3=$(jq -r '.items[] | select(.id == 3) | .docStatus' "${STATE_FILE}")
 DS4=$(jq -r '.items[] | select(.id == 4) | .docStatus' "${STATE_FILE}")
 
 assert_eq "item 1 still passed (no re-doc on rerun)" "passed" "${DS1}"
-assert_eq "item 2 pending (re-doc target)"           "pending" "${DS2}"
+assert_eq "item 2 pending (re-doc target)" "pending" "${DS2}"
 assert_eq "item 3 still passed (no re-doc on rerun)" "passed" "${DS3}"
-assert_eq "item 4 still skipped"                     "skipped" "${DS4}"
+assert_eq "item 4 still skipped" "skipped" "${DS4}"
 
 # Selection logic: only docStatus=pending items get spawned
 PENDING_IDS=$(jq -r \
@@ -291,7 +291,7 @@ assert_eq "second pass aggregates to SHIP after fix" "SHIP" "${RESULT}"
 DOC_RESULT=$(jq -r '.documentation.result' "${STATE_FILE}")
 REWORK=$(jq '.documentation.reworkItems | length' "${STATE_FILE}")
 assert_eq "second pass documentation.result SHIP" "SHIP" "${DOC_RESULT}"
-assert_eq "second pass clears reworkItems"        "0"    "${REWORK}"
+assert_eq "second pass clears reworkItems" "0" "${REWORK}"
 
 # ===================================================================
 echo ""
@@ -406,9 +406,9 @@ orch_document_prepare_item_states "${TEST_SLUG}"
 for id in 1 2 3; do
   orch_document_mark_documenting "${TEST_SLUG}" "${id}"
 done
-printf 'PASS\nstatus: PASS\nitem_id: 1\n'                            >"${DOC_DIR}/item-1.txt"
+printf 'PASS\nstatus: PASS\nitem_id: 1\n' >"${DOC_DIR}/item-1.txt"
 printf 'FAIL\nstatus: BLOCKED\nblockers: |\n  Need new doc page.\n' >"${DOC_DIR}/item-2.txt"
-printf 'PASS\nstatus: PASS\nitem_id: 3\n'                            >"${DOC_DIR}/item-3.txt"
+printf 'PASS\nstatus: PASS\nitem_id: 3\n' >"${DOC_DIR}/item-3.txt"
 
 orch_sync_documenting_files "${TEST_SLUG}"
 RESULT=$(orch_document_aggregate "${TEST_SLUG}")
