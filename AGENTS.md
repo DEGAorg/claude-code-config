@@ -270,6 +270,10 @@ The Canon TUI (`DEGAorg/canon-tui`, separate repo) is not auto-wired to this rep
 - **Never run `git reset --hard`** — use `git reset --soft` or revert instead.
 - Hooks in `settings.json` block these patterns; do not attempt them.
 
+### Local pre-commit hooks
+
+After cloning this repo, run `prek install` to install the git hooks defined in `.pre-commit-config.yaml`. The config mirrors the lint job in `.github/workflows/ci.yml` — `shellcheck -e SC1091 -S warning` and `shfmt -i 2` on `hooks/`, `scripts/`, and `tests/` shell scripts — so any commit that would fail CI is rejected locally. Use `prek` (Rust, fast, no Python venv) rather than upstream `pre-commit`; both consume the same config. If you need to bypass a hook for an in-progress commit, use `git commit --no-verify` — but never push the result without first making the hooks green.
+
 ### PR target
 
 **Never hardcode `main`.** Resolve the PR target dynamically: `github.pr_target` from `dega-core.yaml` → `develop` if the remote has it → `main`. See `docs/agent-operating-mode.md` § "PR target resolution" for the exact shell recipe.

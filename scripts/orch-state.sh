@@ -190,6 +190,7 @@ orch_ensure_plan_dirs() {
   mkdir -p "$(orch_plan_done_dir "${slug}")"
   mkdir -p "$(orch_plan_review_dir "${slug}")"
   mkdir -p "$(orch_plan_documenting_dir "${slug}")"
+  mkdir -p "$(orch_plan_formatting_dir "${slug}")"
   mkdir -p "$(orch_plan_log_dir "${slug}")"
 }
 
@@ -513,6 +514,68 @@ orch_sync_documenting_files() {
   if [[ "${changed}" == "true" ]]; then
     orch_write_state "${slug}" "${state}"
   fi
+}
+
+# --- FORMATTING phase (per-plan, single agent) ---
+#
+# Schema: state."formatting" = {
+#   status:      "pending" | "running" | "done"
+#   result:      null | "SHIP" | "REVISE"
+#   reworkItems: array of item ids (currently always empty — the
+#                FORMATTING phase is per-plan, not per-item, so REVISE
+#                routing is handled by the engine bumping the
+#                highest-id reviewed item, not by listing items here)
+# }
+
+orch_plan_formatting_dir() {
+  local slug="$1"
+  printf '%s/formatting' "$(orch_plan_dir "${slug}")"
+}
+
+orch_init_formatting_state() {
+  local slug="$1"
+  local state_file
+  state_file=$(orch_plan_state_file "${slug}")
+  if [[ ! -f "${state_file}" ]]; then
+    echo "orch-state: WARNING — orch_init_formatting_state called before state.json exists for ${slug}" >&2
+    return 0
+  fi
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local updated
+  updated=$(jq --arg now "${now}" '
+    if (.formatting // null) == null then
+      .formatting = { status: "pending", result: null, reworkItems: [] }
+      | .updatedAt = $now
+    else . end
+  ' "${state_file}")
+  orch_write_state "${slug}" "${updated}"
+}
+
+# Roll up the verdict into state.formatting. Echoes "SHIP" on PASS,
+# "REVISE" otherwise.
+orch_format_aggregate() {
+  local slug="$1"
+  local verdict="$2"
+  local state_file
+  state_file=$(orch_plan_state_file "${slug}")
+  local now
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  local result
+  if [[ "${verdict}" == "PASS" ]]; then
+    result="SHIP"
+  else
+    result="REVISE"
+  fi
+  local updated
+  updated=$(jq --arg now "${now}" --arg result "${result}" '
+    .formatting.status = "done"
+    | .formatting.result = $result
+    | .formatting.reworkItems = []
+    | .updatedAt = $now
+  ' "${state_file}")
+  orch_write_state "${slug}" "${updated}"
+  printf '%s' "${result}"
 }
 
 # --- Promotion (queued → ready when deps satisfied) ---
