@@ -6,17 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Canonicalizes the orchestrator launcher path in the agent docs to
-`~/.degacore/scripts/orch-run.sh` and adds a stale-install detection step
-to `/apply-core`. Two doc references still pointed at the legacy
-`~/.claude/scripts/orch-run.sh`, which on machines with both installs
-shadowed the current copy with pre-flip code (`BACKGROUND=false` default
-+ unconditional `tmux new-session ... -n dashboard`), reverting the
-detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
+## [0.1.7] — 2026-05-12
+
+Two new agentic phases land in the orchestrator — a per-item DOCUMENTING
+phase (#302 / PR #305) that runs a locked-scope doc-writer agent on each
+item before SHIP, and a per-plan FORMATTING phase (#310 / PR #311) that
+auto-fixes `shfmt` and `shellcheck` on every changed `.sh` before SHIP so
+the kind of CI failure that surfaced on PR #305 cannot reach CI again. The
+MINT-01 and MINT-04 strategy templates also flip to **Turnkey (live)**:
+both now wire the full cycle loop (splitPosition mint → dual-leg sell-limit
+→ 24h reconcile / 5¢ stop-loss), joining ARB-01, ARB-03, and TRADE-02 as
+live-capable templates. Additional install-path hardening canonicalizes
+the orchestrator launcher at `~/.degacore/scripts/orch-run.sh` and adds
+stale-install detection to `/apply-core`.
 
 ### Added
-- Add per-item DOCUMENTING phase to orchestrator (`302`) — 2026-05-08
-
+- Per-plan FORMATTING phase — single lint-fixer agent runs in the plan
+  worktree after DOCUMENTING all-PASS (or after REVIEW all-PASS when
+  DOCUMENTING is absent) and before SHIP. Auto-fixes `shfmt -i 2 -w` and
+  runs `shellcheck -e SC1091 -S warning` (CI-matching flags) on every
+  `.sh` file the orch branch changed vs base; on PASS commits one
+  `chore: shfmt + shellcheck pass` if anything was staged. On FAIL the
+  plan halts with `REVIEW_RESULT=FORMATTING_FAILED` and the worktree is
+  preserved for triage. Adds `scripts/orch-format.sh`,
+  `agents/lint-fixer.md`, `state.formatting` schema fields, and a
+  CI-matching `.pre-commit-config.yaml` for hand-committers. Item-level
+  REVISE routing is deferred to v2 (#310) — 2026-05-12
+- Per-item DOCUMENTING phase to orchestrator (#302) — 2026-05-08
+- MINT-01 cycle loop — `strategies/mint-01/cycle.ts:runCycle` orchestrates
+  scan → `splitPosition($1,000)` → dual GTC sell-limit at midpoint+0.75¢
+  on each leg → 24h fill-poll with stop-loss on 5¢ drift → cancel and
+  reconcile. Shared `mint-cycle-helpers.ts` (`planTwoLegs`,
+  `withinDriftBand`) extracted so MINT-04 reuses the same primitives.
+  Flips MINT-01 to **Turnkey (live)** in `STRATEGY-INDEX.md` (#306) —
+  2026-05-11
+- MINT-04 cycle loop — `strategies/mm-premium/cycle.ts:runMmPremiumCycle`
+  composes the same mint + dual-leg + 24h reconcile flow with the
+  market-making tier-offset latched at cycle start (1.0¢ / 0.75¢ / 0.5¢
+  per volume bracket from `evaluateMintPremiumOpportunity`). Dry-run keeps
+  using the shared scanner runner; `--live` branches into the cycle.
+  Adds `stopLossDrift` (default 0.05) + `fillPollIntervalMs` (default
+  60_000) to `MintPremiumConfig`. Flips MINT-04 to **Turnkey (live)**
+  (#307) — 2026-05-11
 - "Use it at your own risk" disclaimer surfaced in three install/init
   touchpoints so users see it before any live action: the
   `scripts/canon.sh` welcome banner (above the `Launching Canon TUI`
@@ -51,10 +82,6 @@ detached-by-default behavior shipped in #252 / `20260427-orch-detach-default`.
   (#266) — 2026-05-08
 
 ### Changed
-- MINT-04 cycle loop — wire splitPosition + dual-leg with tiered offset + 24h reconcile (`20260510-mint-04-cycle-loop`) — 2026-05-11
-
-- MINT-01 cycle loop — fully wire splitPosition + dual-leg + 24h reconcile (`20260510-mint-01-cycle-loop`) — 2026-05-11
-
 - `AGENTS.md` (line ~312) and `agents/conductor.md` (line ~107) now
   reference `~/.degacore/scripts/orch-run.sh` instead of
   `~/.claude/scripts/orch-run.sh`, matching every other doc
