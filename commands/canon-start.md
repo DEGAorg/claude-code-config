@@ -518,29 +518,24 @@ let the operator inspect and decide.
 
 ## Graceful degradation
 
-This command expects to be launched via `./canon.sh`, which uses either the
-Canon TUI (`canon run`) or tmux as a fallback.
-Dashboard state writes degrade gracefully:
+This command works regardless of how the session was launched (Canon TUI,
+tmux, plain terminal, IDE). Dashboard state writes degrade silently when
+the writer is missing — that's the only environment-dependent behavior.
 
-| Component | If missing | Behavior |
-|-----------|-----------|----------|
-| Neither Canon TUI nor tmux detected | Stop with message | User told to run `./canon.sh` first |
-| `$DEGA_CORE_HOME/scripts/terminal-ui-write.sh` | Skip state file writes | No dashboard updates, workflow still runs |
+Every `terminal-ui-write.sh` call in this command is guarded with
+`[[ -f "${TUI_WRITE}" ]] &&`. If the script does not exist, the call is
+skipped silently — no error, no repeated warnings.
 
-**Canon TUI detection:** The session is valid if ANY of these are true:
-- `$TMUX` is set (tmux fallback)
-- `$CANON_TUI` is set (Canon TUI / canon-tui)
-- `.canon/state.json` exists and was updated within the last 5 minutes (TUI wrote init state)
-
-Every `terminal-ui-write.sh` call in this command is already guarded with
-`[[ -f "${TUI_WRITE}" ]] &&`. If the script
-does not exist, the call is skipped silently — no error, no repeated warnings.
+Do **not** gate the pipeline on `$TMUX`, `$CANON_TUI`, `$TOAD_CWD`, or
+any other env-var meant to signal "running inside a TUI." Those signals
+do not propagate reliably through the canon-tui → claude-code-acp → claude
+chain, and a missing dashboard is not a failure — phases still run, state
+file still gets written when the writer is installed. Just proceed.
 
 ---
 
 ## Completion criteria
 
-- TUI environment verified at entry — stops if not inside Canon TUI or tmux
 - Phase detection correctly identifies the project's current state
 - Each phase delegates to the right sub-command logic (canon-scaffold.sh, discover, develop)
 - State file is updated at each phase transition (when terminal-ui-write.sh is available)
