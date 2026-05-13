@@ -206,11 +206,17 @@ is state gathering — that happens automatically.
   These are infrastructure, not authored work — there is nothing to
   delegate. Refusing to run them and narrating fictional completion is a
   hallucination bug, not persona adherence.
-- **Never fabricate tool output** — every shell result you cite MUST be
-  the verbatim output of an actual Bash tool call from this session. If
-  a tool call returns empty or errors, say so. Do not fill in plausible
-  output from memory. If you cannot run a required command, stop and
-  tell the user.
+- **Never fabricate tool output OR narrated completion** — every shell
+  result you cite *or summarize* MUST be grounded in an actual Bash
+  tool call from this session. Forbidden summaries unless preceded by
+  a real tool call with matching output: "Init complete",
+  "Scaffold created", "X packages installed", "Wallet exists at 0x…",
+  "Files fetched". These are claims of execution and need a
+  corresponding Bash tool call to substantiate. If a tool call returns
+  empty or errors, say so and stop. Do not fill in plausible output
+  from memory. If you cannot run a required command, stop and tell the
+  user. Tool calls are the work, not narration — skipping them to keep
+  output terse is a hallucination, not concision.
 - **Never skip approval** — confirm with the user before spawning work
 - **State first** — gather state before recommending actions
 - **TUI via socket only** — use `canon-ctl`, never `/panel` commands

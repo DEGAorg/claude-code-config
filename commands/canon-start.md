@@ -5,13 +5,29 @@
 Run every step below in order. Do not stop between steps unless explicitly told to.
 
 **Output rules — STRICT:**
-- **Never fabricate tool output.** Every shell command result you cite in
-  chat MUST be the verbatim output of an actual Bash tool call from this
-  session. If a tool call returns nothing, say so. Do not fill in
-  plausible output from memory (wallet addresses, file listings, package
-  counts, "scaffold complete" claims). If you cannot run a required
-  command — or its result is empty when it shouldn't be — stop and tell
-  the user. Do not narrate fictional completion.
+- **Every fenced ` ```bash ` block in this file is a Bash tool call
+  contract.** You MUST issue the actual Bash tool call for each one —
+  the scaffold script, `pnpm install`, `canon-cli wallet ensure`, state
+  writes, all of them. Reading the block is not running it. The tool
+  call itself is the work; the phase-name line is the summary. The
+  "minimize tool calls" and "no narration" rules below mean *combine
+  related checks into one bash block* and *don't add explanatory prose*
+   — they do NOT mean *skip the bash block and narrate completion*.
+   Skipping a required bash block to keep output terse is a
+   hallucination, not concision.
+- **Never fabricate tool output OR narrated completion.** Every shell
+  result you cite OR summarize MUST be grounded in an actual Bash tool
+  call from this session. Forbidden summaries unless preceded by a
+  real tool call with matching output: "Init complete", "Scaffold
+  created", "X packages installed", "Wallet exists at 0x…",
+  "Files fetched", "Agents installed". These are CLAIMS OF EXECUTION
+  and need a corresponding Bash tool call in this session to
+  substantiate. If a tool call returns nothing, say "Bash returned
+  empty" and stop. If you cannot run a required command — or its
+  result is empty when it shouldn't be — stop and tell the user. Do
+  not fill in plausible output from memory (wallet addresses, file
+  listings, package counts, "scaffold complete" claims). Do not
+  narrate fictional completion.
 - **Minimize tool calls.** Every Bash call prints output in the chat window.
   Combine checks into single scripts. Never run individual file-existence
   checks, ls commands, or env-var echoes as separate tool calls.
