@@ -28,7 +28,15 @@ function makeSnapshot(
 function makeConfig(
   overrides?: Partial<MintPremiumConfig>,
 ): MintPremiumConfig {
-  return { ...DEFAULT_MM_PREMIUM_CONFIG, ...overrides };
+  // Override cycleCapital back to spec target ($1,000) so the
+  // hurdle gate in `evaluateMintPremiumOpportunity` clears. The
+  // shipped default is $5 (safe smoke size) which deliberately fails
+  // the hurdle so first-run operators don't accidentally trade.
+  return {
+    ...DEFAULT_MM_PREMIUM_CONFIG,
+    cycleCapital: 1_000,
+    ...overrides,
+  };
 }
 
 // ---------------------------------------------------------------------------

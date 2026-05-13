@@ -198,7 +198,10 @@ describe("detectMint01Candidate", () => {
     expect(noSig.metadata["noTokenId"]).toBe(NO_TOKEN_ID);
     expect(legs.yesPrice).toBeCloseTo(0.5075, 6);
     expect(legs.noPrice).toBeCloseTo(0.5075, 6);
-    expect(yesSig.size).toBe(1_000);
+    // Size reflects the shipped default cycleCapital ($5 — safe smoke
+    // size). Spec target is $1,000 for production — operators override
+    // in their scaffolded `src/config.ts`.
+    expect(yesSig.size).toBe(5);
   });
 });
 

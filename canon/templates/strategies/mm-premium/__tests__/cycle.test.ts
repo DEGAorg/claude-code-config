@@ -67,6 +67,11 @@ function makeConfig(
 ): MintPremiumConfig {
   return {
     ...DEFAULT_MM_PREMIUM_CONFIG,
+    // Override cycleCapital back to the spec target ($1,000) for tests:
+    // the default ships at $5 (safe smoke size) which fails the hurdle
+    // gate inside `evaluateMintPremiumOpportunity` and would short-circuit
+    // every test that relies on a viable signal.
+    cycleCapital: 1_000,
     stopLossDrift: 0.05,
     fillPollIntervalMs: 60_000,
     maxCycleDurationMs: ONE_DAY_MS,
