@@ -38,9 +38,18 @@ if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null;
 fi
 
 # ── Guard: check for existing .canon/ ────────────────────────────────────────
+#
+# `scripts/canon.sh` creates `.canon/state.json` at launch — well before
+# the scaffold runs — so the directory exists but is bootstrap-only (no
+# agents/, no skills/, no workflows/). Treat that case as auto-force so
+# the first `/canon-start` doesn't trip the guard. A "real" scaffold
+# leaves agents/ and skills/ in place; require --force then.
 if [[ -d ".canon" && "${FORCE}" != "true" ]]; then
-  echo "error: .canon/ already exists. Use --force to overwrite." >&2
-  exit 1
+  if [[ -d ".canon/agents" || -d ".canon/skills" ]]; then
+    echo "error: .canon/ already exists. Use --force to overwrite." >&2
+    exit 1
+  fi
+  echo "canon-init: .canon/ is bootstrap-only (no agents/skills) — proceeding"
 fi
 
 # ── Guard: templates directory must exist ────────────────────────────────────
