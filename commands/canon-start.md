@@ -5,6 +5,13 @@
 Run every step below in order. Do not stop between steps unless explicitly told to.
 
 **Output rules — STRICT:**
+- **Never fabricate tool output.** Every shell command result you cite in
+  chat MUST be the verbatim output of an actual Bash tool call from this
+  session. If a tool call returns nothing, say so. Do not fill in
+  plausible output from memory (wallet addresses, file listings, package
+  counts, "scaffold complete" claims). If you cannot run a required
+  command — or its result is empty when it shouldn't be — stop and tell
+  the user. Do not narrate fictional completion.
 - **Minimize tool calls.** Every Bash call prints output in the chat window.
   Combine checks into single scripts. Never run individual file-existence
   checks, ls commands, or env-var echoes as separate tool calls.
