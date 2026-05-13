@@ -87,7 +87,7 @@ export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
   signalTtlMs: 6 * 60 * 60 * 1000,
   bankroll: 10_000,
   stopLossDrift: 0.05,
-  fillPollIntervalMs: 60_000,
+  fillPollIntervalMs: 300_000,
   maxCycleDurationMs: 24 * 60 * 60 * 1000,
 };
 

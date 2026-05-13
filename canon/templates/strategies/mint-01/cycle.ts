@@ -165,8 +165,17 @@ export function shouldStopLoss(
 
 /** USDC.e has 6 decimals; `splitPosition` consumes raw token units. */
 const USDC_E_DECIMALS_SCALE = 1_000_000n;
-/** Default time between fill-poll iterations. */
-const DEFAULT_FILL_POLL_INTERVAL_MS = 60_000;
+/**
+ * Default time between fill-poll iterations.
+ *
+ * Bumped from 60s to 300s (5 min) per the open-questions review (Q1):
+ * a 24h mint cycle doesn't need second-level fill latency, and a slower
+ * cadence keeps total CLOB call count well under any rate-limit ceiling
+ * even when multiple cycles run concurrently. Operators can override
+ * via `deps.fillPollIntervalMs` for tighter detection on volatile
+ * markets.
+ */
+const DEFAULT_FILL_POLL_INTERVAL_MS = 300_000;
 
 const TERMINAL_ORDER_STATUSES: ReadonlySet<string> = new Set([
   "filled",
