@@ -5,6 +5,12 @@
 Run every step below in order. Do not stop between steps unless explicitly told to.
 
 **Output rules — STRICT:**
+- **Use the Bash tool directly, never the Task tool.** Every fenced
+  bash block here is infrastructure (scaffold, install, wallet ensure,
+  state writes), not authored work. Issue each via the Bash tool
+  yourself. Do **not** spawn Task subagents to "run the bash" — they
+  fabricate completion without executing. There is no agent to
+  delegate to; the bash call IS the work.
 - **Scope override for the Canon-TUI agent_context rule.** When this
   command runs inside Canon TUI, the canon-tui agent_context.md tells
   you "Never echo tool output" and "The panel IS the answer". Those
@@ -52,37 +58,34 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
-## 0. Pre-flight — diagnostic probe + open the State panel
+## 0. Pre-flight — open the State panel (and optional diagnostic probe)
 
 **ALWAYS run this bash block first**, before any phase detection, before
-the live-mode short-circuit, before anything else. It writes a host-
-visible probe file proving the Bash tool reached a real shell with a
-real filesystem, then opens the TUI's State panel. This step is
-unconditional — it runs on every invocation, including `--live` reruns
-that jump straight to Phase 8.
+the live-mode short-circuit, before anything else. It opens the TUI's
+State panel. If `CANON_DEBUG_PROBE=1` is set in the environment, it
+also writes a host-visible probe file to `~/Desktop/canon-canary/` so
+you can verify the Bash tool is reaching the real filesystem (used
+when diagnosing canon-tui agent issues; default off).
 
 ```bash
-mkdir -p ~/Desktop/canon-canary
-PROBE=~/Desktop/canon-canary/canon-start-$(date -u +%Y%m%dT%H%M%SZ)-$$.md
-{
-  echo "# canon-start probe"
-  echo "pid: $$"
-  echo "pwd: $(pwd)"
-  echo "host: $(hostname)"
-  echo "user: $USER"
-  echo "date_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  echo "home: $HOME"
-  echo "degacore_scaffold_exists: $([[ -x ~/.degacore/scripts/canon-scaffold.sh ]] && echo yes || echo no)"
-  echo "cwd_entry_count: $(ls -la | wc -l | tr -d ' ')"
-} >"$PROBE"
-echo "probe written: $PROBE"
 command -v canon-ctl >/dev/null && canon-ctl action "screen.show_state" || true
+if [[ -n "${CANON_DEBUG_PROBE:-}" ]]; then
+  mkdir -p ~/Desktop/canon-canary
+  PROBE=~/Desktop/canon-canary/canon-start-$(date -u +%Y%m%dT%H%M%SZ)-$$.md
+  {
+    echo "# canon-start probe"
+    echo "pid: $$"
+    echo "pwd: $(pwd)"
+    echo "host: $(hostname)"
+    echo "user: $USER"
+    echo "date_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "home: $HOME"
+    echo "degacore_scaffold_exists: $([[ -x ~/.degacore/scripts/canon-scaffold.sh ]] && echo yes || echo no)"
+    echo "cwd_entry_count: $(ls -la | wc -l | tr -d ' ')"
+  } >"$PROBE"
+  echo "probe written: $PROBE"
+fi
 ```
-
-The probe file lands at `~/Desktop/canon-canary/`. After this command's
-output appears in chat, the file MUST exist on disk — if it doesn't, the
-Bash tool isn't reaching the host filesystem and the rest of the
-pipeline cannot work.
 
 ---
 
