@@ -34,7 +34,10 @@ function makeConfig(
   overrides?: Partial<MintPremiumRunnerConfig>,
 ): MintPremiumRunnerConfig {
   return {
-    strategy: { ...DEFAULT_MM_PREMIUM_CONFIG },
+    // cycleCapital ships at $5 (safe smoke default); override to spec
+    // target ($1,000) so the hurdle gate clears for these integration
+    // tests.
+    strategy: { ...DEFAULT_MM_PREMIUM_CONFIG, cycleCapital: 1_000 },
     runner: {
       pollIntervalMs: 10,
       dryRun: true,

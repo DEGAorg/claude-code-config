@@ -1,11 +1,15 @@
 /**
  * MINT-04 Market Making Premium — Configuration
  *
- * Scanner-only template: detects markets where minting $1 sets and posting
- * paired limit sells at midpoint ± offset is viable. No execution (no
- * `mint_set`, no `postLimitOrder`).
+ * Scanner + live cycle template: detects markets where minting $N sets and
+ * posting paired limit sells at midpoint ± offset is viable, then
+ * (when `--live`) runs a full mint + dual-leg cycle via
+ * `cycle.ts:runMmPremiumCycle`.
  *
- * Defaults sourced from C2 (strategy spec) and D2 (config injection).
+ * **`cycleCapital` default is $5 — a safe smoke-test size.** Spec target
+ * for production is $1,000 (the C2-spec scale at which the hurdle rate
+ * — net/capital ≥ 1.33% — clears). Operators raise this in their
+ * scaffolded `src/config.ts` after live verification.
  */
 
 /** MINT-04 market-making premium configuration. */
@@ -72,7 +76,7 @@ export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
   gasCost: 0.05,
   lpRebate: 0.325,
   grossPerCycle: 15,
-  cycleCapital: 1_000,
+  cycleCapital: 5,
   offsetDefaultC: 0.0075,
   offsetAggressiveC: 0.01,
   offsetDefensiveC: 0.005,

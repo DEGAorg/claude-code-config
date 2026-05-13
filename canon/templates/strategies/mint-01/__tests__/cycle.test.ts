@@ -110,7 +110,7 @@ describe("selectMarket", () => {
 
 describe("planLegs", () => {
   it("places both legs at midpoint + premium with size = cycleCapital", () => {
-    const legs = planLegs(0.5, makeConfig());
+    const legs = planLegs(0.5, makeConfig({ cycleCapital: 1_000 }));
 
     expect(legs.yesPrice).toBeCloseTo(0.5075, 6);
     expect(legs.noPrice).toBeCloseTo(0.5075, 6);
