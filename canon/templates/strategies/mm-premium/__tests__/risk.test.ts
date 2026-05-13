@@ -100,7 +100,9 @@ describe("createRiskChecker (mm-premium)", () => {
     });
 
     it("rejects when projected net / capital falls below hurdle", () => {
-      const risk = createRiskChecker(makeConfig());
+      // Override hurdleRate back to the C2-spec value: the shipped
+      // default is 0 (smoke-friendly) and would never reject anything.
+      const risk = createRiskChecker(makeConfig({ hurdleRate: 0.0133 }));
       const signal = makeSignal({
         metadata: {
           offsetC: 0.005,
