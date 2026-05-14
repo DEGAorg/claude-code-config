@@ -2,17 +2,20 @@
  * MINT-01 Simple Mint Cycle — Configuration
  *
  * One MINT-01 cycle:
- *   1. `splitPosition($1,000 USDC.e)` → mints matched YES + NO outcome tokens.
+ *   1. `splitPosition($N USDC.e)` → mints matched YES + NO outcome tokens.
  *   2. Place two GTC sell limit orders at `midpoint + 0.75¢` on each leg.
  *   3. Wait up to 24h for fills; cancel + exit if midpoint drifts > 5¢.
  *
- * Capital sizing is fixed at $1,000 per cycle — no Kelly sizing, no
- * per-market scaling. Exposure is bounded by `maxExposure` (20% of
- * bankroll) spread across distinct markets.
+ * Capital sizing is per-cycle (no Kelly sizing, no per-market scaling).
+ * Exposure is bounded by `maxExposure` (20% of bankroll) spread across
+ * distinct markets.
  *
- * Defaults sourced from the C2 strategy spec. The hurdle figure
- * (~$13/cycle net) matches the MINT-04 projection in `mm-premium`,
- * since MINT-01 and MINT-04 share the same +0.75¢ premium math.
+ * **`cycleCapital` default is $5 — a safe smoke-test size.** Spec target
+ * for production is $1,000 (the C2-spec scale at which the hurdle rate
+ * — projected net ≥ $13/cycle — actually clears). Operators raise this
+ * in their scaffolded `src/config.ts` after live verification. The
+ * hurdle is documented but not enforced in `selectMarket`, so small
+ * cycles run mechanically but won't clear the spec's profit floor.
  */
 import { CONDITIONAL_TOKENS_ADDRESS } from "../../polygon-addresses.js";
 
@@ -53,10 +56,16 @@ export interface Mint01Config {
   conditionalTokensAddress: string;
 }
 
-/** C2 production defaults for MINT-01. */
+/**
+ * Defaults for MINT-01 — safe smoke-test size by default.
+ *
+ * `cycleCapital: 5` is the smoke-test default. Spec target for
+ * production is $1,000 (the scale at which the hurdle rate clears).
+ * Raise in your scaffolded `src/config.ts` after live verification.
+ */
 export const DEFAULT_MINT_01_CONFIG: Mint01Config = {
   bankroll: 10_000,
-  cycleCapital: 1_000,
+  cycleCapital: 5,
   maxExposure: 0.2,
   premiumOffset: 0.0075,
   stopLossDrift: 0.05,

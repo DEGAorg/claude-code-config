@@ -169,6 +169,48 @@ If all are present, continue. If any are missing:
 
 ---
 
+### 0b. Detect stale install at `~/.claude/scripts/`
+
+Older installs placed orchestrator scripts under `~/.claude/scripts/`. The
+canonical location is `~/.degacore/scripts/`. When both exist, agent docs that
+still reference `~/.claude/scripts/orch-run.sh` will execute the older copy —
+which may carry pre-flip code (e.g. the legacy `BACKGROUND=false` default
+that spawns a foreground tmux + Ink dashboard instead of running detached).
+This was confirmed in the wild on 2026-05-07 with a 5-week-old copy at
+`~/.claude/scripts/orch-run.sh` overriding the current `~/.degacore/scripts/`
+launcher.
+
+Check for the stale install:
+
+```bash
+[[ -e ~/.claude/scripts/orch-run.sh ]] && echo "stale install detected at ~/.claude/scripts/"
+```
+
+If the file exists, print this warning to the user and **stop — do not
+auto-execute the cleanup**. Destructive removal of a directory under `$HOME`
+requires explicit operator approval:
+
+> ⚠️  Stale install detected at `~/.claude/scripts/`.
+>
+> An older copy of `orch-run.sh` lives at `~/.claude/scripts/orch-run.sh`.
+> The canonical install location is `~/.degacore/scripts/`. The stale copy
+> may contain pre-flip code that silently overrides the expected behavior
+> when invoked from agent docs.
+>
+> Recommended cleanup (review the directory contents first, then run
+> manually):
+>
+> ```bash
+> trash ~/.claude/scripts/
+> ```
+>
+> Skipping this is safe as long as no agent doc invokes the old path —
+> but the recommended fix is removal.
+
+If the file does not exist, continue silently.
+
+---
+
 ### 1. Inventory what exists
 
 Read and note which of these already exist under `~/.degacore/`:

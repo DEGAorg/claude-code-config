@@ -506,6 +506,129 @@ run_lifecycle_hooks "review"
 # Read review result from state
 REVIEW_RESULT=$(jq -r '.finalReview.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
 
+# --- Per-item DOCUMENTING phase ---
+# Runs only when review returned SHIP (no point documenting work that
+# still needs rework). Spawns one doc-writer agent per review-passed
+# item via orch-document.sh, which polls for documenting/item-N.txt
+# and rolls up to .documentation.result. A REVISE result demotes the
+# wave back to ready (handled inside orch-document.sh's aggregate
+# helper) and we set REVIEW_RESULT=REVISE so the existing rework loop
+# at the bottom of this script re-execs the engine.
+if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
+  echo ""
+  echo "orch-engine: review passed — running per-item documenting phase"
+
+  set +e
+  GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout document 600 \
+    "${SCRIPT_DIR}/orch-document.sh" "${SLUG}"
+  document_rc=$?
+  set -e
+
+  if [[ "${document_rc}" -eq 124 ]]; then
+    # Phase timeout: list still-alive documenter windows for diagnostics,
+    # mirror the review-phase pattern.
+    tmux_session="orch-${SLUG}"
+    document_blocking=""
+    if tmux has-session -t "${tmux_session}" 2>/dev/null; then
+      now_epoch=$(date +%s)
+      live_documenters=$(tmux list-windows -t "${tmux_session}" \
+        -F '#{window_name} #{window_activity}' 2>/dev/null |
+        grep '^documenter-' || true)
+      if [[ -n "${live_documenters}" ]]; then
+        while IFS= read -r line; do
+          win_name=$(printf '%s' "${line}" | awk '{print $1}')
+          win_activity=$(printf '%s' "${line}" | awk '{print $2}')
+          if [[ -n "${win_activity}" ]]; then
+            age=$((now_epoch - win_activity))
+          else
+            age="?"
+          fi
+          document_blocking+="${win_name} (age=${age}s) "
+        done <<<"${live_documenters}"
+      fi
+    fi
+    if [[ -z "${document_blocking}" ]]; then
+      document_blocking="(no alive documenter-* windows — see state.json)"
+    fi
+
+    # Mark stuck items failed in docStatus so they don't loop forever.
+    documenting_ids=$(jq -r '.items[] | select(.docStatus == "documenting") | .id' \
+      "${ORCH_STATE_FILE}")
+    if [[ -n "${documenting_ids}" ]]; then
+      now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      state=$(cat "${ORCH_STATE_FILE}")
+      for did in ${documenting_ids}; do
+        state=$(printf '%s' "${state}" | jq \
+          --argjson id "${did}" \
+          --arg now "${now}" \
+          '(.items[] | select(.id == $id)).docStatus = "failed" |
+           .updatedAt = $now')
+      done
+      orch_write_state "${SLUG}" "${state}"
+    fi
+
+    document_timeout_secs=$(orch_phase_timeout_secs document 600)
+    orch_mark_phase_timeout "${SLUG}" documentation \
+      "${document_timeout_secs}" "${document_blocking}"
+    REVIEW_RESULT="REVISE"
+  elif [[ "${document_rc}" -ne 0 ]]; then
+    echo "orch-engine: orch-document.sh exited with rc=${document_rc} — REVISE" >&2
+    REVIEW_RESULT="REVISE"
+  else
+    DOC_RESULT=$(jq -r '.documentation.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
+    if [[ "${DOC_RESULT}" == "REVISE" ]]; then
+      echo "orch-engine: documenting returned REVISE — re-execing wave"
+      REVIEW_RESULT="REVISE"
+    else
+      echo "orch-engine: documenting passed"
+    fi
+  fi
+
+  write_heartbeat
+  run_lifecycle_hooks "document"
+fi
+
+# --- Per-plan FORMATTING phase ---
+# Runs after DOCUMENTING all-PASS (or after REVIEW all-PASS when
+# DOCUMENTING is skipped). Single lint-fixer agent auto-fixes shfmt +
+# shell-lint across every .sh file changed on the orch branch. On PASS
+# one `chore: shfmt + shellcheck pass` commit lands in the worktree.
+# On FAIL the plan halts — operator inspects formatting/result.txt and
+# decides whether to fix manually or re-run. Item-level REVISE routing
+# is deferred to v2 (per docs/exec-plans/.../plan.md decisions).
+if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
+  echo ""
+  echo "orch-engine: review/documenting passed — running per-plan formatting phase"
+
+  set +e
+  GH_SYNC="${GH_SYNC}" orch_run_phase_with_timeout format 600 \
+    "${SCRIPT_DIR}/orch-format.sh" "${SLUG}"
+  format_rc=$?
+  set -e
+
+  if [[ "${format_rc}" -eq 124 ]]; then
+    format_timeout_secs=$(orch_phase_timeout_secs format 600)
+    orch_mark_phase_timeout "${SLUG}" formatting \
+      "${format_timeout_secs}" "(lint-fixer window — see logs/lint-fixer.log)"
+    echo "orch-engine: orch-format.sh timed out — halting plan" >&2
+    REVIEW_RESULT="FORMATTING_FAILED"
+  elif [[ "${format_rc}" -ne 0 ]]; then
+    echo "orch-engine: orch-format.sh exited with rc=${format_rc} — halting plan" >&2
+    REVIEW_RESULT="FORMATTING_FAILED"
+  else
+    FORMAT_RESULT=$(jq -r '.formatting.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
+    if [[ "${FORMAT_RESULT}" != "SHIP" ]]; then
+      echo "orch-engine: formatting result=${FORMAT_RESULT} — halting plan" >&2
+      REVIEW_RESULT="FORMATTING_FAILED"
+    else
+      echo "orch-engine: formatting passed"
+    fi
+  fi
+
+  write_heartbeat
+  run_lifecycle_hooks "format" || true
+fi
+
 if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   echo ""
   echo "orch-engine: review passed — checking completion criteria"
@@ -1047,6 +1170,19 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
   fi
   # shellcheck disable=SC2086
   exec "${SCRIPT_DIR}/orch-engine.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" --max-iterations "${MAX_ITERATIONS}" ${BACKGROUND_FLAG}
+elif [[ "${REVIEW_RESULT}" == "FORMATTING_FAILED" ]]; then
+  echo ""
+  echo "orch-engine: FORMATTING phase failed — halting plan" >&2
+  echo "  Inspect ${PLAN_DIR}/../formatting/result.txt and the worktree at" >&2
+  echo "  ${ORCH_STATE_DIR}/worktrees/${SLUG} to triage." >&2
+  orch_master_deregister "${SLUG}" "failed"
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq \
+    --arg now "${now}" \
+    '.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+  write_heartbeat
+  exit 1
 else
   echo "orch-engine: unexpected review result: ${REVIEW_RESULT}" >&2
   orch_master_deregister "${SLUG}" "failed"

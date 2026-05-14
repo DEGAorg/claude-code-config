@@ -5,6 +5,46 @@
 Run every step below in order. Do not stop between steps unless explicitly told to.
 
 **Output rules — STRICT:**
+- **Use the Bash tool directly, never the Task tool.** Every fenced
+  bash block here is infrastructure (scaffold, install, wallet ensure,
+  state writes), not authored work. Issue each via the Bash tool
+  yourself. Do **not** spawn Task subagents to "run the bash" — they
+  fabricate completion without executing. There is no agent to
+  delegate to; the bash call IS the work.
+- **Scope override for the Canon-TUI agent_context rule.** When this
+  command runs inside Canon TUI, the canon-tui agent_context.md tells
+  you "Never echo tool output" and "The panel IS the answer". Those
+  rules apply **only to `canon-ctl` panel-control commands** (e.g.
+  `canon-ctl action "screen.show_state"`) — not to anything else in
+  this file. For `canon-scaffold.sh`, `pnpm install`, `canon-cli`,
+  `terminal-ui-write.sh`, and every other bash block in `/canon-start`,
+  you MUST issue the Bash tool call and report the actual outcome from
+  its stdout/stderr. The panel only shows what `state.json` writes
+  produce, and those writes are themselves bash blocks here — if you
+  skip the calls, the panel never moves and the work never happens.
+- **Every fenced ` ```bash ` block in this file is a Bash tool call
+  contract.** You MUST issue the actual Bash tool call for each one —
+  the scaffold script, `pnpm install`, `canon-cli wallet ensure`, state
+  writes, all of them. Reading the block is not running it. The tool
+  call itself is the work; the phase-name line is the summary. The
+  "minimize tool calls" and "no narration" rules below mean *combine
+  related checks into one bash block* and *don't add explanatory prose*
+   — they do NOT mean *skip the bash block and narrate completion*.
+   Skipping a required bash block to keep output terse is a
+   hallucination, not concision.
+- **Never fabricate tool output OR narrated completion.** Every shell
+  result you cite OR summarize MUST be grounded in an actual Bash tool
+  call from this session. Forbidden summaries unless preceded by a
+  real tool call with matching output: "Init complete", "Scaffold
+  created", "X packages installed", "Wallet exists at 0x…",
+  "Files fetched", "Agents installed". These are CLAIMS OF EXECUTION
+  and need a corresponding Bash tool call in this session to
+  substantiate. If a tool call returns nothing, say "Bash returned
+  empty" and stop. If you cannot run a required command — or its
+  result is empty when it shouldn't be — stop and tell the user. Do
+  not fill in plausible output from memory (wallet addresses, file
+  listings, package counts, "scaffold complete" claims). Do not
+  narrate fictional completion.
 - **Minimize tool calls.** Every Bash call prints output in the chat window.
   Combine checks into single scripts. Never run individual file-existence
   checks, ls commands, or env-var echoes as separate tool calls.
@@ -18,17 +58,33 @@ Run every step below in order. Do not stop between steps unless explicitly told 
 
 ---
 
-## 0. Pre-flight — open the State panel
+## 0. Pre-flight — open the State panel (and optional diagnostic probe)
 
 **ALWAYS run this bash block first**, before any phase detection, before
 the live-mode short-circuit, before anything else. It opens the TUI's
-State panel so the user can watch `.canon/state.json` updates land while
-phases run. Silent no-op if `canon-ctl` is not on PATH. This step is
-unconditional — it runs on every invocation, including `--live` reruns
-that jump straight to Phase 8.
+State panel. If `CANON_DEBUG_PROBE=1` is set in the environment, it
+also writes a host-visible probe file to `~/Desktop/canon-canary/` so
+you can verify the Bash tool is reaching the real filesystem (used
+when diagnosing canon-tui agent issues; default off).
 
 ```bash
 command -v canon-ctl >/dev/null && canon-ctl action "screen.show_state" || true
+if [[ -n "${CANON_DEBUG_PROBE:-}" ]]; then
+  mkdir -p ~/Desktop/canon-canary
+  PROBE=~/Desktop/canon-canary/canon-start-$(date -u +%Y%m%dT%H%M%SZ)-$$.md
+  {
+    echo "# canon-start probe"
+    echo "pid: $$"
+    echo "pwd: $(pwd)"
+    echo "host: $(hostname)"
+    echo "user: $USER"
+    echo "date_utc: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "home: $HOME"
+    echo "degacore_scaffold_exists: $([[ -x ~/.degacore/scripts/canon-scaffold.sh ]] && echo yes || echo no)"
+    echo "cwd_entry_count: $(ls -la | wc -l | tr -d ' ')"
+  } >"$PROBE"
+  echo "probe written: $PROBE"
+fi
 ```
 
 ---

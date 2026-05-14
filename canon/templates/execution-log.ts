@@ -16,7 +16,12 @@ export type ExecutionLogEntryType =
   | "order_submit"
   | "order_fill"
   | "order_cancel"
-  | "error";
+  | "error"
+  | "mint_set"
+  | "cycle_start"
+  | "cycle_fill"
+  | "cycle_stop_loss"
+  | "cycle_reconcile";
 
 const VALID_TYPES: ReadonlySet<string> = new Set<ExecutionLogEntryType>([
   "signal",
@@ -25,6 +30,11 @@ const VALID_TYPES: ReadonlySet<string> = new Set<ExecutionLogEntryType>([
   "order_fill",
   "order_cancel",
   "error",
+  "mint_set",
+  "cycle_start",
+  "cycle_fill",
+  "cycle_stop_loss",
+  "cycle_reconcile",
 ]);
 
 /** A single structured log entry for the execution log. */

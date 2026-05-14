@@ -6,7 +6,17 @@ Run every step below in order. Stop and report if any prerequisite fails.
 
 ---
 
-## 1. Guard: wrong directory
+## 1. Print disclaimer
+
+Print this message to the user before doing anything else:
+
+> Canon helps create automation for prediction markets. The configuration and risk are your responsibility — use it at your own risk.
+
+Continue regardless of acknowledgment — this is informative-only, not a gate.
+
+---
+
+## 2. Guard: wrong directory
 
 Check if the current directory is the `claude-code-config` repo by looking for
 `AGENTS.md` containing "claude-code-config":
@@ -23,7 +33,7 @@ Do not continue.
 
 ---
 
-## 2. Check prerequisites
+## 3. Check prerequisites
 
 Check each prerequisite. Collect all failures and report them together at the end.
 Do not stop at the first failure — check all of them so the user gets one complete list.
@@ -45,7 +55,7 @@ Do not continue if any check fails.
 
 ---
 
-## 3. Create directories and install `/canon-start` command
+## 4. Create directories and install `/canon-start` command
 
 ```bash
 mkdir -p .canon .claude/commands
@@ -64,7 +74,7 @@ If the fetch fails, stop and tell the user:
 
 ---
 
-## 4. Write `canon.sh` launcher to project root
+## 5. Write `canon.sh` launcher to project root
 
 First, copy the agent shim so `canon.sh` can source it from the same directory:
 
@@ -151,7 +161,7 @@ chmod +x canon.sh
 
 ---
 
-## 5. Print completion message
+## 6. Print completion message
 
 Print exactly:
 

@@ -18,7 +18,7 @@
  * entry.ts never touches the network.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import type { TradeSignal } from "../../../types/TradeSignal.js";
 import type { MarketCandidate } from "../cycle.js";
@@ -37,12 +37,31 @@ const mockCreateOrder = vi.fn(async (params: { tokenId: string }) => ({
 }));
 const mockCancelOrder = vi.fn(async () => ({ id: "ord-x", status: "cancelled" }));
 const mockGetCapabilities = vi.fn(async () => ({ supportsTif: true }));
+const mockFetchOpenOrders = vi.fn(async () => []);
+const mockFetchMarketPrice = vi.fn(async () => ({
+  conditionId: "cond-001",
+  yes: 0.5,
+  no: 0.5,
+  timestamp: new Date(),
+}));
+const mockFetchBinaryMarketSnapshots = vi.fn(async () => []);
 
 vi.mock("../../../client-polymarket.js", () => ({
   createOrder: mockCreateOrder,
   cancelOrder: mockCancelOrder,
   getCapabilities: mockGetCapabilities,
+  fetchOpenOrders: mockFetchOpenOrders,
+  fetchMarketPrice: mockFetchMarketPrice,
+  fetchBinaryMarketSnapshots: mockFetchBinaryMarketSnapshots,
 }));
+
+const mockRunCycle = vi.fn(async () => ({ status: "no_candidate" as const }));
+
+vi.mock("../cycle.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../cycle.js")>("../cycle.js");
+  return { ...actual, runCycle: mockRunCycle };
+});
 
 interface FakeAllowanceClient {
   getAllowance: (() => Promise<bigint>) & ReturnType<typeof vi.fn>;
@@ -64,6 +83,9 @@ interface EntryModule {
   resolveMint01Order: typeof import("../entry.js").resolveMint01Order;
   createEntryDeps: typeof import("../entry.js").createEntryDeps;
   buildLiveAllowanceClient: typeof import("../entry.js").buildLiveAllowanceClient;
+  buildCtfAllowanceClient: typeof import("../entry.js").buildCtfAllowanceClient;
+  buildLiveMintClient: typeof import("../entry.js").buildLiveMintClient;
+  main: typeof import("../entry.js").main;
 }
 
 let entry: EntryModule;
@@ -72,6 +94,15 @@ beforeEach(async () => {
   vi.clearAllMocks();
   vi.resetModules();
   mockGetCapabilities.mockImplementation(async () => ({ supportsTif: true }));
+  mockFetchOpenOrders.mockImplementation(async () => []);
+  mockFetchMarketPrice.mockImplementation(async () => ({
+    conditionId: "cond-001",
+    yes: 0.5,
+    no: 0.5,
+    timestamp: new Date(),
+  }));
+  mockFetchBinaryMarketSnapshots.mockImplementation(async () => []);
+  mockRunCycle.mockImplementation(async () => ({ status: "no_candidate" as const }));
   entry = (await import("../entry.js")) as unknown as EntryModule;
 });
 
@@ -167,7 +198,10 @@ describe("detectMint01Candidate", () => {
     expect(noSig.metadata["noTokenId"]).toBe(NO_TOKEN_ID);
     expect(legs.yesPrice).toBeCloseTo(0.5075, 6);
     expect(legs.noPrice).toBeCloseTo(0.5075, 6);
-    expect(yesSig.size).toBe(1_000);
+    // Size reflects the shipped default cycleCapital ($5 — safe smoke
+    // size). Spec target is $1,000 for production — operators override
+    // in their scaffolded `src/config.ts`.
+    expect(yesSig.size).toBe(5);
   });
 });
 
@@ -364,5 +398,184 @@ describe("buildLiveAllowanceClient (WalletStore injection)", () => {
       wallet as unknown as Parameters<typeof entry.buildLiveAllowanceClient>[0],
     );
     expect(client).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildCtfAllowanceClient — mirrors buildLiveAllowanceClient with the
+// ConditionalTokens contract as the spender (USDC.e → splitPosition pull).
+// ---------------------------------------------------------------------------
+
+describe("buildCtfAllowanceClient (ConditionalTokens spender)", () => {
+  it("returns undefined when the wallet store has no wallet", async () => {
+    const wallet = makeFakeWallet({ hasWallet: false });
+    const client = await entry.buildCtfAllowanceClient(
+      wallet as unknown as Parameters<typeof entry.buildCtfAllowanceClient>[0],
+    );
+    expect(client).toBeUndefined();
+    expect(wallet.hasWallet).toHaveBeenCalled();
+    expect(wallet.getAddress).not.toHaveBeenCalled();
+  });
+
+  it("returns an AllowanceClient (getAllowance + approve) when wallet is present", async () => {
+    const wallet = makeFakeWallet({ address: "0xfromwallet" });
+    const client = await entry.buildCtfAllowanceClient(
+      wallet as unknown as Parameters<typeof entry.buildCtfAllowanceClient>[0],
+    );
+    expect(client).toBeDefined();
+    expect(typeof client?.getAllowance).toBe("function");
+    expect(typeof client?.approve).toBe("function");
+    expect(wallet.getAddress).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns undefined when getAddress throws", async () => {
+    const wallet = makeFakeWallet();
+    wallet.getAddress.mockImplementationOnce(async () => {
+      throw new Error("WalletNotFoundError");
+    });
+    const client = await entry.buildCtfAllowanceClient(
+      wallet as unknown as Parameters<typeof entry.buildCtfAllowanceClient>[0],
+    );
+    expect(client).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createEntryDeps — mintClient + ctfAllowance passthrough
+// ---------------------------------------------------------------------------
+
+describe("createEntryDeps — mint plumbing", () => {
+  it("exposes the injected mintClient on EntryDeps", () => {
+    const mintClient = {
+      splitPosition: vi.fn(async () => ({ txHash: "0xmint" })),
+      mergePositions: vi.fn(async () => ({ txHash: "0xmerge" })),
+    };
+    const deps = entry.createEntryDeps(
+      { dryRun: false },
+      { mintClient } as Parameters<typeof entry.createEntryDeps>[1],
+    );
+    expect(deps.mintClient).toBe(mintClient);
+    expect(typeof deps.mintClient?.splitPosition).toBe("function");
+    expect(typeof deps.mintClient?.mergePositions).toBe("function");
+  });
+
+  it("exposes the injected ctfAllowance on EntryDeps", () => {
+    const ctfAllowance = makeFakeAllowance(0n);
+    const deps = entry.createEntryDeps(
+      { dryRun: false },
+      { ctfAllowance } as Parameters<typeof entry.createEntryDeps>[1],
+    );
+    expect(deps.ctfAllowance).toBe(ctfAllowance);
+    expect(typeof deps.ctfAllowance?.getAllowance).toBe("function");
+    expect(typeof deps.ctfAllowance?.approve).toBe("function");
+  });
+
+  it("omits mintClient and ctfAllowance when neither is injected", () => {
+    const deps = entry.createEntryDeps({ dryRun: false });
+    expect(deps.mintClient).toBeUndefined();
+    expect(deps.ctfAllowance).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// main — dry-run skips runCycle, --live invokes runCycle exactly once
+// ---------------------------------------------------------------------------
+
+describe("main", () => {
+  let originalStdoutWrite: typeof process.stdout.write;
+
+  beforeEach(() => {
+    originalStdoutWrite = process.stdout.write;
+    // Silence the "START MINT-01 cycle ..." banner during the assertion.
+    process.stdout.write = vi.fn(() => true) as unknown as typeof process.stdout.write;
+  });
+
+  afterEach(() => {
+    process.stdout.write = originalStdoutWrite;
+  });
+
+  it("exits cleanly without invoking runCycle in dry-run mode", async () => {
+    await expect(
+      entry.main({ argv: ["node", "entry.js"] }),
+    ).resolves.toBeUndefined();
+    expect(mockRunCycle).not.toHaveBeenCalled();
+  });
+
+  it("exits cleanly without invoking runCycle when --dry-run is explicit", async () => {
+    await expect(
+      entry.main({ argv: ["node", "entry.js", "--dry-run"] }),
+    ).resolves.toBeUndefined();
+    expect(mockRunCycle).not.toHaveBeenCalled();
+  });
+
+  it("invokes runCycle exactly once in --live mode with an injected wallet", async () => {
+    const wallet = makeFakeWallet({ address: "0xowner" });
+    await entry.main({
+      argv: ["node", "entry.js", "--live"],
+      wallet: wallet as unknown as Parameters<typeof entry.main>[0] extends
+        | { wallet?: infer W }
+        | undefined
+        ? W
+        : never,
+    });
+    expect(mockRunCycle).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the live cycle deps (config + executor + mintClient) to runCycle", async () => {
+    const wallet = makeFakeWallet({ address: "0xowner" });
+    await entry.main({
+      argv: ["node", "entry.js", "--live"],
+      wallet: wallet as unknown as Parameters<typeof entry.main>[0] extends
+        | { wallet?: infer W }
+        | undefined
+        ? W
+        : never,
+    });
+    expect(mockRunCycle).toHaveBeenCalledTimes(1);
+    const firstCall = mockRunCycle.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+    ];
+    const runDeps = firstCall[0];
+    expect(runDeps).toBeDefined();
+    expect(runDeps["config"]).toBeDefined();
+    expect(runDeps["executor"]).toBeDefined();
+    expect(runDeps["mintClient"]).toBeDefined();
+    expect(runDeps["scan"]).toBeDefined();
+    expect(typeof runDeps["fetchOrderStatus"]).toBe("function");
+    expect(typeof runDeps["fetchMidpoint"]).toBe("function");
+    expect(typeof runDeps["now"]).toBe("function");
+    expect(typeof runDeps["sleep"]).toBe("function");
+    expect(typeof runDeps["log"]).toBe("function");
+  });
+
+  it("calls assertLiveCapabilities (sidecar check) before runCycle in --live", async () => {
+    const wallet = makeFakeWallet({ address: "0xowner" });
+    await entry.main({
+      argv: ["node", "entry.js", "--live"],
+      wallet: wallet as unknown as Parameters<typeof entry.main>[0] extends
+        | { wallet?: infer W }
+        | undefined
+        ? W
+        : never,
+    });
+    expect(mockGetCapabilities).toHaveBeenCalledTimes(1);
+    const capsOrder = mockGetCapabilities.mock.invocationCallOrder[0];
+    const cycleOrder = mockRunCycle.mock.invocationCallOrder[0];
+    expect(capsOrder).toBeLessThan(cycleOrder!);
+  });
+
+  it("throws (and skips runCycle) when --live runs without an injected wallet that has a key", async () => {
+    const wallet = makeFakeWallet({ hasWallet: false });
+    await expect(
+      entry.main({
+        argv: ["node", "entry.js", "--live"],
+        wallet: wallet as unknown as Parameters<typeof entry.main>[0] extends
+          | { wallet?: infer W }
+          | undefined
+          ? W
+          : never,
+      }),
+    ).rejects.toThrow(/wallet/);
+    expect(mockRunCycle).not.toHaveBeenCalled();
   });
 });

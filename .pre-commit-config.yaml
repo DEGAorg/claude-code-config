@@ -1,0 +1,16 @@
+# Pre-commit hooks run locally via `prek install` (or `pre-commit install`).
+# Flags and file scopes mirror .github/workflows/ci.yml so local runs match CI.
+repos:
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        args: [-e, SC1091, -S, warning]
+        files: ^(hooks|scripts|tests)/.*\.sh$
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.10.0-2
+    hooks:
+      - id: shfmt
+        args: [-i, "2", -d]
+        files: ^(hooks|scripts|tests)/.*\.sh$
