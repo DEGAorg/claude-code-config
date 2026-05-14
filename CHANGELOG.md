@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-05-13
+
+Subtracts prescriptive rules added in 0.1.8 (#329-#333) that, in
+hindsight, over-constrained the agent. Plain `claudep` runs
+`/canon-start` cleanly with no special instructions; canon-tui needed
+the system-prompt-level binding fix (`DEGAorg/canon-tui#61`) but did
+not need the layered rule prescriptions on top. Late-session testing
+showed the layered rules occasionally led the agent to deny it had a
+Bash tool ("I don't have a direct Bash tool — only the Task tool")
+and fabricate completion claims, despite all our anti-fabrication
+rules. Less is more.
+
+### Changed
+- `agents/conductor.md` — strip the "⚠️ Binding constraints" preamble
+  and reduce the "Rules" list. Keep: "don't fabricate, don't block,
+  defer to panel, confirm before spawning work, gather state first,
+  TUI via socket, graceful degradation." Drop: tool-prescription rules
+  ("use Bash directly, never Task"), forbidden-summary enumeration,
+  "scope override" instructions. Trust the agent's defaults; let it
+  autodiscover the right tool — 2026-05-13
+- `commands/canon-start.md` + `canon/commands/canon-start.md` — strip
+  the "Output rules — STRICT" block at the top. Keep a one-sentence
+  framing: "Quote real shell output; don't pretend a command ran;
+  keep chat brief; state detail goes to the panel." All phase logic
+  and bash blocks are unchanged — those work fine when not buried
+  under rule contradictions — 2026-05-13
+
+### Why
+0.1.8 layered binding constraints (#329, #330, #331, #332, #333)
+intended to force execution and ban narration. Each worked in
+isolation but compounded into contradictions when the agent also
+received Canon TUI's injected `agent_context.md` ("Never echo tool
+output", "The panel IS the answer") at system-prompt level. The agent
+spent more cycles resolving conflicting rules than running the slash
+command. Removing the prescriptions lets the agent's own defaults
+apply — same defaults that make plain `claudep` work cleanly on the
+same `canon-start.md` file.
+
+The one rule we keep — "don't fabricate" — is a guardrail, not a
+behavioral prescription. It tells the agent what NOT to do without
+specifying what to do instead, leaving choice to the agent's
+defaults.
+
 ## [0.1.8] — 2026-05-13
 
 Hardens Conductor + `/canon-start` against agent fabrication when
