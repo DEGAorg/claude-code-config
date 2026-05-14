@@ -6,6 +6,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-05-13
+
+Hardens Conductor + `/canon-start` against agent fabrication when
+running inside Canon TUI (`canon run`). The agent had been narrating
+"Phase: init / Scaffold complete / N packages installed / Wallet exists
+at 0x…" while the project directory stayed empty, because the rules
+layered into `agents/conductor.md` and `commands/canon-start.md` were
+being delivered to Claude as *user-prompt content* and lost weight
+against the built-in `claude_code` preset's own defaults. The fix in
+this release is the defense-in-depth layer on this side; the
+protocol-level companion fix lives in `DEGAorg/canon-tui#61`
+(system-prompt injection via `_meta.systemPrompt.append`). Together
+they make the rules binding. End-to-end verified inside `canon run`:
+scaffold lands ~46 entries on the first attempt with no per-turn
+overrides, wallet address agrees three ways (chat / `.canon/wallet.env`
+on disk / `canon-cli wallet info --pretty` from outside the TUI), and
+the state panel moves through phases.
+
+### Added
+- `commands/canon-start.md` + `canon/commands/canon-start.md` — host-
+  visible diagnostic probe at phase 0, gated by `CANON_DEBUG_PROBE=1`
+  env var. Writes a timestamped marker file to `~/Desktop/canon-canary/`
+  so an operator can deterministically verify the Bash tool reached the
+  real filesystem when diagnosing agent hallucination. Default off — no
+  chat noise on normal runs (#331, #332) — 2026-05-13
+
+### Changed
+- `agents/conductor.md` — restructured rules so binding constraints
+  come first ("Never fabricate tool output OR narrated completion",
+  "For slash commands: issue every bash block via the Bash tool
+  directly, never the Task tool", "Defer to the panel"). The default
+  delegation posture moved below as the non-slash-command rule.
+  Canon-TUI injects this file at the start of every session, so the
+  leading rules prime the agent's behavior the most (#329, #332,
+  #333) — 2026-05-13
+- `commands/canon-start.md` + `canon/commands/canon-start.md` — added
+  explicit "every fenced bash block is a Bash tool call contract" and
+  "use the Bash tool directly, never the Task tool" rules at the top
+  of the STRICT output rules. Enumerated forbidden narrated-completion
+  phrases ("Init complete", "Scaffold created", "N packages installed",
+  "Wallet exists at 0x…") that must be backed by a real Bash call.
+  Added scope override clarifying that Canon-TUI's `agent_context.md`
+  "Never echo tool output" rule applies only to `canon-ctl` panel-
+  control commands, not to scaffold / install / wallet bash blocks
+  (#330, #331, #332, #333) — 2026-05-13
+
+### Fixed
+- `/canon-start` from inside Canon TUI now runs the scaffold pipeline
+  end-to-end on the first attempt instead of narrating fictional
+  completion. Three-way wallet cross-check matches; state panel
+  reflects every phase transition; agent no longer routes
+  infrastructure bash through Task subagents that fabricate (#329,
+  #330, #331, #332, #333) — 2026-05-13
+
 ## [0.1.7] — 2026-05-12
 
 Two new agentic phases land in the orchestrator — a per-item DOCUMENTING
