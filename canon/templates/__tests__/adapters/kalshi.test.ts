@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { generateKeyPairSync } from "node:crypto";
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -14,18 +21,22 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 import { KalshiAdapter } from "../../adapters/kalshi.js";
+import {
+  KalshiAuthError,
+  _resetKalshiAuthCacheForTests,
+} from "../../adapters/kalshi-auth.js";
 
 let adapter: KalshiAdapter;
 
-function jsonOk(data: unknown): Promise<{
+function jsonOk(data: unknown, status = 200): Promise<{
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
   text: () => Promise<string>;
 }> {
   return Promise.resolve({
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: () => Promise.resolve(data),
     text: () => Promise.resolve(JSON.stringify(data)),
   });
@@ -36,6 +47,31 @@ function calledUrl(callIdx = 0): string {
   if (!call) throw new Error("fetch was not called");
   const first = call[0];
   return typeof first === "string" ? first : String(first);
+}
+
+function calledInit(callIdx = 0): RequestInit {
+  const call = mockFetch.mock.calls[callIdx];
+  if (!call) throw new Error("fetch was not called");
+  return (call[1] ?? {}) as RequestInit;
+}
+
+function calledHeaders(callIdx = 0): Record<string, string> {
+  const init = calledInit(callIdx);
+  return (init.headers ?? {}) as Record<string, string>;
+}
+
+function calledBody(callIdx = 0): Record<string, unknown> {
+  const init = calledInit(callIdx);
+  const body = init.body;
+  if (typeof body !== "string") {
+    throw new Error("expected JSON-encoded body string");
+  }
+  return JSON.parse(body) as Record<string, unknown>;
+}
+
+function calledMethod(callIdx = 0): string {
+  const init = calledInit(callIdx);
+  return (init.method ?? "GET").toUpperCase();
 }
 
 beforeEach(() => {
@@ -427,5 +463,557 @@ describe("KalshiAdapter.getCapabilities", () => {
     const caps = await adapter.getCapabilities();
     expect(caps.supportsTif).toBe(true);
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Auth methods — generate a fresh RSA key per test, point env vars at it,
+// then assert against captured demo fixtures (sanitized).
+// ---------------------------------------------------------------------------
+
+// Uppercase placeholder so the value cannot match the lowercase-hex UUID
+// regex the no-PEM/no-UUID completion criterion greps for.
+const TEST_API_KEY_ID = "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE";
+const TEST_TICKER = "KXMLBEXTRAS-26MAY151840PHIPIT-EXTRAS";
+
+describe("KalshiAdapter — auth methods", () => {
+  let tmpDir: string;
+  let pemPath: string;
+
+  beforeEach(() => {
+    const kp = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+      publicKeyEncoding: { type: "spki", format: "pem" },
+    });
+    const privatePem = kp.privateKey;
+    tmpDir = mkdtempSync(join(tmpdir(), "kalshi-adapter-"));
+    pemPath = join(tmpDir, "test-key.pem");
+    writeFileSync(pemPath, privatePem, { mode: 0o600 });
+    process.env["KALSHI_API_KEY_ID"] = TEST_API_KEY_ID;
+    process.env["KALSHI_PRIVATE_KEY_PATH"] = pemPath;
+    _resetKalshiAuthCacheForTests();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    delete process.env["KALSHI_API_KEY_ID"];
+    delete process.env["KALSHI_PRIVATE_KEY_PATH"];
+    _resetKalshiAuthCacheForTests();
+  });
+
+  // -------------------------------------------------------------------------
+  // fetchBalance — GET /portfolio/balance, balance cents → USD float
+  // -------------------------------------------------------------------------
+  describe("fetchBalance", () => {
+    it("maps Kalshi balance fixture to a single USD Balance entry", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("balance.json")));
+      const balances = await adapter.fetchBalance();
+      expect(balances).toHaveLength(1);
+      const b = balances[0];
+      // Fixture: balance=100000 cents, portfolio_value=0 cents
+      expect(b?.currency).toBe("USD");
+      expect(b?.total).toBeCloseTo(1000);
+      expect(b?.available).toBeCloseTo(1000);
+      expect(b?.locked).toBeCloseTo(0);
+    });
+
+    it("includes all three KALSHI-ACCESS-* headers on the request", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("balance.json")));
+      await adapter.fetchBalance();
+      const headers = calledHeaders();
+      expect(headers["KALSHI-ACCESS-KEY"]).toBe(TEST_API_KEY_ID);
+      expect(headers["KALSHI-ACCESS-TIMESTAMP"]).toMatch(/^\d+$/);
+      expect(headers["KALSHI-ACCESS-SIGNATURE"]).toBeTruthy();
+      expect(calledMethod()).toBe("GET");
+      expect(calledUrl()).toContain("/trade-api/v2/portfolio/balance");
+    });
+
+    it("computes available = total - locked when portfolio_value > 0", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk({
+          balance: 50000,
+          portfolio_value: 7500,
+          balance_breakdown: [],
+        }),
+      );
+      const [b] = await adapter.fetchBalance();
+      expect(b?.total).toBeCloseTo(500);
+      expect(b?.locked).toBeCloseTo(75);
+      expect(b?.available).toBeCloseTo(425);
+    });
+
+    it("throws KalshiAuthError when KALSHI_API_KEY_ID is unset", async () => {
+      delete process.env["KALSHI_API_KEY_ID"];
+      await expect(adapter.fetchBalance()).rejects.toThrow(KalshiAuthError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fetchPositions — GET /portfolio/positions, signed YES/NO mapping
+  // -------------------------------------------------------------------------
+  describe("fetchPositions", () => {
+    it("returns [] for an empty market_positions fixture", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("positions.json")));
+      const positions = await adapter.fetchPositions();
+      expect(positions).toEqual([]);
+    });
+
+    it("maps synthetic market_positions to Position[] (YES + NO sides)", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk({
+          cursor: "",
+          event_positions: [],
+          market_positions: [
+            {
+              ticker: "KX-A",
+              position: 10, // 10 YES contracts
+              market_exposure: 500, // 500 cents = $5 total cost → $0.50/contract
+            },
+            {
+              ticker: "KX-B",
+              position: -4, // 4 NO contracts
+              market_exposure: 200, // $2 total → $0.50/contract
+            },
+            {
+              ticker: "KX-FLAT",
+              position: 0,
+              market_exposure: 0,
+            },
+          ],
+        }),
+      );
+      const positions = await adapter.fetchPositions();
+      expect(positions).toHaveLength(2);
+      const yesPos = positions.find((p) => p.marketId === "KX-A");
+      expect(yesPos?.outcomeId).toBe("KX-A:YES");
+      expect(yesPos?.outcomeLabel).toBe("YES");
+      expect(yesPos?.size).toBe(10);
+      expect(yesPos?.entryPrice).toBeCloseTo(0.5);
+      const noPos = positions.find((p) => p.marketId === "KX-B");
+      expect(noPos?.outcomeId).toBe("KX-B:NO");
+      expect(noPos?.outcomeLabel).toBe("NO");
+      expect(noPos?.size).toBe(4);
+      expect(noPos?.entryPrice).toBeCloseTo(0.5);
+    });
+
+    it("signs GET /portfolio/positions with the three KALSHI-ACCESS-* headers", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("positions.json")));
+      await adapter.fetchPositions();
+      const headers = calledHeaders();
+      expect(headers["KALSHI-ACCESS-KEY"]).toBeTruthy();
+      expect(headers["KALSHI-ACCESS-SIGNATURE"]).toBeTruthy();
+      expect(calledUrl()).toContain("/portfolio/positions");
+      expect(calledMethod()).toBe("GET");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fetchMyTrades — GET /portfolio/fills, optional ticker/limit/cursor
+  // -------------------------------------------------------------------------
+  describe("fetchMyTrades", () => {
+    it("returns [] for an empty fills fixture", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("trade-history.json")));
+      const trades = await adapter.fetchMyTrades();
+      expect(trades).toEqual([]);
+    });
+
+    it("maps a synthetic fill to UserTrade (prefers _dollars over int cents)", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk({
+          cursor: "",
+          fills: [
+            {
+              trade_id: "trade-1",
+              order_id: "order-1",
+              ticker: TEST_TICKER,
+              side: "yes",
+              action: "buy",
+              count: 3,
+              yes_price_dollars: "0.0100",
+              no_price_dollars: "0.9900",
+              yes_price: 1,
+              no_price: 99,
+              created_time: "2026-05-15T21:17:30.000Z",
+            },
+          ],
+        }),
+      );
+      const trades = await adapter.fetchMyTrades();
+      expect(trades).toHaveLength(1);
+      const t = trades[0];
+      expect(t?.id).toBe("trade-1");
+      expect(t?.price).toBeCloseTo(0.01);
+      expect(t?.amount).toBe(3);
+      expect(t?.side).toBe("buy");
+      expect(t?.orderId).toBe("order-1");
+      expect(t?.outcomeId).toBe(`${TEST_TICKER}:YES`);
+      expect(t?.marketId).toBe(TEST_TICKER);
+      expect(t?.timestamp).toBe(Date.parse("2026-05-15T21:17:30.000Z"));
+    });
+
+    it("passes marketId/limit/cursor as ticker query params", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk({ cursor: "", fills: [] }));
+      await adapter.fetchMyTrades({
+        marketId: TEST_TICKER,
+        limit: 50,
+        cursor: "abc",
+      });
+      const url = calledUrl();
+      expect(url).toContain(`ticker=${encodeURIComponent(TEST_TICKER)}`);
+      expect(url).toContain("limit=50");
+      expect(url).toContain("cursor=abc");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // fetchOpenOrders — captured fixture has only "canceled" orders;
+  // adapter filters by status === "resting".
+  // -------------------------------------------------------------------------
+  describe("fetchOpenOrders", () => {
+    it("filters out non-resting orders (captured fixture has 0 resting)", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("open-orders.json")));
+      const orders = await adapter.fetchOpenOrders();
+      expect(orders).toEqual([]);
+    });
+
+    it("maps a synthetic resting order to OrderResponse (YES side, buy)", async () => {
+      // Same shape as captured fixture, status flipped to "resting".
+      const captured = loadFixture("open-orders.json") as {
+        orders: Record<string, unknown>[];
+      };
+      const resting = { ...captured.orders[0], status: "resting" };
+      mockFetch.mockReturnValueOnce(jsonOk({ cursor: "", orders: [resting] }));
+      const orders = await adapter.fetchOpenOrders();
+      expect(orders).toHaveLength(1);
+      const o = orders[0];
+      expect(o?.id).toBe("AAAAAAAA-BBBB-CCCC-DDDD-000000000005");
+      expect(o?.marketId).toBe(TEST_TICKER);
+      expect(o?.outcomeId).toBe(`${TEST_TICKER}:YES`);
+      expect(o?.side).toBe("buy");
+      expect(o?.type).toBe("limit");
+      expect(o?.amount).toBeCloseTo(1);
+      expect(o?.price).toBeCloseTo(0.01);
+      expect(o?.status).toBe("resting");
+      expect(o?.filled).toBeCloseTo(0);
+      expect(o?.remaining).toBeCloseTo(0);
+    });
+
+    it("passes the marketId as a ticker query param when supplied", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk({ cursor: "", orders: [] }));
+      await adapter.fetchOpenOrders(TEST_TICKER);
+      expect(calledUrl()).toContain(`ticker=${encodeURIComponent(TEST_TICKER)}`);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // createOrder — POST /portfolio/orders with cents body
+  // -------------------------------------------------------------------------
+  describe("createOrder", () => {
+    it("POSTs Kalshi cents body and maps the 201 response", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk(loadFixture("order-create.json"), 201),
+      );
+      const order = await adapter.createOrder({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:YES`,
+        side: "buy",
+        size: 1,
+        price: 0.01,
+        orderType: "limit",
+      });
+      expect(order.id).toBe("AAAAAAAA-BBBB-CCCC-DDDD-000000000002");
+      expect(order.marketId).toBe(TEST_TICKER);
+      expect(order.outcomeId).toBe(`${TEST_TICKER}:YES`);
+      expect(order.side).toBe("buy");
+      expect(order.type).toBe("limit");
+      expect(order.amount).toBeCloseTo(1);
+      expect(order.price).toBeCloseTo(0.01);
+      expect(order.status).toBe("resting");
+      expect(order.filled).toBeCloseTo(0);
+      expect(order.remaining).toBeCloseTo(1);
+
+      expect(calledMethod()).toBe("POST");
+      const body = calledBody();
+      expect(body["ticker"]).toBe(TEST_TICKER);
+      expect(body["action"]).toBe("buy");
+      expect(body["side"]).toBe("yes");
+      expect(body["count"]).toBe(1);
+      expect(body["type"]).toBe("limit");
+      expect(body["yes_price"]).toBe(1);
+      expect(body["client_order_id"]).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(body).not.toHaveProperty("no_price");
+    });
+
+    it("sets no_price when the outcomeId targets the NO side", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk(loadFixture("order-create.json"), 201),
+      );
+      await adapter.createOrder({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:NO`,
+        side: "buy",
+        size: 2,
+        price: 0.42,
+        orderType: "limit",
+      });
+      const body = calledBody();
+      expect(body["side"]).toBe("no");
+      expect(body["no_price"]).toBe(42);
+      expect(body).not.toHaveProperty("yes_price");
+    });
+
+    it("forwards time_in_force when supplied", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk(loadFixture("order-create.json"), 201),
+      );
+      await adapter.createOrder({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:YES`,
+        side: "buy",
+        size: 1,
+        price: 0.01,
+        orderType: "limit",
+        timeInForce: "IOC",
+      });
+      expect(calledBody()["time_in_force"]).toBe("IOC");
+    });
+
+    it("includes signed KALSHI-ACCESS-* headers + content-type", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk(loadFixture("order-create.json"), 201),
+      );
+      await adapter.createOrder({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:YES`,
+        side: "buy",
+        size: 1,
+        price: 0.01,
+        orderType: "limit",
+      });
+      const headers = calledHeaders();
+      expect(headers["KALSHI-ACCESS-KEY"]).toBe(TEST_API_KEY_ID);
+      expect(headers["KALSHI-ACCESS-SIGNATURE"]).toBeTruthy();
+      expect(headers["content-type"]).toBe("application/json");
+    });
+
+    it("rejects price outside [0, 1]", async () => {
+      await expect(
+        adapter.createOrder({
+          marketId: TEST_TICKER,
+          outcomeId: `${TEST_TICKER}:YES`,
+          side: "buy",
+          size: 1,
+          price: 1.5,
+          orderType: "limit",
+        }),
+      ).rejects.toThrow(/price/i);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("rejects size <= 0", async () => {
+      await expect(
+        adapter.createOrder({
+          marketId: TEST_TICKER,
+          outcomeId: `${TEST_TICKER}:YES`,
+          side: "buy",
+          size: 0,
+          price: 0.5,
+          orderType: "limit",
+        }),
+      ).rejects.toThrow(/size/i);
+    });
+
+    it("throws KalshiAuthError when KALSHI_PRIVATE_KEY_PATH is missing", async () => {
+      delete process.env["KALSHI_PRIVATE_KEY_PATH"];
+      await expect(
+        adapter.createOrder({
+          marketId: TEST_TICKER,
+          outcomeId: `${TEST_TICKER}:YES`,
+          side: "buy",
+          size: 1,
+          price: 0.01,
+          orderType: "limit",
+        }),
+      ).rejects.toThrow(KalshiAuthError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // cancelOrder — DELETE /portfolio/orders/{orderId}
+  // -------------------------------------------------------------------------
+  describe("cancelOrder", () => {
+    it("DELETEs the order id endpoint and maps the cancel envelope", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("order-cancel.json")));
+      const result = await adapter.cancelOrder(
+        "AAAAAAAA-BBBB-CCCC-DDDD-000000000002",
+      );
+      expect(result.id).toBe("AAAAAAAA-BBBB-CCCC-DDDD-000000000002");
+      expect(result.status).toBe("canceled");
+      expect(calledMethod()).toBe("DELETE");
+      expect(calledUrl()).toContain(
+        "/portfolio/orders/AAAAAAAA-BBBB-CCCC-DDDD-000000000002",
+      );
+    });
+
+    it("signs the DELETE request with KALSHI-ACCESS-* headers", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("order-cancel.json")));
+      await adapter.cancelOrder("abc-123");
+      const headers = calledHeaders();
+      expect(headers["KALSHI-ACCESS-KEY"]).toBeTruthy();
+      expect(headers["KALSHI-ACCESS-SIGNATURE"]).toBeTruthy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // buildOrder — dry run, no network
+  // -------------------------------------------------------------------------
+  describe("buildOrder", () => {
+    it("returns a BuildOrderResult without calling fetch", async () => {
+      const built = await adapter.buildOrder({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:YES`,
+        side: "buy",
+        size: 2,
+        price: 0.25,
+        orderType: "limit",
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(built.exchange).toBe("kalshi");
+      expect(built.params).toEqual({
+        marketId: TEST_TICKER,
+        outcomeId: `${TEST_TICKER}:YES`,
+        side: "buy",
+        type: "limit",
+        amount: 2,
+        price: 0.25,
+      });
+      const raw = built.raw as Record<string, unknown>;
+      expect(raw["ticker"]).toBe(TEST_TICKER);
+      expect(raw["side"]).toBe("yes");
+      expect(raw["action"]).toBe("buy");
+      expect(raw["count"]).toBe(2);
+      expect(raw["yes_price"]).toBe(25);
+      expect(raw["client_order_id"]).toMatch(/^[0-9a-f-]{36}$/i);
+    });
+
+    it("validates params before building", async () => {
+      await expect(
+        adapter.buildOrder({
+          marketId: TEST_TICKER,
+          outcomeId: `${TEST_TICKER}:YES`,
+          side: "buy",
+          size: 1,
+          price: -0.1,
+          orderType: "limit",
+        }),
+      ).rejects.toThrow(/price/i);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // watchOrderBook — one-shot snapshot with a timestamp
+  // -------------------------------------------------------------------------
+  describe("watchOrderBook", () => {
+    it("returns an OrderBook with a populated timestamp", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("orderbook.json")));
+      const before = Date.now();
+      const book = await adapter.watchOrderBook(
+        "KXNAMEDSTORM-26DEC01CPACTOT-2:YES",
+      );
+      const after = Date.now();
+      expect(book.outcomeId).toBe("KXNAMEDSTORM-26DEC01CPACTOT-2:YES");
+      expect(book.bids.length).toBeGreaterThan(0);
+      expect(book.asks.length).toBeGreaterThan(0);
+      expect(typeof book.timestamp).toBe("number");
+      expect(book.timestamp ?? 0).toBeGreaterThanOrEqual(before);
+      expect(book.timestamp ?? 0).toBeLessThanOrEqual(after);
+    });
+
+    it("hits the public /markets/{ticker}/orderbook endpoint (unsigned)", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("orderbook.json")));
+      await adapter.watchOrderBook("KXNAMEDSTORM-26DEC01CPACTOT-2:YES");
+      expect(calledUrl()).toContain(
+        "/markets/KXNAMEDSTORM-26DEC01CPACTOT-2/orderbook",
+      );
+      // Orderbook is a public endpoint — no auth headers required.
+      const headers = calledHeaders();
+      expect(headers["KALSHI-ACCESS-KEY"]).toBeUndefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // watchTrades — REST snapshot of recent public trades
+  // -------------------------------------------------------------------------
+  describe("watchTrades", () => {
+    it("maps Kalshi public trades to Trade[] for YES side", async () => {
+      mockFetch.mockReturnValueOnce(
+        jsonOk({
+          cursor: "",
+          trades: [
+            {
+              trade_id: "T1",
+              ticker: TEST_TICKER,
+              yes_price: 25,
+              no_price: 75,
+              count: 3,
+              created_time: "2026-05-15T20:00:00.000Z",
+              taker_side: "yes",
+            },
+            {
+              trade_id: "T2",
+              ticker: TEST_TICKER,
+              yes_price: 30,
+              no_price: 70,
+              count: 1,
+              created_time: "2026-05-15T20:00:05.000Z",
+              taker_side: "no",
+            },
+          ],
+        }),
+      );
+      const trades = await adapter.watchTrades(`${TEST_TICKER}:YES`);
+      expect(trades).toHaveLength(2);
+      expect(trades[0]?.id).toBe("T1");
+      expect(trades[0]?.price).toBeCloseTo(0.25);
+      expect(trades[0]?.size).toBe(3);
+      expect(trades[0]?.side).toBe("buy");
+      expect(trades[0]?.timestamp).toBe(
+        Date.parse("2026-05-15T20:00:00.000Z"),
+      );
+      expect(trades[1]?.side).toBe("sell");
+    });
+
+    it("passes ticker query param to /markets/trades (unsigned)", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk({ cursor: "", trades: [] }));
+      await adapter.watchTrades(`${TEST_TICKER}:YES`);
+      const url = calledUrl();
+      expect(url).toContain("/markets/trades");
+      expect(url).toContain(`ticker=${encodeURIComponent(TEST_TICKER)}`);
+      expect(calledHeaders()["KALSHI-ACCESS-KEY"]).toBeUndefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // ensureAccount — proves creds work by issuing one signed balance call
+  // -------------------------------------------------------------------------
+  describe("ensureAccount", () => {
+    it("returns ready=true after a successful signed balance call", async () => {
+      mockFetch.mockReturnValueOnce(jsonOk(loadFixture("balance.json")));
+      const result = await adapter.ensureAccount();
+      expect(result.ready).toBe(true);
+      expect(mockFetch).toHaveBeenCalledOnce();
+      expect(calledUrl()).toContain("/portfolio/balance");
+      expect(calledHeaders()["KALSHI-ACCESS-KEY"]).toBe(TEST_API_KEY_ID);
+    });
+
+    it("propagates KalshiAuthError when credentials are missing", async () => {
+      delete process.env["KALSHI_API_KEY_ID"];
+      delete process.env["KALSHI_PRIVATE_KEY_PATH"];
+      await expect(adapter.ensureAccount()).rejects.toThrow(KalshiAuthError);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
   });
 });

@@ -2,9 +2,9 @@
  * Kalshi adapter for the venue-agnostic `MarketClient` interface.
  *
  * Public-read methods hit `demo-api.kalshi.co/trade-api/v2` directly via
- * the global `fetch`. Auth methods (signed with RSA-PSS) live in a
- * sibling module and are wired up by a later plan item; this file ships
- * them as stubs that throw a typed error until then.
+ * the global `fetch`. Auth methods sign each request with the RSA-PSS
+ * signer in `./kalshi-auth.ts`; credentials come from env vars only
+ * (`KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`).
  *
  * Identifier conventions:
  *  - `marketId` is the Kalshi market ticker (e.g.
@@ -14,8 +14,12 @@
  *    the side so callers carry it through the venue-neutral interface.
  *  - All prices are parsed from Kalshi dollar strings ("0.6500") to
  *    `number` (0.65). The interface contract is 0–1 normalized.
+ *  - Kalshi REST accepts integer cents in request bodies (`yes_price: 1`
+ *    for `$0.01`); the adapter rounds `OrderParams.price * 100`.
  */
 
+import { randomUUID } from "node:crypto";
+import { buildKalshiAuthHeaders } from "./kalshi-auth.js";
 import type {
   Balance,
   BuildOrderResult,
@@ -232,8 +236,184 @@ function candleOHLC(
   };
 }
 
-function notImpl(name: string): string {
-  return `KalshiAdapter.${name}: not yet implemented`;
+interface KalshiBalance {
+  /** Cash balance in cents. */
+  balance: number;
+  balance_breakdown?: { balance: string; exchange_index: number }[];
+  /** Value locked in positions / open orders, in cents. */
+  portfolio_value: number;
+  updated_ts?: number;
+}
+
+interface KalshiMarketPosition {
+  ticker: string;
+  /** Signed contracts: positive = YES exposure, negative = NO exposure. */
+  position: number;
+  /** Cost basis in cents. */
+  market_exposure: number;
+  realized_pnl?: number;
+  total_traded?: number;
+  fees_paid?: number;
+  resting_orders_count?: number;
+  last_updated_ts?: number;
+}
+
+interface KalshiPositionsResponse {
+  cursor?: string;
+  event_positions?: unknown[];
+  market_positions?: KalshiMarketPosition[];
+}
+
+interface KalshiFill {
+  trade_id: string;
+  order_id: string;
+  ticker: string;
+  side: "yes" | "no";
+  action: "buy" | "sell";
+  count: number;
+  yes_price?: number;
+  no_price?: number;
+  yes_price_dollars?: string;
+  no_price_dollars?: string;
+  created_time: string;
+}
+
+interface KalshiFillsResponse {
+  cursor?: string;
+  fills?: KalshiFill[];
+}
+
+interface KalshiOrder {
+  order_id: string;
+  client_order_id?: string;
+  ticker: string;
+  /** `"buy"` | `"sell"` — direction relative to the YES/NO side. */
+  action: string;
+  /** `"yes"` | `"no"` — which side of the contract the order touches. */
+  side: string;
+  /** `"limit"` | `"market"`. */
+  type: string;
+  status: string;
+  yes_price_dollars?: string;
+  no_price_dollars?: string;
+  initial_count_fp?: string;
+  fill_count_fp?: string;
+  remaining_count_fp?: string;
+  created_time?: string;
+  last_update_time?: string;
+}
+
+interface KalshiOrdersResponse {
+  cursor?: string;
+  orders?: KalshiOrder[];
+}
+
+interface KalshiOrderEnvelope {
+  order: KalshiOrder;
+}
+
+interface KalshiCancelEnvelope {
+  order: KalshiOrder;
+  reduced_by_fp?: string;
+}
+
+interface KalshiPublicTrade {
+  trade_id: string;
+  ticker: string;
+  yes_price?: number;
+  no_price?: number;
+  yes_price_dollars?: string;
+  no_price_dollars?: string;
+  count: number;
+  created_time: string;
+  taker_side: "yes" | "no";
+}
+
+interface KalshiTradesResponse {
+  cursor?: string;
+  trades?: KalshiPublicTrade[];
+}
+
+const VALID_SIDES = ["buy", "sell"] as const;
+const VALID_ORDER_TYPES = ["market", "limit"] as const;
+
+function validateOrderParams(params: OrderParams): void {
+  if (params.price < 0 || params.price > 1) {
+    throw new Error(
+      `Invalid price ${String(params.price)}: ` +
+        "must be between 0 and 1",
+    );
+  }
+  if (params.size <= 0) {
+    throw new Error(
+      `Invalid size ${String(params.size)}: ` +
+        "must be greater than 0",
+    );
+  }
+  if (!(VALID_SIDES as readonly string[]).includes(params.side)) {
+    throw new Error(
+      `Invalid side "${String(params.side)}": ` +
+        'must be "buy" or "sell"',
+    );
+  }
+  if (!(VALID_ORDER_TYPES as readonly string[]).includes(params.orderType)) {
+    throw new Error(
+      `Invalid orderType "${String(params.orderType)}": ` +
+        'must be "market" or "limit"',
+    );
+  }
+}
+
+/**
+ * Translate {@link OrderParams} into the Kalshi POST /portfolio/orders
+ * body. Kalshi accepts integer cents for prices, so a `0.6253` interface
+ * price round-trips through `Math.round(price * 100)` and loses sub-cent
+ * precision. Sub-penny ticks need a follow-up that switches to
+ * `yes_price_dollars` string fields.
+ */
+function buildKalshiOrderBody(params: OrderParams): Record<string, unknown> {
+  validateOrderParams(params);
+  const { ticker, side: yesNoSide } = parseOutcomeId(params.outcomeId);
+  const kalshiSide: "yes" | "no" = yesNoSide === "YES" ? "yes" : "no";
+  const action: "buy" | "sell" = params.side === "sell" ? "sell" : "buy";
+  const orderType: "limit" | "market" =
+    params.orderType === "market" ? "market" : "limit";
+  const priceCents = Math.round(params.price * 100);
+  const body: Record<string, unknown> = {
+    ticker,
+    action,
+    side: kalshiSide,
+    count: Math.round(params.size),
+    type: orderType,
+    client_order_id: randomUUID(),
+  };
+  if (kalshiSide === "yes") body["yes_price"] = priceCents;
+  else body["no_price"] = priceCents;
+  if (params.timeInForce !== undefined) {
+    body["time_in_force"] = params.timeInForce;
+  }
+  return body;
+}
+
+function mapKalshiOrder(o: KalshiOrder): OrderResponse {
+  const isYes = o.side === "yes";
+  const price = dollarStringToNumber(
+    isYes ? o.yes_price_dollars : o.no_price_dollars,
+  );
+  const side: "buy" | "sell" = o.action === "sell" ? "sell" : "buy";
+  const type: "market" | "limit" = o.type === "market" ? "market" : "limit";
+  return {
+    id: o.order_id,
+    marketId: o.ticker,
+    outcomeId: `${o.ticker}${isYes ? YES_SUFFIX : NO_SUFFIX}`,
+    side,
+    type,
+    amount: dollarStringToNumber(o.initial_count_fp),
+    price,
+    status: o.status,
+    filled: dollarStringToNumber(o.fill_count_fp),
+    remaining: dollarStringToNumber(o.remaining_count_fp),
+  };
 }
 
 /** `MarketClient` implementation backed by the Kalshi REST API. */
@@ -256,6 +436,49 @@ export class KalshiAdapter implements MarketClient {
       const body = await res.text().catch(() => "");
       throw new Error(
         `Kalshi GET ${path} failed: ${String(res.status)} ${body}`,
+      );
+    }
+    return (await res.json()) as T;
+  }
+
+  /**
+   * Issue a signed Kalshi request. The signature payload is
+   * `timestamp + METHOD + url.pathname` — query string is stripped, body
+   * is not signed. Throws `KalshiAuthError` (from {@link buildKalshiAuthHeaders})
+   * when credentials are missing.
+   */
+  private async signedFetch<T>(
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    options: {
+      body?: unknown;
+      query?: Record<string, string | undefined>;
+    } = {},
+  ): Promise<T> {
+    const url = new URL(`${getApiBase()}${path}`);
+    if (options.query) {
+      for (const [k, v] of Object.entries(options.query)) {
+        if (v !== undefined) url.searchParams.set(k, v);
+      }
+    }
+    const authHeaders = buildKalshiAuthHeaders({
+      method,
+      path: url.pathname,
+    });
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      ...authHeaders,
+    };
+    const init: RequestInit = { method, headers };
+    if (options.body !== undefined) {
+      headers["content-type"] = "application/json";
+      init.body = JSON.stringify(options.body);
+    }
+    const res = await fetch(url.toString(), init);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(
+        `Kalshi ${method} ${path} failed: ${String(res.status)} ${body}`,
       );
     }
     return (await res.json()) as T;
@@ -419,54 +642,179 @@ export class KalshiAdapter implements MarketClient {
   }
 
   // ---------------------------------------------------------------------
-  // Auth methods — stubs; wired up by a later plan item alongside
-  // `kalshi-auth.ts` (RSA-PSS signer + auth fixtures).
+  // Auth methods — signed with RSA-PSS via `kalshi-auth.ts`.
   // ---------------------------------------------------------------------
 
-  async fetchPositions(): Promise<Position[]> {
-    throw new Error(notImpl("fetchPositions"));
+  async fetchBalance(): Promise<Balance[]> {
+    const data = await this.signedFetch<KalshiBalance>(
+      "GET",
+      "/portfolio/balance",
+    );
+    const totalCents = data.balance;
+    const lockedCents = data.portfolio_value;
+    const availableCents = totalCents - lockedCents;
+    return [
+      {
+        currency: "USD",
+        total: totalCents / 100,
+        available: availableCents / 100,
+        locked: lockedCents / 100,
+      },
+    ];
   }
 
-  async fetchBalance(): Promise<Balance[]> {
-    throw new Error(notImpl("fetchBalance"));
+  async fetchPositions(): Promise<Position[]> {
+    const data = await this.signedFetch<KalshiPositionsResponse>(
+      "GET",
+      "/portfolio/positions",
+    );
+    const positions = data.market_positions ?? [];
+    return positions
+      .filter((p) => p.position !== 0)
+      .map((p) => {
+        const isYes = p.position > 0;
+        const size = Math.abs(p.position);
+        // market_exposure is the position's cost basis in cents.
+        const exposureUSD = Math.abs(p.market_exposure) / 100;
+        const entryPrice = size > 0 ? exposureUSD / size : 0;
+        // Kalshi's positions endpoint doesn't return a live mark; callers
+        // who need MTM PnL must hit `fetchMarketPrice` per market.
+        return {
+          marketId: p.ticker,
+          outcomeId: `${p.ticker}${isYes ? YES_SUFFIX : NO_SUFFIX}`,
+          outcomeLabel: isYes ? "YES" : "NO",
+          size,
+          entryPrice,
+          currentPrice: entryPrice,
+          unrealizedPnL: 0,
+        };
+      });
   }
 
   async fetchMyTrades(params?: FetchMyTradesParams): Promise<UserTrade[]> {
-    void params;
-    throw new Error(notImpl("fetchMyTrades"));
+    const query: Record<string, string | undefined> = {};
+    if (params?.marketId !== undefined) query["ticker"] = params.marketId;
+    if (params?.limit !== undefined) query["limit"] = String(params.limit);
+    if (params?.cursor !== undefined) query["cursor"] = params.cursor;
+    const data = await this.signedFetch<KalshiFillsResponse>(
+      "GET",
+      "/portfolio/fills",
+      { query },
+    );
+    const fills = data.fills ?? [];
+    return fills.map((f) => {
+      const isYes = f.side === "yes";
+      const dollarStr = isYes ? f.yes_price_dollars : f.no_price_dollars;
+      const intCents = isYes ? f.yes_price : f.no_price;
+      const price =
+        dollarStr !== undefined
+          ? dollarStringToNumber(dollarStr)
+          : (intCents ?? 0) / 100;
+      return {
+        id: f.trade_id,
+        price,
+        amount: f.count,
+        side: f.action,
+        timestamp: Date.parse(f.created_time),
+        orderId: f.order_id,
+        outcomeId: `${f.ticker}${isYes ? YES_SUFFIX : NO_SUFFIX}`,
+        marketId: f.ticker,
+      };
+    });
   }
 
   async fetchOpenOrders(marketId?: string): Promise<OrderResponse[]> {
-    void marketId;
-    throw new Error(notImpl("fetchOpenOrders"));
+    const query: Record<string, string | undefined> = {};
+    if (marketId !== undefined) query["ticker"] = marketId;
+    // The `status=resting` query param is a no-op on demo (returns empty
+    // even when resting orders exist). Fetch unfiltered and apply the
+    // status filter in-process.
+    const data = await this.signedFetch<KalshiOrdersResponse>(
+      "GET",
+      "/portfolio/orders",
+      { query },
+    );
+    const orders = data.orders ?? [];
+    return orders.filter((o) => o.status === "resting").map(mapKalshiOrder);
   }
 
   async createOrder(params: OrderParams): Promise<OrderResponse> {
-    void params;
-    throw new Error(notImpl("createOrder"));
+    const body = buildKalshiOrderBody(params);
+    const data = await this.signedFetch<KalshiOrderEnvelope>(
+      "POST",
+      "/portfolio/orders",
+      { body },
+    );
+    const mapped = mapKalshiOrder(data.order);
+    return mapped.price === 0 && params.price !== 0
+      ? { ...mapped, price: params.price }
+      : mapped;
   }
 
   async cancelOrder(orderId: string): Promise<CancelResult> {
-    void orderId;
-    throw new Error(notImpl("cancelOrder"));
+    const data = await this.signedFetch<KalshiCancelEnvelope>(
+      "DELETE",
+      `/portfolio/orders/${encodeURIComponent(orderId)}`,
+    );
+    return {
+      id: data.order.order_id ?? orderId,
+      status: data.order.status,
+    };
   }
 
   async buildOrder(params: OrderParams): Promise<BuildOrderResult> {
-    void params;
-    throw new Error(notImpl("buildOrder"));
+    const body = buildKalshiOrderBody(params);
+    return {
+      exchange: "kalshi",
+      params: {
+        marketId: params.marketId,
+        outcomeId: params.outcomeId,
+        side: params.side,
+        type: params.orderType,
+        amount: params.size,
+        price: params.price,
+      },
+      raw: body,
+    };
   }
 
   async watchOrderBook(outcomeId: string): Promise<OrderBook> {
-    void outcomeId;
-    throw new Error(notImpl("watchOrderBook"));
+    const book = await this.fetchOrderBook(outcomeId);
+    return { ...book, timestamp: Date.now() };
   }
 
   async watchTrades(outcomeId: string): Promise<Trade[]> {
-    void outcomeId;
-    throw new Error(notImpl("watchTrades"));
+    const { ticker, side } = parseOutcomeId(outcomeId);
+    const data = await this.getJSON<KalshiTradesResponse>("/markets/trades", {
+      ticker,
+      limit: "100",
+    });
+    const trades = data.trades ?? [];
+    return trades.map((t) => {
+      const isYes = side === "YES";
+      const dollarStr = isYes ? t.yes_price_dollars : t.no_price_dollars;
+      const intCents = isYes ? t.yes_price : t.no_price;
+      const price =
+        dollarStr !== undefined
+          ? dollarStringToNumber(dollarStr)
+          : (intCents ?? 0) / 100;
+      return {
+        id: t.trade_id,
+        price,
+        size: t.count,
+        side: t.taker_side === "yes" ? "buy" : "sell",
+        timestamp: Date.parse(t.created_time),
+      };
+    });
   }
 
+  /**
+   * Verify Kalshi credentials by issuing one signed `fetchBalance` call.
+   * Idempotent — Kalshi has no separate account-bootstrap endpoint, so
+   * "account ready" reduces to "credentials sign successfully".
+   */
   async ensureAccount(): Promise<EnsureAccountResult> {
-    throw new Error(notImpl("ensureAccount"));
+    await this.fetchBalance();
+    return { ready: true };
   }
 }
