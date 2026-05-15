@@ -8,5 +8,18 @@
     "log": "Log"
   },
   "active": "",
-  "completed": []
+  "completed": [],
+  "nodes": [
+    { "id": "scan",    "label": "Scan Markets",  "type": "build"  },
+    { "id": "signal",  "label": "Detect Signal", "type": "build"  },
+    { "id": "risk",    "label": "Risk Check",    "type": "gate"   },
+    { "id": "execute", "label": "Execute",       "type": "deploy" },
+    { "id": "log",     "label": "Log",           "type": "build"  }
+  ],
+  "edges": [
+    { "from": "scan",    "to": "signal"  },
+    { "from": "signal",  "to": "risk"    },
+    { "from": "risk",    "to": "execute" },
+    { "from": "execute", "to": "log"     }
+  ]
 }
