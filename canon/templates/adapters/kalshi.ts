@@ -371,12 +371,17 @@ function validateOrderParams(params: OrderParams): void {
   }
 }
 
+const TIF_MAP: Record<NonNullable<OrderParams["timeInForce"]>, string> = {
+  GTC: "good_till_canceled",
+  IOC: "immediate_or_cancel",
+  FOK: "fill_or_kill",
+};
+
 /**
  * Translate {@link OrderParams} into the Kalshi POST /portfolio/orders
- * body. Kalshi accepts integer cents for prices, so a `0.6253` interface
- * price round-trips through `Math.round(price * 100)` and loses sub-cent
- * precision. Sub-penny ticks need a follow-up that switches to
- * `yes_price_dollars` string fields.
+ * body. Uses dollar-string price fields (`yes_price_dollars` /
+ * `no_price_dollars`) — Kalshi removed the legacy integer-cent fields
+ * in March 2026 and dollar strings preserve sub-penny ticks (0.0001).
  */
 function buildKalshiOrderBody(params: OrderParams): Record<string, unknown> {
   validateOrderParams(params);
@@ -385,7 +390,7 @@ function buildKalshiOrderBody(params: OrderParams): Record<string, unknown> {
   const action: "buy" | "sell" = params.side === "sell" ? "sell" : "buy";
   const orderType: "limit" | "market" =
     params.orderType === "market" ? "market" : "limit";
-  const priceCents = Math.round(params.price * 100);
+  const priceDollars = params.price.toFixed(4);
   const body: Record<string, unknown> = {
     ticker,
     action,
@@ -394,10 +399,10 @@ function buildKalshiOrderBody(params: OrderParams): Record<string, unknown> {
     type: orderType,
     client_order_id: randomUUID(),
   };
-  if (kalshiSide === "yes") body["yes_price"] = priceCents;
-  else body["no_price"] = priceCents;
+  if (kalshiSide === "yes") body["yes_price_dollars"] = priceDollars;
+  else body["no_price_dollars"] = priceDollars;
   if (params.timeInForce !== undefined) {
-    body["time_in_force"] = params.timeInForce;
+    body["time_in_force"] = TIF_MAP[params.timeInForce];
   }
   return body;
 }

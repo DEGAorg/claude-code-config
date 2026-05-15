@@ -741,12 +741,14 @@ describe("KalshiAdapter — auth methods", () => {
       expect(body["side"]).toBe("yes");
       expect(body["count"]).toBe(1);
       expect(body["type"]).toBe("limit");
-      expect(body["yes_price"]).toBe(1);
+      expect(body["yes_price_dollars"]).toBe("0.0100");
       expect(body["client_order_id"]).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(body).not.toHaveProperty("no_price_dollars");
+      expect(body).not.toHaveProperty("yes_price");
       expect(body).not.toHaveProperty("no_price");
     });
 
-    it("sets no_price when the outcomeId targets the NO side", async () => {
+    it("sets no_price_dollars when the outcomeId targets the NO side", async () => {
       mockFetch.mockReturnValueOnce(
         jsonOk(loadFixture("order-create.json"), 201),
       );
@@ -760,11 +762,11 @@ describe("KalshiAdapter — auth methods", () => {
       });
       const body = calledBody();
       expect(body["side"]).toBe("no");
-      expect(body["no_price"]).toBe(42);
-      expect(body).not.toHaveProperty("yes_price");
+      expect(body["no_price_dollars"]).toBe("0.4200");
+      expect(body).not.toHaveProperty("yes_price_dollars");
     });
 
-    it("forwards time_in_force when supplied", async () => {
+    it("maps timeInForce to Kalshi's snake_case enum", async () => {
       mockFetch.mockReturnValueOnce(
         jsonOk(loadFixture("order-create.json"), 201),
       );
@@ -777,7 +779,7 @@ describe("KalshiAdapter — auth methods", () => {
         orderType: "limit",
         timeInForce: "IOC",
       });
-      expect(calledBody()["time_in_force"]).toBe("IOC");
+      expect(calledBody()["time_in_force"]).toBe("immediate_or_cancel");
     });
 
     it("includes signed KALSHI-ACCESS-* headers + content-type", async () => {
@@ -895,7 +897,7 @@ describe("KalshiAdapter — auth methods", () => {
       expect(raw["side"]).toBe("yes");
       expect(raw["action"]).toBe("buy");
       expect(raw["count"]).toBe(2);
-      expect(raw["yes_price"]).toBe(25);
+      expect(raw["yes_price_dollars"]).toBe("0.2500");
       expect(raw["client_order_id"]).toMatch(/^[0-9a-f-]{36}$/i);
     });
 
