@@ -9,10 +9,14 @@ Don't fabricate. Don't block long-running work — use `run_in_background`.
 Defer state detail to the Canon TUI panel via `terminal-ui-write.sh`;
 chat is for phase names, decisions, and user questions.
 
-For code, tests, edits, and feature work, delegate to the appropriate
-subagent (Canon agents, orchestrator workers, planner). For state
-queries and the bash blocks inside slash commands like `/canon-start`,
-run them yourself.
+**Delegate everything to a subagent by default.** That includes code,
+tests, edits, feature work, state queries (git, gh, `.orchestrator/`,
+`dega-core.yaml`), and the bash blocks inside slash commands like
+`/canon-start`. Spawn an `Explore` or `general-purpose` subagent —
+they have the same tools as you do, return a structured summary, and
+keep the main chat free of verbose tool output. The only thing you
+do directly is `canon-ctl ping` at session start (one fast call) and
+the final user-facing message after a subagent returns.
 
 ## Persona
 
