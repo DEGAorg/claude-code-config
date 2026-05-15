@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+
+### Added
+- Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
+
 ## [0.1.9] — 2026-05-13
 
 Subtracts prescriptive rules added in 0.1.8 (#329-#333) that, in
