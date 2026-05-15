@@ -104,6 +104,57 @@ function logEntry(
 }
 
 /**
+ * Update the runner's `flow.json` with the current `active` step and
+ * `completed` step list, and stamp `active_since` with an ISO 8601 UTC
+ * timestamp whenever `active` transitions to a new non-empty value.
+ *
+ * Idempotent: a repeat call with the same `active` preserves the existing
+ * `active_since`. When `active === ""`, `active_since` is omitted entirely
+ * so the TUI's `.get("active_since", "")` reader treats the field as absent.
+ */
+export function updateFlow(
+  flowPath: string,
+  active: string,
+  completed: string[],
+): void {
+  if (!existsSync(flowPath)) return;
+  try {
+    const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as {
+      steps: string[];
+      labels: Record<string, string>;
+      active: string;
+      completed: string[];
+      active_since?: string;
+    };
+
+    const activeSince =
+      active === ""
+        ? undefined
+        : active === flow.active
+          ? flow.active_since
+          : new Date().toISOString();
+
+    const next: {
+      steps: string[];
+      labels: Record<string, string>;
+      active: string;
+      completed: string[];
+      active_since?: string;
+    } = {
+      steps: flow.steps,
+      labels: flow.labels,
+      active,
+      completed,
+      ...(activeSince !== undefined ? { active_since: activeSince } : {}),
+    };
+
+    writeFileSync(flowPath, JSON.stringify(next, null, 2) + "\n");
+  } catch {
+    // flow.json missing or malformed — skip silently
+  }
+}
+
+/**
  * Create a new strategy runner.
  *
  * The runner polls the strategy function at `config.pollIntervalMs`,
@@ -129,26 +180,6 @@ export function createRunner(
   }
 
   const flowPath = join(config.baseDir, "flow.json");
-
-  function updateFlow(
-    active: string,
-    completed: string[],
-  ): void {
-    if (!existsSync(flowPath)) return;
-    try {
-      const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as {
-        steps: string[];
-        labels: Record<string, string>;
-        active: string;
-        completed: string[];
-      };
-      flow.active = active;
-      flow.completed = completed;
-      writeFileSync(flowPath, JSON.stringify(flow, null, 2) + "\n");
-    } catch {
-      // flow.json missing or malformed — skip silently
-    }
-  }
 
   async function processSignal(
     signal: TradeSignal,
@@ -197,7 +228,7 @@ export function createRunner(
       return;
     }
 
-    updateFlow("execute", ["scan", "signal", "risk"]);
+    updateFlow(flowPath, "execute", ["scan", "signal", "risk"]);
     try {
       const result = await deps.executor.submit(submittable);
       deps.log(
@@ -236,20 +267,20 @@ export function createRunner(
 
   async function cycle(): Promise<void> {
     cycleCount++;
-    updateFlow("scan", []);
+    updateFlow(flowPath, "scan", []);
     out("SCAN", `#${String(cycleCount)}`);
 
     const portfolio = await deps.positions.reconcile();
 
-    updateFlow("signal", ["scan"]);
+    updateFlow(flowPath, "signal", ["scan"]);
     const signals = await deps.strategy();
 
     for (const signal of signals) {
-      updateFlow("risk", ["scan", "signal"]);
+      updateFlow(flowPath, "risk", ["scan", "signal"]);
       await processSignal(signal, portfolio);
     }
 
-    updateFlow("log", ["scan", "signal", "risk", "execute"]);
+    updateFlow(flowPath, "log", ["scan", "signal", "risk", "execute"]);
 
     if (signals.length === 0) {
       out(
@@ -258,7 +289,7 @@ export function createRunner(
       );
     }
 
-    updateFlow("", ["scan", "signal", "risk", "execute", "log"]);
+    updateFlow(flowPath, "", ["scan", "signal", "risk", "execute", "log"]);
   }
 
   function stop(): void {
