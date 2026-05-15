@@ -3,8 +3,15 @@
  *
  * Public-read methods hit `demo-api.kalshi.co/trade-api/v2` directly via
  * the global `fetch`. Auth methods sign each request with the RSA-PSS
- * signer in `./kalshi-auth.ts`; credentials come from env vars only
- * (`KALSHI_API_KEY_ID`, `KALSHI_PRIVATE_KEY_PATH`).
+ * signer in `./kalshi-auth.ts`.
+ *
+ * Environment variables:
+ *  - `KALSHI_API_KEY_ID` — Kalshi API key UUID (required for auth calls).
+ *  - `KALSHI_PRIVATE_KEY_PATH` — absolute path to a PEM-encoded RSA
+ *    private key (required for auth calls).
+ *  - `KALSHI_API_BASE` — REST base URL. Defaults to
+ *    `https://demo-api.kalshi.co/trade-api/v2`; set to
+ *    `https://api.elections.kalshi.com/trade-api/v2` for prod.
  *
  * Identifier conventions:
  *  - `marketId` is the Kalshi market ticker (e.g.

@@ -12,10 +12,15 @@
  * signature uses RSA-PSS with SHA-256, MGF1-SHA-256, and a salt length
  * equal to the SHA-256 digest length (32 bytes).
  *
- * Credentials come from env vars: `KALSHI_API_KEY_ID` (UUID) and
- * `KALSHI_PRIVATE_KEY_PATH` (absolute filesystem path to a PEM-encoded
- * RSA private key). Either env var may be overridden per call via the
- * options bag — primarily for tests.
+ * Environment variables:
+ *  - `KALSHI_API_KEY_ID` — Kalshi API key UUID.
+ *  - `KALSHI_PRIVATE_KEY_PATH` — absolute filesystem path to a PEM-encoded
+ *    RSA private key.
+ *  - `KALSHI_API_BASE` — read by the adapter (not the signer) to select
+ *    demo vs prod; see `kalshi.ts` for the default.
+ *
+ * Either credential env var may be overridden per call via the options
+ * bag — primarily for tests.
  */
 
 import { constants, createSign } from "node:crypto";
