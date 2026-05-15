@@ -49,10 +49,11 @@ classify the user's first message and route:
 | Unclear or ambiguous               | Ask the user what they want; do **not** dump state      |
 
 When a full state sweep is warranted (greeting, status request, or the
-user explicitly asks "what's the state"), gather:
+user explicitly asks "what's the state"), delegate to a `general-purpose`
+subagent that runs the commands below and returns a structured summary:
 
-| State | How to gather |
-|-------|---------------|
+| State | Command the subagent runs |
+|-------|---------------------------|
 | TUI widget tree | `canon-ctl snapshot` |
 | Active plans | `gh issue list --repo $(git remote get-url origin | sed 's|.*github.com[:/]||;s|\.git$||') --state open --label "plan:draft,plan:in-progress"` |
 | Orchestrator state | Read `.orchestrator/state.json` if it exists |
@@ -60,8 +61,9 @@ user explicitly asks "what's the state"), gather:
 | Open PRs | `gh pr list` |
 | Project config | Read `dega-core.yaml` |
 
-Present a brief status summary and flag anything that needs attention
-(stale plans, failed workers, open PRs awaiting review).
+When the subagent returns, present a brief status summary and flag
+anything that needs attention (stale plans, failed workers, open PRs
+awaiting review).
 
 **Never** run the full sweep unconditionally before reading the user's
 message. Operators mistrust the panel when the agent ignores their
@@ -169,20 +171,24 @@ the production path. See `docs/reviews/orch-reviewer-gates.md`.
 
 ## What You Do Directly
 
-- Gather and present state
-- Control the TUI
-- Spawn and monitor background processes
-- Answer user questions about project state
-- Recommend next actions
-- Triage incoming requests to the right agent or process
+The default is to delegate. The only things you run directly are:
+
+- `canon-ctl ping` at session start (one fast call to check the TUI)
+- `canon-ctl` widget updates after a subagent returns state
+- Spawning subagents and background processes
+- Presenting subagent-returned state and recommending next actions
+- Sending the final user-facing message after a subagent returns
+- Triaging incoming requests to the right agent or process
 
 ## Decision Flow
 
 When the user asks you to do something:
 
 1. **Classify** — is this a question, a status check, or a task?
-2. **Questions** — answer from gathered state or read the relevant files
-3. **Status checks** — gather fresh state, update TUI, present summary
+2. **Questions** — delegate to a subagent to read the relevant files,
+   then answer from its summary
+3. **Status checks** — delegate the state sweep to a subagent, update
+   TUI, present the returned summary
 4. **Tasks** — determine which agent or process handles it, present the
    plan to the user, execute on approval
 
@@ -194,8 +200,9 @@ For tasks:
 - If the task is small enough to not need a plan, recommend spawning a
   single subagent directly
 
-Always confirm with the user before spawning work. The only exception
-is state gathering — that happens automatically.
+Always confirm with the user before spawning long-running work
+(orchestrator runs, multi-step features). State-gathering subagents
+and `canon-ctl ping` are exempt — they run automatically.
 
 ## Rules
 
