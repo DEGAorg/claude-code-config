@@ -491,11 +491,29 @@ if [[ "${review_rc}" -eq 124 ]]; then
     '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
   orch_write_state "${SLUG}" "${updated}"
 elif [[ "${review_rc}" -ne 0 ]]; then
-  echo "orch-engine: orch-review.sh exited with rc=${review_rc} — REVISE" >&2
+  # An orch-review.sh non-zero rc (script crash OR legitimate "nothing
+  # to review" error when all items are terminally failed) is a HALT
+  # condition, not a legitimate REVISE verdict. The previous behaviour
+  # set REVIEW_RESULT=REVISE and re-execed the wave — an infinite loop
+  # when the underlying cause was "all items failed", since each wave
+  # would re-enter the same state. Mirrors the document-phase fix.
+  echo "orch-engine: orch-review.sh exited with rc=${review_rc} — REVIEW_FAILED (halting plan)" >&2
+  # Mark items still in "reviewing" as failed (mirrors timeout branch).
+  reviewing_ids=$(jq -r '.items[] | select(.reviewStatus == "reviewing") | .id' \
+    "${ORCH_STATE_FILE}")
   now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-  updated=$(jq --arg now "${now}" \
-    '.finalReview.result = "REVISE" | .updatedAt = $now' "${ORCH_STATE_FILE}")
-  orch_write_state "${SLUG}" "${updated}"
+  state=$(cat "${ORCH_STATE_FILE}")
+  for rid in ${reviewing_ids}; do
+    state=$(printf '%s' "${state}" | jq \
+      --argjson id "${rid}" \
+      --arg now "${now}" \
+      '(.items[] | select(.id == $id)).reviewStatus = "failed" |
+       .updatedAt = $now')
+  done
+  state=$(printf '%s' "${state}" | jq \
+    --arg now "${now}" \
+    '.finalReview.result = "REVIEW_FAILED" | .updatedAt = $now')
+  orch_write_state "${SLUG}" "${state}"
 fi
 
 write_heartbeat
@@ -1161,6 +1179,29 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
   write_heartbeat
   exit 0
 elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
+  # Wave-bail gate: if no items are recoverable (all are in terminal
+  # done/failed/skipped state, or all hit max_iterations and were
+  # marked failed), halt instead of re-execing the wave. Otherwise the
+  # engine loops indefinitely on a state where nothing can change —
+  # observed when orch-review.sh's "nothing to review" rc=1 was misread
+  # as REVISE despite every item being terminally failed.
+  RECOVERABLE=$(jq '[.items[] | select(.status == "ready" or .status == "running" or .status == "queued" or .status == "pending")] | length' "${ORCH_STATE_FILE}")
+  if [[ "${RECOVERABLE}" -eq 0 ]]; then
+    echo ""
+    echo "orch-engine: REVISE requested but no recoverable items remain — halting plan" >&2
+    echo "  All items are in terminal state (done/failed/skipped) or exhausted max iterations." >&2
+    echo "  Inspect ${LOG_DIR}/ and the worktree at" >&2
+    echo "  ${ORCH_STATE_DIR}/worktrees/${SLUG} to triage." >&2
+    orch_master_deregister "${SLUG}" "failed"
+    now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    updated=$(jq \
+      --arg now "${now}" \
+      '.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+    orch_write_state "${SLUG}" "${updated}"
+    write_heartbeat
+    exit 1
+  fi
+
   echo ""
   echo "orch-engine: REVISE — some items need rework"
   echo "  Re-running wave execution for rework items..."
@@ -1189,6 +1230,19 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
   fi
   # shellcheck disable=SC2086
   exec "${SCRIPT_DIR}/orch-engine.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" --max-iterations "${MAX_ITERATIONS}" ${BACKGROUND_FLAG}
+elif [[ "${REVIEW_RESULT}" == "REVIEW_FAILED" ]]; then
+  echo ""
+  echo "orch-engine: REVIEW phase failed — halting plan" >&2
+  echo "  Inspect ${LOG_DIR}/reviewer-*.log and the worktree at" >&2
+  echo "  ${ORCH_STATE_DIR}/worktrees/${SLUG} to triage." >&2
+  orch_master_deregister "${SLUG}" "failed"
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq \
+    --arg now "${now}" \
+    '.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+  write_heartbeat
+  exit 1
 elif [[ "${REVIEW_RESULT}" == "DOCUMENT_FAILED" ]]; then
   echo ""
   echo "orch-engine: DOCUMENTING phase failed — halting plan" >&2
