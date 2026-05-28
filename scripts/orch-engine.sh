@@ -572,8 +572,27 @@ if [[ "${REVIEW_RESULT}" == "SHIP" ]]; then
       "${document_timeout_secs}" "${document_blocking}"
     REVIEW_RESULT="REVISE"
   elif [[ "${document_rc}" -ne 0 ]]; then
-    echo "orch-engine: orch-document.sh exited with rc=${document_rc} — REVISE" >&2
-    REVIEW_RESULT="REVISE"
+    # An orch-document.sh CRASH (rc != 0, != 124) is a bug, not a legitimate
+    # REVISE verdict. Halt so the crash surfaces for diagnosis instead of
+    # being papered over by a rework loop. Mark items still in `documenting`
+    # as failed so a resumed plan does not re-enter the same broken phase.
+    # Mirrors the timeout branch above.
+    echo "orch-engine: orch-document.sh exited with rc=${document_rc} — DOCUMENT_FAILED (halting plan)" >&2
+    documenting_ids=$(jq -r '.items[] | select(.docStatus == "documenting") | .id' \
+      "${ORCH_STATE_FILE}")
+    if [[ -n "${documenting_ids}" ]]; then
+      now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      state=$(cat "${ORCH_STATE_FILE}")
+      for did in ${documenting_ids}; do
+        state=$(printf '%s' "${state}" | jq \
+          --argjson id "${did}" \
+          --arg now "${now}" \
+          '(.items[] | select(.id == $id)).docStatus = "failed" |
+           .updatedAt = $now')
+      done
+      orch_write_state "${SLUG}" "${state}"
+    fi
+    REVIEW_RESULT="DOCUMENT_FAILED"
   else
     DOC_RESULT=$(jq -r '.documentation.result // "UNKNOWN"' "${ORCH_STATE_FILE}")
     if [[ "${DOC_RESULT}" == "REVISE" ]]; then
@@ -1170,6 +1189,19 @@ elif [[ "${REVIEW_RESULT}" == "REVISE" ]]; then
   fi
   # shellcheck disable=SC2086
   exec "${SCRIPT_DIR}/orch-engine.sh" "${SLUG}" --max-workers "${MAX_WORKERS}" --max-iterations "${MAX_ITERATIONS}" ${BACKGROUND_FLAG}
+elif [[ "${REVIEW_RESULT}" == "DOCUMENT_FAILED" ]]; then
+  echo ""
+  echo "orch-engine: DOCUMENTING phase failed — halting plan" >&2
+  echo "  Inspect ${LOG_DIR}/documenter-*.log and the worktree at" >&2
+  echo "  ${ORCH_STATE_DIR}/worktrees/${SLUG} to triage." >&2
+  orch_master_deregister "${SLUG}" "failed"
+  now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  updated=$(jq \
+    --arg now "${now}" \
+    '.status = "failed" | .updatedAt = $now' "${ORCH_STATE_FILE}")
+  orch_write_state "${SLUG}" "${updated}"
+  write_heartbeat
+  exit 1
 elif [[ "${REVIEW_RESULT}" == "FORMATTING_FAILED" ]]; then
   echo ""
   echo "orch-engine: FORMATTING phase failed — halting plan" >&2

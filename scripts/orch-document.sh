@@ -387,10 +387,10 @@ spawn_documenter() {
     printf '%s\n' "${prompt_body}"
     printf '\n---\n\n'
     printf '## Your Assignment\n\n'
-    printf '- **Item ID**: %s\n' "${item_id}"
-    printf '- **Item description**: %s\n' "${item_desc}"
-    printf '- **Inputs directory**: %s/inputs\n' "${WORKTREE_DIR}"
-    printf '- **Working directory**: %s\n' "${WORKTREE_DIR}"
+    printf -- '- **Item ID**: %s\n' "${item_id}"
+    printf -- '- **Item description**: %s\n' "${item_desc}"
+    printf -- '- **Inputs directory**: %s/inputs\n' "${WORKTREE_DIR}"
+    printf -- '- **Working directory**: %s\n' "${WORKTREE_DIR}"
   } >"${prompt_file}"
 
   rm -f "${DOC_DIR}/item-${item_id}.txt"
@@ -473,7 +473,16 @@ persist_pending_reports() {
       continue
     fi
 
-    if printf '%s\n' "${live_windows}" | grep -q "^${window_name} 1$"; then
+    # Persist when the window is NOT alive — either `pane_dead=1` (exited
+    # but still listed) OR gone entirely (default tmux removes a window
+    # when its pane exits, so between two polls a window can transition
+    # alive → gone without ever being observed as pane_dead=1). The
+    # pipe-pane log is written eagerly to ${raw_log}, so it exists even
+    # when tmux has already dropped the window. Without this, a clean
+    # documenter exit between polls leaves docStatus=documenting until
+    # detect_stale_documenters marks it failed — triggering a spurious
+    # REVISE loop on items the doc-writer actually completed.
+    if ! printf '%s\n' "${live_windows}" | grep -q "^${window_name} 0$"; then
       if [[ -f "${raw_log}" ]]; then
         orch_document_persist_report "${SLUG}" "${item_id}" "${raw_log}"
       else
