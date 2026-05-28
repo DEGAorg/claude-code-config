@@ -31,6 +31,29 @@ state() {
   fi
 }
 
+# ── Trap: fail loud on early exit ────────────────────────────────────────────
+#
+# Previous behavior: if the template copy was interrupted (Ctrl-C, parent
+# process kill, system signal), the script died under set -e but left a
+# partial scaffold behind. The next /canon-start run would then either
+# fail late (the verify step caught it) or silently proceed against a
+# half-populated dir. Trap EXIT so any abort before SCAFFOLD_COMPLETE
+# prints a clear diagnostic and tells the user how to recover.
+SCAFFOLD_COMPLETE=0
+abort_partial() {
+  local rc=$?
+  if [[ ${SCAFFOLD_COMPLETE} -eq 1 ]]; then
+    return 0
+  fi
+  echo "" >&2
+  echo "error: canon-scaffold aborted before completion (exit ${rc})" >&2
+  echo "  partial state may have been written to ${PROJECT_DIR}" >&2
+  echo "  to retry: empty the directory and re-run canon-scaffold" >&2
+  state status=error error="aborted before completion (exit ${rc})" \
+    log.error="canon-scaffold aborted before completion"
+}
+trap abort_partial EXIT
+
 # ── Guard: don't run inside claude-code-config itself ────────────────────────
 if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null; then
   echo "error: run canon-init from your strategy project, not from claude-code-config" >&2
@@ -38,9 +61,18 @@ if [[ -f "AGENTS.md" ]] && grep -q "claude-code-config" "AGENTS.md" 2>/dev/null;
 fi
 
 # ── Guard: check for existing .canon/ ────────────────────────────────────────
+#
+# `scripts/canon.sh` creates `.canon/state.json` at launch — well before
+# the scaffold runs — so the directory exists but is bootstrap-only (no
+# agents/, no skills/, no workflows/). Treat that case as auto-force so
+# the first `/canon-start` doesn't trip the guard. A "real" scaffold
+# leaves agents/ and skills/ in place; require --force then.
 if [[ -d ".canon" && "${FORCE}" != "true" ]]; then
-  echo "error: .canon/ already exists. Use --force to overwrite." >&2
-  exit 1
+  if [[ -d ".canon/agents" || -d ".canon/skills" ]]; then
+    echo "error: .canon/ already exists. Use --force to overwrite." >&2
+    exit 1
+  fi
+  echo "canon-init: .canon/ is bootstrap-only (no agents/skills) — proceeding"
 fi
 
 # ── Guard: templates directory must exist ────────────────────────────────────
@@ -94,14 +126,63 @@ if [[ ! -d ".git" ]]; then
 fi
 
 # ── 1. Copy templates as project root ────────────────────────────────────────
+#
+# Skip `node_modules/` (and the dev-only npm `package-lock.json` that
+# coexists with our pnpm lock): both are heavy, contain thousands of
+# symlinks from pnpm's content-addressed store, and have been the
+# observed source of mid-copy hangs/aborts on macOS. `pnpm install`
+# recreates `node_modules/` deterministically from `pnpm-lock.yaml`, so
+# nothing of value is lost.
 echo "→ copying project templates..."
-cp -a "${TEMPLATE_DIR}/." "${PROJECT_DIR}/"
+SCAFFOLD_SKIP=(node_modules package-lock.json)
+
+# Returns 0 if $1 is in SCAFFOLD_SKIP, 1 otherwise.
+should_skip() {
+  local name="$1"
+  for s in "${SCAFFOLD_SKIP[@]}"; do
+    [[ "${name}" == "${s}" ]] && return 0
+  done
+  return 1
+}
+
+shopt -s dotglob nullglob
+expected_entries=()
+for entry in "${TEMPLATE_DIR}"/*; do
+  name="$(basename "${entry}")"
+  should_skip "${name}" && continue
+  expected_entries+=("${name}")
+  cp -a "${entry}" "${PROJECT_DIR}/"
+done
+shopt -u dotglob nullglob
+
+# Post-copy verification: every expected top-level entry must actually
+# exist at the destination. The previous single `cp -a TEMPLATE_DIR/.`
+# could be interrupted mid-traversal (Ctrl-C, parent-process kill,
+# filesystem stall on node_modules' 2k+ symlinks) and leave a partial
+# scaffold whose state.json never advanced past "Git repo initialized."
+# Per-entry copy plus this explicit existence check turns any partial
+# copy into a loud, actionable failure instead of a silent half-success.
+missing_entries=()
+for name in "${expected_entries[@]}"; do
+  if [[ ! -e "${PROJECT_DIR}/${name}" ]]; then
+    missing_entries+=("${name}")
+  fi
+done
+if [[ ${#missing_entries[@]} -gt 0 ]]; then
+  echo "error: template copy incomplete — missing ${#missing_entries[@]} of ${#expected_entries[@]} top-level entries:" >&2
+  for name in "${missing_entries[@]}"; do
+    echo "  - ${name}" >&2
+  done
+  state status=error error="template copy incomplete (${#missing_entries[@]} missing)" \
+    log.error="Template copy incomplete"
+  exit 1
+fi
 
 # Stamp the actual project name into package.json and dega-core.yaml
 sed_inplace "s/\"name\": \"canon-templates\"/\"name\": \"${PROJECT_NAME}\"/" package.json
 sed_inplace "s/strategy: canon-templates/strategy: ${PROJECT_NAME}/" dega-core.yaml
 
-state log.info="Project templates copied"
+state log.info="Project templates copied (${#expected_entries[@]} top-level entries)"
 
 # ── 2. Create runtime directories ────────────────────────────────────────────
 mkdir -p .canon/execution .canon/workflows
@@ -221,3 +302,5 @@ echo "  2. Start claude and run /canon-start"
 
 state phase=init status=running \
   log.info="Canon framework initialized — ready for next phase"
+
+SCAFFOLD_COMPLETE=1

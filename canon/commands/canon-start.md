@@ -2,59 +2,10 @@
 
 @description Guided entry point for Canon prediction-market development — detects project phase and drives the full pipeline.
 
-Run every step below in order. Do not stop between steps unless explicitly told to.
-
-**Output rules — STRICT:**
-- **Use the Bash tool directly, never the Task tool.** Every fenced
-  bash block here is infrastructure (scaffold, install, wallet ensure,
-  state writes), not authored work. Issue each via the Bash tool
-  yourself. Do **not** spawn Task subagents to "run the bash" — they
-  fabricate completion without executing. There is no agent to
-  delegate to; the bash call IS the work.
-- **Scope override for the Canon-TUI agent_context rule.** When this
-  command runs inside Canon TUI, the canon-tui agent_context.md tells
-  you "Never echo tool output" and "The panel IS the answer". Those
-  rules apply **only to `canon-ctl` panel-control commands** (e.g.
-  `canon-ctl action "screen.show_state"`) — not to anything else in
-  this file. For `canon-scaffold.sh`, `pnpm install`, `canon-cli`,
-  `terminal-ui-write.sh`, and every other bash block in `/canon-start`,
-  you MUST issue the Bash tool call and report the actual outcome from
-  its stdout/stderr. The panel only shows what `state.json` writes
-  produce, and those writes are themselves bash blocks here — if you
-  skip the calls, the panel never moves and the work never happens.
-- **Every fenced ` ```bash ` block in this file is a Bash tool call
-  contract.** You MUST issue the actual Bash tool call for each one —
-  the scaffold script, `pnpm install`, `canon-cli wallet ensure`, state
-  writes, all of them. Reading the block is not running it. The tool
-  call itself is the work; the phase-name line is the summary. The
-  "minimize tool calls" and "no narration" rules below mean *combine
-  related checks into one bash block* and *don't add explanatory prose*
-   — they do NOT mean *skip the bash block and narrate completion*.
-   Skipping a required bash block to keep output terse is a
-   hallucination, not concision.
-- **Never fabricate tool output OR narrated completion.** Every shell
-  result you cite OR summarize MUST be grounded in an actual Bash tool
-  call from this session. Forbidden summaries unless preceded by a
-  real tool call with matching output: "Init complete", "Scaffold
-  created", "X packages installed", "Wallet exists at 0x…",
-  "Files fetched", "Agents installed". These are CLAIMS OF EXECUTION
-  and need a corresponding Bash tool call in this session to
-  substantiate. If a tool call returns nothing, say "Bash returned
-  empty" and stop. If you cannot run a required command — or its
-  result is empty when it shouldn't be — stop and tell the user. Do
-  not fill in plausible output from memory (wallet addresses, file
-  listings, package counts, "scaffold complete" claims). Do not
-  narrate fictional completion.
-- **Minimize tool calls.** Every Bash call prints output in the chat window.
-  Combine checks into single scripts. Never run individual file-existence
-  checks, ls commands, or env-var echoes as separate tool calls.
-- **Suppress noisy output.** Redirect stdout/stderr to `/dev/null` on any
-  check whose result you only need as an exit code (tests, tsc, lint).
-- **One line per phase.** No blockquotes, bullet lists, log paths, status
-  summaries, or explanatory paragraphs. The TUI dashboard shows state,
-  metrics, and logs — never duplicate that in chat.
-- **No narration.** Do not describe what you are about to do, what you just
-  did, or what you found. Just do it and print the phase name.
+Run every step below in order. Quote real shell output for anything
+you cite; don't pretend a command ran when it didn't. Keep chat output
+brief — phase names + decisions + user questions. State detail goes to
+the Canon TUI panel via `terminal-ui-write.sh`, not chat.
 
 ---
 
@@ -574,29 +525,24 @@ let the operator inspect and decide.
 
 ## Graceful degradation
 
-This command expects to be launched via `./canon.sh`, which uses either the
-Canon TUI (`canon run`) or tmux as a fallback.
-Dashboard state writes degrade gracefully:
+This command works regardless of how the session was launched (Canon TUI,
+tmux, plain terminal, IDE). Dashboard state writes degrade silently when
+the writer is missing — that's the only environment-dependent behavior.
 
-| Component | If missing | Behavior |
-|-----------|-----------|----------|
-| Neither Canon TUI nor tmux detected | Stop with message | User told to run `./canon.sh` first |
-| `$DEGA_CORE_HOME/scripts/terminal-ui-write.sh` | Skip state file writes | No dashboard updates, workflow still runs |
+Every `terminal-ui-write.sh` call in this command is guarded with
+`[[ -f "${TUI_WRITE}" ]] &&`. If the script does not exist, the call is
+skipped silently — no error, no repeated warnings.
 
-**Canon TUI detection:** The session is valid if ANY of these are true:
-- `$TMUX` is set (tmux fallback)
-- `$CANON_TUI` is set (Canon TUI / canon-tui)
-- `.canon/state.json` exists and was updated within the last 5 minutes (TUI wrote init state)
-
-Every `terminal-ui-write.sh` call in this command is already guarded with
-`[[ -f "${TUI_WRITE}" ]] &&`. If the script
-does not exist, the call is skipped silently — no error, no repeated warnings.
+Do **not** gate the pipeline on `$TMUX`, `$CANON_TUI`, `$TOAD_CWD`, or
+any other env-var meant to signal "running inside a TUI." Those signals
+do not propagate reliably through the canon-tui → claude-code-acp → claude
+chain, and a missing dashboard is not a failure — phases still run, state
+file still gets written when the writer is installed. Just proceed.
 
 ---
 
 ## Completion criteria
 
-- TUI environment verified at entry — stops if not inside Canon TUI or tmux
 - Phase detection correctly identifies the project's current state
 - Each phase delegates to the right sub-command logic (canon-scaffold.sh, discover, develop)
 - State file is updated at each phase transition (when terminal-ui-write.sh is available)

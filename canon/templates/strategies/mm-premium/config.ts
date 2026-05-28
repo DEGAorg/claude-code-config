@@ -71,7 +71,12 @@ export interface MintPremiumConfig {
 export const DEFAULT_MM_PREMIUM_CONFIG: MintPremiumConfig = {
   kellyFraction: 1.0,
   maxExposure: 0.25,
-  hurdleRate: 0.0133,
+  // hurdleRate ships at 0 so the $5 smoke default actually finds a
+  // viable market. The C2 spec gate is 0.0133 (1.33% net/capital) — at
+  // that level the strategy needs ≥~$154 cycleCapital to clear gas. Raise
+  // this when you raise cycleCapital for production. Setting it >0 with
+  // a small cycleCapital will reject every market.
+  hurdleRate: 0,
   feeRate: 0.0017,
   gasCost: 0.05,
   lpRebate: 0.325,

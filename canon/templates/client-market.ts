@@ -7,6 +7,7 @@
  * to obtain a cached instance for the configured venue.
  */
 
+import { KalshiAdapter } from "./adapters/kalshi.js";
 import { PolymarketAdapter } from "./adapters/polymarket.js";
 
 // ---------------------------------------------------------------------------
@@ -335,7 +336,8 @@ export interface MarketClient {
 // ---------------------------------------------------------------------------
 
 const VENUE_FACTORIES: Record<string, () => MarketClient> = {
-  polymarket: () => new PolymarketAdapter(),
+  "polymarket": () => new PolymarketAdapter(),
+  "kalshi": () => new KalshiAdapter(),
 };
 
 const cache = new Map<string, MarketClient>();

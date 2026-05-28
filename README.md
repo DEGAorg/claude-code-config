@@ -534,8 +534,8 @@ Once a workflow is a command, it's not just faster for you -- it's something an 
 ## Canon: Prediction Market Trading
 
 [Canon](docs/canon-quickstart.md) is the layer that turns DEGA Core into a
-prediction-market trading harness. It ships a TypeScript runner, a venue
-adapter for Polymarket (with Kalshi planned), six pre-built strategies
+prediction-market trading harness. It ships a TypeScript runner, venue
+adapters for Polymarket (live) and Kalshi (demo, REST-only PoC), six pre-built strategies
 (`trade-momentum`, `arb-binary`, `arb-negrisk-buy`, `fair-value`,
 `mint-01`, `mm-premium`), and a single slash command — `/canon-start` —
 that drives a fresh project from empty directory to validated dry-run.
