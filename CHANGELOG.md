@@ -6,9 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- `canon/templates/adapters/KALSHI.md` — Kalshi adapter integration guide
+  for partner share: file map, env vars, RSA-PSS auth, `MarketClient`
+  capability matrix per method, order shape (TIF mapping + dollar-string
+  prices), live smoke runbook. Calls out that `watchOrderBook` /
+  `watchTrades` are REST snapshots today, not WS — streaming and a real
+  subscriber are Phase-2 scope. Also refreshes the stale `README.md` line
+  that still listed Kalshi as "planned" after `20260515-kalshi-poc`
+  shipped (`92b103d5`) — 2026-05-22
 
 ### Changed
 - Kalshi adapter PoC — full demo coverage (`20260515-kalshi-poc`) — 2026-05-15
+
+### Fixed
+- `canon/templates/adapters/kalshi.ts` `createOrder` / `buildOrder` — the
+  `MarketClient` `time_in_force` enum (`GTC` / `IOC` / `FOK`) is now
+  mapped to Kalshi's snake_case values (`good_till_canceled` /
+  `immediate_or_cancel` / `fill_or_kill`) instead of being passed
+  through verbatim. Prices switched from the deprecated integer-cent
+  `yes_price` / `no_price` fields (removed by Kalshi in March 2026) to
+  `yes_price_dollars` / `no_price_dollars` with 4-decimal sub-penny
+  precision. Live smoke (`RUN_LIVE=1 RUN_ORDER=1`) now places and
+  cancels a real order end-to-end (`66c0b822`) — 2026-05-15
 
 ## [0.1.9] — 2026-05-13
 
