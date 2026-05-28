@@ -92,7 +92,7 @@ uv tool install "canon-tui @ git+https://github.com/DEGAorg/canon-tui.git@main" 
 | **Commands** | `config/commands/` | `/plan`, `/fix-issue`, `/review-pr`, `/cleanup`, `/doc-garden`, `/core-init` |
 | **Rules** | `config/rules/` | Language standards (Python, TypeScript, Rust, Bash, GitHub Actions) |
 | **Skills** | `config/skills/` | App legibility, custom linters, sound notifications |
-| **Agents** | `config/agents/` | Worker, verifier, and planner agent prompts |
+| **Agents** | `config/agents/` | Worker and verifier agent prompts |
 | **Hooks** | `scripts/hooks/` | Guardrails: block `rm -rf`, enforce package manager, play sounds |
 | **Orchestrator** | `scripts/orch-*.sh` | Parallel plan execution engine (needs `tmux`, `jq`) |
 | **Terminal UI** | `scripts/terminal-ui/` | Ink dashboard for monitoring runs (needs `node`, `pnpm`) |

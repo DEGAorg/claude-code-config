@@ -10,9 +10,9 @@ Defer state detail to the Canon TUI panel via `terminal-ui-write.sh`;
 chat is for phase names, decisions, and user questions.
 
 For code, tests, edits, and feature work, delegate to the appropriate
-subagent (Canon agents, orchestrator workers, planner). For state
-queries and the bash blocks inside slash commands like `/canon-start`,
-run them yourself.
+subagent (Canon agents, orchestrator workers). For state queries and
+the bash blocks inside slash commands like `/canon-start`, run them
+yourself.
 
 ## Persona
 
