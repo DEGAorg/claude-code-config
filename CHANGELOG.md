@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   shipped (`92b103d5`) — 2026-05-22
 
 ### Changed
+- Update CHANGELOG Unreleased section with latest Kalshi commits (`20260527-changelog-kalshi-update`) — 2026-05-28
+
 - Kalshi adapter PoC — full demo coverage (`20260515-kalshi-poc`) — 2026-05-15
 
 ### Fixed
