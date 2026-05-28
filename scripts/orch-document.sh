@@ -199,13 +199,21 @@ orch_document_parse_report() {
 
   local text
   # stream-json lines: { "type": "assistant", "message": { "content": [...] } }
-  text=$(jq -rs '
+  #
+  # The pipe-pane log includes everything the tmux pane emitted — and at
+  # close time tmux writes terminal-restore ANSI escape sequences plus our
+  # `--- documenter N exited ---` marker. Those trailing non-JSON bytes
+  # land on the log's last line and crash `jq -rs` (slurp), which then
+  # returns nothing — leaving the parser to fall back to raw bytes that
+  # awk's fence regex can't match, so even a clean PASS / NO_CHANGES_NEEDED
+  # report would be miscategorized as FAIL. Prefilter to JSON-object lines.
+  text=$(grep '^{' "${log_file}" | jq -rs '
     map(select((.type? // "") == "assistant"))
     | map(.message.content // [])
     | flatten
     | map(select((.type? // "") == "text") | .text)
     | join("\n")
-  ' "${log_file}" 2>/dev/null) || text=""
+  ' 2>/dev/null) || text=""
 
   if [[ -z "${text}" ]]; then
     text=$(cat "${log_file}" 2>/dev/null || printf '')
