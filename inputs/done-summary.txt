@@ -1,0 +1,53 @@
+# Item 1 — Add the two missing Kalshi entries to CHANGELOG `[Unreleased]`
+
+## Clause checklist
+
+- Clause 1: Add entry for `66c0b822` (fix(kalshi): map TIF to snake_case + use dollar-string prices, 2026-05-15) — DONE
+  - Added under `### Fixed` in `[Unreleased]` at CHANGELOG.md:21-29. Mentions
+    TIF mapping (`good_till_canceled` / `immediate_or_cancel` /
+    `fill_or_kill`), the deprecated integer-cent fields, the new
+    `yes_price_dollars` / `no_price_dollars` 4-decimal precision, and the
+    live smoke runbook (`RUN_LIVE=1 RUN_ORDER=1`).
+
+- Clause 2: Add entry for `92b103d5` (docs(kalshi): add adapter integration guide for partner share, 2026-05-22) — DONE
+  - Added under `### Added` in `[Unreleased]` at CHANGELOG.md:4-12.
+    References `canon/templates/adapters/KALSHI.md` by full path, describes
+    the guide contents (file map, env vars, RSA-PSS auth, capability matrix,
+    order shape, smoke runbook), notes the Phase-2 streaming caveat, and
+    folds in the `README.md` "planned" → live PoC refresh from the same
+    commit.
+
+- Clause 3: Both entries live in the `[Unreleased]` section — DONE
+  - Verified by inspecting the section anchored at CHANGELOG.md:7
+    (`## [Unreleased]`) through CHANGELOG.md:29; both new entries sit
+    above the existing `## [0.1.9]` heading.
+
+## Completion criteria verification
+
+- `rg -qi 'tif|snake_case|dollar' CHANGELOG.md` → exit 0 ✓
+- `rg -qi 'integration guide|adapter.*guide|KALSHI\.md' CHANGELOG.md` → exit 0 ✓
+- `git diff --name-only HEAD | grep -qx CHANGELOG.md` → exit 0 (only CHANGELOG.md changed) ✓
+
+## Summary
+
+Updated `CHANGELOG.md` `[Unreleased]` with two new entries covering commits
+that landed on `develop` after the Kalshi PoC: an `### Added` entry for the
+`KALSHI.md` adapter integration guide (`92b103d5`, 2026-05-22), and a
+`### Fixed` entry for the TIF snake_case mapping + dollar-string price
+fields fix (`66c0b822`, 2026-05-15). The existing `### Changed` Kalshi PoC
+line is unchanged. Only `CHANGELOG.md` was modified.
+
+### Decisions / gotchas for the next worker
+
+- The plan's `## Approach` suggested a `### Docs` subsection, but the file
+  header explicitly declares Keep a Changelog format, whose categories are
+  Added/Changed/Deprecated/Removed/Fixed/Security — there is no `### Docs`
+  bucket. Every other doc-only addition in this file (e.g. v0.1.5's
+  `docs/market-client-smoke-test.md`, v0.1.3's `docs/orch-agent-notifications.md`)
+  is filed under `### Added`. I followed that convention. The integration
+  guide entry also folds in the small README touch-up from the same
+  commit, since separating it would split one logical change across two
+  bullets.
+- Section ordering inside `[Unreleased]` follows Keep a Changelog
+  convention: Added → Changed → Fixed.
+- No commit made (per orchestrator rules).

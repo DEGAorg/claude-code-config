@@ -1,0 +1,1 @@
+Add the two missing Kalshi entries to the `CHANGELOG.md` `[Unreleased]` section
