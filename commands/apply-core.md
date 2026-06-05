@@ -44,6 +44,7 @@ Files available:
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
+- `skills/codex/**` (entire directory tree — Codex-native skills with helper files, copied wholesale by tarball)
 - `scripts/agent-shim.sh`
 - `scripts/adapters/claude-settings.sh`
 - `scripts/adapters/gemini-settings.sh`
@@ -435,6 +436,40 @@ the configured package manager.
 
 Write each skill file to `~/.degacore/config/skills/<name>.md`. Safe to
 overwrite.
+
+#### Codex Skills
+
+The `skills/codex/` tree is directories-with-helper-files (each skill has a
+`SKILL.md` plus optional `scripts/`, `playbook.md`, `agents/`), not single
+files — so it cannot use the per-file WebFetch flow above. Reuse the same
+`gh api .../tarball/main` pattern used for `canon/templates/` to pull the
+whole `skills/codex/` tree into `~/.degacore/config/skills/codex/`.
+
+This fetch runs unconditionally (the Codex-detected per-agent copy in Step 5
+sources from here), but **must fail soft** — a download, network, or `gh`-auth
+error prints a warning and continues. It must never abort the install, since
+Claude-only users do not need these skills:
+
+```bash
+rm -rf ~/.degacore/config/skills/codex
+mkdir -p ~/.degacore/config/skills
+cd /tmp && rm -rf _codex_skills && mkdir _codex_skills && cd _codex_skills
+gh api repos/DEGAorg/claude-code-config/tarball/main \
+  --header 'Accept: application/vnd.github+json' > repo.tar.gz \
+  && tar xzf repo.tar.gz --strip-components=1 \
+  && cp -R skills/codex ~/.degacore/config/skills/codex \
+  || { echo "warn: could not fetch skills/codex — skipping Codex-native skills; continuing install (Claude-only installs are unaffected)." >&2; }
+cd / && rm -rf /tmp/_codex_skills
+```
+
+Verify the Codex skill cache landed (advisory — a miss is the fail-soft path):
+
+```bash
+test -f ~/.degacore/config/skills/codex/no-edits/SKILL.md && \
+  echo "codex skills OK" || echo "codex skills MISSING (skipped or fetch failed)"
+```
+
+Safe to overwrite — this is a CORE-owned cache with no user customization.
 
 #### Logging — Global scripts
 
