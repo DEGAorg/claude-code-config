@@ -894,6 +894,21 @@ The whole-directory `cp -R` preserves each skill's helper files alongside its
 `SKILL.md`. If the Step-4 fetch failed soft (no cache), the glob matches
 nothing and the loop is a no-op — consistent with the fail-soft contract.
 
+Verify a representative sample landed — both a bare-`SKILL.md` skill and a
+skill that carries a helper file, so a copy that dropped helpers is caught
+(advisory — a miss is the fail-soft / skip-and-warn path, not an abort):
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  test -f ~/.codex/skills/no-edits/SKILL.md &&
+    test -f ~/.codex/skills/git-update/SKILL.md &&
+    test -f ~/.codex/skills/ls/SKILL.md &&
+    test -f ~/.codex/skills/ls/scripts/ls_table.py &&
+    echo "codex-native skills OK (~/.codex/skills/)" ||
+    echo "codex-native skills MISSING or skipped (fetch failed, or user dirs took precedence)"
+fi
+```
+
 ---
 
 ### 5b. Record the install version
@@ -986,6 +1001,17 @@ For the **Logging** component, include one of these lines based on the
 - If `gcp-sa.json` **found**: `Logging — GCP active (gcp-sa.json detected)`
 - If `gcp-sa.json` **absent**: `Logging — local-only (add ~/.degacore/gcp-sa.json to enable GCP)`
 
+Report the Codex-native skills **separately** from the shared flat CORE skill
+notes. The `Skills -> config/skills/ (...)` line always describes the flat,
+cross-agent knowledge files under `~/.degacore/config/skills/`. The Codex-native
+skills live under `~/.codex/skills/<skill>/SKILL.md` and are only installed when
+Codex was detected, so add this extra line **only if Codex was detected** — a
+Claude-only run must never report a Codex install:
+
+```
+Codex Skills -> ~/.codex/skills/ (calendar-create-event, git-update, ls, make-universal-skill, no-edits, transcribe-ig, transcribe-yt, word-docx-redlines)
+```
+
 List which agents were configured:
 
 ```
@@ -995,7 +1021,8 @@ Agents configured:
   Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
 ```
 
-Example summary:
+Example summary (a Claude-only run — Codex was not detected, so no
+`Codex Skills -> ~/.codex/skills/` line and no Codex agent are listed):
 
 ```
 Installed to ~/.degacore/:
