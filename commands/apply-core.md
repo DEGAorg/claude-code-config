@@ -855,6 +855,44 @@ cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 
 Same skip-and-warn handling: user files with the same name take precedence.
 
+#### Codex Skills (per-agent copy)
+
+This subsection runs **only if Codex was detected** (`HAVE_CODEX=1`). It never
+writes to `~/.claude/` or any other agent directory — the Claude install path
+is unaffected.
+
+Codex skills are directories, not single files: each `<skill>/` holds a
+`SKILL.md` plus helper files (e.g. `ls/scripts/ls_table.py`,
+`calendar-create-event/playbook.md`, `git-update/agents/openai.yaml`). Copy the
+whole directory with `cp -R` so the helper files travel with their skill.
+
+Existing user skill directories under `~/.codex/skills/` are NOT overwritten —
+skip and warn, matching the commands/rules copy behavior above.
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  mkdir -p ~/.codex/skills
+  for src in ~/.degacore/config/skills/codex/*/; do
+    [[ -d "$src" ]] || continue
+    skill=$(basename "$src")
+    dest=~/.codex/skills/"$skill"
+    if [[ -e "$dest" ]]; then
+      echo "skill '$skill' already exists at ~/.codex/skills/$skill — skipping (user version takes precedence)."
+    else
+      cp -R "$src" "$dest"
+    fi
+  done
+fi
+```
+
+Verify the copy landed (8 Codex-native skills, each with its helper files):
+
+```bash
+test -f ~/.codex/skills/no-edits/SKILL.md && \
+test -f ~/.codex/skills/ls/scripts/ls_table.py && \
+echo "codex skills OK" || echo "codex skills MISSING"
+```
+
 ---
 
 ### 5b. Record the install version
