@@ -862,6 +862,38 @@ cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 
 Same skip-and-warn handling: user files with the same name take precedence.
 
+#### Codex skills (copy per directory — Codex only)
+
+The Codex-native skills under `~/.degacore/config/skills/codex/` (populated by
+the Step-4 tarball fetch) are whole directories — each skill has a `SKILL.md`
+plus optional helper files (`scripts/`, `playbook.md`, `agents/`). Codex
+discovers them at `~/.codex/skills/<skill>/SKILL.md`.
+
+This copy runs **only when Codex is detected** (`HAVE_CODEX`). It never writes
+to `~/.claude/` or `~/.gemini/`, so the Claude-only install path is unaffected.
+Existing user skill directories are skipped (skip-and-warn), matching the
+commands/rules copy behavior above — a whole user-owned skill dir is never
+overwritten.
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  mkdir -p ~/.codex/skills
+  for skill_dir in ~/.degacore/config/skills/codex/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    if [[ -e ~/.codex/skills/"$skill_name" ]]; then
+      echo "warn: ~/.codex/skills/$skill_name already exists — skipping (user version takes precedence)." >&2
+      continue
+    fi
+    cp -R "$skill_dir" ~/.codex/skills/"$skill_name"
+  done
+fi
+```
+
+The whole-directory `cp -R` preserves each skill's helper files alongside its
+`SKILL.md`. If the Step-4 fetch failed soft (no cache), the glob matches
+nothing and the loop is a no-op — consistent with the fail-soft contract.
+
 ---
 
 ### 5b. Record the install version
