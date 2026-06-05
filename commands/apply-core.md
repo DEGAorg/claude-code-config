@@ -44,6 +44,7 @@ Files available:
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
+- `skills/codex/**` (entire directory tree — Codex-native skills with helper files; copied wholesale via tarball)
 - `scripts/agent-shim.sh`
 - `scripts/adapters/claude-settings.sh`
 - `scripts/adapters/gemini-settings.sh`
@@ -435,6 +436,33 @@ the configured package manager.
 
 Write each skill file to `~/.degacore/config/skills/<name>.md`. Safe to
 overwrite.
+
+#### Codex Skills
+
+The `skills/codex/` tree is directories-with-helper-files (SKILL.md plus
+scripts/playbooks/agent configs), not single files — so it cannot use the
+per-file WebFetch flow. Reuse the `gh api .../tarball/main` pattern (the same
+one used for `canon/templates/` below) to pull the whole `skills/codex/` tree
+into `~/.degacore/config/skills/codex/`.
+
+This fetch runs regardless of which agents are detected (the per-agent copy
+into `~/.codex/skills/` happens later, in Step 5, gated on Codex). It must
+**fail soft** — a download, network, or `gh`-auth failure prints a warning and
+continues so a Claude-only install is never aborted:
+
+```bash
+rm -rf ~/.degacore/config/skills/codex
+mkdir -p ~/.degacore/config/skills
+cd /tmp && rm -rf _codex_skills && mkdir _codex_skills && cd _codex_skills
+gh api repos/DEGAorg/claude-code-config/tarball/main \
+  --header 'Accept: application/vnd.github+json' > repo.tar.gz \
+  && tar xzf repo.tar.gz --strip-components=1 \
+  && cp -R skills/codex ~/.degacore/config/skills/codex \
+  || echo "warn: could not fetch codex skills tarball — skipping Codex-native skill install (non-Codex installs unaffected, continuing)"
+cd / && rm -rf /tmp/_codex_skills
+```
+
+Safe to overwrite — these are CORE-owned skill files with no user customization.
 
 #### Logging — Global scripts
 
