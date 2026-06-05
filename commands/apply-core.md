@@ -976,6 +976,25 @@ Do not copy, read, or transmit the key contents. Only check for its presence.
 
 ### 8. Post-install
 
+If Codex was detected (`HAVE_CODEX=1`), verify the Codex-native skills landed
+in `~/.codex/skills/`. This runs **only** when Codex is present — it never
+touches `~/.claude/` and is skipped entirely on Claude-only installs. Check a
+representative SKILL.md plus a helper file that travels with its skill:
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  test -f ~/.codex/skills/no-edits/SKILL.md && \
+  test -f ~/.codex/skills/ls/SKILL.md && \
+  test -f ~/.codex/skills/ls/scripts/ls_table.py && \
+  echo "codex skills OK (8 skills + helper files)" || \
+  echo "codex skills MISSING — re-run /apply-core or check the Step-4 tarball fetch"
+fi
+```
+
+`ls/scripts/ls_table.py` is the representative helper file — its presence
+confirms `cp -R` carried the nested helpers (scripts, playbooks, agent
+configs) alongside each `SKILL.md`.
+
 Summarize what was installed or updated. Use a checklist format, one line per
 component. Note any manual steps (e.g. agent template diff review).
 
@@ -991,8 +1010,12 @@ List which agents were configured:
 Agents configured:
   Claude Code — $HOME/.claude/ (settings.json, commands, rules, CLAUDE.md → AGENTS.md)
   Gemini CLI  — ~/.gemini/ (settings.json, commands, rules, GEMINI.md → AGENTS.md)
-  Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
+  Codex CLI   — ~/.codex/ (config.toml + hooks.json, skills/, AGENTS.md native)
 ```
+
+The `Codex Skills` summary line and the Codex `skills/` note above appear
+**only when Codex was detected**. On Claude-only or Gemini-only installs, omit
+both — there is no Codex-native skill install to report.
 
 Example summary:
 
@@ -1004,6 +1027,7 @@ Installed to ~/.degacore/:
   Rules -> config/rules/ (python, node-typescript, rust, bash, github-actions)
   Hooks -> scripts/hooks/ (enforce-loop-mode, enforce-exec-plan-naming, enforce-package-manager, log-gam)
   Skills -> config/skills/ (custom-linter-authoring, app-legibility, sound-notifications, canon-cli, polymarket)
+  Codex Skills -> ~/.codex/skills/ (8 Codex-native skills with helper files: calendar-create-event, git-update, ls, make-universal-skill, no-edits, transcribe-ig, transcribe-yt, word-docx-redlines)
   Logging -> scripts/log-server.py + scripts/hooks/ (local-only; add gcp-sa.json to enable GCP)
   Sounds -> sounds/ (MP3 + OGG) + scripts/hooks/play-sound.sh
   Terminal UI -> scripts/terminal-ui/ (built with pnpm)
