@@ -12,7 +12,7 @@ That's it. The agent fetches the install instructions and runs the full setup au
 
 ### Multi-agent support
 
-The orchestrator, planner, and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
+The orchestrator and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
 
 ## Contents
 
