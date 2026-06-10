@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+
+### Fixed
+- Fix Codex-native skill installation in CORE installer (`20260605-codex-skill-install`) — 2026-06-05
+
 ## [0.1.10] — 2026-05-27
 
 Unjams the orchestrator's document phase + engine dispatch end-to-end
