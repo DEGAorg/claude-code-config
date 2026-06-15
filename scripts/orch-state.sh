@@ -311,7 +311,7 @@ orch_sync_done_files() {
         local wt_changes
         wt_changes=$(git -C "${worktree_dir}" status --porcelain 2>/dev/null || true)
         if [[ -n "${wt_changes}" ]]; then
-          git -C "${worktree_dir}" add -A
+          git -C "${worktree_dir}" add -A -- '.' ':(exclude)inputs' ':(exclude)formatting'
           if git -C "${worktree_dir}" commit --no-verify \
             -m "orch: item ${item_id} — ${item_desc}"; then
             echo "orch-state: committed item ${item_id} changes in worktree"
@@ -1008,7 +1008,7 @@ orch_commit_worktree() {
   fi
 
   # Stage and commit all changes in the worktree
-  git -C "${worktree_dir}" add -A
+  git -C "${worktree_dir}" add -A -- '.' ':(exclude)inputs' ':(exclude)formatting'
   if git -C "${worktree_dir}" commit --no-verify -m "orch: ${slug} — worker changes
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"; then

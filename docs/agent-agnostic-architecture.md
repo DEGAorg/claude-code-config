@@ -94,7 +94,7 @@ to stay in sync.
 │   ├── commands/                     # apply-core, plan, fix-issue, etc.
 │   ├── rules/                        # python, node-typescript, rust, bash
 │   ├── skills/                       # app-legibility, custom-linter-authoring
-│   └── agents/                       # orch-worker, orch-verifier, planner-*
+│   └── agents/                       # orch-worker, orch-verifier, conductor
 ├── scripts/
 │   ├── agent-shim.sh                 # Provider abstraction layer
 │   ├── adapters/                     # claude-settings.sh, gemini-settings.sh, codex-settings.sh
@@ -123,5 +123,5 @@ Automatic — the shim detects the parent process. To override:
 export DEGA_PROVIDER=gemini
 ```
 
-Or simply run your scripts under the target agent's CLI. The orchestrator,
-planner, and all hooks adapt automatically.
+Or simply run your scripts under the target agent's CLI. The orchestrator
+and all hooks adapt automatically.

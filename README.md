@@ -12,7 +12,7 @@ That's it. The agent fetches the install instructions and runs the full setup au
 
 ### Multi-agent support
 
-The orchestrator, planner, and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
+The orchestrator and all hooks run identically under any supported agent. An abstraction layer ([`scripts/agent-shim.sh`](scripts/agent-shim.sh)) detects the provider at runtime and adapts CLI flags, config paths, and invocation patterns automatically. Settings are generated per-agent from a single [`settings-template.json`](settings-template.json) via adapters in [`scripts/adapters/`](scripts/adapters/). See **[Agent-Agnostic Architecture](docs/agent-agnostic-architecture.md)** for the full design.
 
 ## Contents
 
@@ -343,7 +343,7 @@ Agents' capabilities come from skills (reusable workflows, checklists, decision 
 | Kind | Source in this repo | Install behavior |
 |------|---------------------|--------------|
 | Shared skills | `skills/*.md` | Installed as agent-readable DEGA Core skill references |
-| Harness skills | `skills/claude/<name>/`, `skills/codex/<name>/` | Stored as Claude/Codex `SKILL.md` packages; copy manually until installer support lands |
+| Harness skills | `skills/claude/<name>/`, `skills/codex/<name>/` | `SKILL.md` packages. Codex skills are installed to `~/.codex/skills/` by `/apply-core` when Codex is detected; Claude skills are copied manually until installer support lands |
 | Subagents | `agents/` | `~/.claude/agents/` (Claude-only) |
 | Slash commands | `commands/` | `~/.claude/commands/`, `~/.gemini/commands/`, `~/.codex/commands/` |
 | Rules | `rules/` | `~/.claude/rules/`, `~/.gemini/rules/`, `~/.codex/rules/` |
@@ -534,8 +534,8 @@ Once a workflow is a command, it's not just faster for you -- it's something an 
 ## Canon: Prediction Market Trading
 
 [Canon](docs/canon-quickstart.md) is the layer that turns DEGA Core into a
-prediction-market trading harness. It ships a TypeScript runner, a venue
-adapter for Polymarket (with Kalshi planned), six pre-built strategies
+prediction-market trading harness. It ships a TypeScript runner, venue
+adapters for Polymarket (live) and Kalshi (demo, REST-only PoC), six pre-built strategies
 (`trade-momentum`, `arb-binary`, `arb-negrisk-buy`, `fair-value`,
 `mint-01`, `mm-premium`), and a single slash command — `/canon-start` —
 that drives a fresh project from empty directory to validated dry-run.

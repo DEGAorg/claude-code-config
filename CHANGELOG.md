@@ -6,9 +6,97 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-
 ### Added
 - Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
+
+### Fixed
+- Fix Codex-native skill installation in CORE installer (`20260605-codex-skill-install`) — 2026-06-05
+
+## [0.1.10] — 2026-05-27
+
+Unjams the orchestrator's document phase + engine dispatch end-to-end
+after a cascade of seven bugs that together made plans either crash on
+every run or loop the wave indefinitely. The work itself always finished
+in about two minutes, then the run hung on document-phase artifacts —
+which on `bash 5.3.9` manifested as the "massive time to execute plans"
+complaint. Smoke-confirmed shipping a real plan in 2 min 41 sec where
+prior runs hung until killed.
+
+Also ships the Kalshi adapter Unreleased entries (KALSHI.md integration
+guide for partner share, `createOrder` / `buildOrder` TIF + dollar-string
+fix) and folds in the `20260515-kalshi-poc` line that was sitting in
+Unreleased through the 0.1.9 release.
+
+### Added
+- `canon/templates/adapters/KALSHI.md` — Kalshi adapter integration guide
+  for partner share: file map, env vars, RSA-PSS auth, `MarketClient`
+  capability matrix per method, order shape (TIF mapping + dollar-string
+  prices), live smoke runbook. Calls out that `watchOrderBook` /
+  `watchTrades` are REST snapshots today, not WS — streaming and a real
+  subscriber are Phase-2 scope. Also refreshes the stale `README.md` line
+  that still listed Kalshi as "planned" after `20260515-kalshi-poc`
+  shipped (`92b103d5`) — 2026-05-22
+
+### Changed
+- Kalshi adapter PoC — full demo coverage (`20260515-kalshi-poc`) — 2026-05-15
+
+### Fixed
+- `scripts/orch-document.sh` `spawn_documenter` — `printf '- **Item ID**:
+  %s\n' …` parsed the leading `-` as an option flag under bash builtin
+  printf (`printf: - : invalid option`), exiting `rc=2` under
+  `set -euo pipefail` on every run. Guarded with `printf --`. zsh's
+  builtin tolerates it, which is why the bug hid in interactive shells
+  until a real orch run on `bash 5.3.9` triggered it.
+- `scripts/orch-document.sh` `persist_pending_reports` — inverted the
+  live-window check. The previous form only matched `pane_dead=1`
+  (window exited but still listed); tmux's default removes a window
+  when its pane exits, so between two 10s polls a window could
+  transition `alive → gone` without ever being observed as
+  `pane_dead=1`. Persist now fires whenever the window is **not alive**
+  (dead OR gone); the pipe-pane log exists either way, so a clean
+  documenter exit between polls no longer races
+  `detect_stale_documenters` into marking the item failed.
+- `scripts/orch-document.sh` `orch_document_parse_report` — prefilters
+  the documenter log with `grep '^{'` before `jq -rs`. The tmux
+  pipe-pane log captures terminal ANSI restore-state when the pane
+  closes (plus the `--- documenter N exited ---` marker), and `jq -rs`
+  slurps every line — so a single malformed trailing line broke the
+  whole parse, dropping the agent's `doc-writer-report` block and
+  miscategorizing `NO_CHANGES_NEEDED` as `FAIL`.
+- `scripts/orch-engine.sh` document-phase rc handler — a script crash
+  (`rc != 0, != 124`) was misread as a legitimate REVISE verdict and
+  triggered an unconditional rework wave — an infinite loop, since the
+  next wave hit the same crash. Now sets `DOCUMENT_FAILED`, marks items
+  still in `documenting` as failed, and halts cleanly via a new explicit
+  exit branch that mirrors `FORMATTING_FAILED`.
+- `scripts/orch-engine.sh` review-phase rc handler — same anti-pattern.
+  `orch-review.sh` legitimately exits `rc=1` with `error: no items
+  completed — nothing to review` when every item has terminally failed;
+  the engine misread that as REVISE → wave re-exec → loop. Now sets
+  `REVIEW_FAILED`, marks stuck `reviewing` items failed, and halts via a
+  new explicit exit branch.
+- `scripts/orch-engine.sh` wave-bail gate before REVISE re-exec — counts
+  items in non-terminal status (`ready/running/queued/pending`). If
+  zero, halts with `status=failed` instead of re-execing the wave on a
+  state where nothing can change. Defense in depth against future
+  REVISE-leak bugs.
+- `scripts/orch-state.sh` `git add -A` at both worktree commit sites
+  (`orch_commit_worktree` and the per-item progress commit) now use
+  pathspec excludes — `git add -A -- '.' ':(exclude)inputs'
+  ':(exclude)formatting'` — so the orch-internal `inputs/` and
+  `formatting/` scratch dirs that `stage_inputs` functions write at the
+  worktree root no longer leak into PR commits. Neither path is in the
+  repo `.gitignore` (only `/.orchestrator/` is). Observed contaminating
+  an auto-PR with ~87 lines of agent scratch alongside the real work.
+- `canon/templates/adapters/kalshi.ts` `createOrder` / `buildOrder` — the
+  `MarketClient` `time_in_force` enum (`GTC` / `IOC` / `FOK`) is now
+  mapped to Kalshi's snake_case values (`good_till_canceled` /
+  `immediate_or_cancel` / `fill_or_kill`) instead of being passed
+  through verbatim. Prices switched from the deprecated integer-cent
+  `yes_price` / `no_price` fields (removed by Kalshi in March 2026) to
+  `yes_price_dollars` / `no_price_dollars` with 4-decimal sub-penny
+  precision. Live smoke (`RUN_LIVE=1 RUN_ORDER=1`) now places and
+  cancels a real order end-to-end (`66c0b822`) — 2026-05-15
 
 ## [0.1.9] — 2026-05-13
 
