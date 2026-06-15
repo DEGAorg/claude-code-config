@@ -109,8 +109,10 @@ function logEntry(
  * timestamp whenever `active` transitions to a new non-empty value.
  *
  * Idempotent: a repeat call with the same `active` preserves the existing
- * `active_since`. When `active === ""`, `active_since` is omitted entirely
- * so the TUI's `.get("active_since", "")` reader treats the field as absent.
+ * `active_since`, or stamps a fresh one if the file was already active but
+ * missing the field (legacy/upgrade recovery). When `active === ""`,
+ * `active_since` is omitted entirely so the TUI's `.get("active_since", "")`
+ * reader treats the field as absent.
  *
  * All other fields in the file are preserved verbatim — the seeds carry
  * `nodes`/`edges` DAG metadata that the canon-tui automation panel reads,
@@ -133,7 +135,7 @@ export function updateFlow(
       active === ""
         ? undefined
         : active === flow.active
-          ? flow.active_since
+          ? (flow.active_since ?? new Date().toISOString())
           : new Date().toISOString();
 
     const next: Record<string, unknown> = { ...flow, active, completed };
