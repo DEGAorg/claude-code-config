@@ -1,10 +1,10 @@
 {
-  "steps": ["scan", "signal", "risk", "entry", "log"],
+  "steps": ["scan", "signal", "risk", "execute", "log"],
   "labels": {
     "scan": "Scan NegRisk Markets",
     "signal": "Evaluate Multi-leg Opportunity",
     "risk": "Risk + Bottleneck Check",
-    "entry": "Dry-run Emit",
+    "execute": "Dry-run Emit",
     "log": "Log"
   },
   "active": "",
@@ -16,7 +16,7 @@
     { "id": "leg_b",  "label": "Leg B buy_yes",                 "type": "build"  },
     { "id": "leg_c",  "label": "Leg C buy_yes",                 "type": "build"  },
     { "id": "risk",   "label": "Risk + Bottleneck Check",       "type": "gate"   },
-    { "id": "entry",  "label": "Dry-run Emit",                  "type": "deploy" },
+    { "id": "execute",  "label": "Dry-run Emit",                  "type": "deploy" },
     { "id": "log",    "label": "Log",                           "type": "build"  }
   ],
   "edges": [
@@ -27,7 +27,7 @@
     { "from": "leg_a",  "to": "risk"   },
     { "from": "leg_b",  "to": "risk"   },
     { "from": "leg_c",  "to": "risk"   },
-    { "from": "risk",   "to": "entry"  },
-    { "from": "entry",  "to": "log"    }
+    { "from": "risk",   "to": "execute"  },
+    { "from": "execute",  "to": "log"    }
   ]
 }
