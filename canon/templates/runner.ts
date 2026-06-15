@@ -111,6 +111,11 @@ function logEntry(
  * Idempotent: a repeat call with the same `active` preserves the existing
  * `active_since`. When `active === ""`, `active_since` is omitted entirely
  * so the TUI's `.get("active_since", "")` reader treats the field as absent.
+ *
+ * All other fields in the file are preserved verbatim — the seeds carry
+ * `nodes`/`edges` DAG metadata that the canon-tui automation panel reads,
+ * so the write spreads the existing flow rather than rebuilding it from a
+ * fixed key set.
  */
 export function updateFlow(
   flowPath: string,
@@ -119,13 +124,10 @@ export function updateFlow(
 ): void {
   if (!existsSync(flowPath)) return;
   try {
-    const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as {
-      steps: string[];
-      labels: Record<string, string>;
-      active: string;
-      completed: string[];
-      active_since?: string;
-    };
+    const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as Record<
+      string,
+      unknown
+    > & { active?: string; active_since?: string };
 
     const activeSince =
       active === ""
@@ -134,19 +136,12 @@ export function updateFlow(
           ? flow.active_since
           : new Date().toISOString();
 
-    const next: {
-      steps: string[];
-      labels: Record<string, string>;
-      active: string;
-      completed: string[];
-      active_since?: string;
-    } = {
-      steps: flow.steps,
-      labels: flow.labels,
-      active,
-      completed,
-      ...(activeSince !== undefined ? { active_since: activeSince } : {}),
-    };
+    const next: Record<string, unknown> = { ...flow, active, completed };
+    if (activeSince === undefined) {
+      delete next["active_since"];
+    } else {
+      next["active_since"] = activeSince;
+    }
 
     writeFileSync(flowPath, JSON.stringify(next, null, 2) + "\n");
   } catch {
