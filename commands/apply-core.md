@@ -44,6 +44,7 @@ Files available:
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
+- `skills/codex/**` (entire directory tree — Codex-native skills with helper files, copied wholesale by tarball)
 - `scripts/agent-shim.sh`
 - `scripts/adapters/claude-settings.sh`
 - `scripts/adapters/gemini-settings.sh`
@@ -90,9 +91,6 @@ Files available:
 - `agents/orch-worker.md`
 - `agents/orch-verifier.md`
 - `hooks/orch-done-sync.sh`
-- `scripts/planner-loop.sh`
-- `agents/planner-assess.md`
-- `agents/planner-writer.md`
 - `sounds/unstoppable.mp3`
 - `sounds/super-mario-bros.mp3`
 - `sounds/yeahoo.mp3`
@@ -238,7 +236,6 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/orch-review.sh`
 - `~/.degacore/scripts/orch-verify.sh`
 - `~/.degacore/scripts/ralph-item-reviewer-prompt.md`
-- `~/.degacore/scripts/planner-loop.sh`
 - `~/.degacore/scripts/canon-scaffold.sh`
 - `~/.degacore/scripts/canon.sh`
 - `~/.degacore/scripts/canon-runner.sh`
@@ -252,7 +249,6 @@ Read and note which of these already exist under `~/.degacore/`:
 - `~/.degacore/scripts/create-exec-plan.sh`
 - `~/.degacore/sounds/` (any files)
 - `~/.degacore/state/logs/`
-- `~/.degacore/state/planner/`
 - `~/.degacore/bin/canon-cli`
 - `~/.degacore/canon-cli/` (any files)
 
@@ -340,13 +336,6 @@ Components:
   `dega-core.yaml` (default 30). Requires Terminal UI and tmux. Invoke
   via `~/.degacore/scripts/orch-run.sh <slug>`.
   (opt-in; recommended when `~/.degacore/scripts/orch-run.sh` is missing)
-- **Planner** — autonomous planner loop that reads `focus.yaml`, assesses the
-  project, writes execution plans, and launches the orchestrator. Installs
-  `planner-loop.sh` to `~/.degacore/scripts/` and agent prompts
-  (`planner-assess.md`, `planner-writer.md`) to `~/.degacore/config/agents/`.
-  Requires Orchestrator. Invoke via
-  `~/.degacore/scripts/planner-loop.sh`.
-  (opt-in; recommended when `~/.degacore/scripts/planner-loop.sh` is missing)
 - **Canon Bootstrap** — launcher, scaffold scripts, project templates, and CLI
   for Canon prediction market projects. Installs `canon-scaffold.sh`
   (deterministic project scaffolder called by `/canon-start`), `canon.sh`
@@ -372,7 +361,7 @@ the GitHub URLs above. Extract the raw file content from each response.
 Create the `~/.degacore/` directory tree if it doesn't exist:
 
 ```bash
-mkdir -p ~/.degacore/{bin,config/{commands,skills,rules,agents},scripts/{adapters,hooks/{orch-lifecycle,stop},terminal-ui/src},state/{logs,planner},sounds,canon-cli/commands}
+mkdir -p ~/.degacore/{bin,config/{commands,skills,rules,agents},scripts/{adapters,hooks/{orch-lifecycle,stop},terminal-ui/src},state/logs,sounds,canon-cli/commands}
 ```
 
 Also install the agent-shim and adapter scripts (always, regardless of
@@ -435,6 +424,40 @@ the configured package manager.
 
 Write each skill file to `~/.degacore/config/skills/<name>.md`. Safe to
 overwrite.
+
+#### Codex Skills
+
+The `skills/codex/` tree is directories-with-helper-files (each skill has a
+`SKILL.md` plus optional `scripts/`, `playbook.md`, `agents/`), not single
+files — so it cannot use the per-file WebFetch flow above. Reuse the same
+`gh api .../tarball/main` pattern used for `canon/templates/` to pull the
+whole `skills/codex/` tree into `~/.degacore/config/skills/codex/`.
+
+This fetch runs unconditionally (the Codex-detected per-agent copy in Step 5
+sources from here), but **must fail soft** — a download, network, or `gh`-auth
+error prints a warning and continues. It must never abort the install, since
+Claude-only users do not need these skills:
+
+```bash
+rm -rf ~/.degacore/config/skills/codex
+mkdir -p ~/.degacore/config/skills
+cd /tmp && rm -rf _codex_skills && mkdir _codex_skills && cd _codex_skills
+gh api repos/DEGAorg/claude-code-config/tarball/main \
+  --header 'Accept: application/vnd.github+json' > repo.tar.gz \
+  && tar xzf repo.tar.gz --strip-components=1 \
+  && cp -R skills/codex ~/.degacore/config/skills/codex \
+  || { echo "warn: could not fetch skills/codex — skipping Codex-native skills; continuing install (Claude-only installs are unaffected)." >&2; }
+cd / && rm -rf /tmp/_codex_skills
+```
+
+Verify the Codex skill cache landed (advisory — a miss is the fail-soft path):
+
+```bash
+test -f ~/.degacore/config/skills/codex/no-edits/SKILL.md && \
+  echo "codex skills OK" || echo "codex skills MISSING (skipped or fetch failed)"
+```
+
+Safe to overwrite — this is a CORE-owned cache with no user customization.
 
 #### Logging — Global scripts
 
@@ -587,20 +610,6 @@ rebuild it:
 ```bash
 cd ~/.degacore/scripts/terminal-ui && pnpm install && pnpm run build
 ```
-
-#### Planner
-
-Write the planner loop script:
-- `scripts/planner-loop.sh` -> `~/.degacore/scripts/planner-loop.sh`
-
-Run `chmod +x ~/.degacore/scripts/planner-loop.sh` after writing.
-
-Write the agent prompts:
-- `agents/planner-assess.md` -> `~/.degacore/config/agents/planner-assess.md`
-- `agents/planner-writer.md` -> `~/.degacore/config/agents/planner-writer.md`
-
-Safe to overwrite — these are engine scripts and agent definitions with no
-user customization.
 
 #### Canon Bootstrap
 
@@ -827,6 +836,53 @@ cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 
 Same skip-and-warn handling: user files with the same name take precedence.
 
+#### Codex skills (copy per directory — Codex only)
+
+The Codex-native skills under `~/.degacore/config/skills/codex/` (populated by
+the Step-4 tarball fetch) are whole directories — each skill has a `SKILL.md`
+plus optional helper files (`scripts/`, `playbook.md`, `agents/`). Codex
+discovers them at `~/.codex/skills/<skill>/SKILL.md`.
+
+This copy runs **only when Codex is detected** (`HAVE_CODEX`). It never writes
+to `~/.claude/` or `~/.gemini/`, so the Claude-only install path is unaffected.
+Existing user skill directories are skipped (skip-and-warn), matching the
+commands/rules copy behavior above — a whole user-owned skill dir is never
+overwritten.
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  mkdir -p ~/.codex/skills
+  for skill_dir in ~/.degacore/config/skills/codex/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    if [[ -e ~/.codex/skills/"$skill_name" ]]; then
+      echo "warn: ~/.codex/skills/$skill_name already exists — skipping (user version takes precedence)." >&2
+      continue
+    fi
+    cp -R "$skill_dir" ~/.codex/skills/"$skill_name"
+  done
+fi
+```
+
+The whole-directory `cp -R` preserves each skill's helper files alongside its
+`SKILL.md`. If the Step-4 fetch failed soft (no cache), the glob matches
+nothing and the loop is a no-op — consistent with the fail-soft contract.
+
+Verify a representative sample landed — both a bare-`SKILL.md` skill and a
+skill that carries a helper file, so a copy that dropped helpers is caught
+(advisory — a miss is the fail-soft / skip-and-warn path, not an abort):
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  test -f ~/.codex/skills/no-edits/SKILL.md &&
+    test -f ~/.codex/skills/git-update/SKILL.md &&
+    test -f ~/.codex/skills/ls/SKILL.md &&
+    test -f ~/.codex/skills/ls/scripts/ls_table.py &&
+    echo "codex-native skills OK (~/.codex/skills/)" ||
+    echo "codex-native skills MISSING or skipped (fetch failed, or user dirs took precedence)"
+fi
+```
+
 ---
 
 ### 5b. Record the install version
@@ -919,6 +975,17 @@ For the **Logging** component, include one of these lines based on the
 - If `gcp-sa.json` **found**: `Logging — GCP active (gcp-sa.json detected)`
 - If `gcp-sa.json` **absent**: `Logging — local-only (add ~/.degacore/gcp-sa.json to enable GCP)`
 
+Report the Codex-native skills **separately** from the shared flat CORE skill
+notes. The `Skills -> config/skills/ (...)` line always describes the flat,
+cross-agent knowledge files under `~/.degacore/config/skills/`. The Codex-native
+skills live under `~/.codex/skills/<skill>/SKILL.md` and are only installed when
+Codex was detected, so add this extra line **only if Codex was detected** — a
+Claude-only run must never report a Codex install:
+
+```
+Codex Skills -> ~/.codex/skills/ (calendar-create-event, git-update, ls, make-universal-skill, no-edits, transcribe-ig, transcribe-yt, word-docx-redlines)
+```
+
 List which agents were configured:
 
 ```
@@ -928,7 +995,8 @@ Agents configured:
   Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
 ```
 
-Example summary:
+Example summary (a Claude-only run — Codex was not detected, so no
+`Codex Skills -> ~/.codex/skills/` line and no Codex agent are listed):
 
 ```
 Installed to ~/.degacore/:
@@ -942,7 +1010,6 @@ Installed to ~/.degacore/:
   Sounds -> sounds/ (MP3 + OGG) + scripts/hooks/play-sound.sh
   Terminal UI -> scripts/terminal-ui/ (built with pnpm)
   Orchestrator -> scripts/orch-*.sh + config/agents/ + scripts/hooks/
-  Planner -> scripts/planner-loop.sh + config/agents/
   Canon Bootstrap -> scripts/canon-scaffold.sh + scripts/canon.sh
   Canon CLI -> canon-cli/ (built) + bin/canon-cli (linked)
 
