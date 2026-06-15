@@ -97,7 +97,6 @@ Unreleased through the 0.1.9 release.
   `yes_price_dollars` / `no_price_dollars` with 4-decimal sub-penny
   precision. Live smoke (`RUN_LIVE=1 RUN_ORDER=1`) now places and
   cancels a real order end-to-end (`66c0b822`) — 2026-05-15
->>>>>>> origin/develop
 
 ## [0.1.9] — 2026-05-13
 
