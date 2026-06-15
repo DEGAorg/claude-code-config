@@ -1,7 +1,7 @@
 # Self-Development Guide
 
 How to apply fixes and new features to this repo. Covers the full lifecycle
-from plan to ship, using manual workflows, the orchestrator, or the planner loop.
+from plan to ship, using manual workflows or the orchestrator.
 
 ---
 
@@ -10,7 +10,7 @@ from plan to ship, using manual workflows, the orchestrator, or the planner loop
 Every change follows three steps:
 
 1. **Plan** — create an exec-plan with `/plan`
-2. **Implement** — work the plan (manually, orchestrator, or planner loop)
+2. **Implement** — work the plan (manually or via the orchestrator)
 3. **Ship** — review passes, plan archives to `completed/`, commit lands
 
 ```bash
