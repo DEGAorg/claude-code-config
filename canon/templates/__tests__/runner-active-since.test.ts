@@ -107,3 +107,53 @@ describe("updateFlow — active_since timestamp", () => {
     );
   });
 });
+
+describe("updateFlow — preserves DAG metadata", () => {
+  const NODES = [
+    { id: "scan", label: "Scan", type: "build" },
+    { id: "execute", label: "Execute", type: "deploy" },
+  ];
+  const EDGES = [{ from: "scan", to: "execute" }];
+
+  function seedWithDag(active = ""): void {
+    seedFlow({ active });
+    const flow = JSON.parse(readFileSync(flowPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    flow["nodes"] = NODES;
+    flow["edges"] = EDGES;
+    writeFileSync(flowPath, JSON.stringify(flow, null, 2) + "\n");
+  }
+
+  function readRaw(): Record<string, unknown> {
+    return JSON.parse(readFileSync(flowPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  it("keeps nodes and edges when active transitions to a new value", () => {
+    seedWithDag();
+
+    updateFlow(flowPath, "scan", []);
+
+    const flow = readRaw();
+    expect(flow["nodes"]).toEqual(NODES);
+    expect(flow["edges"]).toEqual(EDGES);
+    expect(flow["active"]).toBe("scan");
+  });
+
+  it("keeps nodes and edges across a full cycle including the empty-string reset", () => {
+    seedWithDag();
+
+    updateFlow(flowPath, "scan", []);
+    updateFlow(flowPath, "execute", ["scan"]);
+    updateFlow(flowPath, "", ["scan", "execute"]);
+
+    const flow = readRaw();
+    expect(flow["nodes"]).toEqual(NODES);
+    expect(flow["edges"]).toEqual(EDGES);
+    expect(flow["active"]).toBe("");
+  });
+});
