@@ -106,6 +106,17 @@ describe("updateFlow — active_since timestamp", () => {
       false,
     );
   });
+
+  it("stamps active_since on a same-step update when a legacy file lacks it", () => {
+    seedFlow({ active: "scan", completed: [] });
+
+    updateFlow(flowPath, "scan", []);
+
+    const flow = readFlow();
+    expect(flow.active).toBe("scan");
+    expect(flow.active_since).toBeDefined();
+    expect(flow.active_since).toMatch(ISO_8601_UTC);
+  });
 });
 
 describe("updateFlow — preserves DAG metadata", () => {
