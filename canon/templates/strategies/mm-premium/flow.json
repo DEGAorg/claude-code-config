@@ -1,12 +1,25 @@
 {
-  "steps": ["scan", "signal", "risk", "emit", "log"],
+  "steps": ["scan", "signal", "risk", "execute", "log"],
   "labels": {
     "scan": "Scan Markets",
     "signal": "Detect Premium Opportunity",
     "risk": "Risk Check",
-    "emit": "Emit Dry-Run Signal",
+    "execute": "Emit Dry-Run Signal",
     "log": "Log"
   },
   "active": "",
-  "completed": []
+  "completed": [],
+  "nodes": [
+    { "id": "scan",   "label": "Scan Markets",               "type": "build"  },
+    { "id": "signal", "label": "Detect Premium Opportunity", "type": "build"  },
+    { "id": "risk",   "label": "Risk Check",                 "type": "gate"   },
+    { "id": "execute",   "label": "Emit Dry-Run Signal",        "type": "deploy" },
+    { "id": "log",    "label": "Log",                        "type": "build"  }
+  ],
+  "edges": [
+    { "from": "scan",   "to": "signal" },
+    { "from": "signal", "to": "risk"   },
+    { "from": "risk",   "to": "execute"   },
+    { "from": "execute",   "to": "log"    }
+  ]
 }

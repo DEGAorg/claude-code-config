@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
+
 ### Changed
 - Runner writes active_since timestamp on active step change (`20260515-runner-active-since`) — 2026-05-15
 
