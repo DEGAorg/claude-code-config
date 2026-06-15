@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
 
 ### Changed
+- Conductor delegates all infra by default (`20260515-conductor-delegate`) — 2026-05-15
 - Runner writes active_since timestamp on active step change (`20260515-runner-active-since`) — 2026-05-15
 
 ### Fixed
