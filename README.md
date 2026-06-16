@@ -343,7 +343,7 @@ Agents' capabilities come from skills (reusable workflows, checklists, decision 
 | Kind | Source in this repo | Install behavior |
 |------|---------------------|--------------|
 | Shared skills | `skills/*.md` | Installed as agent-readable DEGA Core skill references |
-| Harness skills | `skills/claude/<name>/`, `skills/codex/<name>/` | Stored as Claude/Codex `SKILL.md` packages; copy manually until installer support lands |
+| Harness skills | `skills/claude/<name>/`, `skills/codex/<name>/` | `SKILL.md` packages. Codex skills are installed to `~/.codex/skills/` by `/apply-core` when Codex is detected; Claude skills are copied manually until installer support lands |
 | Subagents | `agents/` | `~/.claude/agents/` (Claude-only) |
 | Slash commands | `commands/` | `~/.claude/commands/`, `~/.gemini/commands/`, `~/.codex/commands/` |
 | Rules | `rules/` | `~/.claude/rules/`, `~/.gemini/rules/`, `~/.codex/rules/` |

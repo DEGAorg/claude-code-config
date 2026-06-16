@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
+
+### Changed
+- Conductor delegates all infra by default (`20260515-conductor-delegate`) — 2026-05-15
+- Runner writes active_since timestamp on active step change (`20260515-runner-active-since`) — 2026-05-15
+
+### Fixed
+- Runner `updateFlow` preserves `nodes`/`edges` DAG metadata when rewriting `flow.json` (was dropped on the first step transition, breaking the automation panel) — 2026-06-15
+- Fix Codex-native skill installation in CORE installer (`20260605-codex-skill-install`) — 2026-06-05
+
 ## [0.1.10] — 2026-05-27
 
 Unjams the orchestrator's document phase + engine dispatch end-to-end

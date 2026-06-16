@@ -44,6 +44,7 @@ Files available:
 - `skills/custom-linter-authoring.md`
 - `skills/app-legibility.md`
 - `skills/sound-notifications.md`
+- `skills/codex/**` (entire directory tree — Codex-native skills with helper files, copied wholesale by tarball)
 - `scripts/agent-shim.sh`
 - `scripts/adapters/claude-settings.sh`
 - `scripts/adapters/gemini-settings.sh`
@@ -424,6 +425,40 @@ the configured package manager.
 Write each skill file to `~/.degacore/config/skills/<name>.md`. Safe to
 overwrite.
 
+#### Codex Skills
+
+The `skills/codex/` tree is directories-with-helper-files (each skill has a
+`SKILL.md` plus optional `scripts/`, `playbook.md`, `agents/`), not single
+files — so it cannot use the per-file WebFetch flow above. Reuse the same
+`gh api .../tarball/main` pattern used for `canon/templates/` to pull the
+whole `skills/codex/` tree into `~/.degacore/config/skills/codex/`.
+
+This fetch runs unconditionally (the Codex-detected per-agent copy in Step 5
+sources from here), but **must fail soft** — a download, network, or `gh`-auth
+error prints a warning and continues. It must never abort the install, since
+Claude-only users do not need these skills:
+
+```bash
+rm -rf ~/.degacore/config/skills/codex
+mkdir -p ~/.degacore/config/skills
+cd /tmp && rm -rf _codex_skills && mkdir _codex_skills && cd _codex_skills
+gh api repos/DEGAorg/claude-code-config/tarball/main \
+  --header 'Accept: application/vnd.github+json' > repo.tar.gz \
+  && tar xzf repo.tar.gz --strip-components=1 \
+  && cp -R skills/codex ~/.degacore/config/skills/codex \
+  || { echo "warn: could not fetch skills/codex — skipping Codex-native skills; continuing install (Claude-only installs are unaffected)." >&2; }
+cd / && rm -rf /tmp/_codex_skills
+```
+
+Verify the Codex skill cache landed (advisory — a miss is the fail-soft path):
+
+```bash
+test -f ~/.degacore/config/skills/codex/no-edits/SKILL.md && \
+  echo "codex skills OK" || echo "codex skills MISSING (skipped or fetch failed)"
+```
+
+Safe to overwrite — this is a CORE-owned cache with no user customization.
+
 #### Logging — Global scripts
 
 Write `scripts/log-server.py` to `~/.degacore/scripts/log-server.py`. Safe to
@@ -801,6 +836,53 @@ cp ~/.degacore/config/rules/*.md ~/.<agent>/rules/
 
 Same skip-and-warn handling: user files with the same name take precedence.
 
+#### Codex skills (copy per directory — Codex only)
+
+The Codex-native skills under `~/.degacore/config/skills/codex/` (populated by
+the Step-4 tarball fetch) are whole directories — each skill has a `SKILL.md`
+plus optional helper files (`scripts/`, `playbook.md`, `agents/`). Codex
+discovers them at `~/.codex/skills/<skill>/SKILL.md`.
+
+This copy runs **only when Codex is detected** (`HAVE_CODEX`). It never writes
+to `~/.claude/` or `~/.gemini/`, so the Claude-only install path is unaffected.
+Existing user skill directories are skipped (skip-and-warn), matching the
+commands/rules copy behavior above — a whole user-owned skill dir is never
+overwritten.
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  mkdir -p ~/.codex/skills
+  for skill_dir in ~/.degacore/config/skills/codex/*/; do
+    [[ -d "$skill_dir" ]] || continue
+    skill_name="$(basename "$skill_dir")"
+    if [[ -e ~/.codex/skills/"$skill_name" ]]; then
+      echo "warn: ~/.codex/skills/$skill_name already exists — skipping (user version takes precedence)." >&2
+      continue
+    fi
+    cp -R "$skill_dir" ~/.codex/skills/"$skill_name"
+  done
+fi
+```
+
+The whole-directory `cp -R` preserves each skill's helper files alongside its
+`SKILL.md`. If the Step-4 fetch failed soft (no cache), the glob matches
+nothing and the loop is a no-op — consistent with the fail-soft contract.
+
+Verify a representative sample landed — both a bare-`SKILL.md` skill and a
+skill that carries a helper file, so a copy that dropped helpers is caught
+(advisory — a miss is the fail-soft / skip-and-warn path, not an abort):
+
+```bash
+if [[ "${HAVE_CODEX:-}" == 1 ]]; then
+  test -f ~/.codex/skills/no-edits/SKILL.md &&
+    test -f ~/.codex/skills/git-update/SKILL.md &&
+    test -f ~/.codex/skills/ls/SKILL.md &&
+    test -f ~/.codex/skills/ls/scripts/ls_table.py &&
+    echo "codex-native skills OK (~/.codex/skills/)" ||
+    echo "codex-native skills MISSING or skipped (fetch failed, or user dirs took precedence)"
+fi
+```
+
 ---
 
 ### 5b. Record the install version
@@ -893,6 +975,17 @@ For the **Logging** component, include one of these lines based on the
 - If `gcp-sa.json` **found**: `Logging — GCP active (gcp-sa.json detected)`
 - If `gcp-sa.json` **absent**: `Logging — local-only (add ~/.degacore/gcp-sa.json to enable GCP)`
 
+Report the Codex-native skills **separately** from the shared flat CORE skill
+notes. The `Skills -> config/skills/ (...)` line always describes the flat,
+cross-agent knowledge files under `~/.degacore/config/skills/`. The Codex-native
+skills live under `~/.codex/skills/<skill>/SKILL.md` and are only installed when
+Codex was detected, so add this extra line **only if Codex was detected** — a
+Claude-only run must never report a Codex install:
+
+```
+Codex Skills -> ~/.codex/skills/ (calendar-create-event, git-update, ls, make-universal-skill, no-edits, transcribe-ig, transcribe-yt, word-docx-redlines)
+```
+
 List which agents were configured:
 
 ```
@@ -902,7 +995,8 @@ Agents configured:
   Codex CLI   — ~/.codex/ (config.toml + hooks.json, AGENTS.md native)
 ```
 
-Example summary:
+Example summary (a Claude-only run — Codex was not detected, so no
+`Codex Skills -> ~/.codex/skills/` line and no Codex agent are listed):
 
 ```
 Installed to ~/.degacore/:
