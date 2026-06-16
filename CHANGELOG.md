@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.11] — 2026-06-15
+
+Lights up the canon-tui automation panel end-to-end: strategy seeds carry
+DAG `nodes`/`edges`, and the runner preserves that metadata across every
+`flow.json` write (a combined-release review caught that the `active_since`
+rewrite was dropping it on the first step transition). Conductor now
+delegates infra work to subagents by default.
+
 ### Added
 - Strategy seeds — add DAG nodes + edges for canon-tui automation panel (`20260515-strategy-dag-nodes`) — 2026-05-15
 
