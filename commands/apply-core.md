@@ -46,6 +46,7 @@ Files available:
 - `skills/sound-notifications.md`
 - `skills/codex/**` (entire directory tree — Codex-native skills with helper files, copied wholesale by tarball)
 - `scripts/agent-shim.sh`
+- `scripts/install-canon-codex.sh`
 - `scripts/adapters/claude-settings.sh`
 - `scripts/adapters/gemini-settings.sh`
 - `scripts/adapters/codex-settings.sh`
@@ -613,6 +614,13 @@ cd ~/.degacore/scripts/terminal-ui && pnpm install && pnpm run build
 
 #### Canon Bootstrap
 
+Always fetch `commands/canon-start.md` and `commands/canon-init.md` into
+`~/.degacore/config/commands/`, even if the separate Commands component was
+not selected. These are the Canon entry points and are required by both hosts.
+Fetch `scripts/install-canon-codex.sh` into `~/.degacore/scripts/` and make it
+executable. The Codex installation step below must succeed before reporting
+Canon Bootstrap as configured for Codex.
+
 Write each file to `~/.degacore/scripts/`:
 - `scripts/canon-scaffold.sh` -> `~/.degacore/scripts/canon-scaffold.sh`
 - `scripts/canon.sh` -> `~/.degacore/scripts/canon.sh`
@@ -814,9 +822,9 @@ tells Codex to read `AGENTS.md` directly.
 #### Commands (copy per file)
 
 If the **Commands** component was selected, copy each command file into
-each agent's config directory. This preserves any existing user commands.
+each detected Claude/Gemini config directory. This preserves any existing user commands.
 
-For each detected agent:
+For Claude and Gemini (Codex uses the skills step below):
 ```bash
 mkdir -p ~/.<agent>/commands
 cp ~/.degacore/config/commands/*.md ~/.<agent>/commands/
@@ -855,6 +863,8 @@ if [[ "${HAVE_CODEX:-}" == 1 ]]; then
   for skill_dir in ~/.degacore/config/skills/codex/*/; do
     [[ -d "$skill_dir" ]] || continue
     skill_name="$(basename "$skill_dir")"
+    # Canon skills bundle shared workflows through the dedicated installer below.
+    case "$skill_name" in canon-start|canon-init) continue ;; esac
     if [[ -e ~/.codex/skills/"$skill_name" ]]; then
       echo "warn: ~/.codex/skills/$skill_name already exists — skipping (user version takes precedence)." >&2
       continue
@@ -882,6 +892,33 @@ if [[ "${HAVE_CODEX:-}" == 1 ]]; then
     echo "codex-native skills MISSING or skipped (fetch failed, or user dirs took precedence)"
 fi
 ```
+
+---
+
+#### Canon entry points for Codex
+
+When Codex is detected and Canon Bootstrap was selected, run this required step
+**after** the Codex skill cache fetch and shared Canon commands have landed:
+
+```bash
+bash ~/.degacore/scripts/install-canon-codex.sh ~/.degacore/config
+```
+
+It installs `canon-start` and `canon-init` under `${CODEX_HOME:-$HOME/.codex}/skills`,
+including a `references/workflow.md` copied from each shared command. It verifies
+both sources before writing either skill. Re-runs update installer-owned files;
+user-owned or locally modified skills cause an actionable failure, not a silent
+skip or overwrite. Resolve the reported conflict before retrying.
+
+If the cache download or this command fails, stop and report **Codex Canon install
+incomplete**. A warning followed by overall success is not acceptable when Codex
+Canon was requested. Claude-only installations may still skip the Codex cache.
+Do not copy the bare Canon skill directories: they need their bundled references.
+
+Report the paths printed by the installer. In Codex, invoke `$canon-start` or
+`$canon-init` (or ask to start/initialize Canon in natural language). If the current
+session does not discover them, open a new Codex session. This step installs skills;
+it does not run a strategy or prove end-to-end trading readiness.
 
 ---
 
@@ -926,13 +963,14 @@ After completing the user's selections, also install this command itself to
 https://raw.githubusercontent.com/DEGAorg/claude-code-config/main/commands/apply-core.md
 ```
 
-Then copy it into each detected agent's commands directory:
+Then copy it into Claude and Gemini's commands directories:
 ```bash
 cp ~/.degacore/config/commands/apply-core.md ~/.<agent>/commands/apply-core.md
 ```
 
-This makes `/apply-core` available from any directory in future without
-needing the repo cloned.
+This makes `/apply-core` available in those hosts without a repo clone.
+In Codex, use the natural-language INSTALL.md update instruction instead;
+copying a Markdown command into `~/.codex/commands` does not register a skill.
 
 ---
 
@@ -985,6 +1023,10 @@ Claude-only run must never report a Codex install:
 ```
 Codex Skills -> ~/.codex/skills/ (calendar-create-event, git-update, ls, make-universal-skill, no-edits, transcribe-ig, transcribe-yt, word-docx-redlines)
 ```
+
+When Codex and Canon Bootstrap were selected, also report the two paths returned
+by `install-canon-codex.sh` and the invocation `$canon-start`. Do not include Canon
+in the success summary unless that required installer completed successfully.
 
 List which agents were configured:
 
