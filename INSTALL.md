@@ -104,7 +104,7 @@ Per-agent config is generated into each detected agent's directory:
 |-------|-----------|-----------------|
 | Claude Code | `~/.claude/` | `settings.json`, `CLAUDE.md` shim, `commands/` copies, `rules/` copies |
 | Gemini CLI | `~/.gemini/` | `GEMINI.md` shim, `commands/` copies, `rules/` copies |
-| Codex CLI | `~/.codex/` | `CODEX.md` shim, `commands/` copies, `rules/` copies |
+| Codex CLI | `~/.codex/` | Settings adapter, Codex skills; Canon entry points when Canon Bootstrap is selected |
 
 ### Phase 2 — Canon TUI (`~/.local/bin/`)
 
@@ -172,3 +172,40 @@ Or run the phase installers directly from any directory:
 
 - `/apply-core` — update DEGA Core only
 - `/apply-canon-tui` — update Canon TUI only
+
+## Canon in Codex
+
+Select **Canon Bootstrap** during Phase 1. Core installs the `canon-start` and
+`canon-init` Codex skills, including their shared workflow references. Use
+`$canon-start` to start/resume a strategy project, or `$canon-init` to prepare a
+Codex launcher. Start defaults to dry-run; live mode requires `$canon-start --live`.
+Canon TUI does not supply these skills and is not required to invoke them in Codex.
+
+The installer must report failure if the requested Canon skills are missing.
+Existing user-owned or locally edited Canon skills are preserved and reported as
+conflicts. A fresh session may be needed to discover newly installed skills.
+Other Core Markdown commands are not automatically converted into Codex skills.
+
+To try the Canon skill fix from a local checkout before release:
+
+```bash
+bash scripts/install-canon-codex.sh "$PWD"
+```
+
+This installs only the two Codex entry points and their workflow references. It
+requires an existing Core Canon Bootstrap installation for scripts/templates and
+does not update that installation or launch a strategy. An optional second argument
+selects an isolated skills directory for tests.
+
+### Canon TUI with Codex
+
+The TUI's leading `$` shortcut enters shell mode. Type `Use the canon-start skill`
+in its chat input instead. If the ACP adapter rejects the configured model, a
+session-only model override can be used; GPT-5.5 was verified with adapter 0.16.0:
+
+```bash
+canon acp 'npx @zed-industries/codex-acp -c model="gpt-5.5"' . --title 'Codex GPT-5.5'
+```
+
+This does not change the default model in your Codex configuration. The adapter
+has its own Codex implementation; updating the standalone CLI does not update it.

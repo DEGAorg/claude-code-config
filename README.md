@@ -745,7 +745,12 @@ automatic distribution.
 
 ### Publishing skills
 
-Skills live in this repo — open a PR against `DEGAorg/claude-code-config`. There is no separate marketplace. Shared skills are picked up on the next `update dega core` / `/core-update`; harness-specific `SKILL.md` packages are available from the repo and must be copied into the matching agent directory until installer support is added.
+Skills live in this repo — open a PR against `DEGAorg/claude-code-config`. There is no separate
+marketplace. Shared skills are picked up on the next `update dega core` / `/core-update`; Codex
+skill packages are installed by `/apply-core`. Canon Bootstrap includes the `canon-start` and
+`canon-init` skills with bundled workflow references; see
+[Canon in Codex](INSTALL.md#canon-in-codex). Other harness-specific packages must be copied into
+the matching agent directory when not covered by the installer.
 
 ## Recommended Skills
 
