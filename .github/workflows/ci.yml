@@ -39,3 +39,5 @@ jobs:
           persist-credentials: false
       - name: Test enforce-package-manager hook
         run: bash tests/test-enforce-package-manager.sh
+      - name: Test Canon Codex skill installation
+        run: bash tests/test-install-canon-codex.sh
