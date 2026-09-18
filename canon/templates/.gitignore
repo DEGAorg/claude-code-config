@@ -8,3 +8,6 @@ wallet.env
 .canon/*.env
 .canon/execution/
 *.tsbuildinfo
+
+# Generated dashboard state is local runtime data.
+.canon/state.json
