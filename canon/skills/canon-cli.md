@@ -67,10 +67,10 @@ Write / account commands (`balance`, `position`, `order`, `kill`, `onboard`) res
 canon-cli wallet ensure
 ```
 
-`/canon-start` runs `wallet ensure` automatically during init, so a fresh
-Canon project has a burner wallet ready without manual setup. Each project
-has its own wallet — different strategies in different projects use
-different accounts.
+`/canon-start --live` runs `wallet ensure` only after the selected strategy
+has verified access and supports live execution. Ordinary `/canon-start` dry-run
+initialization does not create a wallet or request funding. Each live project
+uses its own project-local wallet.
 
 Missing auth produces a clear error — never a silent failure.
 

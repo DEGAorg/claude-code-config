@@ -30,11 +30,12 @@ Apply these Codex host adaptations to that procedure:
 - If phase detection reports `scaffold` but `.canon/agents` and `.canon/skills`
   are absent, use phase 3's initialization path. A bootstrap-only `.canon`
   directory is not a completed scaffold. That path also installs dependencies
-  and ensures the local wallet before strategy selection.
+  without creating a wallet. Wallet setup and funding instructions belong only
+  to an explicitly requested live transition.
 - Do not overwrite an existing project with `--force` without checking the
   affected files and obtaining approval for any loss of user changes.
 - Select only activated downloads returned by `canon strategies`; resume the
-  editable `strategies/<key>` copy. Preserve wallet/configuration setup and
+  editable `strategies/<key>` copy. Preserve explicit-live wallet setup, configuration, and
   development phases. Core examples are not strategy choices.
 - Use the workflow's independent-session launch for dry-run without `--live`.
   Confirm at least two cycles, PID liveness after launch returns, and state/logs
