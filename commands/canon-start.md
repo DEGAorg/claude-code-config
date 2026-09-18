@@ -43,7 +43,10 @@ fi
 ## 1. Initialize
 
 **State write convention:** Every `terminal-ui-write.sh` call in steps 2–7 is guarded.
-Before each call, check if the script exists and skip silently if it does not.
+Require the installed state writer before continuing. If it is missing, report
+an incomplete Core installation. If a required write is blocked, request the
+necessary permission instead of continuing with stale state. Only opening the
+socket panel is best-effort.
 
 **Live-mode short-circuit.** If the user invoked `/canon-start --live` (look
 for `--live` in the argument the slash command was called with), the project
@@ -85,19 +88,33 @@ else
     phase="scaffold"
   else
     # Phase: strategy
+    # Only an authorized downloaded package can resume the selected strategy.
+    selected_key=$(python3 <<'PYTHON'
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+result = subprocess.run(["canon", "strategies"], capture_output=True, text=True, check=True)
+if result.stderr:
+    print(result.stderr, file=sys.stderr, end="")
+choices = json.loads(result.stdout)
+selected = [choice["key"] for choice in choices
+            if (Path("docs") / f"strategy-{choice['key']}.md").is_file()
+            and (Path("strategies") / choice["key"]).is_dir()]
+print(selected[0] if len(selected) == 1 else "")
+PYTHON
+)
     strategy_found=false
-    ls docs/strategy-*.md &>/dev/null && strategy_found=true
-    find . -maxdepth 3 -name '*.strategy.md' -print -quit 2>/dev/null \
-      | grep -q . && strategy_found=true
-    ls .canon/execution/*spec* &>/dev/null && strategy_found=true
+    [[ -n "$selected_key" ]] && strategy_found=true
 
     if [[ "$strategy_found" == false ]]; then
       phase="strategy"
-    elif [[ ! -d src ]]; then
+    elif [[ ! -f src/main.ts ]]; then
       phase="develop"
     else
       # Run checks silently — any failure means develop phase
-      pnpm exec vitest run --reporter=dot &>/dev/null || phase="develop"
+      pnpm exec vitest run --reporter=dot --passWithNoTests=false &>/dev/null || phase="develop"
       if [[ "$phase" == "run" ]]; then
         pnpm exec tsc --noEmit &>/dev/null || phase="develop"
       fi
@@ -108,11 +125,11 @@ else
   fi
 fi
 
-# Write state (silently)
+# Write the detected phase; errors must remain visible.
 TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
-[[ -f "${TUI_WRITE}" ]] && \
-  bash "${TUI_WRITE}" .canon/state.json \
-    phase="$phase" status=running log.info="Detected phase: $phase" &>/dev/null
+[[ -f "${TUI_WRITE}" ]] || { echo "Missing Core state writer: ${TUI_WRITE}" >&2; exit 1; }
+bash "${TUI_WRITE}" .canon/state.json \
+  phase="$phase" status=running log.info="Detected phase: $phase" >/dev/null
 
 echo "$phase"
 ```
@@ -121,7 +138,9 @@ The only output is the phase name (e.g. `run`). Print it as:
 
 Phase: <phase>
 
-Then jump to the step for that phase.
+Then jump to the step for that phase. A detected `run` phase is a candidate,
+not cached proof: before launch, re-run the selected package checks from step 6
+in its own context and confirm nonzero executed tests.
 
 ---
 
@@ -165,23 +184,14 @@ attempt to fix or retry — the script already gives a clear error message.
 After init completes, install dependencies:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
-Ensure a project-local burner wallet exists. Idempotent — generates one on
-first run, reports the address (and a funding prompt) once, and is a no-op
-on subsequent runs. This is the single entry point for wallet
-auto-instantiation:
-
-```bash
-"${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
-```
-
-The wallet lives at `.canon/wallet.env` (mode 0600). Each Canon project gets
-its own wallet, so different strategies in different projects trade from
-different accounts automatically. When `created: true` appears in the
-output, tell the user to fund the printed address with USDC.e on Polygon
-before running any strategy.
+Dry-run initialization requires no wallet, wallet creation, funding, balance checks,
+or onboarding. Continue with scaffold verification, authorized strategy selection,
+and the editable package's dry-run checks. Preserve existing wallet files without
+reading or changing them in this phase. Wallet setup belongs only to the explicitly
+requested live phase below.
 
 Proceed to step 4 (scaffold verification).
 
@@ -223,143 +233,79 @@ TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
 
 ## 5. Phase: strategy
 
-The scaffold is complete but no strategy spec was found.
-
-Write state update:
+The scaffold is complete. Select an activated, downloaded curated strategy:
 
 ```bash
-TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
-[[ -f "${TUI_WRITE}" ]] && \
-  bash "${TUI_WRITE}" .canon/state.json \
-    phase=strategy status=running log.info="Looking for strategy specification..."
+canon strategies
 ```
 
-First, check for available strategy directories (already in place from scaffold):
+This returns JSON objects with `key`, `name`, and `path`. Show only those choices.
+Use the host's question tool, or ask in chat when no question tool is available.
+Honor an explicit selection already provided by the user if it appears in the
+verified list. An empty list means there is no verified download: explain the
+reported access/login/download issue and direct the user to the DEGA panel.
+Do not activate a strategy automatically.
 
-```bash
-ls strategies/*/strategy.md 2>/dev/null
-```
+Do not enumerate Core examples, offer `/discover` or a new specification as a
+replacement, or select a similar template. Arbiter is not arb-binary.
 
-**You MUST use the `AskUserQuestion` tool** to present the strategy choice.
-Build the options list dynamically based on discovered strategies:
+For the chosen `<key>`:
 
-- For each strategy directory found (has `strategy.md` and `main.ts`), add an
-  option with label `Use strategy: <name>` and description from the first line
-  of the strategy.md file. Mention it includes ready-to-run code.
-- Always add option: label `Run /discover`, description `Scan prediction markets,
-  identify opportunities, and generate a strategy spec automatically`.
-- Always add option: label `Provide a spec`, description `Point to an existing
-  strategy document or describe your strategy`.
+1. Read documentation, configuration, and source from the returned package `path`.
+2. Copy that source into `strategies/<key>` as editable project code. Exclude
+   `.git`, `node_modules`, runtime logs/state, and private environment files.
+   Preserve user edits in an existing copy; do not overwrite it to resume.
+3. Write `docs/strategy-<key>.md` with the verified key, source path, intended
+   behavior, configuration needs, and requested changes. Stale documents for
+   other strategies must not select a Core example or another package.
+4. Inspect the package's actual entrypoint. Do not assume `entry.ts`, `main.ts`,
+   `strategy.md`, or a template plan exists. Adapt its editable source through
+   the development phase so `src/main.ts` starts the selected strategy in dry-run.
+   Do not launch the global download directly or bypass setup and validation.
+5. Preserve initialization, dependencies, explicit-live wallet setup, configuration,
+   tests, and explicit live preflight. A runnable package does not skip these steps.
 
-Use header `Strategy` and question `Which strategy approach do you want to use?`.
-Do NOT print the options as markdown text — always use `AskUserQuestion`.
+### Install the selected package in its own context
 
-**If the user chooses a strategy:**
+Keep `strategies/<key>/package.json`, its lockfile, safe `.env.example`/`.env.sample`
+files, and its own build/test configuration. Never flatten its dependencies into
+Core's root manifest to make imports resolve. Preserve the editable package boundary.
 
-The strategy directory is already at `strategies/<name>/` from the scaffold step —
-no file copying is needed. Generate a thin entry point that imports the selected
-strategy's main module and starts the runner.
+Inspect the package's `packageManager` declaration and lockfile together. Use the
+matching manager/version and run the installation with the working directory set
+to `strategies/<key>`:
 
-1. Copy the strategy spec to docs:
+| Lockfile | Installation |
+|---|---|
+| `package-lock.json` or `npm-shrinkwrap.json` | `npm ci` |
+| `pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
+| `yarn.lock`, Yarn 1 | `yarn install --frozen-lockfile` |
+| `yarn.lock`, modern Yarn | `yarn install --immutable` |
 
-```bash
-mkdir -p docs
-cp strategies/<name>/strategy.md docs/strategy-<name>.md
-```
+If the manager and lockfile disagree, multiple managers' lockfiles exist, or no
+lockfile exists, report the package setup issue. Do not silently choose latest
+versions, regenerate a lockfile, or retry a frozen install without its lock.
+For a non-Node package, follow its own documented locked installation procedure;
+do not force npm/pnpm conventions onto it.
 
-2. Copy the strategy's pre-built entry point to `src/main.ts` and rewrite
-   its relative imports for the new location. The template at
-   `strategies/<name>/entry.ts` uses `"../../*.js"` (two levels up to project
-   root) and `"./*.js"` (sibling files); from `src/main.ts` those need to
-   become `"../*.js"` and `"../strategies/<name>/*.js"` respectively.
+Use a package-local launcher from the Canon adapter so its dependencies and
+configuration resolve inside the editable copy. Preserve the Canon project path
+for state reporting. Install root adapter dependencies only when the adapter
+itself needs them, not as substitutes for the package dependency tree.
 
-   Use this deterministic two-step transform — do **not** rely on the agent
-   to figure out path rewrites on the fly:
+Surface install warnings and build-script requirements. Do not blanket-approve
+all dependency build scripts or call an incomplete installation successful.
 
-```bash
-mkdir -p src
-NAME="<name>"  # the strategy you selected, e.g. "trade-momentum"
-sed -e 's|"\.\./\.\./|"\.\./|g' \
-    -e "s|\"\\./|\"\\.\\./strategies/${NAME}/|g" \
-    "strategies/${NAME}/entry.ts" > src/main.ts
-```
-
-   The first expression rewrites `"../../"` → `"../"` (project-root paths
-   shift by one level when moving from `strategies/<name>/` to `src/`).
-   The second rewrites `"./"` → `"../strategies/<name>/"` (sibling
-   imports become explicit cross-directory imports).
-
-3. Copy the strategy's flow definition for the TUI pipeline diagram:
-
-```bash
-cp strategies/<name>/flow.json .canon/flow.json 2>/dev/null || true
-```
-
-4. Verify the entry point compiles:
-
-```bash
-pnpm exec tsc --noEmit &>/dev/null
-```
-
-Read the strategy spec and print a brief summary (market, archetype, edge thesis).
-
-Write state update:
-
-```bash
-TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
-[[ -f "${TUI_WRITE}" ]] && \
-  bash "${TUI_WRITE}" .canon/state.json \
-    log.info="Strategy <name> selected — entry point generated"
-```
-
-**If the user chooses /discover:**
-
-Execute the `/discover` procedure inline:
-
-1. As market-analyst, research available prediction markets using web search
-   and the Polymarket API documentation.
-2. Scan for opportunities (price movements, volume spikes, thin liquidity, resolution events).
-3. Select the top opportunity by edge size, liquidity, resolution clarity, and capital efficiency.
-4. As strategy-architect, design a strategy for the selected opportunity:
-   - Select strategy archetype (from strategy-patterns skill)
-   - Design entry/exit signal logic
-   - Define risk parameters (position size ≤5%, stop-loss, circuit breakers)
-   - Define backtest success criteria (win rate >55%, profit factor >1.2,
-     max drawdown <15%, min 30 trades)
-
-Write the strategy spec to `docs/strategy-<name>.md`.
-
-Load agents: market-analyst, strategy-architect.
-Load skills: prediction-markets, polymarket, strategy-patterns, risk-management.
-
-**If the user provides a spec:**
-
-Read the provided document. Validate it contains:
-- Target market(s)
-- Strategy archetype or approach
-- Entry/exit logic
-- Risk parameters
-
-If anything is missing, ask the user to clarify before proceeding.
-
-Write state update:
-
-```bash
-TUI_WRITE="${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/terminal-ui-write.sh"
-[[ -f "${TUI_WRITE}" ]] && \
-  bash "${TUI_WRITE}" .canon/state.json \
-    phase=strategy status=running log.info="Strategy spec ready"
-```
-
-Proceed to step 6.
+Write `phase=strategy status=complete` with the selected key using the installed
+state writer, then proceed to step 6. Report unsupported integration honestly;
+a web server or one completed cycle does not prove continuous dry-run support.
 
 ---
 
 ## 6. Phase: develop
 
-A strategy spec exists. Build the strategy using the orchestrator — an automated
-engine that spawns parallel workers in isolated worktrees, reviews each item,
-and iterates until all checks pass.
+A curated strategy has been selected. Develop its editable project copy and
+validate its integration with the original Canon runner.
 
 Write state update:
 
@@ -379,20 +325,12 @@ SLUG="$(date +%Y%m%d)-<strategy-slug>"
 mkdir -p "docs/exec-plans/active/${SLUG}"
 ```
 
-**If a template bundle was used (step 5):** The bundle includes a pre-filled plan.
-Copy it directly — replace `{{DATE}}` with today's date:
-
-```bash
-sed "s/{{DATE}}/$(date +%Y-%m-%d)/" ".canon/templates/<name>/plan.md" \
-  > "docs/exec-plans/active/${SLUG}/plan.md"
-```
-
-The pre-filled plan has bootstrapped items already checked off. Only the
-decision-logic items (config, signals, risk, strategy, test assertions)
-remain unchecked — those are what you will build now.
-
-**If /discover or user-provided spec:** Create a plan with the items needed
-based on the strategy spec. Write to `docs/exec-plans/active/${SLUG}/plan.md`.
+Read `strategies/<key>/plan.md` if the package provides one. Otherwise create
+an execution plan from its actual source and the requested behavior. Save the
+plan under `docs/exec-plans/active/${SLUG}/plan.md`. Include configuration,
+entrypoint integration, dry-run safety, cycle/state reporting, tests, and clean
+shutdown. Do not fabricate a template layout or mark checks complete without
+running them. Preserve editable strategy logic and user-requested changes.
 
 Write state update:
 
@@ -418,13 +356,32 @@ unchecked item, implement it directly:
 4. Mark the item as checked in the plan: `[x]`
 5. Move to the next unchecked item
 
-After all items are done, run the success criteria checks:
+After all items are done, validate both boundaries separately. First run the
+root adapter checks from the Canon project root:
 
 ```bash
 pnpm exec tsc --noEmit
 pnpm exec oxlint src/
-pnpm exec vitest run
+pnpm exec vitest run --passWithNoTests=false
 ```
+
+Then run the selected package's declared build, typecheck, lint, and test scripts
+from `strategies/<key>`, using its own package manager and explicit local config.
+Do not make the root compiler ingest the whole package with incompatible module
+settings, or edit root test discovery just to pull package tests into Core.
+If the package has no local test config, explicitly scope its runner to the
+package's tests rather than inheriting an ancestor project's configuration.
+
+For Vitest, pass `--passWithNoTests=false`; for Jest, do not enable
+`--passWithNoTests`. For every test framework, inspect the summary and require
+at least one executed test, not merely discovered, skipped, or TODO tests.
+A zero exit status with "No test files found" is a failed validation.
+Root scaffold tests do not count as tests of the selected strategy.
+
+Record commands, working directories, executed test counts, and outcomes for
+both boundaries. Missing checks/tests are a validation gap to resolve in the
+development phase, not permission to mark the package validated. Do not weaken
+checks or skip the package suite to obtain a green root result.
 
 If checks fail, fix the issues and re-run. Iterate until all pass.
 
@@ -456,12 +413,28 @@ if [[ ! -f "src/main.ts" ]]; then
   exit 0
 fi
 
+# Recheck access with `canon strategies` before this block. The selected key
+# must still be listed; this check does not consume a new activation.
+
 # Create empty .env if missing (some strategies run without auth)
 touch .env
 
-bash "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" &
-RUNNER_PID=$!
-disown
+mkdir -p .canon/execution
+RUNNER_PID=$(python3 - "${DEGA_CORE_HOME:-${HOME}/.degacore}/scripts/canon-runner.sh" <<'PYTHON'
+import subprocess
+import sys
+
+with open(".canon/execution/wrapper.log", "a") as output:
+    process = subprocess.Popen(
+        ["bash", sys.argv[1]],
+        stdin=subprocess.DEVNULL,
+        stdout=output,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+print(process.pid)
+PYTHON
+)
 sleep 2
 
 if kill -0 "${RUNNER_PID}" 2>/dev/null; then
@@ -474,7 +447,10 @@ fi
 
 Handle the output:
 - `NO_ENTRY` → tell the user: `No entry point at src/main.ts — run strategy selection first (phase 5).`
-- `OK <pid>` → print: `Runner started (PID <pid>, dry-run). Stop: kill <pid>. Switch to live: /canon-start --live`
+- `OK <pid>` means startup only. Observe at least two completed cycles and confirm
+  the supervisor remains alive after the launch call returns before reporting
+  continuous dry-run validated. Report the PID and stop command `kill <pid>`.
+  A missing/stopped process is a failure even if earlier tests or cycles passed.
 - `FAIL` → print the log tail, nothing else.
 
 ---
@@ -487,6 +463,40 @@ native-USDC deposit at the EOA, running the gasless onboarding chain
 that pulls funds into the Polymarket Safe (V1+V2 approvals + builder
 creds + EIP-2612 permit + Uniswap swap + Onramp wrap), and launching
 `canon-runner.sh --live`.
+
+Before live preflight, recheck the selected key with `canon strategies` and
+confirm the selected package actually implements live execution. Missing access
+or unsupported live execution must stop here.
+
+For this explicitly requested live transition, ensure a project-local burner wallet exists. Idempotent — generates one on
+first run, reports the address (and a funding prompt) once, and is a no-op
+on subsequent runs. This is the single entry point for wallet
+auto-instantiation:
+
+```bash
+set -euo pipefail
+# Protect secrets before creation, including projects scaffolded by older Core.
+[[ -f src/main.ts ]] || {
+  echo "Build and validate the strategy with /canon-start before live wallet setup." >&2
+  exit 1
+}
+for pattern in '.env' '.env.*' '!.env.example' '!.env.sample' 'wallet.env' '.canon/*.env'; do
+  grep -qxF "$pattern" .gitignore 2>/dev/null || printf '\n%s\n' "$pattern" >>.gitignore
+done
+if git ls-files --error-unmatch .canon/wallet.env >/dev/null 2>&1; then
+  echo "Wallet file is already tracked; resolve its Git exposure before continuing." >&2
+  exit 1
+fi
+git check-ignore -q .canon/wallet.env || {
+  echo "Wallet path is not ignored; fix .gitignore before wallet setup." >&2
+  exit 1
+}
+"${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
+```
+
+The wallet lives at `.canon/wallet.env` (mode 0600). Follow the live-readiness
+script's deposit instructions below; wallet creation alone does not start trading.
+Do not perform wallet setup or issue funding prompts for ordinary dry-run starts.
 
 Run this **single** bash block. Do not split into multiple tool calls —
 the script is the deterministic spine, this command stays a thin
@@ -523,28 +533,20 @@ let the operator inspect and decide.
 
 ---
 
-## Graceful degradation
+## Host behavior
 
-This command works regardless of how the session was launched (Canon TUI,
-tmux, plain terminal, IDE). Dashboard state writes degrade silently when
-the writer is missing — that's the only environment-dependent behavior.
-
-Every `terminal-ui-write.sh` call in this command is guarded with
-`[[ -f "${TUI_WRITE}" ]] &&`. If the script does not exist, the call is
-skipped silently — no error, no repeated warnings.
-
-Do **not** gate the pipeline on `$TMUX`, `$CANON_TUI`, `$TOAD_CWD`, or
-any other env-var meant to signal "running inside a TUI." Those signals
-do not propagate reliably through the canon-tui → claude-code-acp → claude
-chain, and a missing dashboard is not a failure — phases still run, state
-file still gets written when the writer is installed. Just proceed.
+This command works from Canon TUI, tmux, a terminal, or an IDE. Opening the
+socket panel is best-effort. Required state-file writes are not: report a missing
+writer as an incomplete Core installation, and surface permission failures.
+Do not gate phase execution on `$TMUX`, `$CANON_TUI`, or `$TOAD_CWD`.
 
 ---
 
 ## Completion criteria
 
 - Phase detection correctly identifies the project's current state
-- Each phase delegates to the right sub-command logic (canon-scaffold.sh, discover, develop)
-- State file is updated at each phase transition (when terminal-ui-write.sh is available)
-- Graceful degradation: dashboard writes skipped silently when terminal-ui-write.sh is missing
+- Each phase delegates to the right sub-command logic (canon-scaffold.sh, curated selection, develop)
+- State file is updated at each phase transition; write failures are surfaced
+- Only verified curated downloads are selected, and their project copies remain editable
+- Continuous dry-run validation requires at least two cycles and a living supervisor
 - User is guided through the full pipeline with minimal questions

@@ -55,17 +55,6 @@ tui() {
   fi
 }
 
-# ── Flags ────────────────────────────────────────────────────────────────────
-# main.ts's parseEntryFlags defaults to dry-run unless --live is set.
-# Track MODE separately so the dashboard label reflects what's actually
-# happening, not just what the runner thinks it's doing.
-RUN_FLAG=""
-MODE="dry-run"
-if [[ "${1:-}" == "--live" ]]; then
-  RUN_FLAG="--live"
-  MODE="live"
-fi
-
 # ── Counters ─────────────────────────────────────────────────────────────────
 _CYCLES=0
 _SIGNALS=0
@@ -96,6 +85,19 @@ if [[ -f ".canon/wallet.env" ]]; then
   set +a
 fi
 
+# ── Flags ────────────────────────────────────────────────────────────────────
+# Resolve command mode after loading project environment so configuration cannot
+# override the launch flag or make dashboard mode disagree with the child.
+# main.ts's parseEntryFlags defaults to dry-run unless --live is set.
+# Track MODE separately so the dashboard label reflects what's actually
+# happening, not just what the runner thinks it's doing.
+RUN_FLAG=""
+MODE="dry-run"
+if [[ "${1:-}" == "--live" ]]; then
+  RUN_FLAG="--live"
+  MODE="live"
+fi
+
 # ── Reset dashboard for execution phase ──────────────────────────────────────
 tui phase=run status=executing metrics=reset \
   "metric.mode=${MODE}" \
@@ -118,6 +120,8 @@ cleanup() {
   if [[ -n "${WATCHER_PID}" ]] && kill -0 "${WATCHER_PID}" 2>/dev/null; then
     kill "${WATCHER_PID}" 2>/dev/null || true
   fi
+  if [[ -n "${TAIL_PID}" ]]; then wait "${TAIL_PID}" 2>/dev/null || true; fi
+  if [[ -n "${WATCHER_PID}" ]]; then wait "${WATCHER_PID}" 2>/dev/null || true; fi
   rm -f "${TAIL_FIFO}"
 
   # Kill runner if still alive
@@ -144,6 +148,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 # ── Launch runner ────────────────────────────────────────────────────────────
+touch "${RUNNER_LOG}"
+LOG_START_LINE=$(($(wc -l <"${RUNNER_LOG}") + 1))
 # shellcheck disable=SC2086
 pnpm exec tsx src/main.ts ${RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
 RUNNER_PID=$!
@@ -174,28 +180,45 @@ tui log.info="Runner started (PID ${RUNNER_PID})"
 rm -f "${TAIL_FIFO}"
 mkfifo "${TAIL_FIFO}"
 
-tail -n 0 -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
+tail -n +"${LOG_START_LINE}" -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
 TAIL_PID=$!
 
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
 (
-  while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
+  SLEEP_PID=""
+  # Invoked by the EXIT trap when this monitoring subshell stops.
+  # shellcheck disable=SC2329
+  stop_watcher() {
+    if [[ -n "${SLEEP_PID}" ]]; then
+      kill "${SLEEP_PID}" 2>/dev/null || true
+      wait "${SLEEP_PID}" 2>/dev/null || true
+    fi
+  }
+  trap stop_watcher EXIT
+  trap 'exit 0' INT TERM
+  while kill -0 "${RUNNER_PID}" 2>/dev/null; do
+    sleep 3 &
+    SLEEP_PID=$!
+    wait "${SLEEP_PID}" || true
+    SLEEP_PID=""
+  done
   kill "${TAIL_PID}" 2>/dev/null || true
 ) &
 WATCHER_PID=$!
 
 while IFS= read -r line; do
-  # Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
+  # Parse tag from first word (START, SCAN, CYCLE, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
   tag="${line%% *}"
   msg="${line#* }"
   level="info"
 
   case "${tag}" in
   SCAN) ;; # cycle started, just log it
-  NO_EDGE)
+  CYCLE | NO_EDGE)
     _CYCLES=$((_CYCLES + 1))
     # Extract games/markets counts from message if present
-    # Format: "Cycle N — X games, Y markets, Z matched, no edges"
+    # Emit one CYCLE (any successful result) or NO_EDGE (legacy no-signal result).
+    # Format: "Cycle N — X games, Y markets, ..."
     if [[ "${msg}" =~ ([0-9]+)\ games ]]; then
       _GAMES="${BASH_REMATCH[1]}"
     fi
@@ -231,4 +254,4 @@ wait "${WATCHER_PID}" 2>/dev/null || true
 rm -f "${TAIL_FIFO}"
 
 # Wait for runner to fully exit
-wait "${RUNNER_PID}" 2>/dev/null || true
+wait "${RUNNER_PID}"

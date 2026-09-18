@@ -7,6 +7,6 @@ export default defineConfig({
       "strategies/**/__tests__/**/*.test.ts",
     ],
     exclude: ["nba-momentum/**", "node_modules/**", "dist/**"],
-    passWithNoTests: true,
+    passWithNoTests: false,
   },
 });
