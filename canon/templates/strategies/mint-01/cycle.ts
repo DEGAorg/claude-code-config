@@ -448,7 +448,7 @@ async function runCycleImpl(deps: RunCycleDeps): Promise<CycleResult> {
   const startTime = now();
 
   for (;;) {
-    for (const orderId of [...openOrders.keys()]) {
+    for (const orderId of openOrders.keys()) {
       const status = await fetchOrderStatus(orderId);
       if (TERMINAL_ORDER_STATUSES.has(status.status)) {
         const leg = openOrders.get(orderId) as "yes" | "no";
