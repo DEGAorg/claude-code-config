@@ -23,6 +23,7 @@
     "pmxtjs": "2.37.4"
   },
   "devDependencies": {
+    "@types/node": "22.20.3",
     "oxlint": "1.60.0",
     "tsx": "4.21.0",
     "typescript": "5.8.2",

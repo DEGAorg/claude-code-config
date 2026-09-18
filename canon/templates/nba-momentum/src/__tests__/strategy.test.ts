@@ -3,7 +3,6 @@ import {
   normalize,
   textMentionsTeam,
   extractTeamOdds,
-  type TeamOdds,
 } from "../runner.js";
 import { DEFAULT_CONFIG } from "../config/strategy.js";
 import { DEFAULT_RISK_CONFIG } from "../config/risk.js";
