@@ -187,33 +187,11 @@ After init completes, install dependencies:
 pnpm install --frozen-lockfile
 ```
 
-Ensure a project-local burner wallet exists. Idempotent — generates one on
-first run, reports the address (and a funding prompt) once, and is a no-op
-on subsequent runs. This is the single entry point for wallet
-auto-instantiation:
-
-```bash
-set -euo pipefail
-# Protect secrets before creation, including projects scaffolded by older Core.
-for pattern in '.env' '.env.*' '!.env.example' '!.env.sample' 'wallet.env' '.canon/*.env'; do
-  grep -qxF "$pattern" .gitignore 2>/dev/null || printf '\n%s\n' "$pattern" >>.gitignore
-done
-if git ls-files --error-unmatch .canon/wallet.env >/dev/null 2>&1; then
-  echo "Wallet file is already tracked; resolve its Git exposure before continuing." >&2
-  exit 1
-fi
-git check-ignore -q .canon/wallet.env || {
-  echo "Wallet path is not ignored; fix .gitignore before wallet setup." >&2
-  exit 1
-}
-"${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
-```
-
-The wallet lives at `.canon/wallet.env` (mode 0600). Each Canon project gets
-its own wallet, so different strategies in different projects trade from
-different accounts automatically. When `created: true` appears in the
-output, tell the user to fund the printed address with USDC.e on Polygon
-before an explicitly requested order-placing run. Dry-run does not require funding.
+Dry-run initialization requires no wallet, wallet creation, funding, balance checks,
+or onboarding. Continue with scaffold verification, authorized strategy selection,
+and the editable package's dry-run checks. Preserve existing wallet files without
+reading or changing them in this phase. Wallet setup belongs only to the explicitly
+requested live phase below.
 
 Proceed to step 4 (scaffold verification).
 
@@ -284,7 +262,7 @@ For the chosen `<key>`:
    `strategy.md`, or a template plan exists. Adapt its editable source through
    the development phase so `src/main.ts` starts the selected strategy in dry-run.
    Do not launch the global download directly or bypass setup and validation.
-5. Preserve initialization, dependencies, wallet detection/creation, configuration,
+5. Preserve initialization, dependencies, explicit-live wallet setup, configuration,
    tests, and explicit live preflight. A runnable package does not skip these steps.
 
 ### Install the selected package in its own context
@@ -489,6 +467,36 @@ creds + EIP-2612 permit + Uniswap swap + Onramp wrap), and launching
 Before live preflight, recheck the selected key with `canon strategies` and
 confirm the selected package actually implements live execution. Missing access
 or unsupported live execution must stop here.
+
+For this explicitly requested live transition, ensure a project-local burner wallet exists. Idempotent — generates one on
+first run, reports the address (and a funding prompt) once, and is a no-op
+on subsequent runs. This is the single entry point for wallet
+auto-instantiation:
+
+```bash
+set -euo pipefail
+# Protect secrets before creation, including projects scaffolded by older Core.
+[[ -f src/main.ts ]] || {
+  echo "Build and validate the strategy with /canon-start before live wallet setup." >&2
+  exit 1
+}
+for pattern in '.env' '.env.*' '!.env.example' '!.env.sample' 'wallet.env' '.canon/*.env'; do
+  grep -qxF "$pattern" .gitignore 2>/dev/null || printf '\n%s\n' "$pattern" >>.gitignore
+done
+if git ls-files --error-unmatch .canon/wallet.env >/dev/null 2>&1; then
+  echo "Wallet file is already tracked; resolve its Git exposure before continuing." >&2
+  exit 1
+fi
+git check-ignore -q .canon/wallet.env || {
+  echo "Wallet path is not ignored; fix .gitignore before wallet setup." >&2
+  exit 1
+}
+"${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
+```
+
+The wallet lives at `.canon/wallet.env` (mode 0600). Follow the live-readiness
+script's deposit instructions below; wallet creation alone does not start trading.
+Do not perform wallet setup or issue funding prompts for ordinary dry-run starts.
 
 Run this **single** bash block. Do not split into multiple tool calls —
 the script is the deterministic spine, this command stays a thin
