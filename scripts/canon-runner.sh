@@ -120,6 +120,8 @@ cleanup() {
   if [[ -n "${WATCHER_PID}" ]] && kill -0 "${WATCHER_PID}" 2>/dev/null; then
     kill "${WATCHER_PID}" 2>/dev/null || true
   fi
+  if [[ -n "${TAIL_PID}" ]]; then wait "${TAIL_PID}" 2>/dev/null || true; fi
+  if [[ -n "${WATCHER_PID}" ]]; then wait "${WATCHER_PID}" 2>/dev/null || true; fi
   rm -f "${TAIL_FIFO}"
 
   # Kill runner if still alive
@@ -183,7 +185,23 @@ TAIL_PID=$!
 
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
 (
-  while kill -0 "${RUNNER_PID}" 2>/dev/null; do sleep 3; done
+  SLEEP_PID=""
+  # Invoked by the EXIT trap when this monitoring subshell stops.
+  # shellcheck disable=SC2329
+  stop_watcher() {
+    if [[ -n "${SLEEP_PID}" ]]; then
+      kill "${SLEEP_PID}" 2>/dev/null || true
+      wait "${SLEEP_PID}" 2>/dev/null || true
+    fi
+  }
+  trap stop_watcher EXIT
+  trap 'exit 0' INT TERM
+  while kill -0 "${RUNNER_PID}" 2>/dev/null; do
+    sleep 3 &
+    SLEEP_PID=$!
+    wait "${SLEEP_PID}" || true
+    SLEEP_PID=""
+  done
   kill "${TAIL_PID}" 2>/dev/null || true
 ) &
 WATCHER_PID=$!
