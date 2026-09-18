@@ -189,17 +189,18 @@ TAIL_PID=$!
 WATCHER_PID=$!
 
 while IFS= read -r line; do
-  # Parse tag from first word (START, SCAN, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
+  # Parse tag from first word (START, SCAN, CYCLE, NO_EDGE, SIGNAL, SCAN_ERROR, STOP)
   tag="${line%% *}"
   msg="${line#* }"
   level="info"
 
   case "${tag}" in
   SCAN) ;; # cycle started, just log it
-  NO_EDGE)
+  CYCLE | NO_EDGE)
     _CYCLES=$((_CYCLES + 1))
     # Extract games/markets counts from message if present
-    # Format: "Cycle N — X games, Y markets, Z matched, no edges"
+    # Emit one CYCLE (any successful result) or NO_EDGE (legacy no-signal result).
+    # Format: "Cycle N — X games, Y markets, ..."
     if [[ "${msg}" =~ ([0-9]+)\ games ]]; then
       _GAMES="${BASH_REMATCH[1]}"
     fi
