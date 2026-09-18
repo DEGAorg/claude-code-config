@@ -55,17 +55,6 @@ tui() {
   fi
 }
 
-# ── Flags ────────────────────────────────────────────────────────────────────
-# main.ts's parseEntryFlags defaults to dry-run unless --live is set.
-# Track MODE separately so the dashboard label reflects what's actually
-# happening, not just what the runner thinks it's doing.
-RUN_FLAG=""
-MODE="dry-run"
-if [[ "${1:-}" == "--live" ]]; then
-  RUN_FLAG="--live"
-  MODE="live"
-fi
-
 # ── Counters ─────────────────────────────────────────────────────────────────
 _CYCLES=0
 _SIGNALS=0
@@ -94,6 +83,19 @@ if [[ -f ".canon/wallet.env" ]]; then
   # shellcheck disable=SC1091
   source .canon/wallet.env
   set +a
+fi
+
+# ── Flags ────────────────────────────────────────────────────────────────────
+# Resolve command mode after loading project environment so configuration cannot
+# override the launch flag or make dashboard mode disagree with the child.
+# main.ts's parseEntryFlags defaults to dry-run unless --live is set.
+# Track MODE separately so the dashboard label reflects what's actually
+# happening, not just what the runner thinks it's doing.
+RUN_FLAG=""
+MODE="dry-run"
+if [[ "${1:-}" == "--live" ]]; then
+  RUN_FLAG="--live"
+  MODE="live"
 fi
 
 # ── Reset dashboard for execution phase ──────────────────────────────────────
