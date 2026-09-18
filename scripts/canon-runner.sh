@@ -184,6 +184,8 @@ TAIL_PID=$!
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
 (
   SLEEP_PID=""
+  # Invoked by the EXIT trap when this monitoring subshell stops.
+  # shellcheck disable=SC2329
   stop_watcher() {
     if [[ -n "${SLEEP_PID}" ]]; then
       kill "${SLEEP_PID}" 2>/dev/null || true
