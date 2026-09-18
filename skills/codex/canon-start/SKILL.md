@@ -23,7 +23,7 @@ Apply these Codex host adaptations to that procedure:
   is a Claude tool name, not a prerequisite.
 - Read requested personas from `.canon/agents/<name>.md` and domain guidance
   from `.canon/skills/<name>.md`. These are files, not required named Codex
-  tools or separately installed skills. Follow `/discover`'s inline procedure
+  tools or separately installed skills. Use verified `canon strategies` choices
   in phase 5. Implement phase 6's plan directly as that phase specifies.
 - Before any mutations, reject the Core source repository (an `AGENTS.md`
   containing `claude-code-config`), including worktrees with different names.
@@ -33,13 +33,12 @@ Apply these Codex host adaptations to that procedure:
   and ensures the local wallet before strategy selection.
 - Do not overwrite an existing project with `--force` without checking the
   affected files and obtaining approval for any loss of user changes.
-- For a bundled strategy, use `strategies/<name>/plan.md` when present. Do not
-  assume the legacy `.canon/templates/<name>/plan.md` exists. If the bundled
-  entry point passes the project checks, proceed to dry-run; otherwise plan
-  the remaining work from its actual strategy spec.
-- Invoke dry-run through `canon-runner.sh` without `--live`, using a persistent
-  shell session if needed. Confirm the PID and logs before reporting success.
-  Report an exited runner as exited, even if the launch command succeeded.
+- Select only activated downloads returned by `canon strategies`; resume the
+  editable `strategies/<key>` copy. Preserve wallet/configuration setup and
+  development phases. Core examples are not strategy choices.
+- Use the workflow's independent-session launch for dry-run without `--live`.
+  Confirm at least two cycles, PID liveness after launch returns, and state/logs
+  before reporting success. An exited runner is not continuous validation.
 
 Use `$canon-start --live` in Codex-facing follow-up instructions. A missing
 TUI panel does not prevent the workflow from running in Codex.
