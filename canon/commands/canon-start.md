@@ -114,7 +114,7 @@ PYTHON
       phase="develop"
     else
       # Run checks silently — any failure means develop phase
-      pnpm exec vitest run --reporter=dot &>/dev/null || phase="develop"
+      pnpm exec vitest run --reporter=dot --passWithNoTests=false &>/dev/null || phase="develop"
       if [[ "$phase" == "run" ]]; then
         pnpm exec tsc --noEmit &>/dev/null || phase="develop"
       fi
@@ -138,7 +138,9 @@ The only output is the phase name (e.g. `run`). Print it as:
 
 Phase: <phase>
 
-Then jump to the step for that phase.
+Then jump to the step for that phase. A detected `run` phase is a candidate,
+not cached proof: before launch, re-run the selected package checks from step 6
+in its own context and confirm nonzero executed tests.
 
 ---
 
@@ -182,7 +184,7 @@ attempt to fix or retry — the script already gives a clear error message.
 After init completes, install dependencies:
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 Ensure a project-local burner wallet exists. Idempotent — generates one on
@@ -191,6 +193,19 @@ on subsequent runs. This is the single entry point for wallet
 auto-instantiation:
 
 ```bash
+set -euo pipefail
+# Protect secrets before creation, including projects scaffolded by older Core.
+for pattern in '.env' '.env.*' '!.env.example' '!.env.sample' 'wallet.env' '.canon/*.env'; do
+  grep -qxF "$pattern" .gitignore 2>/dev/null || printf '\n%s\n' "$pattern" >>.gitignore
+done
+if git ls-files --error-unmatch .canon/wallet.env >/dev/null 2>&1; then
+  echo "Wallet file is already tracked; resolve its Git exposure before continuing." >&2
+  exit 1
+fi
+git check-ignore -q .canon/wallet.env || {
+  echo "Wallet path is not ignored; fix .gitignore before wallet setup." >&2
+  exit 1
+}
 "${DEGA_CORE_HOME:-${HOME}/.degacore}/bin/canon-cli" wallet ensure --pretty
 ```
 
@@ -198,7 +213,7 @@ The wallet lives at `.canon/wallet.env` (mode 0600). Each Canon project gets
 its own wallet, so different strategies in different projects trade from
 different accounts automatically. When `created: true` appears in the
 output, tell the user to fund the printed address with USDC.e on Polygon
-before running any strategy.
+before an explicitly requested order-placing run. Dry-run does not require funding.
 
 Proceed to step 4 (scaffold verification).
 
@@ -272,6 +287,37 @@ For the chosen `<key>`:
 5. Preserve initialization, dependencies, wallet detection/creation, configuration,
    tests, and explicit live preflight. A runnable package does not skip these steps.
 
+### Install the selected package in its own context
+
+Keep `strategies/<key>/package.json`, its lockfile, safe `.env.example`/`.env.sample`
+files, and its own build/test configuration. Never flatten its dependencies into
+Core's root manifest to make imports resolve. Preserve the editable package boundary.
+
+Inspect the package's `packageManager` declaration and lockfile together. Use the
+matching manager/version and run the installation with the working directory set
+to `strategies/<key>`:
+
+| Lockfile | Installation |
+|---|---|
+| `package-lock.json` or `npm-shrinkwrap.json` | `npm ci` |
+| `pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
+| `yarn.lock`, Yarn 1 | `yarn install --frozen-lockfile` |
+| `yarn.lock`, modern Yarn | `yarn install --immutable` |
+
+If the manager and lockfile disagree, multiple managers' lockfiles exist, or no
+lockfile exists, report the package setup issue. Do not silently choose latest
+versions, regenerate a lockfile, or retry a frozen install without its lock.
+For a non-Node package, follow its own documented locked installation procedure;
+do not force npm/pnpm conventions onto it.
+
+Use a package-local launcher from the Canon adapter so its dependencies and
+configuration resolve inside the editable copy. Preserve the Canon project path
+for state reporting. Install root adapter dependencies only when the adapter
+itself needs them, not as substitutes for the package dependency tree.
+
+Surface install warnings and build-script requirements. Do not blanket-approve
+all dependency build scripts or call an incomplete installation successful.
+
 Write `phase=strategy status=complete` with the selected key using the installed
 state writer, then proceed to step 6. Report unsupported integration honestly;
 a web server or one completed cycle does not prove continuous dry-run support.
@@ -332,13 +378,32 @@ unchecked item, implement it directly:
 4. Mark the item as checked in the plan: `[x]`
 5. Move to the next unchecked item
 
-After all items are done, run the success criteria checks:
+After all items are done, validate both boundaries separately. First run the
+root adapter checks from the Canon project root:
 
 ```bash
 pnpm exec tsc --noEmit
 pnpm exec oxlint src/
-pnpm exec vitest run
+pnpm exec vitest run --passWithNoTests=false
 ```
+
+Then run the selected package's declared build, typecheck, lint, and test scripts
+from `strategies/<key>`, using its own package manager and explicit local config.
+Do not make the root compiler ingest the whole package with incompatible module
+settings, or edit root test discovery just to pull package tests into Core.
+If the package has no local test config, explicitly scope its runner to the
+package's tests rather than inheriting an ancestor project's configuration.
+
+For Vitest, pass `--passWithNoTests=false`; for Jest, do not enable
+`--passWithNoTests`. For every test framework, inspect the summary and require
+at least one executed test, not merely discovered, skipped, or TODO tests.
+A zero exit status with "No test files found" is a failed validation.
+Root scaffold tests do not count as tests of the selected strategy.
+
+Record commands, working directories, executed test counts, and outcomes for
+both boundaries. Missing checks/tests are a validation gap to resolve in the
+development phase, not permission to mark the package validated. Do not weaken
+checks or skip the package suite to obtain a green root result.
 
 If checks fail, fix the issues and re-run. Iterate until all pass.
 
