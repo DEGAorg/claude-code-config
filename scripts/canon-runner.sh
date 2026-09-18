@@ -146,6 +146,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 # ── Launch runner ────────────────────────────────────────────────────────────
+touch "${RUNNER_LOG}"
+LOG_START_LINE=$(($(wc -l <"${RUNNER_LOG}") + 1))
 # shellcheck disable=SC2086
 pnpm exec tsx src/main.ts ${RUN_FLAG} >>"${RUNNER_LOG}" 2>&1 &
 RUNNER_PID=$!
@@ -176,7 +178,7 @@ tui log.info="Runner started (PID ${RUNNER_PID})"
 rm -f "${TAIL_FIFO}"
 mkfifo "${TAIL_FIFO}"
 
-tail -n 0 -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
+tail -n +"${LOG_START_LINE}" -F "${RUNNER_LOG}" >"${TAIL_FIFO}" 2>/dev/null &
 TAIL_PID=$!
 
 # Watcher: poll runner liveness, kill tail on death so FIFO gets EOF
@@ -233,4 +235,4 @@ wait "${WATCHER_PID}" 2>/dev/null || true
 rm -f "${TAIL_FIFO}"
 
 # Wait for runner to fully exit
-wait "${RUNNER_PID}" 2>/dev/null || true
+wait "${RUNNER_PID}"
