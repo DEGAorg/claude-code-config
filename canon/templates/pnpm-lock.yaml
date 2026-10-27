@@ -10,6 +10,7 @@ overrides:
   utf-8-validate: 5.0.10
   vite: 8.3.5
   '@ethersproject/providers>ws': 8.22.0
+  '@polymarket/clob-client-v2': 1.0.2
 
 importers:
 
@@ -22,8 +23,8 @@ importers:
         specifier: 0.0.8
         version: 0.0.8
       '@polymarket/clob-client-v2':
-        specifier: ^1.2.0
-        version: 1.2.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
+        specifier: 1.0.2
+        version: 1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
       axios:
         specifier: ^1.20.0
         version: 1.20.0
@@ -860,9 +861,8 @@ packages:
     resolution: {integrity: sha512-rZLCFxEdYahl5FiJmhe22RDXysS1ibFJlWz4NT0s3itJRYq3XJzXXHXEZkAQplU+nIS1IlbbKjA4zDQaeCyYtg==}
     deprecated: This package is deprecated. Please migrate to the unified Polymarket SDK. Follow https://docs.polymarket.com/migrate/clob-sdk-to-unified-sdk to get started.
 
-  '@polymarket/clob-client-v2@1.2.0':
-    resolution: {integrity: sha512-LmqNqKxp3EZetixMytW2RH4X60pfh8YHJKeRxCsZiLuegeUpXS4ggsQgPdRP4h7JCWB0DdygxjpEBjBDWvOOiQ==}
-    engines: {node: '>=20.10'}
+  '@polymarket/clob-client-v2@1.0.2':
+    resolution: {integrity: sha512-lC80Esug6s6y3uV8D5HnkxoXVZUnATjyP6PcK2IXO740iGDuLlp9Dvvkx3+VVygHahN+M3NY7JiYiTQkDfWoeQ==}
     deprecated: This package is deprecated. Please migrate to the unified Polymarket SDK. Follow https://docs.polymarket.com/migrate/clob-sdk-to-unified-sdk to get started.
 
   '@prob/clob@0.5.0':
@@ -3956,7 +3956,7 @@ snapshots:
       - debug
       - supports-color
 
-  '@polymarket/clob-client-v2@1.2.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)':
+  '@polymarket/clob-client-v2@1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@ethersproject/providers': 5.8.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@ethersproject/wallet': 5.8.0
@@ -5743,7 +5743,7 @@ snapshots:
     dependencies:
       '@limitless-exchange/sdk': 1.3.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@opinion-labs/opinion-clob-sdk': 0.6.1(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
-      '@polymarket/clob-client-v2': 1.2.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
+      '@polymarket/clob-client-v2': 1.0.2(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
       '@prob/clob': 0.5.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)(ws@8.22.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.99.0(bufferutil@4.1.0)(typescript@5.8.2)(utf-8-validate@5.0.10)
       '@types/express': 5.0.6

@@ -23,3 +23,9 @@ All validation unsets wallet keys and CANON_LIVE_TEST. No authenticated market
 operation, order, wallet creation or globally installed tool update is part of
 this maintenance. The PMXT proof of concept's authenticated/order scripts are
 not suitable smoke tests for a dependency update.
+
+CLOB client v2 remains pinned to 1.0.2, including PMXT's transitive resolution.
+Version 1.2.0 waits up to 30 seconds for settlement before acknowledging an
+already accepted order, delaying the second leg in sequential strategies. An
+offline regression checks immediate acknowledgement while settlement is pending;
+patched transitive dependencies are retained with the older SDK.
