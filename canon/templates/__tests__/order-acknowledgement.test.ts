@@ -44,6 +44,7 @@ it("acknowledges an accepted order before its transaction settles", async () => 
     const pending = client.postOrder({ salt: "1" }).then((result) => {
       acknowledged = result.orderID === response.orderID;
     });
+    await vi.waitFor(() => expect(client.post).toHaveBeenCalledTimes(1));
     await vi.advanceTimersByTimeAsync(0);
     const acknowledgedWithoutWaiting = acknowledged;
     await vi.advanceTimersByTimeAsync(30_000);
