@@ -19,7 +19,26 @@
     "pmxtjs": "2.22.1"
   },
   "devDependencies": {
-    "tsx": "4.21.0",
+    "tsx": "4.23.15",
     "typescript": "5.8.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios@<1": "0.34.0",
+      "@solana/web3.js>jayson": "5.0.0",
+      "utf-8-validate": "5.0.10",
+      "vite": "8.3.5",
+      "@ethersproject/providers>ws": "8.22.0"
+    }
+  },
+  "overrides": {
+    "axios@<1": "0.34.0",
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    },
+    "utf-8-validate": "5.0.10",
+    "@ethersproject/providers": {
+      "ws": "8.22.0"
+    }
   }
 }

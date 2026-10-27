@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Canon CLI — agent-callable trading tools for Polymarket",
+  "description": "Canon CLI \u2014 agent-callable trading tools for Polymarket",
   "bin": {
     "canon-cli": "./canon-cli.ts"
   },
@@ -23,8 +23,31 @@
   },
   "devDependencies": {
     "oxlint": "1.60.0",
-    "tsx": "4.21.0",
+    "tsx": "4.23.15",
     "typescript": "5.8.2",
-    "vitest": "4.1.4"
-  }
+    "vitest": "4.1.12"
+  },
+  "pnpm": {
+    "overrides": {
+      "axios@<1": "0.34.0",
+      "@solana/web3.js>jayson": "5.0.0",
+      "utf-8-validate": "5.0.10",
+      "vite": "8.3.5",
+      "@ethersproject/providers>ws": "8.22.0",
+      "@polymarket/clob-client-v2": "1.0.2"
+    }
+  },
+  "overrides": {
+    "axios@<1": "0.34.0",
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    },
+    "utf-8-validate": "5.0.10",
+    "@ethersproject/providers": {
+      "ws": "8.22.0"
+    },
+    "vite": "8.3.5",
+    "@polymarket/clob-client-v2": "1.0.2"
+  },
+  "packageManager": "pnpm@10.34.5+sha512.a4ee05f2f73658255bd6a89859c065a45c28a57daefae2c893a168ee2b73168c37b91e83e57ea67654ad03f03031746430e8bce38e362e042605fb8abc80192e"
 }
